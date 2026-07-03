@@ -106,11 +106,11 @@
 
   /* forms */
   label{display:block;font-size:.82rem;color:var(--muted-txt);margin-bottom:6px;font-weight:600;letter-spacing:.02em}
-  input[type=text],input[type=password],input[type=number]{
+  input[type=text],input[type=password],input[type=number],select{
     width:100%;background:var(--bg-2);border:1px solid var(--line-strong);border-radius:12px;
     color:var(--cream);padding:12px 14px;font-family:'Space Mono',monospace;font-size:.85rem;outline:none;
   }
-  input:focus{border-color:var(--clay-soft)}
+  input:focus,select:focus{border-color:var(--clay-soft)}
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
   @media(max-width:760px){.grid-2{grid-template-columns:1fr}}
   .hint{font-size:.78rem;color:var(--muted-txt);margin-top:6px}
@@ -438,6 +438,7 @@
       <button class="btn btn-ghost" id="btnReport">📄 Reporte ejecutivo (PDF) <span class="help" tabindex="0" data-tip="Genera un documento imprimible con todo el análisis: geometría, materiales, fallas e inversión. Ideal para llevarlo al banco o a inversionistas. En el diálogo de impresión elige “Guardar como PDF”.">?</span></button>
       <button class="btn btn-ghost" id="btnShare">🔗 Compartir proyecto <span class="help" tabindex="0" data-tip="Crea un enlace para que tu arquitecto, socio o cliente vea este análisis completo sin instalar nada ni usar llaves.">?</span></button>
       <a class="btn btn-ghost" href="comparar.html">Comparar proyectos →</a>
+      <a class="btn btn-ghost" id="btnZona3d" href="zona3d.html">🌍 Ver en zona 3D <span class="help" tabindex="0" data-tip="Abre la vista inmersiva fotorrealista de BrickBit y coloca este proyecto sobre el mapa real de la ciudad, con su simulador 4D integrado.">?</span></a>
     </div>
     <div class="share-box" id="shareBox">
       <label for="shareUrl">Enlace del proyecto</label>
@@ -537,9 +538,13 @@
     <div class="card-head"><span class="knum">08 /</span><h2>Análisis de inversión — Valor Futuro</h2></div>
     <p class="sub">El corazón de BrickBit aplicado a tu gemelo digital: la IA estima el valor del inmueble terminado, su plusvalía a 5 y 10 años, la renta esperada y el ROI del desarrollador contra el costo de obra ya calculado.</p>
     <div class="toolbar">
+      <div class="field" style="max-width:320px">
+        <label for="invZona">Zona BrickBit (datos Valor Futuro) <span class="help" tabindex="0" data-tip="Datos de mercado del análisis Valor Futuro de BrickBit: precio de venta por m², plusvalía anual y rendimiento de renta observados en cada ciudad. Al elegir una zona, la IA ancla sus estimaciones a estos datos reales en lugar de estimar a ciegas.">?</span></label>
+        <select id="invZona"><option value="">— Sin zona (solo IA) —</option></select>
+      </div>
       <div class="field">
         <label for="invLocation">Ubicación del proyecto</label>
-        <input type="text" id="invLocation" placeholder="Ej. Col. Roma Norte, CDMX (si la dejas vacía se usa la dirección del paso 4)">
+        <input type="text" id="invLocation" placeholder="Ej. Col. Roma Norte, CDMX (si la dejas vacía se usa la zona o la dirección del paso 4)">
       </div>
       <button class="btn btn-primary" id="btnInvest">Calcular análisis →</button>
     </div>
@@ -575,6 +580,8 @@
   </div>
 
 </div>
+
+<script src="zonas.js"></script>
 
 <!-- Three.js via import map -->
 <script type="importmap">
@@ -1616,13 +1623,54 @@ const INVESTMENT_SCHEMA = {
   }
 };
 
+/* Zonas BrickBit (Valor Futuro) — dataset compartido con zona3d.html */
+const BB_ZONES = window.BRICKBIT_ZONES || [];
+$('invZona').innerHTML = '<option value="">— Sin zona (solo IA) —</option>' +
+  BB_ZONES.map(z => `<option value="${escapeHtml(z.nombre)}">${escapeHtml(z.nombre)} · $${fmt(z.precio_m2)}/m² · +${z.plusvalia}%/año</option>`).join('');
+$('invZona').addEventListener('change', () => {
+  if ($('invZona').value && !$('invLocation').value.trim()) $('invLocation').value = $('invZona').value;
+});
+function selectedZone() {
+  return BB_ZONES.find(z => z.nombre === $('invZona').value) || null;
+}
+
+/* Al llegar desde zona3d.html (?zona=...) preselecciona la zona */
+(function preselectZone() {
+  const zq = new URLSearchParams(location.search).get('zona');
+  if (!zq) return;
+  const idx = [...$('invZona').options].findIndex(o => o.value === zq);
+  if (idx > 0) $('invZona').selectedIndex = idx;
+  if (!$('invLocation').value.trim()) $('invLocation').value = zq;
+})();
+
+/* Enlace a la vista inmersiva con zona y proyecto actuales */
+$('btnZona3d').addEventListener('click', (e) => {
+  const qs = new URLSearchParams();
+  const z = $('invZona').value;
+  if (z) qs.set('zona', z);
+  if (state.geometry) {
+    const gs = JSON.stringify(state.geometry);
+    const proj = loadProjects().find(x => JSON.stringify(x.geometry) === gs);
+    if (proj) qs.set('proyecto', proj.id);
+  }
+  e.currentTarget.href = 'zona3d.html' + (qs.toString() ? '?' + qs.toString() : '');
+});
+
 $('btnInvest').addEventListener('click', async () => {
   if (!state.geometry || !state.engineering) return;
   hideError('errInvest');
   $('btnInvest').disabled = true;
   $('statusInvest').classList.add('show');
   try {
-    const ubicacion = $('invLocation').value.trim() || $('addressInput').value.trim() || 'México (ubicación no especificada; asume ciudad media)';
+    const zSel = selectedZone();
+    const ubicacion = $('invLocation').value.trim() || (zSel && zSel.nombre) || $('addressInput').value.trim() || 'México (ubicación no especificada; asume ciudad media)';
+    const marketBlock = zSel ? `
+
+DATOS DE MERCADO BRICKBIT (análisis Valor Futuro) PARA ${zSel.nombre} — ancla tus estimaciones a estos datos observados:
+- Precio de venta promedio en la zona: $${zSel.precio_m2} MXN/m²
+- Plusvalía anual observada: ${zSel.plusvalia}%
+- Rendimiento (yield) de renta anual: ${zSel.yld}%
+Usa estos valores como base: el precio/m² para el valor del inmueble (ajustado por tipología y calidad del proyecto), la plusvalía para las proyecciones a 5 y 10 años, y el yield para la renta mensual.` : '';
     state.investment = await callClaude({
       system: 'Eres un analista senior de inversión inmobiliaria en México, experto en valuación, plusvalía por zona, impacto de obra pública, ciclos económicos y rentas de mercado. Trabajas para BrickBit ("Valor Futuro"). Das cifras realistas y conservadoras en MXN, coherentes con la ubicación indicada, la tipología del proyecto y el costo de obra calculado. El valor del inmueble incluye un supuesto razonable de valor de terreno para la zona: decláralo en el resumen.',
       content: [{ type: 'text', text:
@@ -1635,7 +1683,7 @@ ${JSON.stringify(state.geometry)}
 
 COSTO DE OBRA NEGRA ESTIMADO (MXN): ${JSON.stringify(state.engineering.costoEstimadoMXN)}
 RESUMEN TÉCNICO: ${state.engineering.resumen}
-PRIMERA FALLA PREDICHA: ${state.engineering.primeraFalla.nombre} (~${state.engineering.primeraFalla.aniosEstimados} años)
+PRIMERA FALLA PREDICHA: ${state.engineering.primeraFalla.nombre} (~${state.engineering.primeraFalla.aniosEstimados} años)${marketBlock}
 
 Entrega: valor del inmueble terminado (rango), valor a 5 y 10 años, plusvalía anual, renta mensual esperada, cap rate, ROI del desarrollador contra el costo de obra, punto de equilibrio en años de renta, factores de plusvalía de la zona, riesgos y una recomendación clara (desarrollar / renegociar / no desarrollar).` }],
       schema: INVESTMENT_SCHEMA,
@@ -1694,6 +1742,20 @@ function renderInvestment() {
   $('invReco').textContent = v.recomendacion;
   markChip(8);
   updateSimValue();
+  attachInvestmentToSaved();
+}
+
+/* Si el proyecto ya está guardado, adjúntale el análisis de inversión
+   para que zona3d.html y el comparador puedan usarlo */
+function attachInvestmentToSaved() {
+  if (!state.geometry || !state.investment) return;
+  const list = loadProjects();
+  const gs = JSON.stringify(state.geometry);
+  const proj = list.find(x => JSON.stringify(x.geometry) === gs);
+  if (proj) {
+    proj.investment = state.investment;
+    try { localStorage.setItem('bb_projects', JSON.stringify(list)); } catch {}
+  }
 }
 
 const DEMO_INVESTMENT = {
@@ -1761,6 +1823,7 @@ function saveCurrentProject() {
     fecha: new Date().toISOString(),
     geometry: state.geometry,
     engineering: state.engineering,
+    investment: state.investment || null,
   });
   try { localStorage.setItem('bb_projects', JSON.stringify(list.slice(0, 12))); } catch {}
   renderProjects();
