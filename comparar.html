@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BrickBit — Comparador de Proyectos</title>
+<meta name="description" content="Compara dos planos analizados por BrickBit lado a lado: gemelo digital 3D, materiales, costos y predicción de fallas, con veredicto de la IA de Anthropic.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#100c0a; --bg-2:#16110e; --surface:#1d1713; --surface-2:#241c17;
+    --cream:#f5ede3; --muted-txt:#a89a8c;
+    --clay:#1a7d50; --clay-soft:#57c389; --clay-deep:#0c4a30;
+    --lime:#cdf25a; --lime-deep:#a9d23f;
+    --line:rgba(245,237,227,0.10); --line-strong:rgba(245,237,227,0.18);
+    --danger:#e06d5a; --warn:#e0b95a;
+    --max:1180px; --r:18px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(900px 600px at 78% -8%, rgba(26,125,80,0.16), transparent 60%),
+               radial-gradient(700px 500px at 8% 30%, rgba(205,242,90,0.05), transparent 60%);}
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  header{position:sticky;top:0;z-index:50;background:rgba(16,12,10,0.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;height:68px}
+  .brand{font-family:'Fraunces',serif;font-weight:700;font-size:1.25rem;color:var(--cream);text-decoration:none;display:flex;align-items:center;gap:10px}
+  .brand .dot{width:10px;height:10px;border-radius:3px;background:var(--lime)}
+  .brand em{font-style:italic;color:var(--clay-soft);font-weight:500}
+  .back{color:var(--muted-txt);text-decoration:none;font-size:.92rem}
+  .back:hover{color:var(--cream)}
+
+  .hero{padding:64px 0 30px}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--lime);border:1px solid var(--line-strong);border-radius:999px;padding:6px 14px;margin-bottom:22px}
+  h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(1.8rem,4vw,3rem);line-height:1.1;letter-spacing:-.01em;max-width:820px}
+  h1 em{font-style:italic;color:var(--clay-soft)}
+  .hero p{color:var(--muted-txt);max-width:680px;margin-top:16px;font-size:1.02rem}
+
+  section.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:34px;margin:26px 0}
+  section.card > .card-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;flex-wrap:wrap}
+  .knum{font-family:'Space Mono',monospace;color:var(--lime);font-size:.8rem;letter-spacing:.1em}
+  h2{font-family:'Fraunces',serif;font-weight:600;font-size:1.55rem;letter-spacing:-.01em}
+  .sub{color:var(--muted-txt);font-size:.95rem;max-width:720px;margin-bottom:20px}
+
+  label{display:block;font-size:.82rem;color:var(--muted-txt);margin-bottom:6px;font-weight:600}
+  select{
+    width:100%;background:var(--bg-2);border:1px solid var(--line-strong);border-radius:12px;
+    color:var(--cream);padding:12px 14px;font-family:'Space Mono',monospace;font-size:.82rem;outline:none;appearance:auto;
+  }
+  select:focus{border-color:var(--clay-soft)}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.grid-2{grid-template-columns:1fr}}
+
+  .btn{display:inline-flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;border-radius:12px;padding:13px 24px;font-weight:700;font-size:.95rem;font-family:'Hanken Grotesk',sans-serif;border:1px solid transparent;transition:all .25s}
+  .btn-primary{background:var(--lime);color:#0f130a}
+  .btn-primary:hover{background:var(--lime-deep)}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--cream);border-color:var(--line-strong)}
+  .btn-ghost:hover{border-color:var(--clay-soft);color:var(--clay-soft)}
+
+  .status{display:none;align-items:center;gap:12px;margin-top:18px;font-family:'Space Mono',monospace;font-size:.8rem;color:var(--clay-soft)}
+  .status.show{display:flex}
+  .spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--line-strong);border-top-color:var(--lime);animation:spin .8s linear infinite;flex:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .error-box{display:none;margin-top:16px;border:1px solid rgba(224,109,90,.4);background:rgba(224,109,90,.08);border-radius:12px;padding:14px 18px;color:var(--danger);font-size:.88rem;white-space:pre-wrap}
+  .error-box.show{display:block}
+  .empty-state{color:var(--muted-txt);font-size:.95rem;border:1px dashed var(--line-strong);border-radius:var(--r);padding:34px;text-align:center}
+  .empty-state a{color:var(--lime)}
+
+  #compareCanvas{
+    width:100%;height:520px;border-radius:var(--r);border:1px solid var(--line-strong);
+    background:radial-gradient(600px 400px at 50% 0%, #1c2420, #0d0f0c);display:block;
+  }
+  .legend{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px;font-size:.85rem;color:var(--muted-txt)}
+  .legend .sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:8px;vertical-align:-1px}
+
+  table.cmp{width:100%;border-collapse:collapse;font-size:.9rem}
+  table.cmp th{
+    text-align:left;font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted-txt);padding:12px;border-bottom:1px solid var(--line-strong);
+  }
+  table.cmp th.pa{color:var(--lime)}
+  table.cmp th.pb{color:var(--clay-soft)}
+  table.cmp td{padding:13px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  table.cmp td:first-child{color:var(--muted-txt);font-size:.82rem}
+  table.cmp td.win{color:var(--lime);font-weight:700}
+  table.cmp td.win::after{content:" ✓";font-size:.75rem}
+  .table-scroll{overflow-x:auto}
+
+  .verdict{display:none;margin-top:22px}
+  .verdict.show{display:block}
+  .verdict-hero{
+    border:1px solid rgba(205,242,90,.35);background:linear-gradient(140deg, rgba(205,242,90,.08), rgba(26,125,80,.06));
+    border-radius:var(--r);padding:26px;margin-bottom:18px;
+  }
+  .verdict-hero .vh-label{font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--lime);margin-bottom:8px}
+  .verdict-hero h3{font-family:'Fraunces',serif;font-size:1.5rem;margin-bottom:8px}
+  .verdict-hero p{color:var(--muted-txt);font-size:.95rem;max-width:800px}
+  .crit-row{display:grid;grid-template-columns:minmax(140px,.8fr) 90px 2fr;gap:14px;padding:12px 0;border-bottom:1px dashed var(--line);font-size:.88rem;align-items:baseline}
+  @media(max-width:700px){.crit-row{grid-template-columns:1fr}}
+  .crit-row .who{font-family:'Space Mono',monospace;font-size:.72rem;border-radius:6px;padding:3px 10px;justify-self:start}
+  .who.A{background:rgba(205,242,90,.15);color:var(--lime)}
+  .who.B{background:rgba(87,195,137,.15);color:var(--clay-soft)}
+  .who.empate{background:rgba(245,237,227,.08);color:var(--muted-txt)}
+  .crit-row .det{color:var(--muted-txt)}
+
+  .disclaimer{margin:30px 0 60px;border:1px solid var(--line);border-radius:var(--r);padding:20px 24px;color:var(--muted-txt);font-size:.82rem;background:var(--bg-2)}
+  .disclaimer b{color:var(--warn)}
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="gemelo-digital.html"><span class="dot"></span>BrickBit <em>· Comparador</em></a>
+    <a class="back" href="gemelo-digital.html">← Volver al Gemelo Digital</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">◈ Gemelo Digital · Comparador</div>
+    <h1>Compara dos proyectos <em>lado a lado</em> antes de decidir</h1>
+    <p>Elige dos planos analizados con el Gemelo Digital de BrickBit: verás sus volúmenes 3D juntos, la comparación de materiales, acero, costos y riesgo de fallas — y si quieres, un veredicto razonado por la IA de Anthropic.</p>
+  </div>
+
+  <!-- 01: selección -->
+  <section class="card" id="secSelect">
+    <div class="card-head"><span class="knum">01 /</span><h2>Elige los proyectos</h2></div>
+    <p class="sub">Los proyectos se guardan automáticamente en este navegador cada vez que completas un análisis en el Gemelo Digital.</p>
+    <div id="emptyState" class="empty-state hidden">
+      Aún no hay suficientes proyectos guardados (se necesitan 2).<br>
+      <a href="gemelo-digital.html">Analiza un plano en el Gemelo Digital →</a>
+      &nbsp;o&nbsp;
+      <a href="#" id="seedDemo">carga dos proyectos de ejemplo</a>.
+    </div>
+    <div id="selectors">
+      <div class="grid-2">
+        <div>
+          <label for="selA">Proyecto A</label>
+          <select id="selA"></select>
+        </div>
+        <div>
+          <label for="selB">Proyecto B</label>
+          <select id="selB"></select>
+        </div>
+      </div>
+      <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="btnCompare">Comparar →</button>
+      </div>
+      <div class="error-box" id="errSelect"></div>
+    </div>
+  </section>
+
+  <!-- 02: 3D -->
+  <section class="card hidden" id="secView">
+    <div class="card-head"><span class="knum">02 /</span><h2>Volúmenes lado a lado</h2></div>
+    <canvas id="compareCanvas"></canvas>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--lime)"></span><b id="legA"></b></span>
+      <span><span class="sw" style="background:var(--clay-soft)"></span><b id="legB"></b></span>
+      <span style="margin-left:auto">Arrastra para orbitar · rueda para acercar</span>
+    </div>
+  </section>
+
+  <!-- 03: tabla -->
+  <section class="card hidden" id="secTable">
+    <div class="card-head"><span class="knum">03 /</span><h2>Comparación técnica</h2></div>
+    <p class="sub">Las palomitas ✓ marcan al proyecto con mejor indicador en criterios donde “mejor” es objetivo: menor costo, primera falla más lejana y menos fallas graves.</p>
+    <div class="table-scroll">
+      <table class="cmp">
+        <thead><tr><th>Indicador</th><th class="pa" id="thA">Proyecto A</th><th class="pb" id="thB">Proyecto B</th></tr></thead>
+        <tbody id="cmpBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 04: veredicto IA -->
+  <section class="card hidden" id="secVerdict">
+    <div class="card-head"><span class="knum">04 /</span><h2>Veredicto de la IA</h2></div>
+    <p class="sub">Claude compara la geometría, materiales, costos y riesgos de ambos proyectos, criterio por criterio, y recomienda con argumentos de ingeniería. Requiere backend configurado o llave de Anthropic (se toma de la configuración del Gemelo Digital).</p>
+    <button class="btn btn-primary" id="btnVerdict">Pedir veredicto a Claude →</button>
+    <div class="status" id="statusVerdict"><span class="spinner"></span><span>Claude está comparando ambos proyectos…</span></div>
+    <div class="error-box" id="errVerdict"></div>
+    <div class="verdict" id="verdictBox">
+      <div class="verdict-hero" id="verdictHero"></div>
+      <div id="critList"></div>
+      <div class="verdict-hero" style="margin-top:18px;border-color:var(--line)" id="verdictReco"></div>
+    </div>
+  </section>
+
+  <div class="disclaimer">
+    <b>Aviso:</b> la comparación y el veredicto son estimaciones generadas por IA para apoyar decisiones tempranas de proyecto. No sustituyen el análisis de un ingeniero estructurista, el presupuesto de obra ni la normativa local aplicable.
+  </div>
+
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = (id) => document.getElementById(id);
+const ANTHROPIC_MODEL = 'claude-opus-4-8';
+
+/* =====================================================================
+   Proyectos guardados
+===================================================================== */
+function loadProjects() {
+  try { return JSON.parse(localStorage.getItem('bb_projects') || '[]'); } catch { return []; }
+}
+
+function populateSelectors() {
+  const list = loadProjects();
+  const enough = list.length >= 2;
+  $('emptyState').classList.toggle('hidden', enough);
+  $('selectors').classList.toggle('hidden', !enough);
+  if (!enough) return;
+  const opts = list.map(p =>
+    `<option value="${p.id}">${escapeHtml(p.nombre)} — ${new Date(p.fecha).toLocaleDateString('es-MX')} (${fmt(p.geometry.areaTotalM2)} m²)</option>`).join('');
+  $('selA').innerHTML = opts;
+  $('selB').innerHTML = opts;
+  $('selA').selectedIndex = 0;
+  $('selB').selectedIndex = 1;
+}
+populateSelectors();
+
+// Semilla de ejemplo para probar el comparador sin análisis previos
+$('seedDemo').addEventListener('click', (e) => {
+  e.preventDefault();
+  const list = loadProjects();
+  for (const demo of [DEMO_A, DEMO_B]) {
+    const gs = JSON.stringify(demo.geometry);
+    if (!list.some(p => JSON.stringify(p.geometry) === gs)) list.unshift(demo);
+  }
+  localStorage.setItem('bb_projects', JSON.stringify(list.slice(0, 12)));
+  populateSelectors();
+});
+
+/* =====================================================================
+   Comparación
+===================================================================== */
+let picked = null; // { A: proyecto, B: proyecto }
+
+$('btnCompare').addEventListener('click', () => {
+  hideError('errSelect');
+  const list = loadProjects();
+  const A = list.find(p => p.id === $('selA').value);
+  const B = list.find(p => p.id === $('selB').value);
+  if (!A || !B) return;
+  if (A.id === B.id) { showError('errSelect', 'Elige dos proyectos distintos.'); return; }
+  picked = { A, B };
+  $('secView').classList.remove('hidden');
+  $('secTable').classList.remove('hidden');
+  $('secVerdict').classList.remove('hidden');
+  $('verdictBox').classList.remove('show');
+  $('legA').textContent = `A · ${A.nombre}`;
+  $('legB').textContent = `B · ${B.nombre}`;
+  $('thA').textContent = `A · ${A.nombre}`;
+  $('thB').textContent = `B · ${B.nombre}`;
+  buildCompareScene(A.geometry, B.geometry);
+  renderTable(A, B);
+  $('secView').scrollIntoView({ behavior: 'smooth' });
+});
+
+/* ---------- métricas ---------- */
+function stats(p) {
+  const g = p.geometry, e = p.engineering;
+  const aceroKg = e.varillas.reduce((s, v) => s + (v.cantidadKg || 0), 0);
+  let concretoM3 = 0;
+  for (const cat of e.materiales) {
+    for (const it of cat.items) {
+      if (/m³|m3/i.test(it.unidad) && /concreto/i.test(cat.categoria + ' ' + it.concepto)) concretoM3 += it.cantidad || 0;
+    }
+  }
+  const graves = e.fallas.filter(f => ['alta', 'crítica'].includes(f.severidad)).length;
+  return {
+    niveles: g.niveles,
+    area: g.areaTotalM2,
+    huella: `${g.anchoM}×${g.fondoM} m`,
+    sistema: g.sistemaEstructural,
+    concretoM3, aceroKg,
+    costoMin: e.costoEstimadoMXN.minimo,
+    costoMax: e.costoEstimadoMXN.maximo,
+    costoM2: g.areaTotalM2 ? (e.costoEstimadoMXN.minimo + e.costoEstimadoMXN.maximo) / 2 / g.areaTotalM2 : 0,
+    ffNombre: e.primeraFalla.nombre,
+    ffAnios: e.primeraFalla.aniosEstimados,
+    graves,
+    fallas: e.fallas.length,
+  };
+}
+
+function renderTable(A, B) {
+  const a = stats(A), b = stats(B);
+  // better: -1 = menor gana, +1 = mayor gana, 0 = informativo
+  const rows = [
+    ['Niveles', a.niveles, b.niveles, 0],
+    ['Área total', `${fmt(a.area)} m²`, `${fmt(b.area)} m²`, 0],
+    ['Huella', a.huella, b.huella, 0],
+    ['Sistema estructural', a.sistema, b.sistema, 0],
+    ['Concreto total', `${fmt(a.concretoM3)} m³`, `${fmt(b.concretoM3)} m³`, 0],
+    ['Acero de refuerzo', `${fmt(a.aceroKg)} kg`, `${fmt(b.aceroKg)} kg`, 0],
+    ['Costo estimado (obra negra)', `$${fmt(a.costoMin)} – $${fmt(a.costoMax)}`, `$${fmt(b.costoMin)} – $${fmt(b.costoMax)}`, -1, a.costoMin, b.costoMin],
+    ['Costo por m² (promedio)', `$${fmt(a.costoM2)}`, `$${fmt(b.costoM2)}`, -1, a.costoM2, b.costoM2],
+    ['Primera falla predicha', `${escapeHtml(a.ffNombre)}<br><small>~${fmt(a.ffAnios)} años</small>`, `${escapeHtml(b.ffNombre)}<br><small>~${fmt(b.ffAnios)} años</small>`, 1, a.ffAnios, b.ffAnios],
+    ['Fallas altas/críticas', `${a.graves} de ${a.fallas}`, `${b.graves} de ${b.fallas}`, -1, a.graves, b.graves],
+  ];
+  $('cmpBody').innerHTML = rows.map(r => {
+    const [label, va, vb, dir, na, nb] = r;
+    let winA = '', winB = '';
+    if (dir !== 0 && na !== nb) {
+      const aWins = dir === -1 ? na < nb : na > nb;
+      winA = aWins ? ' class="win"' : '';
+      winB = aWins ? '' : ' class="win"';
+    }
+    return `<tr><td>${label}</td><td${winA}>${va}</td><td${winB}>${vb}</td></tr>`;
+  }).join('');
+}
+
+/* =====================================================================
+   Escena 3D combinada
+===================================================================== */
+let three = null;
+
+function initThree() {
+  const canvas = $('compareCanvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0d0f0c, 80, 320);
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 2000);
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI / 2.05;
+
+  scene.add(new THREE.HemisphereLight(0xf5ede3, 0x1a2018, 0.9));
+  const sun = new THREE.DirectionalLight(0xfff4e0, 1.6);
+  sun.position.set(40, 55, 25);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = sun.shadow.camera.bottom = -60;
+  sun.shadow.camera.right = sun.shadow.camera.top = 60;
+  scene.add(sun);
+
+  function resize() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
+  return { renderer, scene, camera, controls, resize };
+}
+
+function makeBuilding(g, edgeColorHex) {
+  const group = new THREE.Group();
+  const h = g.alturaEntrepisoM, slabT = 0.15, wallT = 0.15;
+  const cx = g.anchoM / 2, cy = g.fondoM / 2;
+  const matSlab  = new THREE.MeshStandardMaterial({ color: 0xb8b2a7, roughness: 0.9 });
+  const matWallC = new THREE.MeshStandardMaterial({ color: 0xf5ede3, roughness: 0.85 });
+  const matWallP = new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: 0.85 });
+  const matCol   = new THREE.MeshStandardMaterial({ color: 0x8f8779, roughness: 0.7 });
+  const matEdge  = new THREE.LineBasicMaterial({ color: edgeColorHex, transparent: true, opacity: 0.65 });
+
+  const shape = new THREE.Shape();
+  g.footprint.forEach((p, i) => i === 0 ? shape.moveTo(p.x - cx, p.y - cy) : shape.lineTo(p.x - cx, p.y - cy));
+  shape.closePath();
+
+  for (let lvl = 0; lvl <= g.niveles; lvl++) {
+    const slabGeo = new THREE.ExtrudeGeometry(shape, { depth: slabT, bevelEnabled: false });
+    slabGeo.rotateX(-Math.PI / 2);
+    const slab = new THREE.Mesh(slabGeo, matSlab);
+    slab.position.y = lvl * h;
+    slab.castShadow = slab.receiveShadow = true;
+    group.add(slab);
+    group.add(new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), matEdge).translateY(lvl * h));
+    if (lvl === g.niveles) break;
+    for (const w of g.muros) {
+      const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
+      const len = Math.hypot(dx, dy);
+      if (len < 0.05) continue;
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, h - slabT, wallT), w.carga ? matWallC : matWallP);
+      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, (w.y1 + w.y2) / 2 - cy);
+      mesh.rotation.y = -Math.atan2(dy, dx);
+      mesh.castShadow = mesh.receiveShadow = true;
+      group.add(mesh);
+    }
+    for (const c of g.columnas) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, h, 0.3), matCol);
+      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
+      mesh.castShadow = true;
+      group.add(mesh);
+    }
+  }
+  return group;
+}
+
+function buildCompareScene(gA, gB) {
+  if (!three) three = initThree();
+  const { scene, camera, controls } = three;
+  const prev = scene.getObjectByName('world');
+  if (prev) scene.remove(prev);
+
+  const world = new THREE.Group();
+  world.name = 'world';
+  const gap = 6;
+  const offA = -(gA.anchoM / 2 + gap / 2);
+  const offB =  (gB.anchoM / 2 + gap / 2);
+
+  const bA = makeBuilding(gA, 0xcdf25a);
+  bA.position.x = offA;
+  const bB = makeBuilding(gB, 0x57c389);
+  bB.position.x = offB;
+  world.add(bA, bB);
+
+  const span = gA.anchoM + gB.anchoM + gap;
+  const depth = Math.max(gA.fondoM, gB.fondoM);
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(Math.max(span, depth) * 2.2, 48),
+    new THREE.MeshStandardMaterial({ color: 0x1c2420, roughness: 1 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.01;
+  ground.receiveShadow = true;
+  world.add(ground);
+  const grid = new THREE.GridHelper(Math.max(span, depth) * 2.2, 44, 0x2c3a30, 0x22291f);
+  grid.position.y = 0.001;
+  world.add(grid);
+  scene.add(world);
+
+  const hMax = Math.max(gA.niveles * gA.alturaEntrepisoM, gB.niveles * gB.alturaEntrepisoM);
+  const d = Math.max(span, depth, hMax) * 1.35;
+  camera.position.set(d * 0.9, d * 0.7, d);
+  controls.target.set(0, hMax / 2, 0);
+  three.resize();
+}
+
+/* =====================================================================
+   Veredicto con Claude (usa backend o llave del Gemelo Digital)
+===================================================================== */
+const VERDICT_SCHEMA = {
+  type: "object", additionalProperties: false,
+  required: ["resumen", "ganador", "criterios", "recomendacion"],
+  properties: {
+    resumen: { type: "string" },
+    ganador: { type: "string", enum: ["A", "B", "empate"] },
+    criterios: {
+      type: "array",
+      items: { type: "object", additionalProperties: false,
+        required: ["criterio", "mejor", "detalle"],
+        properties: {
+          criterio: { type: "string" },
+          mejor: { type: "string", enum: ["A", "B", "empate"] },
+          detalle: { type: "string" }
+        } }
+    },
+    recomendacion: { type: "string" }
+  }
+};
+
+async function callClaude({ system, content, schema }) {
+  const backend = (localStorage.getItem('bb_backend_url') || '').trim();
+  const apiKey = (localStorage.getItem('bb_anthropic_key') || '').trim();
+  let res;
+  if (backend) {
+    res = await fetch(backend.replace(/\/+$/, '') + '/api/claude', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ system, content, schema }),
+    });
+  } else {
+    if (!apiKey) throw new Error('Configura la URL del backend o la llave de Anthropic en el Gemelo Digital (sección de configuración).');
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 16000,
+        thinking: { type: 'adaptive' },
+        system,
+        output_config: { format: { type: 'json_schema', schema } },
+        messages: [{ role: 'user', content }],
+      }),
+    });
+  }
+  if (!res.ok) {
+    let detail = '';
+    try { detail = (await res.json()).error?.message || ''; } catch {}
+    throw new Error(`Error ${res.status} del análisis IA. ${detail}`);
+  }
+  const data = await res.json();
+  if (data.stop_reason === 'refusal') throw new Error('El modelo declinó procesar esta solicitud.');
+  const textBlock = (data.content || []).find(b => b.type === 'text');
+  if (!textBlock) throw new Error('La respuesta del modelo no incluyó contenido de texto.');
+  return JSON.parse(textBlock.text);
+}
+
+$('btnVerdict').addEventListener('click', async () => {
+  if (!picked) return;
+  hideError('errVerdict');
+  $('btnVerdict').disabled = true;
+  $('statusVerdict').classList.add('show');
+  try {
+    const verdict = await callClaude({
+      system: 'Eres un director de proyectos de construcción con formación de ingeniero estructurista. Comparas dos proyectos con criterios de: eficiencia estructural, riesgo de fallas y su horizonte de tiempo, costo total y por m², eficiencia de materiales, y funcionalidad arquitectónica. Eres directo: eliges un ganador salvo empate genuino, y justificas con números de los datos entregados.',
+      content: [{ type: 'text', text:
+`Compara estos dos proyectos analizados por BrickBit y emite un veredicto.
+
+PROYECTO A — ${picked.A.nombre}:
+${JSON.stringify({ geometria: picked.A.geometry, ingenieria: picked.A.engineering })}
+
+PROYECTO B — ${picked.B.nombre}:
+${JSON.stringify({ geometria: picked.B.geometry, ingenieria: picked.B.engineering })}` }],
+      schema: VERDICT_SCHEMA,
+    });
+    renderVerdict(verdict);
+  } catch (err) {
+    showError('errVerdict', err.message);
+  } finally {
+    $('statusVerdict').classList.remove('show');
+    $('btnVerdict').disabled = false;
+  }
+});
+
+function renderVerdict(v) {
+  const name = v.ganador === 'A' ? picked.A.nombre : v.ganador === 'B' ? picked.B.nombre : null;
+  $('verdictHero').innerHTML = `
+    <div class="vh-label">Veredicto</div>
+    <h3>${v.ganador === 'empate' ? 'Empate técnico' : `Gana el Proyecto ${v.ganador} — ${escapeHtml(name)}`}</h3>
+    <p>${escapeHtml(v.resumen)}</p>`;
+  $('critList').innerHTML = v.criterios.map(c => `
+    <div class="crit-row">
+      <b>${escapeHtml(c.criterio)}</b>
+      <span class="who ${c.mejor}">${c.mejor === 'empate' ? 'Empate' : 'Proyecto ' + c.mejor}</span>
+      <span class="det">${escapeHtml(c.detalle)}</span>
+    </div>`).join('');
+  $('verdictReco').innerHTML = `
+    <div class="vh-label" style="color:var(--clay-soft)">Recomendación</div>
+    <p style="color:var(--cream)">${escapeHtml(v.recomendacion)}</p>`;
+  $('verdictBox').classList.add('show');
+}
+
+/* =====================================================================
+   Proyectos de ejemplo (para probar el comparador)
+===================================================================== */
+const DEMO_A = {
+  id: 'demoA', nombre: 'Casa en L — opción compacta', fecha: new Date().toISOString(),
+  geometry: {
+    nombreProyecto: 'Casa en L — opción compacta', niveles: 2, alturaEntrepisoM: 2.7,
+    anchoM: 10, fondoM: 14, areaTotalM2: 240,
+    sistemaEstructural: 'Mampostería confinada con castillos y cadenas, losas macizas',
+    footprint: [ {x:0,y:0},{x:10,y:0},{x:10,y:14},{x:4,y:14},{x:4,y:10},{x:0,y:10} ],
+    muros: [
+      {x1:0,y1:0,x2:10,y2:0,carga:true},{x1:10,y1:0,x2:10,y2:14,carga:true},
+      {x1:10,y1:14,x2:4,y2:14,carga:true},{x1:4,y1:14,x2:4,y2:10,carga:true},
+      {x1:4,y1:10,x2:0,y2:10,carga:true},{x1:0,y1:10,x2:0,y2:0,carga:true},
+      {x1:0,y1:5,x2:6,y2:5,carga:false},{x1:6,y1:0,x2:6,y2:5,carga:false}
+    ],
+    columnas: [ {x:0,y:0},{x:10,y:0},{x:10,y:14},{x:4,y:14},{x:0,y:10},{x:6,y:5} ],
+    espacios: [ {nombre:'Sala',x:3,y:2.5,areaM2:28},{nombre:'Cocina',x:8,y:2.5,areaM2:19},{nombre:'Recámaras',x:7,y:9,areaM2:46} ],
+    notas: 'Proyecto de ejemplo A.'
+  },
+  engineering: {
+    resumen: 'Vivienda compacta de 2 niveles en mampostería confinada (~240 m²).',
+    materiales: [
+      { categoria: 'Concreto', items: [
+        { concepto: 'Concreto losas macizas', cantidad: 29, unidad: 'm³', calidad: "f'c 250 kg/cm²" },
+        { concepto: 'Concreto castillos y cadenas', cantidad: 9, unidad: 'm³', calidad: "f'c 200 kg/cm²" },
+        { concepto: 'Concreto zapatas corridas', cantidad: 12, unidad: 'm³', calidad: "f'c 250 kg/cm²" } ]},
+      { categoria: 'Mampostería', items: [
+        { concepto: 'Tabique rojo recocido', cantidad: 12500, unidad: 'pza', calidad: 'Clase A' } ]}
+    ],
+    varillas: [
+      { tipo: '#3 (3/8")', diametroMm: 9.5, grado: 'fy 4200 (G42)', cantidadKg: 980, separacionCm: 20, ubicacion: 'Estribos' },
+      { tipo: '#4 (1/2")', diametroMm: 12.7, grado: 'fy 4200 (G42)', cantidadKg: 3500, separacionCm: 15, ubicacion: 'Losas y castillos' },
+      { tipo: '#5 (5/8")', diametroMm: 15.9, grado: 'fy 4200 (G42)', cantidadKg: 890, separacionCm: 15, ubicacion: 'Cimentación' }
+    ],
+    recomendaciones: ['Curado de losas 7 días.', 'Castillo doble en esquina entrante.'],
+    costoEstimadoMXN: { minimo: 1450000, maximo: 1850000 },
+    fallas: [
+      { nombre: 'Fisuración losa azotea', tipo: 'diseño', probabilidadPct: 72, severidad: 'media', aniosEstimados: 2, descripcion: 'Retracción sin juntas de control.', prevencion: 'Malla por temperatura y juntas.' },
+      { nombre: 'Grieta esquina entrante', tipo: 'estructural', probabilidadPct: 40, severidad: 'alta', aniosEstimados: 8, descripcion: 'Concentración de esfuerzos en la L.', prevencion: 'Castillo doble.' }
+    ],
+    primeraFalla: { nombre: 'Fisuración losa azotea', aniosEstimados: 2, confianzaPct: 78, explicacion: 'Patología típica en losas sin juntas de control.' }
+  }
+};
+
+const DEMO_B = {
+  id: 'demoB', nombre: 'Casa rectangular — opción amplia', fecha: new Date().toISOString(),
+  geometry: {
+    nombreProyecto: 'Casa rectangular — opción amplia', niveles: 2, alturaEntrepisoM: 2.8,
+    anchoM: 12, fondoM: 15, areaTotalM2: 360,
+    sistemaEstructural: 'Marcos de concreto reforzado con muros divisorios de tabique',
+    footprint: [ {x:0,y:0},{x:12,y:0},{x:12,y:15},{x:0,y:15} ],
+    muros: [
+      {x1:0,y1:0,x2:12,y2:0,carga:false},{x1:12,y1:0,x2:12,y2:15,carga:false},
+      {x1:12,y1:15,x2:0,y2:15,carga:false},{x1:0,y1:15,x2:0,y2:0,carga:false},
+      {x1:0,y1:7.5,x2:8,y2:7.5,carga:false},{x1:8,y1:0,x2:8,y2:7.5,carga:false},
+      {x1:5,y1:7.5,x2:5,y2:15,carga:false}
+    ],
+    columnas: [ {x:0,y:0},{x:6,y:0},{x:12,y:0},{x:0,y:7.5},{x:6,y:7.5},{x:12,y:7.5},{x:0,y:15},{x:6,y:15},{x:12,y:15} ],
+    espacios: [ {nombre:'Sala-comedor',x:4,y:3.5,areaM2:52},{nombre:'Cocina',x:10,y:3.5,areaM2:26},{nombre:'Recámaras',x:6,y:11,areaM2:70} ],
+    notas: 'Proyecto de ejemplo B.'
+  },
+  engineering: {
+    resumen: 'Vivienda amplia de 2 niveles con marcos de concreto (~360 m²).',
+    materiales: [
+      { categoria: 'Concreto', items: [
+        { concepto: 'Concreto losas y trabes', cantidad: 52, unidad: 'm³', calidad: "f'c 250 kg/cm²" },
+        { concepto: 'Concreto columnas', cantidad: 11, unidad: 'm³', calidad: "f'c 300 kg/cm²" },
+        { concepto: 'Concreto zapatas aisladas', cantidad: 18, unidad: 'm³', calidad: "f'c 250 kg/cm²" } ]},
+      { categoria: 'Mampostería', items: [
+        { concepto: 'Tabique divisorio', cantidad: 9800, unidad: 'pza', calidad: 'Clase B' } ]}
+    ],
+    varillas: [
+      { tipo: '#3 (3/8")', diametroMm: 9.5, grado: 'fy 4200 (G42)', cantidadKg: 1600, separacionCm: 15, ubicacion: 'Estribos de columnas y trabes' },
+      { tipo: '#5 (5/8")', diametroMm: 15.9, grado: 'fy 4200 (G42)', cantidadKg: 3900, separacionCm: 0, ubicacion: 'Columnas y trabes' },
+      { tipo: '#6 (3/4")', diametroMm: 19.1, grado: 'fy 4200 (G42)', cantidadKg: 2100, separacionCm: 0, ubicacion: 'Zapatas aisladas' }
+    ],
+    recomendaciones: ['Verificar nudos trabe-columna.', 'Estudio de mecánica de suelos obligatorio.'],
+    costoEstimadoMXN: { minimo: 2500000, maximo: 3100000 },
+    fallas: [
+      { nombre: 'Humedad en pretiles', tipo: 'humedad', probabilidadPct: 50, severidad: 'baja', aniosEstimados: 5, descripcion: 'Filtración por chaflanes mal sellados.', prevencion: 'Impermeabilizante con refuerzo en pretiles.' },
+      { nombre: 'Fisuras en muros divisorios', tipo: 'diseño', probabilidadPct: 45, severidad: 'baja', aniosEstimados: 6, descripcion: 'Deformación de trabes transmite carga a muros no estructurales.', prevencion: 'Holgura superior y anclaje flexible.' }
+    ],
+    primeraFalla: { nombre: 'Humedad en pretiles', aniosEstimados: 5, confianzaPct: 62, explicacion: 'La estructura de marcos retrasa las fallas estructurales; el primer punto débil son los sellos de azotea.' }
+  }
+};
+
+/* =====================================================================
+   Utilidades
+===================================================================== */
+function fmt(n) { return Number(n).toLocaleString('es-MX', { maximumFractionDigits: 1 }); }
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function showError(id, msg) { const el = $(id); el.textContent = msg; el.classList.add('show'); }
+function hideError(id) { $(id).classList.remove('show'); }
+</script>
+
+</body>
+</html>

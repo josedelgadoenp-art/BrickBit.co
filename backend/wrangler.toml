@@ -1,0 +1,8 @@
+name = "brickbit-api"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# Orígenes permitidos para CORS, separados por comas.
+# En producción cámbialo por tu dominio, p. ej. "https://brickbit.co"
+[vars]
+ALLOWED_ORIGINS = "*"

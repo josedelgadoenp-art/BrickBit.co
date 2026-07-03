@@ -249,6 +249,11 @@
     margin-top:10px;background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:16px;
     font-size:.72rem;overflow-x:auto;color:var(--clay-soft);max-height:340px;
   }
+  .proj-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px dashed var(--line);font-size:.92rem}
+  .proj-row .meta{color:var(--muted-txt);font-size:.74rem;font-family:'Space Mono',monospace}
+  .proj-row .del{background:none;border:1px solid transparent;color:var(--danger);cursor:pointer;font-size:.78rem;padding:6px 10px;border-radius:8px}
+  .proj-row .del:hover{border-color:rgba(224,109,90,.4)}
+  .proj-empty{color:var(--muted-txt);font-size:.88rem;padding:6px 0 4px}
   .hidden{display:none !important}
 </style>
 </head>
@@ -292,6 +297,11 @@
         <input type="password" id="gmapsKey" placeholder="AIza..." autocomplete="off">
         <div class="hint">Con <b>Maps JavaScript API</b> habilitada (canal <code>alpha</code> para mapas 3D fotorrealistas). Opcional: solo para el paso 4.</div>
       </div>
+      <div>
+        <label for="backendUrl">URL del backend BrickBit (recomendado)</label>
+        <input type="text" id="backendUrl" placeholder="https://brickbit-api.tu-cuenta.workers.dev" autocomplete="off">
+        <div class="hint">Si la defines, las llamadas a Claude pasan por tu backend y <b>no necesitas</b> capturar aquí la llave de Anthropic. Instrucciones de despliegue en <code>backend/README.md</code>.</div>
+      </div>
     </div>
     <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-ghost" id="btnSaveKeys">Guardar llaves</button>
@@ -327,6 +337,10 @@
     <div class="geo-stats" id="geoStats"></div>
     <canvas id="viewer3d"></canvas>
     <div class="hint" style="margin-top:10px">Arrastra para orbitar · rueda para acercar · clic derecho para desplazar.</div>
+    <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-ghost" id="btnExportGltf">⬇ Descargar modelo 3D (.glb)</button>
+      <a class="btn btn-ghost" href="comparar.html">Comparar proyectos →</a>
+    </div>
     <details class="raw"><summary>Ver geometría extraída (JSON)</summary><pre id="geoJson"></pre></details>
   </section>
 
@@ -378,6 +392,16 @@
     <details class="raw"><summary>Ver análisis completo (JSON)</summary><pre id="engJson"></pre></details>
   </section>
 
+  <!-- ===== 7. SAVED PROJECTS ===== -->
+  <section class="card" id="secProjects">
+    <div class="card-head"><span class="knum">07 /</span><h2>Proyectos guardados</h2></div>
+    <p class="sub">Cada análisis terminado se guarda en este navegador. Compara dos versiones de un plano o proyectos distintos lado a lado: geometría, materiales, costo y predicción de fallas.</p>
+    <div id="projList"></div>
+    <div style="margin-top:18px">
+      <a class="btn btn-primary" href="comparar.html">Comparar proyectos →</a>
+    </div>
+  </section>
+
   <div class="disclaimer">
     <b>Aviso:</b> este gemelo digital es una herramienta de apoyo generada por IA para exploración temprana de proyectos. Las cantidades de materiales, calidades y predicciones de fallas son estimaciones y <b>no sustituyen</b> el cálculo estructural, la memoria de cálculo ni la revisión de un ingeniero estructurista o DRO conforme a los reglamentos de construcción aplicables.
   </div>
@@ -397,6 +421,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 
 /* =====================================================================
    Estado global
@@ -419,10 +444,12 @@ const ANTHROPIC_MODEL = 'claude-opus-4-8';
 ===================================================================== */
 $('anthropicKey').value = localStorage.getItem('bb_anthropic_key') || '';
 $('gmapsKey').value     = localStorage.getItem('bb_gmaps_key') || '';
+$('backendUrl').value   = localStorage.getItem('bb_backend_url') || '';
 
 $('btnSaveKeys').addEventListener('click', () => {
   localStorage.setItem('bb_anthropic_key', $('anthropicKey').value.trim());
   localStorage.setItem('bb_gmaps_key', $('gmapsKey').value.trim());
+  localStorage.setItem('bb_backend_url', $('backendUrl').value.trim());
   $('btnSaveKeys').textContent = '✓ Guardadas';
   setTimeout(() => $('btnSaveKeys').textContent = 'Guardar llaves', 1600);
 });
@@ -605,31 +632,43 @@ const ENGINEERING_SCHEMA = {
    Llamadas a la API de Anthropic (directo desde navegador, demo)
 ===================================================================== */
 async function callClaude({ system, content, schema }) {
+  const backend = ($('backendUrl').value || '').trim();
   const apiKey = ($('anthropicKey').value || '').trim();
-  if (!apiKey) throw new Error('Falta la llave API de Anthropic. Agrégala en la sección de configuración (o usa el proyecto de ejemplo).');
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
-      max_tokens: 16000,
-      thinking: { type: 'adaptive' },
-      system,
-      output_config: { format: { type: 'json_schema', schema } },
-      messages: [{ role: 'user', content }],
-    }),
-  });
+  let res;
+  if (backend) {
+    // Modo backend: la llave de Anthropic vive en el servidor (ver backend/README.md)
+    res = await fetch(backend.replace(/\/+$/, '') + '/api/claude', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ system, content, schema }),
+    });
+  } else {
+    // Modo demo: llamada directa desde el navegador
+    if (!apiKey) throw new Error('Configura la URL del backend o la llave API de Anthropic en la sección de configuración (o usa el proyecto de ejemplo).');
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 16000,
+        thinking: { type: 'adaptive' },
+        system,
+        output_config: { format: { type: 'json_schema', schema } },
+        messages: [{ role: 'user', content }],
+      }),
+    });
+  }
 
   if (!res.ok) {
     let detail = '';
     try { detail = (await res.json()).error?.message || ''; } catch {}
-    throw new Error(`Error ${res.status} de la API de Anthropic. ${detail}`);
+    throw new Error(`Error ${res.status} del análisis IA. ${detail}`);
   }
   const data = await res.json();
   if (data.stop_reason === 'refusal') {
@@ -712,6 +751,7 @@ async function runEngineering() {
     state.engineering = await analyzeEngineering(state.geometry);
     $('statusEng').classList.remove('show');
     renderEngineering();
+    saveCurrentProject();
     setStep(6, 'done');
   } catch (err) {
     $('statusEng').classList.remove('show');
@@ -727,6 +767,7 @@ $('btnDemo').addEventListener('click', () => {
   state.engineering = DEMO_ENGINEERING;
   renderModelSection();
   renderEngineering();
+  saveCurrentProject();
   $('secMaterials').classList.remove('hidden');
   $('statusEng').classList.remove('show');
   setStep(6, 'done');
@@ -1144,8 +1185,77 @@ function renderEngineering() {
 }
 
 /* =====================================================================
+   Exportar el gemelo digital a glTF (.glb)
+===================================================================== */
+$('btnExportGltf').addEventListener('click', () => {
+  if (!three || !state.geometry) { alert('Primero genera el gemelo digital.'); return; }
+  const building = three.scene.getObjectByName('building');
+  if (!building) return;
+  new GLTFExporter().parse(
+    building,
+    (result) => {
+      const blob = new Blob([result], { type: 'model/gltf-binary' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${slug(state.geometry.nombreProyecto)}.glb`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    },
+    (err) => alert('No se pudo exportar el modelo: ' + err.message),
+    { binary: true }
+  );
+});
+
+/* =====================================================================
+   Proyectos guardados (localStorage) — para la comparación
+===================================================================== */
+function loadProjects() {
+  try { return JSON.parse(localStorage.getItem('bb_projects') || '[]'); } catch { return []; }
+}
+function saveCurrentProject() {
+  if (!state.geometry || !state.engineering) return;
+  const list = loadProjects();
+  const geoStr = JSON.stringify(state.geometry);
+  if (list.some(p => JSON.stringify(p.geometry) === geoStr)) { renderProjects(); return; } // ya guardado
+  list.unshift({
+    id: 'p' + Date.now(),
+    nombre: state.geometry.nombreProyecto,
+    fecha: new Date().toISOString(),
+    geometry: state.geometry,
+    engineering: state.engineering,
+  });
+  try { localStorage.setItem('bb_projects', JSON.stringify(list.slice(0, 12))); } catch {}
+  renderProjects();
+}
+function deleteProject(id) {
+  localStorage.setItem('bb_projects', JSON.stringify(loadProjects().filter(p => p.id !== id)));
+  renderProjects();
+}
+function renderProjects() {
+  const list = loadProjects();
+  $('projList').innerHTML = list.length
+    ? list.map(p => `
+      <div class="proj-row">
+        <div><b>${escapeHtml(p.nombre)}</b>
+          <div class="meta">${new Date(p.fecha).toLocaleString('es-MX')} · ${p.geometry.niveles} niv. · ${fmt(p.geometry.areaTotalM2)} m² · $${fmt(p.engineering.costoEstimadoMXN.minimo)}–${fmt(p.engineering.costoEstimadoMXN.maximo)} MXN</div>
+        </div>
+        <button class="del" data-del="${p.id}">Eliminar</button>
+      </div>`).join('')
+    : '<div class="proj-empty">Aún no hay proyectos guardados. Analiza un plano o corre el proyecto de ejemplo.</div>';
+  $('projList').querySelectorAll('[data-del]').forEach(b =>
+    b.addEventListener('click', () => deleteProject(b.dataset.del)));
+}
+renderProjects();
+
+/* =====================================================================
    Utilidades
 ===================================================================== */
+function slug(s) {
+  return String(s || 'modelo').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'modelo';
+}
 function fmt(n) {
   return Number(n).toLocaleString('es-MX', { maximumFractionDigits: 1 });
 }
