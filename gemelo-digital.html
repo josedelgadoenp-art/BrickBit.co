@@ -1,0 +1,2071 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKIAAADwCAYAAACDtL/nAAAjy0lEQVR42u2deZhkZXX/P6f6ds8ICrKqLGYU/QUEGRYDISqGxEFFHFE2WURwYUcQgvHxl5iYh0Sjv4jsSwJCVAQUBSGCovyIjgZRWaMsESSyLwYQhpnurqqTP97zzj19u2qml1rurXrf5+lnumZquqvqfu73LO95zxHSSquHS1UFqIlIwx5vChyePpm0egVgTVVH3ONNVfVvVfVBVdX0CaXVawBfpaqfVdUnNV+N9Eml1SsAt1DVf1LVpxyAK1W1kRQxrV4BeGoBwElVratqM/5F+uTS6haA/0dVTy8AOG4QNtxXAjGtrgD4GlU9W1V/30YB41fDfZ9ATGteANbc421U9ZwCgOPe/K5upU80rfkCuK2qXqCqL6zOB0wgptVJAMU9foOqfsVUT83UThiETecDJkVMqyMAjhQA/BNVvcwUz5vgegG+KT5gAjGtTgH4ZlW9whRPDbDJAmgzNsUJxLRma4J3VdVvOQVsuiBkzuAlENNqq4CFx29R1avbKKA3vx1Zki7BUMM3pRLG/u5twPHAO+yv6kADGAHEfan7ft4rgTjEAAJNEVH7uz2BjwF/Zk9rGmy1AngUvieBmFYnFHApcBKwq1NAcQD2ZCUQhxBAVc2A95gJfqM9rdFCAWsJxLS6AeAC4N2mgDs5BcT5gE3HRVLEtDoK4EJgX+DYAoDizHDR79MEYlrzgTATkbpTwPeZCd7emWB67QMmEIdHATMRmbTHaxmAxwHb2dMmzfzSRgETiGl1zAS/GDgY+CiwVcEHrDE1B0gCMa25QDfigCsCuC5wKHAM8FqngDUX+ZYSwARiNdVPAHEAbgB8wEzwIucDCj1MvSQQhwfCWgHAjYHDgKOBVzoTXKsagAnEagL4ClPAo4HNnQkGyKp8PbN0uUsLYM2lYTYBPgx8BNjMnjZuUXDmfL/KrqSI5QZwU4PvI8AmVfYBE4jVNMGbm/n9ILDxIAOYQCwngIuAI80Mb+CCkEF3ozT5iOUA8LXAUYRc4HoFAEcIhQgDvZIi9h5ARKRpj7cyE3wIsI4zwbUhuTZxm/H5pIj9AfD1BuD7gbULAI4M4Uf0YAKxtwAuJlTCHAAstKeNA6NDCmBUxEcTiL3xAbcnbMPtD6xlT1tpAcjoELtIMf95ZwKxswCOAOoU8A2mgHsDL3JByAiwIPnpq977PQnEzgCYEU7ERQXciVCKtZ8pnvcB02eeq2ENmAD+M0XNnVXANwEnAEsNwIZ9ZQxoIroD/uFjwOvS3Tl3AL0Cvgk4GXgX+QGkCfIDSQnC6atpn8+tIvJ0AnHm8PlD6RHAJRaEvMt9uE173hg9PpJZMTWM3SOWkfyVmSugwRcB3B04EXib+2DjHd7KGU9rKoTq2Ls5fVAzBzAq4h6mgG9zEbC6gCStma26gfggsJWILE+KuBoAHYTFthwNZ1qS6Z29Isa98+tFZLmq1hKIBR8wAmiP32Um+C0FH9ADmHr7zX7Fg1xXrvrcE4AqBlZTRJr2eG8DcJeCX5PUb/4rWpLfAotF5BlVlWzIAYxHMuuqOqqq+xJas+3sfJl4ICn5050zzQCXGYQ1EWlmQw5gw/WFOR7Y0QGYgrnurBqh0OMSd0R28NM38Y5rAeDawIGExkTbOrMRM/6xIDXB2DkljLtMNwK34wpDhkERxecBrSvC/oS94K0dgBG+4t2bVmdMcfyMm8DnRUT94KCBBTEGIe5E3HqEIoQTgC3tacNcC9jrCBn7nG8AbjQImwMLYosg5KWEsyBHM7UvjJCXYqXVXUX0Ka7PWHpsJBaLDJQz3kIB1yd0RTgG2MIFIcUihOQD9s43vB6bVuD7eA/ERWjRGWsDQl+Yo4BXF/yT5PP1fsVNgDrwJhH5hd86rbxpbhEFv4xwHvgoYFOngMN6IKlMIGbAhe0grKQitjgPsglwOFPbckw69UsQ9hdCAZ4ktE5+HFdIXElFbAHgH5gCHk7elmOioIDJ/+t/kFIDjheRR1R1NLZXrpwitgDw1cARhL4wGxZMsC9ESBD2F75JQmrsyyJySNxYaPcfpUIAvsb8vw+Q94UZpq4IVYqQo7W9jzBQ6EkzyW0rlbIKAPiHhMZEhwDrF3zA5P+Va3lBmAQOFZHHiznDUoPYBsDjCG051nE+4Ih73ckEl9M0jwIni8iydlFy6Uxzi7YcWxuAB5P3hUk+YLkj45oTijHgYhE5dKYQ9hXENn1hjiMMqlmbvKQ8+YDlhjCKwgShn8/1hHl/42vyC/sKYgsAY1uO/ckPIcW94HSUoRrmeCWhpcovgLf6gteZ/pCsjwDuZADuawDGQ+mpGqZaa9IgvAV4t0HYNl/YN0VssRe8I6Erwn7kJUL1FjdFMsflVUCfqhklFLruKyJPzVYJe3Kx/Yuy7qgnWRQ8Zk9pJPWrrE9Yt+t4JXCIiDw3m+CkJyB6FVTVMeDjwF8CLyavxEiNiaoJYgRtFDgHOM7VFzbm+oOzLkAYVbChqrsAnydk17FIKiNvTpRW9UCMAeVfi8gpqir+ENRcl3QYwhG7O0aBvzIVXEA+K1jcG0omufx+YGQk1hRmwBPAsSLydbvOjbn4hF0B0U9MUtVXAecBSxx0yQRXR/GKMPr+jt8HjhCR++driour1gEI4/T0uqruSejutIS8QVGCsHpLyI/WjgHLgU8D7zQIF4RLr7VO/sL5QjhiEB4OnGEvfJLUIavKUXHDZTa+AXxKRO6ya57Fc0GdXLV5QigG4SlmjkdNCUdX43OkVV4Ioy8/BtwK7C0i+4rIXdYll25AOGdFLKRnvkDoF5NqA6vlA4p77BXwQeCLwDkisqK4I9ZNX2CuSthU1dMIHRMmqfjg6iGKhLVghqP1ehg4F7hARB71WZBevLi55BGjEp5qEMZuCQnC6viA/trfB5xFKOl/KgKI6xVeOhCjo6qqnyS07ogJ6uQDVkMRfe/qXxJ2Rv5VRJ7rF4CzNs0uWX0YcCHp0HpZTW9xxe4WEcBbzQR/RUReiAJDSEz3TVBklhD+KXCdM8XJHJdP8WIOMAaP0Qe8yUzwFSKyoiwAzhhE119wI0KyehGpaqbM/l+zoIDLgFOBa0RkomCCS+NSZTOIkOMW3kUGYT1BWGo1jAr4PeBM4N9io9J++oDzDVZihHwSYcZIPMSUDi+VxxeMGwixw+23gNNF5EbvWpUVwFV5yhmY5K2Bn5IPuk5q2F/V83nAmLtdAVwDfFFEfuKsWa1sJngagJYoz9oFJ4SWv0LYP16bvJg1qWF/VTDugowQ0meXA6eJyC/cBRY/sq3MANrZpePammbLF34I2M35hdERTjD2fkUTHKthvg6c2QZASgjgqlk29nhnQi56HyCTNsQqsB6h8/umTC9kTSD2RgGbTN0Hfh64BDhLRO6oGIBqj3clnF9/L3kOup61FkNpWoCyGfnp/VmlfdKaE3jK1JON0QQ/DXzFFPDeViauxADG05u7GYB7MXWm9eg0RXRquIhwWHpd8iODaXVvNR2I/lzI04RdrDNF5AF3gbXEAE5JkhuAJ5APVY/NE2KlVsuBP1ENjzHTHNUwmeLur4ZLwzwJ/DNwrog8WACw7CY4NtNfQigPfLtTwNjFrThQU6SFGr7MfMMNXYogre4pof+MHwQuAP5ZRB5p5WOVDL5pKSIbqv4X5GeWfA+jdoI2ZShkVMPDCK2AGwnCjvl/vmg4XphYC1gDfmMm+HwRecKZuLImoeMOTt35gO80E/zWQqDlW8i0tapFH3GM0MPkdaSDT90IRhoWhMTNgfsJRywudLWAY+ZjlRVA3z5mBNjTTPBbXJopcjXjiv3Myz8hZ7hVgrDjKzYkGrPP/C7yUqz/KfiAEyUHMHbveI8p4B87AHGBiN8FkhmBaB+Aqur77YfUE4izVjxpkYKJGwAx/XUX4TzIV0Vkeas0R8kBXEgYqv4x8pHCDefn+veuzKJUUFRVDMINgV+Rd+pPUfLsAg5vjorFqLcQKmEudbWAZQ9C/Di5F5HPtN6hoIAdiSNiH5o68GZgI9KZ5NmuOF5XmZ4H/BmhFvDygl9VBQWsmwK+zwDczgGonQ5kM/Jk6p5JCecM4oTzAQF+DPyTiHzLXeQqmeC1DMCPAds4P7fG1DNKHcsvi5Peu4FXkqqvZ+MXNpl6budG4DTgKpdXGylxEroYBa9DaKJ/jGVOIoBK3kRLCkFIR0CM8rot8Arn46SdlOmpl6b74GNeMN6w3yeUy11dBLBMELqzR0UFbDVSOB6OG22jfh3lI4K4vf3C2HIiRcxTQfRdUv2cl+8QqqG/W7zYJVVBcf2tI4CHAccS6gu8Ca6tBryOi1T8QHfutNQOaHomNpi60gD8oTdxlLscX1wU/DLgQ4SJXpu7ICRG+r4dSU94yOxD3DGx1tYHjBZinHAe5FQRudlf4AoA6EcKx6HqmzoFFKeCzX6IUkYoctjM+YfD7Ad6AGNqawVwhQF4i7vAZa4FLAK4OWGk8IeYPlS92LOo1uIz6QmIryM0WR9G06yFVEQsRs2A54BLCbWAd7gUjJYcwJozwZsRRgp/xAQH5+euqY+59BrEPyQfuDNsiug7o8YqkaeBrwHnOQBjr+hGiQGMCti09tGHE2Za+6Hqo5S0kX4GvNylJ4YJxFieFQO2ZwmlWOeJyD0OwGacolTc+iqhCd7CUjCHEgqbvQ/oTXDp0nMexEH2/YpFCerSML8D/oXQF/C/CiZ4yhgvyxHW+wTdqr3poougqluSjxR+iQPQp5q6mn7pBIivGOBARQsmuEm+Dfc4oRral+OX2QQ3CXlAvxOyDSEH+H5gLXtesflSJVYGvHQIfECYWo5/PqEc/3G7oPHAz2Qp76b2I4UPIhTZaiEIqdzKGNx95eJ5kAcI1dAXiMiTztwJJWnN1sYcexO8gynggYRBSup8wEpP88qo9rmU6O/5/fEYBcchNXeZAl4kIs8UFLDMJ+K0MNH1WEJFzEIXBVf9+rVURKkoiDj4fHPyOwmNKb8mIr8vOPz1igC4k5ngfRyA0QccGyTzlRF2DkoZ0s9w+QlJEcAzgEtcOX7VFPCPCbWA77Eby3eAHUhXKiP0U6myDxgV8DbCeZDLW5Tj10sI37RCCVV9E6Eaem/ywoP42gd6omsGrKyA6Z2WxiDfpI/l+Fe0aM1b9q4Ivi/MCcDSwk0WARz4+tAMeGE1F70sIPrzINEE/8gU8Gq381E1AGNbjne499lkalsOGPz9/+cz4KkSg+id8xgdXk+ohLnWLmatCgD6YllVfYcp4O5OAeNuzzAd04g33X0ZIcFbxrsu5sgW2OPrCJ1Rr/M+VlnhKwJor3cP8wGXFAKtYa+KfygD/tv5ImVTwQUWBX9KRK5sAWCpT8Q5AJcagLu599cY9ABkFor4ywx4yFI4L2JqgrhfLyzWBNaBfwT+UUSeqxKA8fWp6t4G4JsLPuCwmeB2K34G92aETlQvOBDLAOHPgBNFZJld0DisugpngkcJXVFPAP5kyH3ANbleQjiCcUcGPAE8CmxQeEKvIcQg/CLwCREZV9UFhNZn9QoAOELYgjsBeEPyAWe8HgN+lVlPxP8gnOiPNruXIEZfaSVwtIh8yTn643H6VYkBHCPvirCde0/RBKcz4u3FZwS4RUSWx7v05+4fu/mhaeGFTNiLeQJ4l4h8ydIxq6qOy1QVYzeHWhCytqp+hNBr/GKD0AMYB2emZqfTGVBnBZfhPqTbLFUyRvfyicUq6ZiauRvYW0R+5XzBsingCLZXraovIZRhfZS8LUfsilD0/5IStl+ZxQQ/WfVBWe+bewnHSutdvov9WZFfAnuIyG/LBmGL1mwbGIBHEZqZQj44PQUgc0vb3A9sKSKTNSs9XwH8oEcvIBar/hrY3SAs04EksZtCbfrWuqp6NGFL8XSDcNK+ktmde1wAcJ2ITKrqiN/TvLpgw7t5JzwJvFdEHrGL3igBgDXnA9ZV9aWq+lHCQMyzDMC6u5GyFA3P2SLGVtnfjC6M7xi7LqFj7CZdivQ8bO8Uke+WwRy3MMHrE84DHw28qpBeStDNf0XX715C868VWBpCTQmeJeznFqHp9J3wN2WAMA7Sdgq4sap+gtBm+PMG4TjTh9Sk1Zn1FRF5ITIoLi3RUNU/J0w+7/TdH3OFV4nIXv3sH93iUPqmhJ4wR5g1wMEXA7oEYWfds+eBHUXk13EuuDjzBCH3dZNJZqNwMeaTMxJCudn2wCMGQrPPAG5GaEx0FHlbjtiYqNSH0SvqF+KyJReLyKERwlWqZ8pUswrnC9x/knkELnHyUOy7d7yIPGy/p9lLAE3xm6b6W6jqZwlJ/L8hn7LlT/4JqVdkNyLl2G/89OJN3moW30aEWXwvY2pOUeYA4gTh9Nm1IrJH/B29MMktFPA1hMaUhwHr29NiY6IEXPfNccw2fFNE9i72Fl/l+5hK1WwW3BlMb9o9FzkeJbR3O9H9Hu02gAUFfK2qngHcDJxkEE6Sd0ZIqzdmOfren2n1pKIT3jQlOc98uYy55xXjnus5InJ3hKOHAG6lqmcZgMcSumPVmdqCbtgLU3upiFENf95q0oK0uKAxgv44oTC11QT7md4FTxGKAR7tVoBiZ5a10JjoaEJFzHrOP6kl6PoGYd2+djRRmhYntEpLNC2KPhO4h6lDgWbzy4XQa/CRbgQopoA1EanbjbNYVS8kFNUeBazL9BkhafUHxDHCAKS2llHaXOSoiu8hbMPMZghQTNc8B2xNOIrQMTVs0RlrO/NB9yNvTOTTMCkH2F8Ia4QKq52A5e2C1ZYXySAcIYxx+DeDsDGLXw5wjfUd7AiEqjpi25FNK+Z9o6peYmmY95Ofc4n+SEq/9D9IicB9VESeM8uoMwlWpvwg+0+fMHUT5+xrm1/sC2svMhMvHQKwYduRu6rqN4AfAgcUbpLMmeHkE/YHvkmm9ms8S0Suj25Uu/8oa4LA1PFI4BwLXGptfC5/Qu03wNYisiIWVcwxCGm4kWK7EYpRl5LPA9GUgikdiDE4WUCoXn8LobBhtfnj1fpPBmEmIucCXzbz11iDIgJ82yAcmS2ETgHrpoBLVPUqQoeHvexp9eT/lXKJs0zPAh+MHdnWxMFMLmQ8JH6CRdEL2viLfm7xDbOET1qY4CWqei2hCGOpk32SCpZaEWNge4SI3DHT/PEaQTSSRUT+x4KCFUb8JHnHAn8w/3lCKRVrSvsUSrEigHuo6vUG4NsLb26UtBdcxoAk+oTxXPpfi8hlsyl6npFpsyh1RER+RpjjEXv3Nd338RfeS0hgzxhA+7u9VPUGi9Lfam/KH0pK0JVzRTGKvSrPF5FToo8/0x8yYx/L+YtfIpTOL6D1XvRP7bnTQvUigGaO91XVHxMGLu7G1IqdZIKroYgxaX0pcJTlemfVIH+2h39ifvFkwtbdG5l+iOi/HOTNYgRuP2OBBR7HA7u4AERJB5KqGJyMAV8lTLyCOVRYzSrqtB+udurvIPLCCC/Bj7q7JUbBtaioqnoA8GO7e3ZxCugPpSf/rxo+YcOu2XkWPzSYY5nfrNMfzl/8b0KJvc/nNcj7LcbmSQ37P3sC/w5cQpgP7bsiZAm8SsHo6ws/JyJHxus31zK/OeXhTN0WWtPMT5JPN10JPBuPHtihpK1sJ+RqQnesBlOHVadVveBkxMzxJ0XkLztR8DwfECZMGT9HGCubEU69NV0wcgyht8nezgTXSKfiqrrqJjpPAweJyGfcaI55FTzPdx84+nLrEApQX23fbwCcS2jViwtoSjumNa3cr2+x/ISDnwBHisidrQpc+6GIPtn9DHAIYedlH0J7jj2YOpQ7nYwr/2o6nz9+Hzu2jRCOkOxqEC7oZIeOeQPhOyVYaf7RBV8irepFxf76xWZJnxKRr9o173ihczZPCKOTWlfVT1sU7c+FpFVNVYzXbyVh8+LvReTpOM21Gx06ZB4QZi6EPx/4AFMP1CfzW24/UAq+uj/bDfBdwp7xz+x6j3SzWZbMA8KYzLyYcFApJqUTgOVWOx8selMcAbyZkBu8IgJID9rDyBwgjO14m8BllppJB9Wro4TeB/TTTm8CTiPMNJyMGZFedeXI5gCh2Au9yCAcTxBWYsWh6vFAU/Th/z9hqOY1rhp+hO72yZx3sBL3jD9vPuFK8hFlaZVbDWPJ3qg9/g5wuoh81wnNqpmGsWVLr2CcsYq58yvHE2ahpPRMOU1v0QesO4vVAL5NOND0A2fl+j7TUGYJ4Z6EusFUK1hOENUFJbFaumY+/BUG4I9dwKllGaopM4CwZtUzWxJ2TDagv6PS0mofEfscIAbgpcAXReTWgp/fLM0dpFrLZhKcWCHr+cCGLkJOq3xqGK/n7wmFqueIyJ3xYsOqDhlaFgDja1pTsBKDk78jTNhMIx3KoXzFICR2N3sK+BJwrojc3wJAygagPX69zMAv3BH4jwgmqYNCWXxAb4IfJmwsnCMiD/kUTAkB9M1TdyAcU14qqzPJ9vUTQgOduHOStvD6FxHH05KxTeBDhFbT54nIoy4IaZYcwMWEIZr7EcYzN7I1mORjDMIGadJmv0FsOBP8APAvwAUi8lgBwHrJAPQmeAfgOGB/8vngE0Ambf6zApsSOm1t5MwyCcauAyctzHAUjPsIBccXi8iTFTLBi80E7wesZU+b0jy1lSKKpWs+zvSG7iQIu+7/xYsUfcDYX/As4Ms2mGnKLkjJATyJ6b0rY6Fta6icGm4B3GrymQ459S4SLgYh/0nYxfqaTWmin8OS1gBgzY2R247Que0AwlQJf3O1dAezNmp4PPBiS9ck37B3wUi8HrcTChEuFZHxkitg9AGbqro9oSXNweTNuvwIuZhumiZsreas/AFhkPg65BvlKUruDnzNgsW5iXAu5OsiMllyBWyVhtnfRfTFKV6rzbZkLdTwMEIj9FTU0LlVLwR7URXi5/tDQiPUy+0aiGtUWlYFxBTwRMKBuYUuuq+1srar+9nFoZDrAHcAryTtJ3cjGIlQRR/wRlPAK93FHTUAy7wTsth8wIPIywAnCzfXrNaq8WaWxF5ipjmpYWchjEcyI4DXGYDXFopRm9EklzgKPhY40NIwTUJhdOxd3pgviLFJ5kEF5zmtmUe9xXPbvj9MVI1rCfNGfuAudhXSMK83H/B95HnA6G6MOWbmLF7iyrw2B+60IGWNNj2tKRA2C474pF2gCOSVwKkissxf6AoEIdsSWgd6ALsyxSsDaqqqwK7k05pSmdcsbmaXmmg4BVxBqIY+VUR+2upCl9gH3MYAPABY2542bjdXV1y2zJnld5PyhXNdsTxulNBD/EozwbdVAEApzDGMCvhi42G8TRTc8bsZVX0JYRtpE9okHNNqGYQ03AV6HrgcOMMBOGJKU3YF3Nai4AMJu2nx5vKTIuLqChvxQ9yBsK/sz74mZZyaevEFCbEYNTMAYzX07YULXXYAFzsAFxZ8wNGiYHVzRRB3NPLTGeX2IMYRcNFPegb4V+BsEbmn1YUuOYDRB1xI3vVrlD6l7TyIXnaTIk6HMXZJfYJQjn+OtW+uEoDbkhekrmXva6Xzb/t2zTNLZC92EpwAzOGLPb5rhMb1sRr6YecDagkBnHJSz6VhDrabKU7xijdXjT7njjNgc0IRLAxvEyV/EWIpVtwteJBQDX2eiDzuAGyWPApW5wMe4IIQP8XLWz7pN4ivA14y5P6fBzA66fcTqqEvFJHf2YUuXSFCmzTMtg7AtVbjA5ZGdDJgkb24YUzbxDYc3l++mzA35KuuHH8UqJfpPEgbALc0AA82cWmQ7wWXeoRIRmjAzhCC6E0whP7fpxGqoZ+xCzsGTLrawFVtmksAoK+IfrUBeChhdyyW5MdrXPpKqgzYuGwy3QXfr9gZ1ffuudMA/EaL8yATU+Qz7AvX+wigvxGaqvpKA/CDwHru/bUa7q5lB3HDAQcxqkHdVDBWwvycvBp6RcEEl80H9ADWVXUTA/AwE5K2h5LK6A+2A3GjIfEBYxByM+FA0tetCf2IC0ImS3cn5b2r66q6kQF4uLNkfiuusmKSMbgFsNEERwCXAacD33TOfXzvjTKVYzkIM7tZNiQcSjoCeIUDMJrgym9AZM6JreIbKU4xaHUe5HvAmSJydVFlymaCWyhh3aa5/oNlNyAvSM3ce658kFn1qaA+B9gs+EjXAKeJyPerBKB/nap6MvA5B+AIszyUVCUQV7SILKtmgv15kG8bgDdUDcCYmjEI32EQrmRqSf5ArgxYXlEl9M3JG4SWyqeKyI9cpFmrCoDuNavVh/4/8jznwOd342jbspveogLGIKtO6A39BRG5KSoKrKo4aVTsekQ13Iuw9To0jVG9ImoJIfQJ6diWLQNeAL5hCnhbCwCr7vPu44IQGRYQHyopiD4Kjgq4nFANfaqI3D1AABLfg72f1zJkJXkZoc6ujNGXH9GwHLiQUIx6lwFYqvEMnfAPLZe59qAHJmsCsUwOcezJOAZcTZiSebsD0I9yGIjlEuoryPezh6bRQQ14lFCr5k1hP1UwOuiPAYeKyFIRud224moiUheRpn0N1IWK7w/4rbsW9T5fk56BeA9hLke/70DfJfUyYBcRuVhVazG3Ngh+4Az8Ygi7QfH7oaiar1k3+t84ReoXhLGJz3Ei8j4ReUBVF1LCMyE9iJq/BTznPpOhMM0QSqLiB9Hruy9uXT0C7C4iZ0YzDIwPmvmdQdQ8IiL3AZ+x6zNUIN7eo7tdC99PmD94B/BnIvLvbjuuOUwQej/ZbsLPApcQ6ifr9qUuUBtIEG8jTxj3wgeCvGPWDcCfi8g9rvZuaJfdfNEyfQA4mzyR33C+9MCCeF+X/UTfSzlOT/oOsFREnkoQTk/lWIbgGEJTpDvJD8I3Bk0VawbAOPD9HgQsvnHRMuC9IrI8RsUJwWn+YuxfeRmwC6E49l7yQ/EDA6Tfy7y+RfTWjeg4A34F7CMi43YjNBN6rZXRBTDLReRsYGfgLwhj0GIXigkHZbOK5lvi1pKqrmfyvyndOVoaYVsO7CoityVzPAtT4sra7PGGhKMDR5F36qg7N6hSBRM1g7AmIk8DV3XRPEe4jzUIswThrNWxYeZ6RESeEpG/B/4I+DShOVRWCGqq8/7s7op9tN9IGLlQ67AixoT1+SJyRFLCrijkZoQTfh9m+hlnqQSI7o2NEOYz/xF5orlV6mUuEN5LGLn7HGG3JE0u6A6QryIM4fkwefPNuH9f2lnbtYKZrhM6X1Fwfufywr3jXAeOtE4KkiDsqsn+jYgcB7wBuIi8+VKz8KWlvbPsa11VvU9Vm6o6qaoN+362q6mqK+z7C+13pCFC3b+ONf85q+oOqnqJu4YNVR23P0uzim9ixP482f59wt7AXECs25t9TFU3ijmxhEpPgay5x7uo6lXu+qy0a1RKEKMqbqiqDxlIc32xE/bnx5MalgrIJar6vYJgTDorpvMQn86AWFDF/2vPGZ/Dz43m/H4z9XHWX1r9BdIHp+9W1R+5a7bCrnXTrl+jlzC28xVrqrqOqt4xR1WM/sfxSQ3L60Pa9/up6k/dtZu0691fRSyo4tsNqslZBimqqk+o6sZJDUsLpA9oFqjqISY83rVq9BXEAoyXuTtlJndJhPbspIblz0EWgFxLVY9U1XsL17PRwnds9grEmqpmqrpIVR+1Xzzu/IdWSthwX7ukSLmyQK6jqiep6gMtouy6y4g0ug5ihNE5tk2T64k2d0PTqeGd1n2VZJYrB+SYe7y+qn5SVR9uYbI7GszMxLEds+8/6+6MRpsAJaZsTklmeaAU8uWq+req+lRBIXsDon9RqrrQhfutVLHpzPOSBOJAArlIVb+gqs878elIhD3jkN+9kMccjJMFv1BV9RlV3TiZ5YEGcitVPdtt4U4WTHbDiVLnQCxE0bvbLx13v9xn55dFABOIAw/kNqp6sbv2dWOiXsgndw5E+8WZ/fmJQiTlc41fSGZ54IEsFlbsqKqXF+KFydmY7LncERHGywv+YgxUjvPQpjVUQP6pqn67xS5NZ0F0MMZysVsLPoKq6j5JEYcSSF9Ysbuq/sBxNl7IP9aL6Z85/2L7c7GqPusipwlV3dk/J62hA1KcYC21mMHnIOsFXppzBrHgLx7oVPF5Vd06gTj0QI44IGuquq+znn7bsD5vEAswfs5+we9UdYsEYlpF90xVx1T1UNt1KyrkvEGMye5RS3ZP2ry4lLpJqx2Qa6nqMar6a1+c2xG/wP5cpKq32CmyBGJaLUXLPV5HVU+04mntKPFWcbMogZjWLIB8uaqe8r9rYeq+u632oQAAAABJRU5ErkJggg==">
+<title>BrickBit — Gemelo Digital 3D de Planos Arquitectónicos</title>
+<meta name="description" content="Sube los planos de tu proyecto y BrickBit crea un gemelo digital 3D con IA de Anthropic: render 3D, ubicación en mapa 3D de Google, recomendación de materiales y varillas, y predicción de fallas arquitectónicas.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#100c0a;
+    --bg-2:#16110e;
+    --surface:#1d1713;
+    --surface-2:#241c17;
+    --cream:#f5ede3;
+    --muted:#a3948663;
+    --muted-txt:#a89a8c;
+    --clay:#1a7d50;
+    --clay-soft:#57c389;
+    --clay-deep:#0c4a30;
+    --lime:#cdf25a;
+    --lime-deep:#a9d23f;
+    --line:rgba(245,237,227,0.10);
+    --line-strong:rgba(245,237,227,0.18);
+    --danger:#e06d5a;
+    --warn:#e0b95a;
+    --max:1180px;
+    --r:18px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--cream);
+    font-family:'Hanken Grotesk',sans-serif;
+    font-size:17px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(900px 600px at 78% -8%, rgba(26,125,80,0.16), transparent 60%),
+      radial-gradient(700px 500px at 8% 30%, rgba(205,242,90,0.05), transparent 60%);
+  }
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  /* header */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(16,12,10,0.82);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);
+  }
+  header .wrap{display:flex;align-items:center;justify-content:space-between;height:68px}
+  .brand{font-family:'Fraunces',serif;font-weight:700;font-size:1.25rem;color:var(--cream);text-decoration:none;display:flex;align-items:center;gap:10px}
+  .brand img{height:34px;width:auto;display:block}
+  .brand em{font-style:italic;color:var(--clay-soft);font-weight:500}
+  .back{color:var(--muted-txt);text-decoration:none;font-size:.92rem}
+  .back:hover{color:var(--cream)}
+
+  /* hero */
+  .hero{padding:72px 0 40px;text-align:left}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--lime);border:1px solid var(--line-strong);border-radius:999px;padding:6px 14px;margin-bottom:22px;
+  }
+  h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(2rem,4.4vw,3.4rem);line-height:1.1;letter-spacing:-.01em;max-width:820px}
+  h1 em{font-style:italic;color:var(--clay-soft)}
+  .hero p{color:var(--muted-txt);max-width:680px;margin-top:18px;font-size:1.05rem}
+
+  /* steps rail */
+  .steps{display:flex;gap:10px;flex-wrap:wrap;margin:34px 0 8px}
+  .step-chip{
+    display:flex;align-items:center;gap:8px;
+    font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;
+    color:var(--muted-txt);border:1px solid var(--line);border-radius:999px;padding:7px 14px;
+    transition:all .3s;
+  }
+  .step-chip .n{
+    width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+    background:var(--surface-2);color:var(--muted-txt);font-size:.68rem;
+  }
+  .step-chip.active{color:var(--lime);border-color:rgba(205,242,90,.4)}
+  .step-chip.active .n{background:var(--lime);color:#0f130a}
+  .step-chip.done{color:var(--clay-soft);border-color:rgba(87,195,137,.35)}
+  .step-chip.done .n{background:var(--clay);color:var(--cream)}
+
+  section.card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--r);
+    padding:34px;
+    margin:26px 0;
+  }
+  section.card > .card-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;flex-wrap:wrap}
+  .knum{font-family:'Space Mono',monospace;color:var(--lime);font-size:.8rem;letter-spacing:.1em}
+  h2{font-family:'Fraunces',serif;font-weight:600;font-size:1.55rem;letter-spacing:-.01em}
+  .sub{color:var(--muted-txt);font-size:.95rem;max-width:720px;margin-bottom:20px}
+
+  /* forms */
+  label{display:block;font-size:.82rem;color:var(--muted-txt);margin-bottom:6px;font-weight:600;letter-spacing:.02em}
+  input[type=text],input[type=password],input[type=number]{
+    width:100%;background:var(--bg-2);border:1px solid var(--line-strong);border-radius:12px;
+    color:var(--cream);padding:12px 14px;font-family:'Space Mono',monospace;font-size:.85rem;outline:none;
+  }
+  input:focus{border-color:var(--clay-soft)}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.grid-2{grid-template-columns:1fr}}
+  .hint{font-size:.78rem;color:var(--muted-txt);margin-top:6px}
+  .hint a{color:var(--clay-soft)}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;
+    border-radius:12px;padding:13px 24px;font-weight:700;font-size:.95rem;font-family:'Hanken Grotesk',sans-serif;
+    border:1px solid transparent;transition:all .25s;
+  }
+  .btn-primary{background:var(--lime);color:#0f130a}
+  .btn-primary:hover{background:var(--lime-deep)}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--cream);border-color:var(--line-strong)}
+  .btn-ghost:hover{border-color:var(--clay-soft);color:var(--clay-soft)}
+
+  /* dropzone */
+  .dropzone{
+    border:2px dashed var(--line-strong);border-radius:var(--r);
+    padding:46px 24px;text-align:center;cursor:pointer;transition:all .25s;
+    background:var(--bg-2);
+  }
+  .dropzone:hover,.dropzone.drag{border-color:var(--lime);background:rgba(205,242,90,.04)}
+  .dropzone .icon{font-size:2rem;margin-bottom:8px}
+  .dropzone strong{color:var(--cream)}
+  .dropzone p{color:var(--muted-txt);font-size:.9rem}
+  .preview{display:none;margin-top:20px;gap:20px;align-items:flex-start}
+  .preview.show{display:flex;flex-wrap:wrap}
+  .preview img{max-width:340px;max-height:260px;border-radius:12px;border:1px solid var(--line-strong);background:#fff}
+  .file-meta{font-family:'Space Mono',monospace;font-size:.78rem;color:var(--muted-txt);line-height:1.9}
+  .file-meta b{color:var(--cream)}
+
+  /* status / loader */
+  .status{
+    display:none;align-items:center;gap:12px;margin-top:18px;
+    font-family:'Space Mono',monospace;font-size:.8rem;color:var(--clay-soft);
+  }
+  .status.show{display:flex}
+  .spinner{
+    width:16px;height:16px;border-radius:50%;
+    border:2px solid var(--line-strong);border-top-color:var(--lime);
+    animation:spin .8s linear infinite;flex:none;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .error-box{
+    display:none;margin-top:16px;border:1px solid rgba(224,109,90,.4);background:rgba(224,109,90,.08);
+    border-radius:12px;padding:14px 18px;color:var(--danger);font-size:.88rem;white-space:pre-wrap;
+  }
+  .error-box.show{display:block}
+
+  /* viewers */
+  #viewer3d{
+    width:100%;height:520px;border-radius:var(--r);border:1px solid var(--line-strong);
+    background:radial-gradient(600px 400px at 50% 0%, #1c2420, #0d0f0c);
+    display:block;
+  }
+  #map3dContainer{
+    width:100%;height:520px;border-radius:var(--r);border:1px solid var(--line-strong);overflow:hidden;
+    background:var(--bg-2);position:relative;
+  }
+  #map3dContainer gmp-map-3d{width:100%;height:100%}
+  .toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end}
+  .toolbar .field{flex:1;min-width:220px}
+  .placeholder-msg{
+    position:absolute;inset:0;display:grid;place-items:center;color:var(--muted-txt);
+    font-family:'Space Mono',monospace;font-size:.8rem;text-align:center;padding:24px;
+  }
+
+  /* geometry summary chips */
+  .geo-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0}
+  .geo-stat{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .geo-stat .v{font-family:'Fraunces',serif;font-size:1.4rem;color:var(--lime)}
+  .geo-stat .k{font-size:.72rem;color:var(--muted-txt);text-transform:uppercase;letter-spacing:.08em}
+
+  /* materials */
+  .mat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:8px}
+  .mat-card{background:var(--bg-2);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .mat-card h4{font-family:'Fraunces',serif;font-size:1.05rem;margin-bottom:10px;color:var(--cream);display:flex;gap:8px;align-items:center}
+  .mat-card h4 .tag{font-family:'Space Mono',monospace;font-size:.62rem;background:rgba(87,195,137,.15);color:var(--clay-soft);border-radius:6px;padding:2px 8px;letter-spacing:.08em}
+  .mat-card ul{list-style:none}
+  .mat-card li{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.88rem}
+  .mat-card li:last-child{border-bottom:none}
+  .mat-card li span:first-child{color:var(--muted-txt)}
+  .mat-card li span:last-child{color:var(--cream);font-weight:600;text-align:right}
+
+  table.rebar{width:100%;border-collapse:collapse;margin-top:12px;font-size:.86rem}
+  table.rebar th{
+    text-align:left;font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted-txt);padding:10px 12px;border-bottom:1px solid var(--line-strong);
+  }
+  table.rebar td{padding:11px 12px;border-bottom:1px solid var(--line)}
+  table.rebar td:first-child{color:var(--lime);font-family:'Space Mono',monospace}
+  .table-scroll{overflow-x:auto}
+
+  .reco-list{list-style:none;margin-top:8px}
+  .reco-list li{
+    display:flex;gap:12px;padding:12px 0;border-bottom:1px dashed var(--line);font-size:.93rem;color:var(--cream);
+  }
+  .reco-list li::before{content:"→";color:var(--lime);flex:none}
+
+  /* failures */
+  .first-failure{
+    border:1px solid rgba(224,109,90,.45);background:linear-gradient(140deg, rgba(224,109,90,.10), rgba(224,109,90,.03));
+    border-radius:var(--r);padding:26px;margin-bottom:22px;
+  }
+  .first-failure .ff-label{font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--danger);margin-bottom:8px}
+  .first-failure h3{font-family:'Fraunces',serif;font-size:1.5rem;margin-bottom:6px}
+  .first-failure .ff-time{font-family:'Fraunces',serif;font-size:2.4rem;color:var(--danger)}
+  .first-failure .ff-time small{font-size:1rem;color:var(--muted-txt);font-family:'Hanken Grotesk',sans-serif}
+  .first-failure p{color:var(--muted-txt);font-size:.93rem;margin-top:10px;max-width:760px}
+
+  .fail-row{
+    display:grid;grid-template-columns:minmax(160px,1.3fr) 90px 110px 1fr;gap:14px;align-items:center;
+    padding:14px 0;border-bottom:1px solid var(--line);font-size:.88rem;
+  }
+  @media(max-width:760px){.fail-row{grid-template-columns:1fr 1fr}}
+  .fail-row .name{font-weight:700}
+  .fail-row .name small{display:block;font-weight:400;color:var(--muted-txt);font-size:.75rem}
+  .sev{font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.06em;border-radius:6px;padding:3px 8px;text-transform:uppercase;justify-self:start}
+  .sev.baja{background:rgba(87,195,137,.15);color:var(--clay-soft)}
+  .sev.media{background:rgba(224,185,90,.15);color:var(--warn)}
+  .sev.alta,.sev.crítica,.sev.critica{background:rgba(224,109,90,.15);color:var(--danger)}
+  .years{font-family:'Space Mono',monospace;color:var(--cream);font-size:.8rem}
+  .bar-track{height:8px;border-radius:99px;background:var(--bg-2);border:1px solid var(--line);overflow:hidden}
+  .bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--clay-soft),var(--warn),var(--danger))}
+  .prob-label{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted-txt);margin-top:4px}
+
+  .disclaimer{
+    margin:30px 0 60px;border:1px solid var(--line);border-radius:var(--r);padding:20px 24px;
+    color:var(--muted-txt);font-size:.82rem;background:var(--bg-2);
+  }
+  .disclaimer b{color:var(--warn)}
+
+  details.raw{margin-top:18px}
+  details.raw summary{cursor:pointer;font-family:'Space Mono',monospace;font-size:.75rem;color:var(--muted-txt)}
+  details.raw pre{
+    margin-top:10px;background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:16px;
+    font-size:.72rem;overflow-x:auto;color:var(--clay-soft);max-height:340px;
+  }
+  /* tooltips de ayuda "?" */
+  .help{
+    display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;
+    background:var(--surface-2);border:1px solid var(--line-strong);color:var(--muted-txt);
+    font-size:.62rem;font-weight:700;cursor:help;position:relative;vertical-align:1px;margin-left:6px;
+    font-family:'Space Mono',monospace;letter-spacing:0;text-transform:none;flex:none;
+  }
+  .help:hover{color:var(--lime);border-color:rgba(205,242,90,.4)}
+  .help::after{
+    content:attr(data-tip);
+    position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);
+    width:max-content;max-width:270px;background:#241c17;color:var(--cream);
+    border:1px solid var(--line-strong);border-radius:10px;padding:10px 13px;
+    font-size:.74rem;font-weight:400;line-height:1.5;text-align:left;
+    opacity:0;pointer-events:none;transition:opacity .15s;z-index:70;
+    font-family:'Hanken Grotesk',sans-serif;white-space:normal;
+    box-shadow:0 12px 34px rgba(0,0,0,.5);
+  }
+  .help:hover::after,.help:focus::after,.help.open::after{opacity:1}
+
+  /* guía rápida */
+  .quick-guide{
+    margin-top:26px;border:1px solid rgba(205,242,90,.25);border-radius:var(--r);
+    background:linear-gradient(140deg, rgba(205,242,90,.06), rgba(26,125,80,.05));
+    padding:18px 22px;font-size:.92rem;color:var(--muted-txt);max-width:820px;
+  }
+  .quick-guide b{color:var(--lime)}
+  .quick-guide .qsteps{display:flex;gap:6px 18px;flex-wrap:wrap;margin-top:8px;color:var(--cream)}
+  .quick-guide .qsteps span{display:inline-flex;align-items:center;gap:8px}
+  .quick-guide .qn{width:20px;height:20px;border-radius:50%;background:var(--lime);color:#0f130a;display:grid;place-items:center;font-size:.68rem;font-weight:700;flex:none}
+
+  /* proyecto compartido */
+  .shared-banner{
+    margin:0 0 6px;border:1px solid rgba(87,195,137,.4);border-radius:var(--r);
+    background:rgba(87,195,137,.08);padding:16px 22px;font-size:.92rem;color:var(--cream);
+  }
+  .shared-banner a{color:var(--lime)}
+
+  /* caja de compartir */
+  .share-box{display:none;margin-top:14px;background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .share-box.show{display:block}
+  .share-row{display:flex;gap:10px;flex-wrap:wrap}
+  .share-row input{flex:1;min-width:220px}
+  .share-note{font-size:.76rem;color:var(--muted-txt);margin-top:8px}
+
+  /* simulador 4D */
+  .sim-controls{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+  .sim-controls input[type=range]{flex:1;min-width:200px;accent-color:var(--lime);cursor:pointer}
+  .year-display{font-family:'Fraunces',serif;font-size:1.35rem;color:var(--lime);min-width:100px;text-align:right}
+  .sim-wrap{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}
+  @media(max-width:900px){.sim-wrap{grid-template-columns:1fr}}
+  #simCanvas{width:100%;height:460px;border-radius:var(--r);border:1px solid var(--line-strong);background:radial-gradient(600px 400px at 50% 0%, #1c2420, #0d0f0c);display:block}
+  .sim-panel{display:flex;flex-direction:column;gap:14px}
+  .sim-block{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .sim-block .k{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted-txt);margin-bottom:6px}
+  .sim-block .v{font-family:'Fraunces',serif;font-size:1.25rem}
+  .sim-block .v.danger{color:var(--danger)}
+  .sim-block .v.lime{color:var(--lime)}
+  .sim-costs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:1100px){.sim-costs{grid-template-columns:1fr}}
+  .health-track{height:10px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;margin:4px 0 8px}
+  .health-fill{height:100%;border-radius:99px;width:100%;transition:width .25s, background .25s}
+  .sim-fails{display:flex;flex-direction:column;gap:9px;max-height:190px;overflow-y:auto}
+  .sim-fail{font-size:.8rem;display:flex;gap:9px;align-items:baseline;color:var(--cream)}
+  .sim-fail .num{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:.62rem;font-family:'Space Mono',monospace;color:#100c0a;font-weight:700}
+  .sim-fail small{color:var(--muted-txt)}
+  .sim-empty{color:var(--muted-txt);font-size:.82rem}
+
+  /* análisis de inversión */
+  .mini-h{font-family:'Fraunces',serif;font-size:1.1rem;margin-bottom:4px}
+  .reco-list.warn li::before{content:"⚠";color:var(--warn)}
+  .valbars{margin-top:20px;display:flex;flex-direction:column;gap:10px}
+  .valbar{display:grid;grid-template-columns:170px 1fr 130px;gap:14px;align-items:center;font-size:.85rem}
+  @media(max-width:700px){.valbar{grid-template-columns:1fr;gap:4px}}
+  .valbar .lbl{color:var(--muted-txt)}
+  .valbar .amt{font-family:'Space Mono',monospace;font-size:.78rem;text-align:right;color:var(--cream)}
+  .valbar-track{height:14px;border-radius:8px;background:var(--bg-2);border:1px solid var(--line);overflow:hidden}
+  .valbar-fill{height:100%;border-radius:8px;transition:width .6s}
+
+  .proj-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px dashed var(--line);font-size:.92rem}
+  .proj-row .meta{color:var(--muted-txt);font-size:.74rem;font-family:'Space Mono',monospace}
+  .proj-row .del{background:none;border:1px solid transparent;color:var(--danger);cursor:pointer;font-size:.78rem;padding:6px 10px;border-radius:8px}
+  .proj-row .del:hover{border-color:rgba(224,109,90,.4)}
+  .proj-empty{color:var(--muted-txt);font-size:.88rem;padding:6px 0 4px}
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="./"><img src="data:image/png;base64,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" alt="BrickBit"><em>· Gemelo Digital</em></a>
+    <a class="back" href="./">← Volver a BrickBit</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">◈ Nueva función · Beta</div>
+    <h1>Convierte tus planos en un <em>gemelo digital 3D</em> que piensa como ingeniero</h1>
+    <p>Sube el plano de un arquitecto y la IA de Anthropic (Claude) lo interpreta: genera un render 3D, lo coloca sobre el mapa 3D fotorrealista de Google, recomienda materiales, calidades y tipos de varilla, y predice las fallas arquitectónicas — incluida cuál sería la primera falla y en cuánto tiempo.</p>
+    <div class="quick-guide">
+      <b>¿Cómo funciona?</b> En 3 pasos, sin conocimientos técnicos:
+      <div class="qsteps">
+        <span><span class="qn">1</span> Sube el plano de tu arquitecto</span>
+        <span><span class="qn">2</span> La IA lo convierte en un edificio 3D</span>
+        <span><span class="qn">3</span> Recibes materiales, costos, fallas futuras e inversión</span>
+      </div>
+      ¿No tienes un plano a la mano? Usa el botón <b>“Probar con proyecto de ejemplo”</b> de la sección 00 — no necesita llaves ni configuración.
+    </div>
+    <div class="steps" id="stepsRail">
+      <div class="step-chip" data-step="1"><span class="n">1</span> Plano</div>
+      <div class="step-chip" data-step="2"><span class="n">2</span> Análisis IA</div>
+      <div class="step-chip" data-step="3"><span class="n">3</span> Render 3D</div>
+      <div class="step-chip" data-step="4"><span class="n">4</span> Mapa 3D</div>
+      <div class="step-chip" data-step="5"><span class="n">5</span> Materiales</div>
+      <div class="step-chip" data-step="6"><span class="n">6</span> Predicción de fallas</div>
+      <div class="step-chip" data-step="7"><span class="n">7</span> Simulador 4D</div>
+      <div class="step-chip" data-step="8"><span class="n">8</span> Inversión</div>
+    </div>
+  </div>
+
+  <div class="shared-banner hidden" id="sharedBanner">
+    🔗 Estás viendo un <b>proyecto compartido</b>: <b id="sharedBannerName"></b>. Ya se guardó en tus proyectos para que puedas compararlo.
+    <a href="gemelo-digital.html">Analizar mi propio plano →</a>
+  </div>
+
+  <!-- ===== 0. CONFIG ===== -->
+  <section class="card" id="secConfig">
+    <div class="card-head"><span class="knum">00 /</span><h2>Configuración de APIs (demo)</h2></div>
+    <p class="sub">Esta demo corre 100% en tu navegador. Las llaves se guardan solo en <code>localStorage</code> de tu equipo y se envían directamente a cada API. Para producción, BrickBit moverá estas llamadas a un backend.</p>
+    <div class="grid-2">
+      <div>
+        <label for="anthropicKey">Llave API de Anthropic (Claude) <span class="help" tabindex="0" data-tip="Es tu contraseña personal para usar la IA de Claude, que interpreta los planos. Se crea gratis en platform.claude.com. Si configuras el backend, no necesitas ponerla aquí.">?</span></label>
+        <input type="password" id="anthropicKey" placeholder="sk-ant-api03-..." autocomplete="off">
+        <div class="hint">Obtén una en <a href="https://platform.claude.com/" target="_blank" rel="noopener">platform.claude.com</a>. Requerida para el análisis del plano.</div>
+      </div>
+      <div>
+        <label for="gmapsKey">Llave API de Google Maps (demo, Maps JavaScript API) <span class="help" tabindex="0" data-tip="Permite mostrar el mapa 3D fotorrealista de Google en el paso 4. Se crea en Google Cloud Console. Conviene restringirla a tu dominio para que nadie más la use.">?</span></label>
+        <input type="password" id="gmapsKey" placeholder="AIza..." autocomplete="off">
+        <div class="hint">Con <b>Maps JavaScript API</b> habilitada (canal <code>alpha</code> para mapas 3D fotorrealistas). Opcional: solo para el paso 4.</div>
+      </div>
+      <div>
+        <label for="backendUrl">URL del backend BrickBit (recomendado) <span class="help" tabindex="0" data-tip="Un pequeño servidor tuyo (gratis en Cloudflare) que guarda la llave de la IA, para que nunca viaje en el navegador de tus usuarios. Las instrucciones están en backend/README.md del repositorio.">?</span></label>
+        <input type="text" id="backendUrl" placeholder="https://brickbit-api.tu-cuenta.workers.dev" autocomplete="off">
+        <div class="hint">Si la defines, las llamadas a Claude pasan por tu backend y <b>no necesitas</b> capturar aquí la llave de Anthropic. Instrucciones de despliegue en <code>backend/README.md</code>.</div>
+      </div>
+    </div>
+    <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-ghost" id="btnSaveKeys">Guardar llaves</button>
+      <button class="btn btn-ghost" id="btnDemo">Probar con proyecto de ejemplo (sin llaves)</button>
+    </div>
+  </section>
+
+  <!-- ===== 1. UPLOAD ===== -->
+  <section class="card" id="secUpload">
+    <div class="card-head"><span class="knum">01 /</span><h2>Sube el plano del arquitecto</h2></div>
+    <p class="sub">Acepta imágenes (PNG, JPG, WebP) o PDF. Funciona mejor con plantas arquitectónicas con cotas visibles <span class="help" tabindex="0" data-tip="Las cotas son los números de medida del plano (ej. 3.50 m). Si no se leen, la IA estima las dimensiones a partir de puertas y muebles estándar y te lo avisa en las notas.">?</span>; si el plano incluye cortes o detalles estructurales, la IA también los aprovecha.</p>
+    <div class="dropzone" id="dropzone">
+      <div class="icon">▤</div>
+      <strong>Arrastra tu plano aquí</strong>
+      <p>o haz clic para seleccionarlo · PNG · JPG · WebP · PDF (máx. ~20&nbsp;MB)</p>
+      <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp,application/pdf" hidden>
+    </div>
+    <div class="preview" id="preview">
+      <img id="previewImg" alt="Vista previa del plano">
+      <div class="file-meta" id="fileMeta"></div>
+    </div>
+    <div style="margin-top:22px">
+      <button class="btn btn-primary" id="btnAnalyze" disabled>Generar gemelo digital →</button>
+    </div>
+    <div class="status" id="statusAnalyze"><span class="spinner"></span><span id="statusAnalyzeTxt">Claude está interpretando el plano…</span></div>
+    <div class="error-box" id="errAnalyze"></div>
+  </section>
+
+  <!-- ===== 2/3. GEOMETRY + 3D ===== -->
+  <section class="card hidden" id="secModel">
+    <div class="card-head"><span class="knum">02–03 /</span><h2>Gemelo digital 3D <span class="help" tabindex="0" data-tip="Un gemelo digital es una copia virtual de tu edificio, creada a partir del plano. Permite verlo, simularlo y analizarlo antes de gastar un solo peso en obra.">?</span></h2></div>
+    <p class="sub" id="modelSummary"></p>
+    <div class="geo-stats" id="geoStats"></div>
+    <canvas id="viewer3d"></canvas>
+    <div class="hint" style="margin-top:10px">Arrastra para orbitar · rueda para acercar · clic derecho para desplazar.</div>
+    <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-ghost" id="btnExportGltf">⬇ Modelo 3D (.glb) <span class="help" tabindex="0" data-tip="Descarga el edificio en formato glTF, el estándar de la industria 3D. Se abre en Blender, Unity, Unreal o visores web.">?</span></button>
+      <button class="btn btn-ghost" id="btnReport">📄 Reporte ejecutivo (PDF) <span class="help" tabindex="0" data-tip="Genera un documento imprimible con todo el análisis: geometría, materiales, fallas e inversión. Ideal para llevarlo al banco o a inversionistas. En el diálogo de impresión elige “Guardar como PDF”.">?</span></button>
+      <button class="btn btn-ghost" id="btnShare">🔗 Compartir proyecto <span class="help" tabindex="0" data-tip="Crea un enlace para que tu arquitecto, socio o cliente vea este análisis completo sin instalar nada ni usar llaves.">?</span></button>
+      <a class="btn btn-ghost" href="comparar.html">Comparar proyectos →</a>
+    </div>
+    <div class="share-box" id="shareBox">
+      <label for="shareUrl">Enlace del proyecto</label>
+      <div class="share-row">
+        <input type="text" id="shareUrl" readonly>
+        <button class="btn btn-primary" id="btnCopyShare">Copiar</button>
+      </div>
+      <div class="share-note" id="shareNote"></div>
+    </div>
+    <details class="raw"><summary>Ver geometría extraída (JSON)</summary><pre id="geoJson"></pre></details>
+  </section>
+
+  <!-- ===== 4. MAP ===== -->
+  <section class="card hidden" id="secMap">
+    <div class="card-head"><span class="knum">04 /</span><h2>Colócalo en el mapa 3D de Google</h2></div>
+    <p class="sub">Busca la dirección del terreno o haz clic en el mapa: el volumen del proyecto se extruye sobre el mapa 3D fotorrealista para evaluar contexto urbano, orientación y escala.</p>
+    <div class="toolbar">
+      <div class="field">
+        <label for="addressInput">Dirección o lugar</label>
+        <input type="text" id="addressInput" placeholder="Ej. Av. Reforma 222, CDMX">
+      </div>
+      <button class="btn btn-ghost" id="btnGeocode">Buscar</button>
+      <button class="btn btn-ghost" id="btnLoadMap">Cargar mapa 3D</button>
+    </div>
+    <div id="map3dContainer">
+      <div class="placeholder-msg" id="mapPlaceholder">Ingresa tu llave de Google Maps en la configuración<br>y presiona “Cargar mapa 3D”.</div>
+    </div>
+  </section>
+
+  <!-- ===== 5. MATERIALS ===== -->
+  <section class="card hidden" id="secMaterials">
+    <div class="card-head"><span class="knum">05 /</span><h2>Materiales recomendados por IA</h2></div>
+    <p class="sub" id="matSummary"></p>
+    <div class="status" id="statusEng"><span class="spinner"></span><span>Claude está calculando materiales y analizando riesgos estructurales…</span></div>
+    <div class="error-box" id="errEng"></div>
+    <div id="matContent" class="hidden">
+      <div class="mat-grid" id="matGrid"></div>
+      <h3 style="font-family:'Fraunces',serif;margin:28px 0 4px;font-size:1.15rem">Acero de refuerzo (varillas) <span class="help" tabindex="0" data-tip="Las varillas son barras de acero que van dentro del concreto para darle resistencia. El número indica el grosor en octavos de pulgada: una #4 mide 4/8 de pulgada (1.27 cm).">?</span></h3>
+      <div class="table-scroll">
+        <table class="rebar">
+          <thead><tr><th>Tipo</th><th>Ø (mm)</th><th>Grado <span class="help" tabindex="0" data-tip="Resistencia del acero. G42 significa fy 4200 kg/cm², el estándar en la construcción mexicana.">?</span></th><th>Cantidad (kg)</th><th>Separación <span class="help" tabindex="0" data-tip="Distancia entre varilla y varilla. “@ 15 cm” = una varilla cada 15 centímetros.">?</span></th><th>Ubicación / uso</th></tr></thead>
+          <tbody id="rebarBody"></tbody>
+        </table>
+      </div>
+      <h3 style="font-family:'Fraunces',serif;margin:28px 0 4px;font-size:1.15rem">Recomendaciones de obra</h3>
+      <ul class="reco-list" id="recoList"></ul>
+    </div>
+  </section>
+
+  <!-- ===== 6. FAILURES ===== -->
+  <section class="card hidden" id="secFailures">
+    <div class="card-head"><span class="knum">06 /</span><h2>Predicción de fallas arquitectónicas</h2></div>
+    <p class="sub">A partir de la geometría, el sistema estructural y los materiales recomendados, el modelo estima qué fallas de diseño o construcción podrían aparecer, con qué probabilidad y en qué horizonte de tiempo. <span class="help" tabindex="0" data-tip="Severidad = qué tan grave sería la falla si ocurre (baja → crítica). Probabilidad = qué tan posible es que ocurra. Los años indican cuándo suele manifestarse ese tipo de falla.">?</span></p>
+    <div id="failContent">
+      <div class="first-failure" id="firstFailure"></div>
+      <div id="failList"></div>
+    </div>
+    <details class="raw"><summary>Ver análisis completo (JSON)</summary><pre id="engJson"></pre></details>
+  </section>
+
+  <!-- ===== 7. 4D SIMULATOR ===== -->
+  <section class="card hidden" id="secSim">
+    <div class="card-head"><span class="knum">07 /</span><h2>Simulador 4D — la vida de tu edificio</h2></div>
+    <p class="sub">Recorre los próximos 30 años del proyecto. Los marcadores numerados aparecen sobre el modelo en la zona y el año en que cada falla predicha se manifestaría, el edificio envejece visualmente, y comparas en vivo cuánto cuesta reparar sobre la marcha contra prevenir desde la construcción.</p>
+    <div class="sim-controls">
+      <button class="btn btn-ghost" id="btnPlay">▶ Reproducir 30 años</button>
+      <input type="range" id="yearSlider" min="0" max="30" value="0" step="1" aria-label="Año de simulación">
+      <div class="year-display" id="yearLabel">Año 0</div>
+    </div>
+    <div class="sim-wrap">
+      <canvas id="simCanvas"></canvas>
+      <div class="sim-panel">
+        <div class="sim-block">
+          <div class="k">Salud del edificio <span class="help" tabindex="0" data-tip="Índice de 0 a 100% que combina el desgaste natural del tiempo con las fallas ya manifestadas y su gravedad. Es una referencia visual, no un dictamen estructural.">?</span></div>
+          <div class="health-track"><div class="health-fill" id="healthFill"></div></div>
+          <div class="v" id="healthPct">100%</div>
+        </div>
+        <div class="sim-block sim-costs">
+          <div><div class="k">Reparar al fallar (acum.) <span class="help" tabindex="0" data-tip="Lo que gastarías acumulado si esperas a que cada falla aparezca para corregirla.">?</span></div><div class="v danger" id="costRep">$0</div></div>
+          <div><div class="k">Prevenir en obra (total) <span class="help" tabindex="0" data-tip="Inversión única durante la construcción para evitar que esas fallas ocurran (mejores detalles, impermeabilización, refuerzos).">?</span></div><div class="v lime" id="costPrev">$0</div></div>
+          <div><div class="k">Ahorro por prevenir <span class="help" tabindex="0" data-tip="La diferencia entre reparar y prevenir hasta el año seleccionado. Si es positivo, prevenir ya se pagó solo.">?</span></div><div class="v" id="costSave">—</div></div>
+        </div>
+        <div class="sim-block" id="simValueBlock" style="display:none">
+          <div class="k">Valor estimado del inmueble en este año <span class="help" tabindex="0" data-tip="Valor de mercado estimado con la plusvalía del análisis de inversión. No descuenta el deterioro por falta de mantenimiento.">?</span></div>
+          <div class="v lime" id="simValue">—</div>
+        </div>
+        <div class="sim-block">
+          <div class="k">Fallas manifestadas</div>
+          <div id="simFailList" class="sim-fails"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 8. INVESTMENT ===== -->
+  <section class="card hidden" id="secInvest">
+    <div class="card-head"><span class="knum">08 /</span><h2>Análisis de inversión — Valor Futuro</h2></div>
+    <p class="sub">El corazón de BrickBit aplicado a tu gemelo digital: la IA estima el valor del inmueble terminado, su plusvalía a 5 y 10 años, la renta esperada y el ROI del desarrollador contra el costo de obra ya calculado.</p>
+    <div class="toolbar">
+      <div class="field">
+        <label for="invLocation">Ubicación del proyecto</label>
+        <input type="text" id="invLocation" placeholder="Ej. Col. Roma Norte, CDMX (si la dejas vacía se usa la dirección del paso 4)">
+      </div>
+      <button class="btn btn-primary" id="btnInvest">Calcular análisis →</button>
+    </div>
+    <div class="status" id="statusInvest"><span class="spinner"></span><span>Claude está estimando valor futuro, plusvalía, renta y ROI…</span></div>
+    <div class="error-box" id="errInvest"></div>
+    <div id="invContent" class="hidden">
+      <p class="sub" id="invResumen" style="margin-top:8px"></p>
+      <div class="geo-stats" id="invStats"></div>
+      <div class="valbars" id="valBars"></div>
+      <div class="grid-2" style="margin-top:26px">
+        <div><h3 class="mini-h">Factores de plusvalía</h3><ul class="reco-list" id="invFactores"></ul></div>
+        <div><h3 class="mini-h">Riesgos de inversión</h3><ul class="reco-list warn" id="invRiesgos"></ul></div>
+      </div>
+      <div class="first-failure" style="border-color:rgba(205,242,90,.4);background:linear-gradient(140deg, rgba(205,242,90,.08), rgba(26,125,80,.05));margin-top:24px">
+        <div class="ff-label" style="color:var(--lime)">Recomendación del analista IA</div>
+        <p id="invReco" style="color:var(--cream);margin-top:4px"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 9. SAVED PROJECTS ===== -->
+  <section class="card" id="secProjects">
+    <div class="card-head"><span class="knum">09 /</span><h2>Proyectos guardados</h2></div>
+    <p class="sub">Cada análisis terminado se guarda en este navegador. Compara dos versiones de un plano o proyectos distintos lado a lado: geometría, materiales, costo y predicción de fallas.</p>
+    <div id="projList"></div>
+    <div style="margin-top:18px">
+      <a class="btn btn-primary" href="comparar.html">Comparar proyectos →</a>
+    </div>
+  </section>
+
+  <div class="disclaimer">
+    <b>Aviso:</b> este gemelo digital es una herramienta de apoyo generada por IA para exploración temprana de proyectos. Las cantidades de materiales, calidades y predicciones de fallas son estimaciones y <b>no sustituyen</b> el cálculo estructural, la memoria de cálculo ni la revisión de un ingeniero estructurista o DRO conforme a los reglamentos de construcción aplicables.
+  </div>
+
+</div>
+
+<!-- Three.js via import map -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+
+/* =====================================================================
+   Estado global
+===================================================================== */
+const state = {
+  file: null,          // { base64, mediaType, name, sizeKB, isPdf }
+  geometry: null,      // JSON extraído por Claude (paso 2)
+  engineering: null,   // JSON de materiales + fallas (pasos 5-6)
+  investment: null,    // JSON de valor futuro / ROI (paso 8)
+  mapReady: false,
+  map3d: null,
+  buildingPoly: null,
+  markerLib: null,
+};
+
+const $ = (id) => document.getElementById(id);
+const ANTHROPIC_MODEL = 'claude-opus-4-8';
+
+/* =====================================================================
+   Config de llaves
+===================================================================== */
+$('anthropicKey').value = localStorage.getItem('bb_anthropic_key') || '';
+$('gmapsKey').value     = localStorage.getItem('bb_gmaps_key') || '';
+$('backendUrl').value   = localStorage.getItem('bb_backend_url') || '';
+
+$('btnSaveKeys').addEventListener('click', () => {
+  localStorage.setItem('bb_anthropic_key', $('anthropicKey').value.trim());
+  localStorage.setItem('bb_gmaps_key', $('gmapsKey').value.trim());
+  localStorage.setItem('bb_backend_url', $('backendUrl').value.trim());
+  $('btnSaveKeys').textContent = '✓ Guardadas';
+  setTimeout(() => $('btnSaveKeys').textContent = 'Guardar llaves', 1600);
+});
+
+/* =====================================================================
+   Rail de pasos
+===================================================================== */
+function setStep(n, mode = 'active') {
+  document.querySelectorAll('.step-chip').forEach(ch => {
+    const s = Number(ch.dataset.step);
+    if (s < n || (mode === 'done' && s === n)) ch.classList.add('done');
+    ch.classList.toggle('active', s === n && mode === 'active');
+    if (mode === 'done' && s === n) ch.classList.remove('active');
+  });
+}
+function resetSteps() {
+  document.querySelectorAll('.step-chip').forEach(ch => ch.classList.remove('done', 'active'));
+}
+setStep(1);
+
+/* =====================================================================
+   Paso 1 — carga del plano
+===================================================================== */
+const dropzone = $('dropzone');
+dropzone.addEventListener('click', () => $('fileInput').click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('drag');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+$('fileInput').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  const okTypes = ['image/png','image/jpeg','image/webp','application/pdf'];
+  if (!okTypes.includes(file.type)) { showError('errAnalyze', 'Formato no soportado. Usa PNG, JPG, WebP o PDF.'); return; }
+  if (file.size > 20 * 1024 * 1024) { showError('errAnalyze', 'El archivo excede 20 MB. Exporta el plano a menor resolución.'); return; }
+  hideError('errAnalyze');
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64 = reader.result.split(',')[1];
+    state.file = {
+      base64,
+      mediaType: file.type,
+      name: file.name,
+      sizeKB: Math.round(file.size / 1024),
+      isPdf: file.type === 'application/pdf',
+    };
+    $('preview').classList.add('show');
+    if (state.file.isPdf) {
+      $('previewImg').style.display = 'none';
+    } else {
+      $('previewImg').style.display = 'block';
+      $('previewImg').src = reader.result;
+    }
+    $('fileMeta').innerHTML =
+      `<b>${escapeHtml(file.name)}</b><br>${state.file.sizeKB} KB · ${file.type}<br>Listo para analizar.`;
+    $('btnAnalyze').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* =====================================================================
+   Esquemas JSON (salida estructurada de Claude)
+===================================================================== */
+const GEOMETRY_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["nombreProyecto","niveles","alturaEntrepisoM","anchoM","fondoM","areaTotalM2","sistemaEstructural","footprint","muros","columnas","espacios","notas"],
+  properties: {
+    nombreProyecto: { type: "string" },
+    niveles: { type: "integer", description: "Número de niveles/pisos del proyecto" },
+    alturaEntrepisoM: { type: "number", description: "Altura de entrepiso en metros" },
+    anchoM: { type: "number", description: "Ancho total del edificio en metros (eje X)" },
+    fondoM: { type: "number", description: "Fondo total del edificio en metros (eje Y)" },
+    areaTotalM2: { type: "number" },
+    sistemaEstructural: { type: "string", description: "Ej: marcos de concreto, muros de carga de mampostería confinada, acero, etc." },
+    footprint: {
+      type: "array", minItems: 3,
+      description: "Polígono del contorno del edificio en metros, origen en esquina inferior izquierda, sentido antihorario",
+      items: { type: "object", additionalProperties: false, required: ["x","y"],
+        properties: { x: { type: "number" }, y: { type: "number" } } }
+    },
+    muros: {
+      type: "array",
+      description: "Muros principales como segmentos en metros",
+      items: { type: "object", additionalProperties: false, required: ["x1","y1","x2","y2","carga"],
+        properties: {
+          x1:{type:"number"}, y1:{type:"number"}, x2:{type:"number"}, y2:{type:"number"},
+          carga:{type:"boolean", description:"true si es muro de carga/estructural"}
+        } }
+    },
+    columnas: {
+      type: "array",
+      description: "Posiciones de columnas en metros",
+      items: { type: "object", additionalProperties: false, required: ["x","y"],
+        properties: { x:{type:"number"}, y:{type:"number"} } }
+    },
+    espacios: {
+      type: "array",
+      description: "Espacios/habitaciones identificados con su centro aproximado",
+      items: { type: "object", additionalProperties: false, required: ["nombre","x","y","areaM2"],
+        properties: { nombre:{type:"string"}, x:{type:"number"}, y:{type:"number"}, areaM2:{type:"number"} } }
+    },
+    notas: { type: "string", description: "Observaciones del plano: cotas ilegibles, supuestos tomados, etc." }
+  }
+};
+
+const ENGINEERING_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["resumen","materiales","varillas","recomendaciones","costoEstimadoMXN","fallas","primeraFalla"],
+  properties: {
+    resumen: { type: "string" },
+    materiales: {
+      type: "array",
+      description: "Materiales principales agrupados por categoría",
+      items: { type: "object", additionalProperties: false,
+        required: ["categoria","items"],
+        properties: {
+          categoria: { type: "string", description: "Ej: Concreto, Mampostería, Cemento y morteros, Acabados" },
+          items: {
+            type: "array",
+            items: { type: "object", additionalProperties: false,
+              required: ["concepto","cantidad","unidad","calidad"],
+              properties: {
+                concepto: { type: "string" },
+                cantidad: { type: "number" },
+                unidad: { type: "string" },
+                calidad: { type: "string", description: "Especificación de calidad, ej. f'c 250 kg/cm², clase A" }
+              } }
+          }
+        } }
+    },
+    varillas: {
+      type: "array",
+      description: "Acero de refuerzo recomendado",
+      items: { type: "object", additionalProperties: false,
+        required: ["tipo","diametroMm","grado","cantidadKg","separacionCm","ubicacion"],
+        properties: {
+          tipo: { type: "string", description: "Ej: #3 (3/8\"), #4 (1/2\"), #5 (5/8\")" },
+          diametroMm: { type: "number" },
+          grado: { type: "string", description: "Ej: fy 4200 kg/cm² (Grado 42)" },
+          cantidadKg: { type: "number" },
+          separacionCm: { type: "number", description: "Separación típica en cm; 0 si no aplica" },
+          ubicacion: { type: "string", description: "Dónde se usa: castillos, losas, trabes, cimentación…" }
+        } }
+    },
+    recomendaciones: { type: "array", items: { type: "string" } },
+    costoEstimadoMXN: {
+      type: "object", additionalProperties: false, required: ["minimo","maximo"],
+      properties: { minimo: { type: "number" }, maximo: { type: "number" } }
+    },
+    fallas: {
+      type: "array",
+      description: "Fallas potenciales ordenadas de más próxima a más lejana",
+      items: { type: "object", additionalProperties: false,
+        required: ["nombre","tipo","probabilidadPct","severidad","aniosEstimados","zona","costoReparacionMXN","costoPrevencionMXN","descripcion","prevencion"],
+        properties: {
+          nombre: { type: "string" },
+          tipo: { type: "string", enum: ["estructural","diseño","instalaciones","humedad","suelo","otro"] },
+          probabilidadPct: { type: "number" },
+          severidad: { type: "string", enum: ["baja","media","alta","crítica"] },
+          aniosEstimados: { type: "number", description: "Años estimados hasta que la falla se manifieste" },
+          zona: { type: "object", additionalProperties: false, required: ["x","y","nivel"],
+            description: "Zona aproximada del plano donde se manifestaría la falla",
+            properties: {
+              x: { type: "number" }, y: { type: "number" },
+              nivel: { type: "integer", description: "Nivel donde aparece; 1 = planta baja, usa el último nivel para azotea" }
+            } },
+          costoReparacionMXN: { type: "number", description: "Costo estimado de reparar la falla ya manifestada" },
+          costoPrevencionMXN: { type: "number", description: "Costo de prevenirla durante la construcción" },
+          descripcion: { type: "string" },
+          prevencion: { type: "string" }
+        } }
+    },
+    primeraFalla: {
+      type: "object", additionalProperties: false,
+      required: ["nombre","aniosEstimados","confianzaPct","explicacion"],
+      properties: {
+        nombre: { type: "string" },
+        aniosEstimados: { type: "number" },
+        confianzaPct: { type: "number" },
+        explicacion: { type: "string" }
+      }
+    }
+  }
+};
+
+/* =====================================================================
+   Llamadas a la API de Anthropic (directo desde navegador, demo)
+===================================================================== */
+async function callClaude({ system, content, schema }) {
+  const backend = ($('backendUrl').value || '').trim();
+  const apiKey = ($('anthropicKey').value || '').trim();
+
+  let res;
+  if (backend) {
+    // Modo backend: la llave de Anthropic vive en el servidor (ver backend/README.md)
+    res = await fetch(backend.replace(/\/+$/, '') + '/api/claude', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ system, content, schema }),
+    });
+  } else {
+    // Modo demo: llamada directa desde el navegador
+    if (!apiKey) throw new Error('Configura la URL del backend o la llave API de Anthropic en la sección de configuración (o usa el proyecto de ejemplo).');
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 16000,
+        thinking: { type: 'adaptive' },
+        system,
+        output_config: { format: { type: 'json_schema', schema } },
+        messages: [{ role: 'user', content }],
+      }),
+    });
+  }
+
+  if (!res.ok) {
+    let detail = '';
+    try { detail = (await res.json()).error?.message || ''; } catch {}
+    throw new Error(`Error ${res.status} del análisis IA. ${detail}`);
+  }
+  const data = await res.json();
+  if (data.stop_reason === 'refusal') {
+    throw new Error('El modelo declinó procesar esta solicitud. Intenta con otro plano.');
+  }
+  const textBlock = (data.content || []).find(b => b.type === 'text');
+  if (!textBlock) throw new Error('La respuesta del modelo no incluyó contenido de texto.');
+  return JSON.parse(textBlock.text);
+}
+
+function planContentBlock() {
+  if (state.file.isPdf) {
+    return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: state.file.base64 } };
+  }
+  return { type: 'image', source: { type: 'base64', media_type: state.file.mediaType, data: state.file.base64 } };
+}
+
+async function extractGeometry() {
+  return callClaude({
+    system: 'Eres un arquitecto e ingeniero civil experto en interpretar planos arquitectónicos mexicanos y latinoamericanos. Extraes geometría en unidades métricas. Si el plano no tiene cotas legibles, estima dimensiones razonables a partir de elementos estándar (puertas ≈ 0.9 m, escalones, muebles) y decláralo en las notas.',
+    content: [
+      planContentBlock(),
+      { type: 'text', text: 'Analiza este plano arquitectónico y extrae su geometría para construir un gemelo digital 3D. Devuelve el contorno (footprint), muros principales, columnas, espacios con nombre y área, número de niveles y sistema estructural. Usa metros, con origen en la esquina inferior izquierda del edificio.' },
+    ],
+    schema: GEOMETRY_SCHEMA,
+  });
+}
+
+async function analyzeEngineering(geometry) {
+  return callClaude({
+    system: 'Eres un ingeniero estructurista y residente de obra con 25 años de experiencia en México. Cuantificas materiales conforme a prácticas comunes (NTC/CFE/ONNCCE), recomiendas calidades y acero de refuerzo por elemento, y evalúas riesgos de falla de diseño y construcción con horizontes de tiempo realistas. Sé específico y conservador; incluye desperdicio típico en cantidades.',
+    content: [
+      planContentBlock(),
+      { type: 'text', text:
+`Con base en el plano adjunto y en la geometría ya extraída del proyecto (JSON abajo), genera:
+1) La cuantificación y recomendación de materiales (concreto con su f'c, mampostería, cemento/morteros, etc.) con cantidad, unidad y calidad.
+2) El acero de refuerzo: tipos de varilla (#3, #4, #5…), diámetro, grado, kilogramos, separación y ubicación (cimentación, castillos, trabes, losas).
+3) Recomendaciones de obra concretas.
+4) Un rango de costo estimado de obra negra en MXN.
+5) Predicción de fallas arquitectónicas/estructurales/de diseño: nombre, tipo, probabilidad (%), severidad, años estimados hasta manifestarse, la zona aproximada donde aparecería (coordenadas x, y en metros dentro del plano y nivel; 1 = planta baja), el costo en MXN de repararla ya manifestada vs. prevenirla en obra, descripción y prevención.
+6) La PRIMERA falla esperada: cuál será, en cuántos años, con qué confianza y por qué.
+
+GEOMETRÍA DEL PROYECTO:
+${JSON.stringify(geometry, null, 2)}` },
+    ],
+    schema: ENGINEERING_SCHEMA,
+  });
+}
+
+/* =====================================================================
+   Orquestación del flujo
+===================================================================== */
+$('btnAnalyze').addEventListener('click', async () => {
+  if (!state.file) return;
+  state.investment = null;
+  $('invContent').classList.add('hidden');
+  resetSteps();
+  hideError('errAnalyze');
+  $('btnAnalyze').disabled = true;
+  $('statusAnalyze').classList.add('show');
+  setStep(2);
+  try {
+    $('statusAnalyzeTxt').textContent = 'Claude está interpretando el plano (geometría, muros, columnas, espacios)…';
+    state.geometry = await extractGeometry();
+    $('statusAnalyze').classList.remove('show');
+    renderModelSection();
+    setStep(4);
+    runEngineering();
+  } catch (err) {
+    $('statusAnalyze').classList.remove('show');
+    showError('errAnalyze', err.message);
+    $('btnAnalyze').disabled = false;
+    setStep(1);
+  }
+});
+
+async function runEngineering() {
+  $('secMaterials').classList.remove('hidden');
+  $('secFailures').classList.add('hidden');
+  $('statusEng').classList.add('show');
+  hideError('errEng');
+  try {
+    state.engineering = await analyzeEngineering(state.geometry);
+    $('statusEng').classList.remove('show');
+    renderEngineering();
+    initSimulator();
+    $('secInvest').classList.remove('hidden');
+    saveCurrentProject();
+    setStep(6, 'done');
+  } catch (err) {
+    $('statusEng').classList.remove('show');
+    showError('errEng', err.message);
+  }
+}
+
+/* =====================================================================
+   Demo sin llaves — proyecto de ejemplo
+===================================================================== */
+$('btnDemo').addEventListener('click', () => {
+  state.geometry = DEMO_GEOMETRY;
+  state.engineering = DEMO_ENGINEERING;
+  renderModelSection();
+  renderEngineering();
+  initSimulator();
+  state.investment = DEMO_INVESTMENT;
+  renderInvestment();
+  saveCurrentProject();
+  $('secMaterials').classList.remove('hidden');
+  $('statusEng').classList.remove('show');
+  setStep(6, 'done');
+  $('secModel').scrollIntoView({ behavior: 'smooth' });
+});
+
+const DEMO_GEOMETRY = {
+  nombreProyecto: "Casa habitación — ejemplo BrickBit",
+  niveles: 2,
+  alturaEntrepisoM: 2.7,
+  anchoM: 10, fondoM: 14, areaTotalM2: 240,
+  sistemaEstructural: "Mampostería confinada con castillos y cadenas de concreto, losas macizas",
+  footprint: [ {x:0,y:0},{x:10,y:0},{x:10,y:14},{x:4,y:14},{x:4,y:10},{x:0,y:10} ],
+  muros: [
+    {x1:0,y1:0,x2:10,y2:0,carga:true},{x1:10,y1:0,x2:10,y2:14,carga:true},
+    {x1:10,y1:14,x2:4,y2:14,carga:true},{x1:4,y1:14,x2:4,y2:10,carga:true},
+    {x1:4,y1:10,x2:0,y2:10,carga:true},{x1:0,y1:10,x2:0,y2:0,carga:true},
+    {x1:0,y1:5,x2:6,y2:5,carga:false},{x1:6,y1:0,x2:6,y2:5,carga:false},
+    {x1:4,y1:5,x2:4,y2:10,carga:false},{x1:4,y1:7.5,x2:10,y2:7.5,carga:false}
+  ],
+  columnas: [ {x:0,y:0},{x:10,y:0},{x:10,y:14},{x:4,y:14},{x:0,y:10},{x:6,y:5},{x:4,y:10},{x:10,y:7.5} ],
+  espacios: [
+    {nombre:"Sala",x:2.8,y:2.5,areaM2:28},{nombre:"Cocina",x:8,y:2.5,areaM2:19},
+    {nombre:"Comedor",x:2,y:7.5,areaM2:18},{nombre:"Recámara 1",x:7,y:6.2,areaM2:20},
+    {nombre:"Recámara 2",x:7,y:11,areaM2:26}
+  ],
+  notas: "Proyecto de demostración con dimensiones típicas de vivienda media en México."
+};
+
+const DEMO_ENGINEERING = {
+  resumen: "Vivienda de 2 niveles (~240 m²) en mampostería confinada. Cuantificación de obra negra con desperdicio del 7%.",
+  materiales: [
+    { categoria: "Concreto", items: [
+      { concepto: "Concreto para losas macizas (12 cm)", cantidad: 29, unidad: "m³", calidad: "f'c 250 kg/cm², rev. 12 cm" },
+      { concepto: "Concreto para castillos y cadenas", cantidad: 9, unidad: "m³", calidad: "f'c 200 kg/cm²" },
+      { concepto: "Concreto para zapatas corridas", cantidad: 12, unidad: "m³", calidad: "f'c 250 kg/cm²" } ]},
+    { categoria: "Mampostería", items: [
+      { concepto: "Tabique rojo recocido 7×14×28", cantidad: 12500, unidad: "pza", calidad: "Clase A, resistencia ≥ 60 kg/cm²" },
+      { concepto: "Mortero cemento-arena 1:4", cantidad: 11, unidad: "m³", calidad: "Tipo I, 125 kg/cm²" } ]},
+    { categoria: "Cemento y agregados", items: [
+      { concepto: "Cemento gris CPC 30R", cantidad: 320, unidad: "saco 50 kg", calidad: "NMX-C-414" },
+      { concepto: "Arena de río", cantidad: 34, unidad: "m³", calidad: "Lavada, libre de arcillas" },
+      { concepto: "Grava 3/4\"", cantidad: 38, unidad: "m³", calidad: "Triturada basáltica" } ]}
+  ],
+  varillas: [
+    { tipo: "#3 (3/8\")", diametroMm: 9.5, grado: "fy 4200 kg/cm² (G42)", cantidadKg: 980, separacionCm: 20, ubicacion: "Estribos de castillos y cadenas" },
+    { tipo: "#4 (1/2\")", diametroMm: 12.7, grado: "fy 4200 kg/cm² (G42)", cantidadKg: 2350, separacionCm: 15, ubicacion: "Losas macizas (lecho bajo y alto)" },
+    { tipo: "#4 (1/2\")", diametroMm: 12.7, grado: "fy 4200 kg/cm² (G42)", cantidadKg: 1150, separacionCm: 0, ubicacion: "Armado longitudinal de castillos K-1" },
+    { tipo: "#5 (5/8\")", diametroMm: 15.9, grado: "fy 4200 kg/cm² (G42)", cantidadKg: 890, separacionCm: 15, ubicacion: "Zapatas corridas y trabe de liga" }
+  ],
+  recomendaciones: [
+    "Colar castillos y cadenas monolíticamente con la mampostería (confinamiento real, no simulado).",
+    "Curar losas mínimo 7 días con agua o membrana de curado para alcanzar el f'c de diseño.",
+    "Impermeabilizar cadena de desplante para cortar humedad ascendente por capilaridad.",
+    "Verificar recubrimientos mínimos: 3 cm en castillos, 2 cm en losas, 5 cm en cimentación.",
+    "El muro largo del eje Y (14 m) requiere castillos intermedios a máximo 3.5 m de separación."
+  ],
+  costoEstimadoMXN: { minimo: 1450000, maximo: 1850000 },
+  fallas: [
+    { nombre: "Fisuración por contracción en losa de azotea", tipo: "diseño", probabilidadPct: 72, severidad: "media", aniosEstimados: 2,
+      zona: { x: 5, y: 7, nivel: 2 }, costoReparacionMXN: 85000, costoPrevencionMXN: 18000,
+      descripcion: "Losa de gran claro sin juntas de control; el ciclo térmico de azotea genera fisuras de retracción en esquinas y zonas de cambio de sección.",
+      prevencion: "Malla por temperatura, curado prolongado y junta de control en el quiebre en L del footprint." },
+    { nombre: "Humedad por capilaridad en muros de planta baja", tipo: "humedad", probabilidadPct: 55, severidad: "media", aniosEstimados: 4,
+      zona: { x: 1, y: 5, nivel: 1 }, costoReparacionMXN: 60000, costoPrevencionMXN: 12000,
+      descripcion: "Sin barrera impermeable en desplante, la humedad del suelo asciende y degrada aplanados y pintura.",
+      prevencion: "Impermeabilizante integral en cadena de desplante y aplanado con mortero hidrófugo en el primer metro." },
+    { nombre: "Grieta diagonal en esquina entrante (quiebre en L)", tipo: "estructural", probabilidadPct: 40, severidad: "alta", aniosEstimados: 8,
+      zona: { x: 4, y: 10, nivel: 1 }, costoReparacionMXN: 140000, costoPrevencionMXN: 25000,
+      descripcion: "Las plantas en L concentran esfuerzos en la esquina entrante ante sismo o asentamiento diferencial.",
+      prevencion: "Castillo doble en la esquina entrante y refuerzo adicional de losa en esa zona." },
+    { nombre: "Asentamiento diferencial", tipo: "suelo", probabilidadPct: 25, severidad: "crítica", aniosEstimados: 12,
+      zona: { x: 8, y: 3, nivel: 1 }, costoReparacionMXN: 450000, costoPrevencionMXN: 60000,
+      descripcion: "Sin estudio de mecánica de suelos, una zapata corrida puede asentarse de forma desigual en suelos blandos.",
+      prevencion: "Estudio de mecánica de suelos previo; rigidizar cimentación con trabes de liga en ambos sentidos." }
+  ],
+  primeraFalla: {
+    nombre: "Fisuración por contracción en losa de azotea",
+    aniosEstimados: 2, confianzaPct: 78,
+    explicacion: "Es la patología más frecuente en viviendas de este tipo: aparece en los primeros 1–3 años por curado insuficiente y ausencia de juntas de control, agravada por el quiebre en L de la planta. No compromete la estabilidad de inmediato, pero abre la puerta a filtraciones y corrosión del acero de losa si no se atiende."
+  }
+};
+
+/* =====================================================================
+   Paso 2/3 — resumen + render 3D (Three.js)
+===================================================================== */
+let three = null; // { renderer, scene, camera, controls }
+
+function renderModelSection() {
+  const g = state.geometry;
+  $('secModel').classList.remove('hidden');
+  $('secMap').classList.remove('hidden');
+  $('modelSummary').textContent =
+    `${g.nombreProyecto} — ${g.niveles} nivel(es), ${g.anchoM}×${g.fondoM} m, sistema: ${g.sistemaEstructural}. ${g.notas || ''}`;
+  $('geoStats').innerHTML = [
+    [g.niveles, 'Niveles'],
+    [`${fmt(g.areaTotalM2)} m²`, 'Área total'],
+    [`${g.anchoM}×${g.fondoM} m`, 'Huella'],
+    [g.columnas.length, 'Columnas'],
+    [g.muros.length, 'Muros'],
+    [g.espacios.length, 'Espacios'],
+  ].map(([v,k]) => `<div class="geo-stat"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
+  $('geoJson').textContent = JSON.stringify(g, null, 2);
+  buildScene(g);
+  $('secModel').scrollIntoView({ behavior: 'smooth' });
+}
+
+function initThree(canvas) {
+  canvas = canvas || $('viewer3d');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 2000);
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI / 2.05;
+
+  scene.fog = new THREE.Fog(0x0d0f0c, 60, 220);
+  scene.add(new THREE.HemisphereLight(0xf5ede3, 0x1a2018, 0.9));
+  const sun = new THREE.DirectionalLight(0xfff4e0, 1.6);
+  sun.position.set(30, 45, 20);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = sun.shadow.camera.bottom = -40;
+  sun.shadow.camera.right = sun.shadow.camera.top = 40;
+  scene.add(sun);
+  renderer.shadowMap.enabled = true;
+
+  function resize() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  (function loop() {
+    requestAnimationFrame(loop);
+    controls.update();
+    renderer.render(scene, camera);
+  })();
+
+  return { renderer, scene, camera, controls, resize };
+}
+
+function buildScene(g) {
+  if (!three) three = initThree();
+  const { scene, camera, controls } = three;
+
+  // limpiar edificio previo
+  const prev = scene.getObjectByName('building');
+  if (prev) scene.remove(prev);
+  const prevGround = scene.getObjectByName('ground');
+  if (prevGround) scene.remove(prevGround);
+
+  const group = new THREE.Group();
+  group.name = 'building';
+
+  const h = g.alturaEntrepisoM;
+  const slabT = 0.15;
+  const wallT = 0.15;
+  const cx = g.anchoM / 2, cy = g.fondoM / 2;
+
+  const matSlab   = new THREE.MeshStandardMaterial({ color: 0xb8b2a7, roughness: 0.9 });
+  const matWallC  = new THREE.MeshStandardMaterial({ color: 0xf5ede3, roughness: 0.85 });
+  const matWallP  = new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: 0.85 });
+  const matCol    = new THREE.MeshStandardMaterial({ color: 0x8f8779, roughness: 0.7 });
+  const matEdge   = new THREE.LineBasicMaterial({ color: 0xcdf25a, transparent: true, opacity: 0.5 });
+
+  // forma del footprint (plano XY → XZ de three)
+  const shape = new THREE.Shape();
+  g.footprint.forEach((p, i) => i === 0 ? shape.moveTo(p.x - cx, p.y - cy) : shape.lineTo(p.x - cx, p.y - cy));
+  shape.closePath();
+
+  for (let lvl = 0; lvl <= g.niveles; lvl++) {
+    // losa (incluye la de azotea en lvl = niveles)
+    const slabGeo = new THREE.ExtrudeGeometry(shape, { depth: slabT, bevelEnabled: false });
+    slabGeo.rotateX(-Math.PI / 2);
+    const slab = new THREE.Mesh(slabGeo, matSlab);
+    slab.position.y = lvl * h;
+    slab.castShadow = slab.receiveShadow = true;
+    group.add(slab);
+    group.add(new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), matEdge).translateY(lvl * h));
+
+    if (lvl === g.niveles) break;
+
+    // muros del nivel
+    for (const w of g.muros) {
+      const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
+      const len = Math.hypot(dx, dy);
+      if (len < 0.05) continue;
+      const geo = new THREE.BoxGeometry(len, h - slabT, wallT);
+      const mesh = new THREE.Mesh(geo, w.carga ? matWallC : matWallP);
+      mesh.position.set(
+        (w.x1 + w.x2) / 2 - cx,
+        lvl * h + slabT + (h - slabT) / 2,
+        (w.y1 + w.y2) / 2 - cy
+      );
+      mesh.rotation.y = -Math.atan2(dy, dx);
+      mesh.castShadow = mesh.receiveShadow = true;
+      group.add(mesh);
+    }
+
+    // columnas
+    for (const c of g.columnas) {
+      const geo = new THREE.BoxGeometry(0.3, h, 0.3);
+      const mesh = new THREE.Mesh(geo, matCol);
+      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
+      mesh.castShadow = true;
+      group.add(mesh);
+    }
+  }
+
+  scene.add(group);
+
+  // terreno (agrupado para poder limpiarlo al regenerar)
+  const groundGroup = new THREE.Group();
+  groundGroup.name = 'ground';
+  const groundSize = Math.max(g.anchoM, g.fondoM) * 5;
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(groundSize, 48),
+    new THREE.MeshStandardMaterial({ color: 0x1c2420, roughness: 1 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.01;
+  ground.receiveShadow = true;
+  groundGroup.add(ground);
+  const grid = new THREE.GridHelper(groundSize, 40, 0x2c3a30, 0x22291f);
+  grid.position.y = 0.001;
+  groundGroup.add(grid);
+  scene.add(groundGroup);
+
+  // cámara
+  const totalH = g.niveles * h;
+  const d = Math.max(g.anchoM, g.fondoM, totalH) * 1.8;
+  camera.position.set(d, d * 0.75, d);
+  controls.target.set(0, totalH / 2, 0);
+  three.resize();
+}
+
+/* =====================================================================
+   Paso 4 — Mapa 3D fotorrealista de Google (API demo)
+===================================================================== */
+let gmapsLoading = null;
+
+function loadGoogleMaps(key) {
+  if (gmapsLoading) return gmapsLoading;
+  gmapsLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=alpha&libraries=maps3d,geocoding&loading=async&callback=__gmapsReady`;
+    window.__gmapsReady = () => resolve(window.google);
+    s.onerror = () => { gmapsLoading = null; reject(new Error('No se pudo cargar Google Maps. Verifica la llave y que Maps JavaScript API esté habilitada.')); };
+    document.head.appendChild(s);
+  });
+  return gmapsLoading;
+}
+
+$('btnLoadMap').addEventListener('click', initMap3D);
+$('btnGeocode').addEventListener('click', geocodeAndPlace);
+$('addressInput').addEventListener('keydown', e => { if (e.key === 'Enter') geocodeAndPlace(); });
+
+async function initMap3D(center) {
+  const key = ($('gmapsKey').value || '').trim();
+  if (!key) {
+    $('mapPlaceholder').innerHTML = '⚠ Falta la llave de Google Maps.<br>Agrégala en la sección de configuración y vuelve a intentar.';
+    return;
+  }
+  try {
+    $('mapPlaceholder').textContent = 'Cargando mapa 3D fotorrealista…';
+    const google = await loadGoogleMaps(key);
+    const { Map3DElement } = await google.maps.importLibrary('maps3d');
+
+    if (!state.map3d) {
+      const c = center || { lat: 19.4326, lng: -99.1332 }; // CDMX por defecto
+      const map = new Map3DElement({
+        center: { lat: c.lat, lng: c.lng, altitude: 0 },
+        range: 400, tilt: 62, heading: 25,
+        mode: 'HYBRID',
+      });
+      $('map3dContainer').innerHTML = '';
+      $('map3dContainer').appendChild(map);
+      state.map3d = map;
+
+      // clic en el mapa → recolocar el edificio
+      map.addEventListener('gmp-click', (ev) => {
+        if (ev.position) placeBuildingAt({ lat: ev.position.lat, lng: ev.position.lng });
+      });
+      placeBuildingAt(c);
+    } else if (center) {
+      state.map3d.center = { lat: center.lat, lng: center.lng, altitude: 0 };
+      placeBuildingAt(center);
+    }
+    state.mapReady = true;
+  } catch (err) {
+    $('map3dContainer').innerHTML = `<div class="placeholder-msg">⚠ ${escapeHtml(err.message)}</div>`;
+    state.map3d = null;
+    gmapsLoading = null;
+  }
+}
+
+async function placeBuildingAt(center) {
+  if (!state.map3d || !state.geometry) return;
+  const google = window.google;
+  const { Polygon3DElement, AltitudeMode } = await google.maps.importLibrary('maps3d');
+  const g = state.geometry;
+  const height = g.niveles * g.alturaEntrepisoM;
+
+  // metros → grados alrededor del centro
+  const mLat = 1 / 111320;
+  const mLng = 1 / (111320 * Math.cos(center.lat * Math.PI / 180));
+  const cx = g.anchoM / 2, cy = g.fondoM / 2;
+  const coords = g.footprint.map(p => ({
+    lat: center.lat + (p.y - cy) * mLat,
+    lng: center.lng + (p.x - cx) * mLng,
+    altitude: height,
+  }));
+
+  if (state.buildingPoly) state.buildingPoly.remove();
+  const poly = new Polygon3DElement({
+    altitudeMode: AltitudeMode.RELATIVE_TO_GROUND,
+    extruded: true,
+    fillColor: 'rgba(205, 242, 90, 0.55)',
+    strokeColor: '#1a7d50',
+    strokeWidth: 2,
+  });
+  poly.outerCoordinates = coords;
+  state.map3d.appendChild(poly);
+  state.buildingPoly = poly;
+
+  state.map3d.center = { lat: center.lat, lng: center.lng, altitude: 0 };
+  state.map3d.range = Math.max(g.anchoM, g.fondoM) * 12;
+}
+
+async function geocodeAndPlace() {
+  const addr = $('addressInput').value.trim();
+  if (!addr) return;
+  if (!state.map3d) await initMap3D();
+  if (!state.map3d) return;
+  try {
+    const { Geocoder } = await window.google.maps.importLibrary('geocoding');
+    const geocoder = new Geocoder();
+    const { results } = await geocoder.geocode({ address: addr });
+    if (results && results[0]) {
+      const loc = results[0].geometry.location;
+      const c = { lat: loc.lat(), lng: loc.lng() };
+      state.map3d.center = { ...c, altitude: 0 };
+      placeBuildingAt(c);
+    }
+  } catch {
+    alert('No se encontró la dirección. Verifica que Geocoding API esté habilitada en tu llave.');
+  }
+}
+
+/* =====================================================================
+   Pasos 5/6 — materiales y fallas
+===================================================================== */
+function renderEngineering() {
+  const e = state.engineering;
+  $('secMaterials').classList.remove('hidden');
+  $('secFailures').classList.remove('hidden');
+  $('matContent').classList.remove('hidden');
+  $('matSummary').textContent = e.resumen;
+
+  // materiales por categoría + costo
+  const costCard = `
+    <div class="mat-card">
+      <h4>Costo estimado de obra <span class="tag">MXN</span> <span class="help" tabindex="0" data-tip="Obra negra: la estructura del edificio (cimentación, muros, columnas y losas). No incluye acabados, instalaciones ni el terreno.">?</span></h4>
+      <ul>
+        <li><span>Mínimo</span><span>$${fmt(e.costoEstimadoMXN.minimo)}</span></li>
+        <li><span>Máximo</span><span>$${fmt(e.costoEstimadoMXN.maximo)}</span></li>
+      </ul>
+    </div>`;
+  $('matGrid').innerHTML = e.materiales.map(cat => `
+    <div class="mat-card">
+      <h4>${escapeHtml(cat.categoria)} <span class="tag">IA</span></h4>
+      <ul>${cat.items.map(it => `
+        <li><span>${escapeHtml(it.concepto)}<br><small style="color:var(--clay-soft)">${escapeHtml(it.calidad)}</small></span>
+        <span>${fmt(it.cantidad)} ${escapeHtml(it.unidad)}</span></li>`).join('')}
+      </ul>
+    </div>`).join('') + costCard;
+
+  // varillas
+  $('rebarBody').innerHTML = e.varillas.map(v => `
+    <tr>
+      <td>${escapeHtml(v.tipo)}</td>
+      <td>${v.diametroMm}</td>
+      <td>${escapeHtml(v.grado)}</td>
+      <td><b>${fmt(v.cantidadKg)}</b></td>
+      <td>${v.separacionCm ? '@ ' + v.separacionCm + ' cm' : '—'}</td>
+      <td>${escapeHtml(v.ubicacion)}</td>
+    </tr>`).join('');
+
+  $('recoList').innerHTML = e.recomendaciones.map(r => `<li>${escapeHtml(r)}</li>`).join('');
+
+  // primera falla
+  const ff = e.primeraFalla;
+  $('firstFailure').innerHTML = `
+    <div class="ff-label">⚠ Primera falla predicha · confianza ${Math.round(ff.confianzaPct)}%</div>
+    <h3>${escapeHtml(ff.nombre)}</h3>
+    <div class="ff-time">~${fmt(ff.aniosEstimados)} <small>años después de terminada la obra</small></div>
+    <p>${escapeHtml(ff.explicacion)}</p>`;
+
+  // lista de fallas
+  const sorted = [...e.fallas].sort((a,b) => a.aniosEstimados - b.aniosEstimados);
+  $('failList').innerHTML = sorted.map(f => `
+    <div class="fail-row">
+      <div class="name">${escapeHtml(f.nombre)}<small>${escapeHtml(f.tipo)} · ${escapeHtml(f.descripcion)}</small>
+        <small style="color:var(--clay-soft)">Prevención: ${escapeHtml(f.prevencion)}</small></div>
+      <span class="sev ${f.severidad.normalize('NFD').replace(/[\u0300-\u036f]/g,'')}">${escapeHtml(f.severidad)}</span>
+      <span class="years">~${fmt(f.aniosEstimados)} años</span>
+      <div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, Math.max(3, f.probabilidadPct))}%"></div></div>
+        <div class="prob-label">${Math.round(f.probabilidadPct)}% de probabilidad</div>
+      </div>
+    </div>`).join('');
+
+  $('engJson').textContent = JSON.stringify(e, null, 2);
+}
+
+/* =====================================================================
+   Paso 7 — Simulador 4D: la vida del edificio en 30 años
+===================================================================== */
+let simThree = null;
+const sim = { markers: [], wallMats: [], year: 0, playing: false };
+
+const SEV_COLOR  = { baja: '#57c389', media: '#e0b95a', alta: '#e06d5a', 'crítica': '#e06d5a' };
+const SEV_WEIGHT = { baja: 5, media: 12, alta: 22, 'crítica': 35 };
+
+function numberSprite(n, color) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(64, 64, 54, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = 8; ctx.strokeStyle = '#100c0a'; ctx.stroke();
+  ctx.fillStyle = '#100c0a';
+  ctx.font = 'bold 60px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(String(n), 64, 68);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
+  spr.scale.set(1.5, 1.5, 1);
+  return spr;
+}
+
+function makeSimBuilding(g) {
+  const group = new THREE.Group();
+  const wallMats = [];
+  const h = g.alturaEntrepisoM, slabT = 0.15, wallT = 0.15;
+  const cx = g.anchoM / 2, cy = g.fondoM / 2;
+  const matSlab  = new THREE.MeshStandardMaterial({ color: 0xb8b2a7, roughness: 0.9 });
+  const matWallC = new THREE.MeshStandardMaterial({ color: 0xf5ede3, roughness: 0.85 });
+  const matWallP = new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: 0.85 });
+  const matCol   = new THREE.MeshStandardMaterial({ color: 0x8f8779, roughness: 0.7 });
+  const matEdge  = new THREE.LineBasicMaterial({ color: 0xcdf25a, transparent: true, opacity: 0.4 });
+  for (const m of [matSlab, matWallC, matWallP]) wallMats.push({ mat: m, base: m.color.clone() });
+
+  const shape = new THREE.Shape();
+  g.footprint.forEach((p, i) => i === 0 ? shape.moveTo(p.x - cx, p.y - cy) : shape.lineTo(p.x - cx, p.y - cy));
+  shape.closePath();
+
+  for (let lvl = 0; lvl <= g.niveles; lvl++) {
+    const slabGeo = new THREE.ExtrudeGeometry(shape, { depth: slabT, bevelEnabled: false });
+    slabGeo.rotateX(-Math.PI / 2);
+    const slab = new THREE.Mesh(slabGeo, matSlab);
+    slab.position.y = lvl * h;
+    slab.castShadow = slab.receiveShadow = true;
+    group.add(slab);
+    group.add(new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), matEdge).translateY(lvl * h));
+    if (lvl === g.niveles) break;
+    for (const w of g.muros) {
+      const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
+      const len = Math.hypot(dx, dy);
+      if (len < 0.05) continue;
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, h - slabT, wallT), w.carga ? matWallC : matWallP);
+      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, (w.y1 + w.y2) / 2 - cy);
+      mesh.rotation.y = -Math.atan2(dy, dx);
+      mesh.castShadow = mesh.receiveShadow = true;
+      group.add(mesh);
+    }
+    for (const c of g.columnas) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, h, 0.3), matCol);
+      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
+      mesh.castShadow = true;
+      group.add(mesh);
+    }
+  }
+  return { group, wallMats };
+}
+
+function initSimulator() {
+  if (!state.geometry || !state.engineering) return;
+  $('secSim').classList.remove('hidden');
+  if (!simThree) simThree = initThree($('simCanvas'));
+  const scene = simThree.scene;
+  const prev = scene.getObjectByName('simWorld');
+  if (prev) scene.remove(prev);
+
+  const g = state.geometry;
+  const h = g.alturaEntrepisoM, cx = g.anchoM / 2, cy = g.fondoM / 2;
+  const world = new THREE.Group();
+  world.name = 'simWorld';
+
+  const { group, wallMats } = makeSimBuilding(g);
+  sim.wallMats = wallMats;
+  world.add(group);
+
+  const groundSize = Math.max(g.anchoM, g.fondoM) * 4;
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(groundSize, 48),
+    new THREE.MeshStandardMaterial({ color: 0x1c2420, roughness: 1 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.01;
+  ground.receiveShadow = true;
+  world.add(ground);
+  const grid = new THREE.GridHelper(groundSize, 36, 0x2c3a30, 0x22291f);
+  grid.position.y = 0.001;
+  world.add(grid);
+
+  // Marcadores de falla (numerados, aparecen según el año)
+  sim.markers = [];
+  state.engineering.fallas.forEach((f, i) => {
+    const z = f.zona || {};
+    const nivel = Math.min(Math.max(1, z.nivel || 1), g.niveles);
+    const isTop = (z.nivel || 1) >= g.niveles && /losa|azotea|techo/i.test(f.nombre);
+    const yPos = isTop ? g.niveles * h + 0.7 : (nivel - 1) * h + h * 0.7;
+    const spr = numberSprite(i + 1, SEV_COLOR[f.severidad] || '#e06d5a');
+    spr.position.set((z.x ?? g.anchoM / 2) - cx, yPos, (z.y ?? g.fondoM / 2) - cy);
+    spr.visible = false;
+    world.add(spr);
+    sim.markers.push(spr);
+  });
+
+  scene.add(world);
+  const totalH = g.niveles * h;
+  const d = Math.max(g.anchoM, g.fondoM, totalH) * 1.9;
+  simThree.camera.position.set(d, d * 0.7, d);
+  simThree.controls.target.set(0, totalH / 2, 0);
+  simThree.resize();
+  setSimYear(0);
+  markChip(7);
+}
+
+function setSimYear(y) {
+  sim.year = y;
+  $('yearSlider').value = y;
+  $('yearLabel').textContent = 'Año ' + y;
+  const fallas = state.engineering.fallas;
+  const manifested = [];
+  fallas.forEach((f, i) => {
+    const on = f.aniosEstimados <= y;
+    if (sim.markers[i]) sim.markers[i].visible = on;
+    if (on) manifested.push([f, i]);
+  });
+
+  // Salud: penaliza fallas manifestadas (por severidad × probabilidad) + desgaste natural
+  let health = 100
+    - manifested.reduce((s, [f]) => s + (SEV_WEIGHT[f.severidad] || 15) * (f.probabilidadPct || 50) / 100, 0)
+    - y * 0.4;
+  health = Math.max(15, Math.round(health));
+  $('healthFill').style.width = health + '%';
+  $('healthFill').style.background = health > 70 ? 'var(--clay-soft)' : health > 45 ? 'var(--warn)' : 'var(--danger)';
+  $('healthPct').textContent = health + '%';
+
+  // Envejecimiento visual de los materiales
+  const t = Math.min(1, y / 30) * 0.55;
+  const aged = new THREE.Color(0x8d857a);
+  for (const m of sim.wallMats) m.mat.color.copy(m.base).lerp(aged, t);
+
+  // Reparar al fallar vs prevenir en obra
+  const rep = manifested.reduce((s, [f]) => s + (f.costoReparacionMXN || 0), 0);
+  const prevAll = fallas.reduce((s, f) => s + (f.costoPrevencionMXN || 0), 0);
+  $('costRep').textContent = '$' + fmt(rep);
+  $('costPrev').textContent = '$' + fmt(prevAll);
+  const save = rep - prevAll;
+  $('costSave').textContent = save > 0 ? '$' + fmt(save) : '—';
+  $('costSave').style.color = save > 0 ? 'var(--lime)' : 'var(--muted-txt)';
+
+  updateSimValue();
+
+  $('simFailList').innerHTML = manifested.length
+    ? manifested.map(([f, i]) => `
+      <div class="sim-fail">
+        <span class="num" style="background:${SEV_COLOR[f.severidad] || '#e06d5a'}">${i + 1}</span>
+        <span>${escapeHtml(f.nombre)} <small>· año ~${fmt(f.aniosEstimados)} · ${escapeHtml(f.severidad)}</small></span>
+      </div>`).join('')
+    : '<div class="sim-empty">Sin fallas manifestadas todavía. Mueve la línea de tiempo →</div>';
+}
+
+function estimatedValueAtYear(y) {
+  const v = state.investment;
+  if (!v) return null;
+  const v0 = (v.valorTerminadoMXN.minimo + v.valorTerminadoMXN.maximo) / 2;
+  if (y <= 0) return v0;
+  if (y <= 5) return v0 + (v.valorEn5AniosMXN - v0) * (y / 5);
+  if (y <= 10) return v.valorEn5AniosMXN + (v.valorEn10AniosMXN - v.valorEn5AniosMXN) * ((y - 5) / 5);
+  return v.valorEn10AniosMXN * Math.pow(1 + (v.plusvaliaAnualPct || 0) / 100, y - 10);
+}
+
+function updateSimValue() {
+  const val = estimatedValueAtYear(sim.year);
+  $('simValueBlock').style.display = val === null ? 'none' : 'block';
+  if (val !== null) $('simValue').textContent = '$' + fmt(Math.round(val)) + ' MXN';
+}
+
+$('yearSlider').addEventListener('input', e => {
+  stopPlaying();
+  setSimYear(Number(e.target.value));
+});
+
+function stopPlaying() {
+  sim.playing = false;
+  $('btnPlay').textContent = '▶ Reproducir 30 años';
+}
+
+$('btnPlay').addEventListener('click', () => {
+  if (sim.playing) { stopPlaying(); return; }
+  if (!state.engineering) return;
+  sim.playing = true;
+  $('btnPlay').textContent = '⏸ Pausa';
+  if (sim.year >= 30) setSimYear(0);
+  const from = sim.year;
+  const start = performance.now();
+  const msPerYear = 320;
+  (function tick(now) {
+    if (!sim.playing) return;
+    const yr = Math.min(30, from + (now - start) / msPerYear);
+    setSimYear(Math.round(yr));
+    if (yr >= 30) { stopPlaying(); return; }
+    requestAnimationFrame(tick);
+  })(start);
+});
+
+function markChip(n) {
+  document.querySelector(`.step-chip[data-step="${n}"]`)?.classList.add('done');
+}
+
+/* =====================================================================
+   Paso 8 — Análisis de inversión (Valor Futuro)
+===================================================================== */
+const INVESTMENT_SCHEMA = {
+  type: "object", additionalProperties: false,
+  required: ["resumen","valorTerminadoMXN","valorEn5AniosMXN","valorEn10AniosMXN","plusvaliaAnualPct","rentaMensualMXN","capRatePct","roiDesarrolloPct","puntoEquilibrioAnios","factoresPlusvalia","riesgos","recomendacion"],
+  properties: {
+    resumen: { type: "string" },
+    valorTerminadoMXN: { type: "object", additionalProperties: false, required: ["minimo","maximo"],
+      properties: { minimo: { type: "number" }, maximo: { type: "number" } } },
+    valorEn5AniosMXN: { type: "number" },
+    valorEn10AniosMXN: { type: "number" },
+    plusvaliaAnualPct: { type: "number" },
+    rentaMensualMXN: { type: "number" },
+    capRatePct: { type: "number", description: "Renta anual / valor del inmueble × 100" },
+    roiDesarrolloPct: { type: "number", description: "(Valor terminado - costo de obra) / costo de obra × 100" },
+    puntoEquilibrioAnios: { type: "number", description: "Años de renta necesarios para recuperar el costo de obra" },
+    factoresPlusvalia: { type: "array", items: { type: "string" } },
+    riesgos: { type: "array", items: { type: "string" } },
+    recomendacion: { type: "string" }
+  }
+};
+
+$('btnInvest').addEventListener('click', async () => {
+  if (!state.geometry || !state.engineering) return;
+  hideError('errInvest');
+  $('btnInvest').disabled = true;
+  $('statusInvest').classList.add('show');
+  try {
+    const ubicacion = $('invLocation').value.trim() || $('addressInput').value.trim() || 'México (ubicación no especificada; asume ciudad media)';
+    state.investment = await callClaude({
+      system: 'Eres un analista senior de inversión inmobiliaria en México, experto en valuación, plusvalía por zona, impacto de obra pública, ciclos económicos y rentas de mercado. Trabajas para BrickBit ("Valor Futuro"). Das cifras realistas y conservadoras en MXN, coherentes con la ubicación indicada, la tipología del proyecto y el costo de obra calculado. El valor del inmueble incluye un supuesto razonable de valor de terreno para la zona: decláralo en el resumen.',
+      content: [{ type: 'text', text:
+`Analiza la inversión de este proyecto para un desarrollador.
+
+UBICACIÓN: ${ubicacion}
+
+GEOMETRÍA DEL PROYECTO:
+${JSON.stringify(state.geometry)}
+
+COSTO DE OBRA NEGRA ESTIMADO (MXN): ${JSON.stringify(state.engineering.costoEstimadoMXN)}
+RESUMEN TÉCNICO: ${state.engineering.resumen}
+PRIMERA FALLA PREDICHA: ${state.engineering.primeraFalla.nombre} (~${state.engineering.primeraFalla.aniosEstimados} años)
+
+Entrega: valor del inmueble terminado (rango), valor a 5 y 10 años, plusvalía anual, renta mensual esperada, cap rate, ROI del desarrollador contra el costo de obra, punto de equilibrio en años de renta, factores de plusvalía de la zona, riesgos y una recomendación clara (desarrollar / renegociar / no desarrollar).` }],
+      schema: INVESTMENT_SCHEMA,
+    });
+    renderInvestment();
+  } catch (err) {
+    showError('errInvest', err.message);
+  } finally {
+    $('statusInvest').classList.remove('show');
+    $('btnInvest').disabled = false;
+  }
+});
+
+function renderInvestment() {
+  const v = state.investment;
+  if (!v) return;
+  $('secInvest').classList.remove('hidden');
+  $('invContent').classList.remove('hidden');
+  $('invResumen').textContent = v.resumen;
+
+  const prom = (v.valorTerminadoMXN.minimo + v.valorTerminadoMXN.maximo) / 2;
+  const TIP = {
+    'Valor al terminar (prom.)': 'Precio de mercado estimado del inmueble recién construido (promedio del rango). Incluye un supuesto de valor de terreno.',
+    'Plusvalía anual': 'Cuánto sube el valor del inmueble cada año gracias a la zona, los servicios y la demanda.',
+    'Renta mensual est.': 'Lo que podrías cobrar de renta al mes según el mercado de la zona.',
+    'Cap rate': 'Renta de todo un año dividida entre el valor del inmueble. Mide qué tan buen negocio es rentarlo: 6–9% es típico en México.',
+    'ROI del desarrollo': 'Retorno de inversión del desarrollador: la ganancia comparada con lo que costó construir. Ej. 90% = casi duplicas lo invertido.',
+    'Equilibrio vía renta': 'Cuántos años de renta se necesitan para recuperar el costo de la obra.',
+  };
+  $('invStats').innerHTML = [
+    ['$' + fmt(prom), 'Valor al terminar (prom.)'],
+    [fmt(v.plusvaliaAnualPct) + '%', 'Plusvalía anual'],
+    ['$' + fmt(v.rentaMensualMXN), 'Renta mensual est.'],
+    [fmt(v.capRatePct) + '%', 'Cap rate'],
+    [fmt(v.roiDesarrolloPct) + '%', 'ROI del desarrollo'],
+    [fmt(v.puntoEquilibrioAnios) + ' años', 'Equilibrio vía renta'],
+  ].map(([val, k]) => `<div class="geo-stat"><div class="v">${val}</div><div class="k">${k}<span class="help" tabindex="0" data-tip="${TIP[k]}">?</span></div></div>`).join('');
+
+  const costoProm = (state.engineering.costoEstimadoMXN.minimo + state.engineering.costoEstimadoMXN.maximo) / 2;
+  const rows = [
+    ['Costo de obra', costoProm, 'var(--muted-txt)'],
+    ['Valor al terminar', prom, 'var(--clay-soft)'],
+    ['Valor a 5 años', v.valorEn5AniosMXN, 'var(--lime)'],
+    ['Valor a 10 años', v.valorEn10AniosMXN, 'var(--lime)'],
+  ];
+  const mx = Math.max(...rows.map(r => r[1]));
+  $('valBars').innerHTML = rows.map(([l, val, color]) => `
+    <div class="valbar">
+      <span class="lbl">${l}</span>
+      <div class="valbar-track"><div class="valbar-fill" style="width:${Math.max(2, val / mx * 100)}%;background:${color}"></div></div>
+      <span class="amt">$${fmt(val)}</span>
+    </div>`).join('');
+
+  $('invFactores').innerHTML = v.factoresPlusvalia.map(f => `<li>${escapeHtml(f)}</li>`).join('');
+  $('invRiesgos').innerHTML = v.riesgos.map(f => `<li>${escapeHtml(f)}</li>`).join('');
+  $('invReco').textContent = v.recomendacion;
+  markChip(8);
+  updateSimValue();
+}
+
+const DEMO_INVESTMENT = {
+  resumen: "Vivienda media de 240 m² en zona habitacional consolidada (supuesto de terreno propio valuado en ~$900,000). Con costo de obra de $1.45–1.85 MDP, el proyecto muestra margen de desarrollo saludable y plusvalía sostenida por infraestructura urbana.",
+  valorTerminadoMXN: { minimo: 2900000, maximo: 3400000 },
+  valorEn5AniosMXN: 4230000,
+  valorEn10AniosMXN: 5680000,
+  plusvaliaAnualPct: 6.1,
+  rentaMensualMXN: 21500,
+  capRatePct: 8.2,
+  roiDesarrolloPct: 91,
+  puntoEquilibrioAnios: 6.4,
+  factoresPlusvalia: [
+    "Zona habitacional consolidada con servicios completos y equipamiento urbano",
+    "Obra pública vial anunciada a 1.5 km que reduce tiempos de traslado",
+    "Déficit de vivienda media en el submercado local",
+    "Tipología de 2 niveles con alta demanda de compra familiar"
+  ],
+  riesgos: [
+    "Un alza de tasas hipotecarias podría enfriar la demanda de compra",
+    "El costo de acero y cemento puede mover el presupuesto ±8%",
+    "La primera falla predicha (losa de azotea, año ~2) castiga el valor de reventa si no se previene"
+  ],
+  recomendacion: "Desarrollar. El ROI estimado de ~91% sobre costo de obra supera con holgura el umbral típico de 30–40% del desarrollador residencial. Invierte los ~$115,000 de prevención de fallas: protege el valor de reventa y se recupera casi 5 veces en ahorro de reparaciones a 30 años."
+};
+
+/* =====================================================================
+   Exportar el gemelo digital a glTF (.glb)
+===================================================================== */
+$('btnExportGltf').addEventListener('click', () => {
+  if (!three || !state.geometry) { alert('Primero genera el gemelo digital.'); return; }
+  const building = three.scene.getObjectByName('building');
+  if (!building) return;
+  new GLTFExporter().parse(
+    building,
+    (result) => {
+      const blob = new Blob([result], { type: 'model/gltf-binary' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${slug(state.geometry.nombreProyecto)}.glb`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    },
+    (err) => alert('No se pudo exportar el modelo: ' + err.message),
+    { binary: true }
+  );
+});
+
+/* =====================================================================
+   Proyectos guardados (localStorage) — para la comparación
+===================================================================== */
+function loadProjects() {
+  try { return JSON.parse(localStorage.getItem('bb_projects') || '[]'); } catch { return []; }
+}
+function saveCurrentProject() {
+  if (!state.geometry || !state.engineering) return;
+  const list = loadProjects();
+  const geoStr = JSON.stringify(state.geometry);
+  if (list.some(p => JSON.stringify(p.geometry) === geoStr)) { renderProjects(); return; } // ya guardado
+  list.unshift({
+    id: 'p' + Date.now(),
+    nombre: state.geometry.nombreProyecto,
+    fecha: new Date().toISOString(),
+    geometry: state.geometry,
+    engineering: state.engineering,
+  });
+  try { localStorage.setItem('bb_projects', JSON.stringify(list.slice(0, 12))); } catch {}
+  renderProjects();
+}
+function deleteProject(id) {
+  localStorage.setItem('bb_projects', JSON.stringify(loadProjects().filter(p => p.id !== id)));
+  renderProjects();
+}
+function renderProjects() {
+  const list = loadProjects();
+  $('projList').innerHTML = list.length
+    ? list.map(p => `
+      <div class="proj-row">
+        <div><b>${escapeHtml(p.nombre)}</b>
+          <div class="meta">${new Date(p.fecha).toLocaleString('es-MX')} · ${p.geometry.niveles} niv. · ${fmt(p.geometry.areaTotalM2)} m² · $${fmt(p.engineering.costoEstimadoMXN.minimo)}–${fmt(p.engineering.costoEstimadoMXN.maximo)} MXN</div>
+        </div>
+        <button class="del" data-del="${p.id}">Eliminar</button>
+      </div>`).join('')
+    : '<div class="proj-empty">Aún no hay proyectos guardados. Analiza un plano o corre el proyecto de ejemplo.</div>';
+  $('projList').querySelectorAll('[data-del]').forEach(b =>
+    b.addEventListener('click', () => deleteProject(b.dataset.del)));
+}
+renderProjects();
+
+/* =====================================================================
+   Reporte ejecutivo (PDF vía impresión del navegador)
+===================================================================== */
+function snapshot3D() {
+  if (!three) return null;
+  try {
+    three.renderer.render(three.scene, three.camera);
+    return three.renderer.domElement.toDataURL('image/png');
+  } catch { return null; }
+}
+
+function buildReportHTML() {
+  const g = state.geometry, e = state.engineering, v = state.investment;
+  const snap = snapshot3D();
+  const planImg = state.file && !state.file.isPdf
+    ? `data:${state.file.mediaType};base64,${state.file.base64}` : null;
+  const fecha = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+  const h = escapeHtml;
+  const money = (n) => '$' + fmt(n) + ' MXN';
+  const promVal = v ? (v.valorTerminadoMXN.minimo + v.valorTerminadoMXN.maximo) / 2 : null;
+  const prevTotal = e.fallas.reduce((s2, f) => s2 + (f.costoPrevencionMXN || 0), 0);
+  const repTotal = e.fallas.reduce((s2, f) => s2 + (f.costoReparacionMXN || 0), 0);
+
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<title>Reporte BrickBit — ${h(g.nombreProyecto)}</title>
+<style>
+  @page{margin:14mm}
+  *{box-sizing:border-box}
+  body{font-family:Georgia,'Times New Roman',serif;color:#22201d;margin:0;padding:34px 40px;font-size:12.5px;line-height:1.55;background:#fff}
+  .top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid #1a7d50;padding-bottom:14px;margin-bottom:22px}
+  .brand{font-size:22px;font-weight:700;color:#0f130a}
+  .brand span{color:#1a7d50;font-style:italic;font-weight:400}
+  .meta{font-size:11px;color:#77705f;text-align:right}
+  h1{font-size:23px;margin:0 0 4px;color:#0f130a}
+  h2{font-size:15px;color:#1a7d50;border-bottom:1px solid #d8d2c4;padding-bottom:5px;margin:26px 0 10px}
+  .lead{color:#55503f;font-size:12.5px;margin:0}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+  .kpi{border:1px solid #d8d2c4;border-radius:8px;padding:10px 14px;min-width:130px}
+  .kpi .v{font-size:16px;font-weight:700;color:#1a7d50}
+  .kpi .k{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:#77705f}
+  .imgs{display:flex;gap:14px;margin:14px 0}
+  .imgs figure{margin:0;flex:1}
+  .imgs img{width:100%;border:1px solid #d8d2c4;border-radius:8px}
+  .imgs figcaption{font-size:9.5px;color:#77705f;margin-top:4px;text-align:center}
+  table{width:100%;border-collapse:collapse;font-size:11px;margin:8px 0}
+  th{background:#f0ece0;text-align:left;padding:7px 9px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#55503f;border-bottom:2px solid #d8d2c4}
+  td{padding:7px 9px;border-bottom:1px solid #e6e1d3;vertical-align:top}
+  ul{margin:6px 0;padding-left:18px}
+  li{margin-bottom:4px}
+  .callout{border:1.5px solid #c0522f;background:#fdf3ef;border-radius:8px;padding:13px 16px;margin:12px 0}
+  .callout b{color:#c0522f}
+  .callout-ok{border-color:#1a7d50;background:#f0f7f1}
+  .callout-ok b{color:#1a7d50}
+  .sev{font-size:9px;padding:2px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+  .sev.baja{background:#e3f2e6;color:#1a7d50}.sev.media{background:#faf2da;color:#8a6d1a}
+  .sev.alta,.sev.crítica{background:#fbe6e0;color:#c0522f}
+  .disclaimer{margin-top:28px;border-top:1px solid #d8d2c4;padding-top:12px;font-size:9.5px;color:#77705f}
+  .footer{margin-top:10px;font-size:9.5px;color:#a09880;text-align:center}
+  section{break-inside:avoid-page}
+</style></head><body>
+
+<div class="top">
+  <div class="brand">■ BrickBit <span>· Gemelo Digital</span></div>
+  <div class="meta">Reporte ejecutivo<br>${fecha}</div>
+</div>
+
+<h1>${h(g.nombreProyecto)}</h1>
+<p class="lead">${h(e.resumen)}</p>
+
+<div class="kpis">
+  <div class="kpi"><div class="v">${g.niveles}</div><div class="k">Niveles</div></div>
+  <div class="kpi"><div class="v">${fmt(g.areaTotalM2)} m²</div><div class="k">Área total</div></div>
+  <div class="kpi"><div class="v">${money(e.costoEstimadoMXN.minimo)} – ${money(e.costoEstimadoMXN.maximo)}</div><div class="k">Costo de obra negra</div></div>
+  ${v ? `<div class="kpi"><div class="v">${money(Math.round(promVal))}</div><div class="k">Valor al terminar</div></div>
+  <div class="kpi"><div class="v">${fmt(v.roiDesarrolloPct)}%</div><div class="k">ROI del desarrollo</div></div>` : ''}
+</div>
+
+${(snap || planImg) ? `<div class="imgs">
+  ${planImg ? `<figure><img src="${planImg}"><figcaption>Plano original analizado</figcaption></figure>` : ''}
+  ${snap ? `<figure><img src="${snap}"><figcaption>Gemelo digital 3D generado por IA</figcaption></figure>` : ''}
+</div>` : ''}
+
+<section>
+<h2>1 · Resumen del proyecto</h2>
+<table>
+  <tr><td style="width:32%;color:#77705f">Sistema estructural</td><td>${h(g.sistemaEstructural)}</td></tr>
+  <tr><td style="color:#77705f">Huella / entrepiso</td><td>${g.anchoM} × ${g.fondoM} m · ${g.alturaEntrepisoM} m de altura por nivel</td></tr>
+  <tr><td style="color:#77705f">Espacios identificados</td><td>${g.espacios.map(x => h(x.nombre) + ' (' + fmt(x.areaM2) + ' m²)').join(' · ')}</td></tr>
+  <tr><td style="color:#77705f">Notas del análisis</td><td>${h(g.notas || '—')}</td></tr>
+</table>
+</section>
+
+<section>
+<h2>2 · Materiales y calidades recomendadas</h2>
+<table><thead><tr><th>Categoría</th><th>Concepto</th><th>Cantidad</th><th>Calidad / especificación</th></tr></thead><tbody>
+${e.materiales.map(cat => cat.items.map((it, i) =>
+  `<tr>${i === 0 ? `<td rowspan="${cat.items.length}"><b>${h(cat.categoria)}</b></td>` : ''}<td>${h(it.concepto)}</td><td>${fmt(it.cantidad)} ${h(it.unidad)}</td><td>${h(it.calidad)}</td></tr>`
+).join('')).join('')}
+</tbody></table>
+</section>
+
+<section>
+<h2>3 · Acero de refuerzo</h2>
+<table><thead><tr><th>Varilla</th><th>Ø mm</th><th>Grado</th><th>Cantidad</th><th>Separación</th><th>Ubicación</th></tr></thead><tbody>
+${e.varillas.map(vr => `<tr><td><b>${h(vr.tipo)}</b></td><td>${vr.diametroMm}</td><td>${h(vr.grado)}</td><td>${fmt(vr.cantidadKg)} kg</td><td>${vr.separacionCm ? '@ ' + vr.separacionCm + ' cm' : '—'}</td><td>${h(vr.ubicacion)}</td></tr>`).join('')}
+</tbody></table>
+</section>
+
+<section>
+<h2>4 · Predicción de fallas y estrategia de prevención</h2>
+<div class="callout"><b>Primera falla predicha:</b> ${h(e.primeraFalla.nombre)} en ~${fmt(e.primeraFalla.aniosEstimados)} años (confianza ${Math.round(e.primeraFalla.confianzaPct)}%). ${h(e.primeraFalla.explicacion)}</div>
+<table><thead><tr><th>Falla</th><th>Severidad</th><th>Prob.</th><th>Año est.</th><th>Reparar</th><th>Prevenir</th></tr></thead><tbody>
+${[...e.fallas].sort((a, b) => a.aniosEstimados - b.aniosEstimados).map(f =>
+  `<tr><td><b>${h(f.nombre)}</b><br><span style="color:#77705f">${h(f.prevencion)}</span></td><td><span class="sev ${h(f.severidad)}">${h(f.severidad)}</span></td><td>${Math.round(f.probabilidadPct)}%</td><td>~${fmt(f.aniosEstimados)}</td><td>${f.costoReparacionMXN ? money(f.costoReparacionMXN) : '—'}</td><td>${f.costoPrevencionMXN ? money(f.costoPrevencionMXN) : '—'}</td></tr>`).join('')}
+</tbody></table>
+${prevTotal ? `<div class="callout callout-ok"><b>Prevenir conviene:</b> invertir ${money(prevTotal)} en prevención durante la obra evita hasta ${money(repTotal)} en reparaciones futuras (ahorro potencial de ${money(repTotal - prevTotal)}).</div>` : ''}
+</section>
+
+${v ? `<section>
+<h2>5 · Análisis de inversión — Valor Futuro</h2>
+<p class="lead">${h(v.resumen)}</p>
+<div class="kpis">
+  <div class="kpi"><div class="v">${money(v.valorTerminadoMXN.minimo)} – ${money(v.valorTerminadoMXN.maximo)}</div><div class="k">Valor terminado</div></div>
+  <div class="kpi"><div class="v">${money(v.valorEn5AniosMXN)}</div><div class="k">Valor a 5 años</div></div>
+  <div class="kpi"><div class="v">${money(v.valorEn10AniosMXN)}</div><div class="k">Valor a 10 años</div></div>
+  <div class="kpi"><div class="v">${fmt(v.plusvaliaAnualPct)}%</div><div class="k">Plusvalía anual</div></div>
+  <div class="kpi"><div class="v">${money(v.rentaMensualMXN)}</div><div class="k">Renta mensual</div></div>
+  <div class="kpi"><div class="v">${fmt(v.capRatePct)}%</div><div class="k">Cap rate</div></div>
+</div>
+<table><tr>
+  <td style="width:50%;vertical-align:top"><b>Factores de plusvalía</b><ul>${v.factoresPlusvalia.map(f2 => '<li>' + h(f2) + '</li>').join('')}</ul></td>
+  <td style="vertical-align:top"><b>Riesgos de inversión</b><ul>${v.riesgos.map(f2 => '<li>' + h(f2) + '</li>').join('')}</ul></td>
+</tr></table>
+<div class="callout callout-ok"><b>Recomendación:</b> ${h(v.recomendacion)}</div>
+</section>` : ''}
+
+<div class="disclaimer"><b>Aviso legal:</b> este reporte fue generado por inteligencia artificial (BrickBit Gemelo Digital) como herramienta de apoyo para exploración temprana de proyectos. Las cantidades de materiales, calidades, costos, valores y predicciones de fallas son estimaciones y no sustituyen el cálculo estructural, la memoria de cálculo, el avalúo profesional ni la revisión de un ingeniero estructurista o DRO conforme a los reglamentos de construcción aplicables.</div>
+<div class="footer">Generado con BrickBit · Gemelo Digital — brickbit.co</div>
+
+<script>setTimeout(() => { try { window.print(); } catch (e) {} }, 600);<\/script>
+</body></html>`;
+}
+
+$('btnReport').addEventListener('click', () => {
+  if (!state.geometry || !state.engineering) { alert('Primero completa el análisis (o usa el proyecto de ejemplo).'); return; }
+  const w = window.open('', '_blank');
+  if (!w) { alert('Tu navegador bloqueó la ventana del reporte. Permite ventanas emergentes para este sitio.'); return; }
+  w.document.write(buildReportHTML());
+  w.document.close();
+});
+
+/* =====================================================================
+   Compartir proyecto por enlace
+   - Con backend: enlace corto guardado 90 días (Cloudflare KV)
+   - Sin backend: el enlace lleva el proyecto comprimido en la propia URL
+===================================================================== */
+function b64url(u8) {
+  let bin = '';
+  for (const b of u8) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function unb64url(str) {
+  const bin = atob(str.replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(bin, c => c.charCodeAt(0));
+}
+async function packProject(data) {
+  const bytes = new TextEncoder().encode(JSON.stringify(data));
+  if (typeof CompressionStream !== 'undefined') {
+    const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    return 'z' + b64url(new Uint8Array(await new Response(stream).arrayBuffer()));
+  }
+  return 'j' + b64url(bytes);
+}
+async function unpackProject(str) {
+  const mode = str[0], bytes = unb64url(str.slice(1));
+  if (mode === 'z') {
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return JSON.parse(await new Response(stream).text());
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+$('btnShare').addEventListener('click', async () => {
+  if (!state.geometry || !state.engineering) { alert('Primero completa el análisis (o usa el proyecto de ejemplo).'); return; }
+  const data = {
+    v: 1,
+    nombre: state.geometry.nombreProyecto,
+    fecha: new Date().toISOString(),
+    geometry: state.geometry,
+    engineering: state.engineering,
+    investment: state.investment || null,
+  };
+  const backend = ($('backendUrl').value || '').trim().replace(/\/+$/, '');
+  let url = null, viaBackend = false;
+  if (backend) {
+    try {
+      const r = await fetch(backend + '/api/share', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        url = location.origin + location.pathname + '?share=' + encodeURIComponent(j.id) + '&api=' + encodeURIComponent(backend);
+        viaBackend = true;
+      }
+    } catch {}
+  }
+  if (!url) url = location.origin + location.pathname + '#p=' + await packProject(data);
+  $('shareUrl').value = url;
+  $('shareNote').textContent = viaBackend
+    ? 'Enlace corto creado en tu backend. Válido por 90 días. Quien lo abra verá el análisis completo, en modo lectura.'
+    : 'El enlace lleva el proyecto completo comprimido dentro de la propia dirección: es largo, pero no caduca ni necesita servidor. Con el backend configurado obtendrías un enlace corto.';
+  $('shareBox').classList.add('show');
+  $('shareUrl').select();
+});
+
+$('btnCopyShare').addEventListener('click', async () => {
+  const url = $('shareUrl').value;
+  try { await navigator.clipboard.writeText(url); }
+  catch { $('shareUrl').select(); document.execCommand('copy'); }
+  $('btnCopyShare').textContent = '✓ Copiado';
+  setTimeout(() => $('btnCopyShare').textContent = 'Copiar', 1600);
+});
+
+/* Cargar un proyecto compartido al abrir la página */
+(async function loadSharedProject() {
+  try {
+    const qs = new URLSearchParams(location.search);
+    let data = null;
+    const shareId = qs.get('share'), api = (qs.get('api') || '').replace(/\/+$/, '');
+    if (shareId && /^https:\/\//.test(api)) {
+      const r = await fetch(api + '/api/share/' + encodeURIComponent(shareId));
+      if (r.ok) data = await r.json();
+    } else if (location.hash.startsWith('#p=')) {
+      data = await unpackProject(location.hash.slice(3));
+    }
+    if (!data || !data.geometry || !data.engineering) return;
+    state.geometry = data.geometry;
+    state.engineering = data.engineering;
+    state.investment = data.investment || null;
+    $('sharedBannerName').textContent = data.nombre || data.geometry.nombreProyecto;
+    $('sharedBanner').classList.remove('hidden');
+    $('secConfig').classList.add('hidden');
+    $('secUpload').classList.add('hidden');
+    renderModelSection();
+    renderEngineering();
+    initSimulator();
+    if (state.investment) renderInvestment();
+    $('secMaterials').classList.remove('hidden');
+    $('secInvest').classList.remove('hidden');
+    saveCurrentProject();
+    setStep(6, 'done');
+  } catch (err) {
+    console.warn('No se pudo cargar el proyecto compartido:', err);
+  }
+})();
+
+/* Tooltips "?": en pantallas táctiles se abren con un toque */
+document.addEventListener('click', (ev) => {
+  const target = ev.target.closest('.help');
+  document.querySelectorAll('.help.open').forEach(x => { if (x !== target) x.classList.remove('open'); });
+  if (target) { target.classList.toggle('open'); ev.preventDefault(); }
+});
+
+/* =====================================================================
+   Utilidades
+===================================================================== */
+function slug(s) {
+  return String(s || 'modelo').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'modelo';
+}
+function fmt(n) {
+  return Number(n).toLocaleString('es-MX', { maximumFractionDigits: 1 });
+}
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function showError(id, msg) { const el = $(id); el.textContent = msg; el.classList.add('show'); }
+function hideError(id) { $(id).classList.remove('show'); }
+</script>
+
+</body>
+</html>
