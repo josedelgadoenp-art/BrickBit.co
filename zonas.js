@@ -1,0 +1,37 @@
+/* BrickBit — Datos de mercado "Valor Futuro" por zona (dataset compartido)
+   Usado por: zona3d.html (vista inmersiva) y gemelo-digital.html (análisis de inversión).
+   precio_m2 = precio de venta promedio MXN/m² · plusvalia = % anual · yld = yield de renta % */
+window.BRICKBIT_ZONES = [
+  {nombre:"Ciudad de México",lat:19.432,lng:-99.133,precio_m2:40500,plusvalia:5.1,yld:4.5},
+  {nombre:"Guadalajara",lat:20.667,lng:-103.347,precio_m2:13400,plusvalia:12.5,yld:6.2},
+  {nombre:"Monterrey",lat:25.686,lng:-100.316,precio_m2:12700,plusvalia:9.3,yld:6.8},
+  {nombre:"Cancún",lat:21.161,lng:-86.851,precio_m2:17400,plusvalia:13.4,yld:7.8},
+  {nombre:"Mérida",lat:20.967,lng:-89.623,precio_m2:19200,plusvalia:10.7,yld:7.1},
+  {nombre:"Querétaro",lat:20.588,lng:-100.389,precio_m2:20000,plusvalia:6.6,yld:6.5},
+  {nombre:"Tijuana",lat:32.514,lng:-117.038,precio_m2:17600,plusvalia:11.0,yld:5.8},
+  {nombre:"Puebla",lat:19.041,lng:-98.206,precio_m2:17200,plusvalia:9.2,yld:5.9},
+  {nombre:"León",lat:21.122,lng:-101.682,precio_m2:12500,plusvalia:8.2,yld:6.4},
+  {nombre:"San Luis Potosí",lat:22.15,lng:-100.976,precio_m2:13900,plusvalia:7.5,yld:6.9},
+  {nombre:"Aguascalientes",lat:21.882,lng:-102.291,precio_m2:11500,plusvalia:11.7,yld:6.7},
+  {nombre:"La Paz",lat:24.142,lng:-110.311,precio_m2:25600,plusvalia:11.1,yld:7.4},
+  {nombre:"Saltillo",lat:25.423,lng:-101.005,precio_m2:10500,plusvalia:8.4,yld:5.4},
+  {nombre:"Chihuahua",lat:28.632,lng:-106.069,precio_m2:14500,plusvalia:10.2,yld:5.6},
+  {nombre:"Culiacán",lat:24.809,lng:-107.394,precio_m2:14200,plusvalia:10.7,yld:6.6},
+  {nombre:"Hermosillo",lat:29.073,lng:-110.956,precio_m2:12500,plusvalia:9.8,yld:5.7},
+  {nombre:"Durango",lat:24.028,lng:-104.668,precio_m2:8300,plusvalia:4.9,yld:7.0},
+  {nombre:"Tepic",lat:21.504,lng:-104.894,precio_m2:16300,plusvalia:11.8,yld:6.3},
+  {nombre:"Colima",lat:19.243,lng:-103.725,precio_m2:11500,plusvalia:8.4,yld:6.0},
+  {nombre:"Toluca",lat:19.283,lng:-99.656,precio_m2:15200,plusvalia:5.2,yld:5.2},
+  {nombre:"Morelia",lat:19.706,lng:-101.195,precio_m2:11600,plusvalia:10.9,yld:5.5},
+  {nombre:"Cuernavaca",lat:18.924,lng:-99.221,precio_m2:20100,plusvalia:9.1,yld:5.3},
+  {nombre:"Pachuca",lat:20.101,lng:-98.759,precio_m2:13900,plusvalia:9.6,yld:5.5},
+  {nombre:"Oaxaca",lat:17.073,lng:-96.726,precio_m2:17600,plusvalia:7.1,yld:5.3},
+  {nombre:"Tuxtla Gutiérrez",lat:16.753,lng:-93.116,precio_m2:15800,plusvalia:8.4,yld:4.6},
+  {nombre:"Villahermosa",lat:17.989,lng:-92.928,precio_m2:13200,plusvalia:5.9,yld:4.8},
+  {nombre:"Campeche",lat:19.845,lng:-90.523,precio_m2:17200,plusvalia:7.5,yld:5.4},
+  {nombre:"Veracruz",lat:19.173,lng:-96.134,precio_m2:13100,plusvalia:7.1,yld:5.1},
+  {nombre:"Zacatecas",lat:22.77,lng:-102.583,precio_m2:9000,plusvalia:5.8,yld:5.6},
+  {nombre:"Tlaxcala",lat:19.318,lng:-98.237,precio_m2:9300,plusvalia:5.0,yld:5.2},
+  {nombre:"Reynosa",lat:26.051,lng:-98.288,precio_m2:9600,plusvalia:11.3,yld:6.1},
+  {nombre:"Chilpancingo",lat:17.551,lng:-99.505,precio_m2:15100,plusvalia:8.1,yld:4.4}
+];
