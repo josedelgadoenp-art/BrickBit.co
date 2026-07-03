@@ -408,7 +408,7 @@
   <!-- ===== 1. UPLOAD ===== -->
   <section class="card" id="secUpload">
     <div class="card-head"><span class="knum">01 /</span><h2>Sube el plano del arquitecto</h2></div>
-    <p class="sub">Acepta imágenes (PNG, JPG, WebP) o PDF. Funciona mejor con plantas arquitectónicas con cotas visibles <span class="help" tabindex="0" data-tip="Las cotas son los números de medida del plano (ej. 3.50 m). Si no se leen, la IA estima las dimensiones a partir de puertas y muebles estándar y te lo avisa en las notas.">?</span>; si el plano incluye cortes o detalles estructurales, la IA también los aprovecha.</p>
+    <p class="sub">¿Aún no tienes plano? <a href="crear-plano.html" style="color:var(--lime)">Créalo desde texto con el Creador IA →</a><br>Acepta imágenes (PNG, JPG, WebP) o PDF. Funciona mejor con plantas arquitectónicas con cotas visibles <span class="help" tabindex="0" data-tip="Las cotas son los números de medida del plano (ej. 3.50 m). Si no se leen, la IA estima las dimensiones a partir de puertas y muebles estándar y te lo avisa en las notas.">?</span>; si el plano incluye cortes o detalles estructurales, la IA también los aprovecha.</p>
     <div class="dropzone" id="dropzone">
       <div class="icon">▤</div>
       <strong>Arrastra tu plano aquí</strong>
@@ -433,9 +433,21 @@
     <div class="geo-stats" id="geoStats"></div>
     <canvas id="viewer3d"></canvas>
     <div class="hint" style="margin-top:10px">Arrastra para orbitar · rueda para acercar · clic derecho para desplazar.</div>
+    <div class="toolbar" style="margin-top:16px;align-items:center">
+      <div class="field" style="min-width:190px;flex:0 1 230px">
+        <label>🌞 Asoleamiento — mes: <b id="sunMesLbl" style="color:var(--lime)">jun</b> <span class="help" tabindex="0" data-tip="Simula la posición real del sol según la latitud de la zona elegida (paso 08), el mes y la hora. Observa qué sombras proyecta y recibe tu edificio en solsticios y equinoccios.">?</span></label>
+        <input type="range" id="sunMes" min="1" max="12" step="1" value="6" style="width:100%;accent-color:var(--lime)">
+      </div>
+      <div class="field" style="min-width:190px;flex:0 1 230px">
+        <label>hora: <b id="sunHoraLbl" style="color:var(--lime)">12:00</b></label>
+        <input type="range" id="sunHora" min="6" max="20" step="0.5" value="12" style="width:100%;accent-color:var(--lime)">
+      </div>
+      <div class="hint" id="sunInfo" style="flex:1;min-width:160px"></div>
+    </div>
     <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-ghost" id="btnExportGltf">⬇ Modelo 3D (.glb) <span class="help" tabindex="0" data-tip="Descarga el edificio en formato glTF, el estándar de la industria 3D. Se abre en Blender, Unity, Unreal o visores web.">?</span></button>
       <button class="btn btn-ghost" id="btnReport">📄 Reporte ejecutivo (PDF) <span class="help" tabindex="0" data-tip="Genera un documento imprimible con todo el análisis: geometría, materiales, fallas e inversión. Ideal para llevarlo al banco o a inversionistas. En el diálogo de impresión elige “Guardar como PDF”.">?</span></button>
+      <button class="btn btn-ghost" id="btnRecord">🎬 Video órbita <span class="help" tabindex="0" data-tip="Graba 10 segundos del gemelo girando en 360° y descarga un video .webm listo para redes, presentaciones o inversionistas.">?</span></button>
       <button class="btn btn-ghost" id="btnShare">🔗 Compartir proyecto <span class="help" tabindex="0" data-tip="Crea un enlace para que tu arquitecto, socio o cliente vea este análisis completo sin instalar nada ni usar llaves.">?</span></button>
       <a class="btn btn-ghost" href="comparar.html">Comparar proyectos →</a>
       <a class="btn btn-ghost" id="btnZona3d" href="zona3d.html">🌍 Ver en zona 3D <span class="help" tabindex="0" data-tip="Abre la vista inmersiva fotorrealista de BrickBit y coloca este proyecto sobre el mapa real de la ciudad, con su simulador 4D integrado.">?</span></a>
@@ -888,9 +900,9 @@ async function analyzeEngineering(geometry) {
   return callClaude({
     system: 'Eres un ingeniero estructurista y residente de obra con 25 años de experiencia en México. Cuantificas materiales conforme a prácticas comunes (NTC/CFE/ONNCCE), recomiendas calidades y acero de refuerzo por elemento, y evalúas riesgos de falla de diseño y construcción con horizontes de tiempo realistas. Sé específico y conservador; incluye desperdicio típico en cantidades.',
     content: [
-      planContentBlock(),
+      ...(state.file ? [planContentBlock()] : []),
       { type: 'text', text:
-`Con base en el plano adjunto y en la geometría ya extraída del proyecto (JSON abajo), genera:
+`${state.file ? 'Con base en el plano adjunto y en la geometría ya extraída del proyecto (JSON abajo)' : 'Con base en la geometría del proyecto (JSON abajo; no hay imagen del plano)'}, genera:
 1) La cuantificación y recomendación de materiales (concreto con su f'c, mampostería, cemento/morteros, etc.) con cantidad, unidad y calidad.
 2) El acero de refuerzo: tipos de varilla (#3, #4, #5…), diámetro, grado, kilogramos, separación y ubicación (cimentación, castillos, trabes, losas).
 3) Recomendaciones de obra concretas.
@@ -909,7 +921,7 @@ ${JSON.stringify(geometry, null, 2)}` },
    Orquestación del flujo
 ===================================================================== */
 $('btnAnalyze').addEventListener('click', async () => {
-  if (!state.file) return;
+  if (!state.file && !state.geometry) return;
   state.investment = null;
   $('invContent').classList.add('hidden');
   resetSteps();
@@ -918,8 +930,10 @@ $('btnAnalyze').addEventListener('click', async () => {
   $('statusAnalyze').classList.add('show');
   setStep(2);
   try {
-    $('statusAnalyzeTxt').textContent = 'Claude está interpretando el plano (geometría, muros, columnas, espacios)…';
-    state.geometry = await extractGeometry();
+    if (state.file) {
+      $('statusAnalyzeTxt').textContent = 'Claude está interpretando el plano (geometría, muros, columnas, espacios)…';
+      state.geometry = await extractGeometry();
+    }
     $('statusAnalyze').classList.remove('show');
     renderModelSection();
     setStep(4);
@@ -1067,6 +1081,7 @@ function renderModelSection() {
   ].map(([v,k]) => `<div class="geo-stat"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
   $('geoJson').textContent = JSON.stringify(g, null, 2);
   buildScene(g);
+  updateSun();
   $('secModel').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -1090,6 +1105,7 @@ function initThree(canvas) {
   sun.shadow.camera.right = sun.shadow.camera.top = 40;
   scene.add(sun);
   renderer.shadowMap.enabled = true;
+  const hemi = scene.children.find(o => o.isHemisphereLight);
 
   function resize() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -1106,7 +1122,7 @@ function initThree(canvas) {
     renderer.render(scene, camera);
   })();
 
-  return { renderer, scene, camera, controls, resize };
+  return { renderer, scene, camera, controls, resize, sun, hemi };
 }
 
 function buildScene(g) {
@@ -2104,6 +2120,94 @@ $('btnCopyShare').addEventListener('click', async () => {
   } catch (err) {
     console.warn('No se pudo cargar el proyecto compartido:', err);
   }
+})();
+
+/* =====================================================================
+   Estudio de asoleamiento — posición solar real por zona, mes y hora
+===================================================================== */
+const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function sunLatitude() {
+  const z = selectedZone();
+  return (z ? z.lat : 19.43) * Math.PI / 180; // CDMX por defecto
+}
+function updateSun() {
+  if (!three || !three.sun) return;
+  const mes = +$('sunMes').value, hora = +$('sunHora').value;
+  const lat = sunLatitude();
+  const N = Math.round((mes - 0.5) * 30.44);                       // día del año
+  const dec = 23.45 * Math.PI / 180 * Math.sin(2 * Math.PI * (284 + N) / 365); // declinación
+  const H = (hora - 12) * 15 * Math.PI / 180;                      // ángulo horario
+  const sinAlt = Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(H);
+  const alt = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
+  const az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(lat) - Math.tan(dec) * Math.cos(lat));
+  const R = 70;
+  const up = Math.max(0.03, Math.sin(alt));
+  three.sun.position.set(R * Math.cos(alt) * Math.sin(az), R * up, R * Math.cos(alt) * Math.cos(az));
+  three.sun.intensity = Math.max(0.05, Math.sin(alt)) * 1.9;
+  if (three.hemi) three.hemi.intensity = 0.25 + Math.max(0, Math.sin(alt)) * 0.75;
+  $('sunMesLbl').textContent = MESES[mes - 1];
+  $('sunHoraLbl').textContent = Math.floor(hora) + ':' + (hora % 1 ? '30' : '00');
+  const altDeg = Math.round(alt * 180 / Math.PI);
+  const z = selectedZone();
+  $('sunInfo').textContent = altDeg <= 0
+    ? 'Sol bajo el horizonte (noche)'
+    : `Altura solar ${altDeg}° · latitud de ${z ? z.nombre : 'CDMX'}`;
+}
+$('sunMes').addEventListener('input', updateSun);
+$('sunHora').addEventListener('input', updateSun);
+$('invZona').addEventListener('change', updateSun);
+
+/* =====================================================================
+   Grabar video de órbita (.webm) del gemelo
+===================================================================== */
+$('btnRecord').addEventListener('click', () => {
+  if (!three || !state.geometry) { alert('Primero genera el gemelo digital.'); return; }
+  const canvas = $('viewer3d');
+  let stream;
+  try { stream = canvas.captureStream(30); }
+  catch { alert('Tu navegador no soporta la grabación de canvas.'); return; }
+  const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+  const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
+  const chunks = [];
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    three.controls.autoRotate = false;
+    $('btnRecord').disabled = false;
+    $('btnRecord').firstChild.textContent = '🎬 Video órbita ';
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    if (!blob.size) { alert('No se pudo grabar el video en este navegador.'); return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = slug(state.geometry.nombreProyecto) + '-orbita.webm';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  };
+  three.controls.autoRotate = true;
+  three.controls.autoRotateSpeed = 4.0;
+  $('btnRecord').disabled = true;
+  $('btnRecord').firstChild.textContent = '● Grabando 10 s… ';
+  rec.start();
+  setTimeout(() => { try { rec.stop(); } catch {} }, 10000);
+});
+
+/* Cargar un plano generado por el Creador IA (?desde=creador + bb_draft) */
+(function loadCreatorDraft() {
+  try {
+    if (new URLSearchParams(location.search).get('desde') !== 'creador') return;
+    const draft = JSON.parse(localStorage.getItem('bb_draft') || 'null');
+    if (!draft || !draft.geometry) return;
+    state.geometry = draft.geometry;
+    $('sharedBanner').innerHTML = '🧠 Plano generado con el <b>Creador IA</b>: <b>' +
+      escapeHtml(draft.geometry.nombreProyecto) +
+      '</b>. Revisa el gemelo 3D y presiona <b>“Analizar ingeniería del plano IA”</b> para materiales, fallas e inversión. <a href="crear-plano.html">← Volver al creador</a>';
+    $('sharedBanner').classList.remove('hidden');
+    renderModelSection();
+    $('btnAnalyze').disabled = false;
+    $('btnAnalyze').textContent = 'Analizar ingeniería del plano IA →';
+    setStep(3, 'done');
+  } catch (err) { console.warn('Borrador del creador inválido:', err); }
 })();
 
 /* Tooltips "?": en pantallas táctiles se abren con un toque */

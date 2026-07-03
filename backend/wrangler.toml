@@ -14,3 +14,8 @@ ALLOWED_ORIGINS = "*"
 # [[kv_namespaces]]
 # binding = "SHARES"
 # id = "PEGA_AQUI_EL_ID"
+
+# Alertas Valor Futuro: cron mensual (día 1, 14:00 UTC). Solo actúa si
+# existen el KV SHARES y el secreto RESEND_API_KEY; si no, no hace nada.
+[triggers]
+crons = ["0 14 1 * *"]
