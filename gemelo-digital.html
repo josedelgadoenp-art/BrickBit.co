@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BrickBit — Gemelo Digital 3D de Planos Arquitectónicos</title>
+<meta name="description" content="Sube los planos de tu proyecto y BrickBit crea un gemelo digital 3D con IA de Anthropic: render 3D, ubicación en mapa 3D de Google, recomendación de materiales y varillas, y predicción de fallas arquitectónicas.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#100c0a;
+    --bg-2:#16110e;
+    --surface:#1d1713;
+    --surface-2:#241c17;
+    --cream:#f5ede3;
+    --muted:#a3948663;
+    --muted-txt:#a89a8c;
+    --clay:#1a7d50;
+    --clay-soft:#57c389;
+    --clay-deep:#0c4a30;
+    --lime:#cdf25a;
+    --lime-deep:#a9d23f;
+    --line:rgba(245,237,227,0.10);
+    --line-strong:rgba(245,237,227,0.18);
+    --danger:#e06d5a;
+    --warn:#e0b95a;
+    --max:1180px;
+    --r:18px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--cream);
+    font-family:'Hanken Grotesk',sans-serif;
+    font-size:17px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(900px 600px at 78% -8%, rgba(26,125,80,0.16), transparent 60%),
+      radial-gradient(700px 500px at 8% 30%, rgba(205,242,90,0.05), transparent 60%);
+  }
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 24px;position:relative;z-index:1}
+
+  /* header */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(16,12,10,0.82);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);
+  }
+  header .wrap{display:flex;align-items:center;justify-content:space-between;height:68px}
+  .brand{font-family:'Fraunces',serif;font-weight:700;font-size:1.25rem;color:var(--cream);text-decoration:none;display:flex;align-items:center;gap:10px}
+  .brand .dot{width:10px;height:10px;border-radius:3px;background:var(--lime)}
+  .brand em{font-style:italic;color:var(--clay-soft);font-weight:500}
+  .back{color:var(--muted-txt);text-decoration:none;font-size:.92rem}
+  .back:hover{color:var(--cream)}
+
+  /* hero */
+  .hero{padding:72px 0 40px;text-align:left}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--lime);border:1px solid var(--line-strong);border-radius:999px;padding:6px 14px;margin-bottom:22px;
+  }
+  h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(2rem,4.4vw,3.4rem);line-height:1.1;letter-spacing:-.01em;max-width:820px}
+  h1 em{font-style:italic;color:var(--clay-soft)}
+  .hero p{color:var(--muted-txt);max-width:680px;margin-top:18px;font-size:1.05rem}
+
+  /* steps rail */
+  .steps{display:flex;gap:10px;flex-wrap:wrap;margin:34px 0 8px}
+  .step-chip{
+    display:flex;align-items:center;gap:8px;
+    font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.06em;
+    color:var(--muted-txt);border:1px solid var(--line);border-radius:999px;padding:7px 14px;
+    transition:all .3s;
+  }
+  .step-chip .n{
+    width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+    background:var(--surface-2);color:var(--muted-txt);font-size:.68rem;
+  }
+  .step-chip.active{color:var(--lime);border-color:rgba(205,242,90,.4)}
+  .step-chip.active .n{background:var(--lime);color:#0f130a}
+  .step-chip.done{color:var(--clay-soft);border-color:rgba(87,195,137,.35)}
+  .step-chip.done .n{background:var(--clay);color:var(--cream)}
+
+  section.card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--r);
+    padding:34px;
+    margin:26px 0;
+  }
+  section.card > .card-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;flex-wrap:wrap}
+  .knum{font-family:'Space Mono',monospace;color:var(--lime);font-size:.8rem;letter-spacing:.1em}
+  h2{font-family:'Fraunces',serif;font-weight:600;font-size:1.55rem;letter-spacing:-.01em}
+  .sub{color:var(--muted-txt);font-size:.95rem;max-width:720px;margin-bottom:20px}
+
+  /* forms */
+  label{display:block;font-size:.82rem;color:var(--muted-txt);margin-bottom:6px;font-weight:600;letter-spacing:.02em}
+  input[type=text],input[type=password],input[type=number]{
+    width:100%;background:var(--bg-2);border:1px solid var(--line-strong);border-radius:12px;
+    color:var(--cream);padding:12px 14px;font-family:'Space Mono',monospace;font-size:.85rem;outline:none;
+  }
+  input:focus{border-color:var(--clay-soft)}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:760px){.grid-2{grid-template-columns:1fr}}
+  .hint{font-size:.78rem;color:var(--muted-txt);margin-top:6px}
+  .hint a{color:var(--clay-soft)}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;
+    border-radius:12px;padding:13px 24px;font-weight:700;font-size:.95rem;font-family:'Hanken Grotesk',sans-serif;
+    border:1px solid transparent;transition:all .25s;
+  }
+  .btn-primary{background:var(--lime);color:#0f130a}
+  .btn-primary:hover{background:var(--lime-deep)}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--cream);border-color:var(--line-strong)}
+  .btn-ghost:hover{border-color:var(--clay-soft);color:var(--clay-soft)}
+
+  /* dropzone */
+  .dropzone{
+    border:2px dashed var(--line-strong);border-radius:var(--r);
+    padding:46px 24px;text-align:center;cursor:pointer;transition:all .25s;
+    background:var(--bg-2);
+  }
+  .dropzone:hover,.dropzone.drag{border-color:var(--lime);background:rgba(205,242,90,.04)}
+  .dropzone .icon{font-size:2rem;margin-bottom:8px}
+  .dropzone strong{color:var(--cream)}
+  .dropzone p{color:var(--muted-txt);font-size:.9rem}
+  .preview{display:none;margin-top:20px;gap:20px;align-items:flex-start}
+  .preview.show{display:flex;flex-wrap:wrap}
+  .preview img{max-width:340px;max-height:260px;border-radius:12px;border:1px solid var(--line-strong);background:#fff}
+  .file-meta{font-family:'Space Mono',monospace;font-size:.78rem;color:var(--muted-txt);line-height:1.9}
+  .file-meta b{color:var(--cream)}
+
+  /* status / loader */
+  .status{
+    display:none;align-items:center;gap:12px;margin-top:18px;
+    font-family:'Space Mono',monospace;font-size:.8rem;color:var(--clay-soft);
+  }
+  .status.show{display:flex}
+  .spinner{
+    width:16px;height:16px;border-radius:50%;
+    border:2px solid var(--line-strong);border-top-color:var(--lime);
+    animation:spin .8s linear infinite;flex:none;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .error-box{
+    display:none;margin-top:16px;border:1px solid rgba(224,109,90,.4);background:rgba(224,109,90,.08);
+    border-radius:12px;padding:14px 18px;color:var(--danger);font-size:.88rem;white-space:pre-wrap;
+  }
+  .error-box.show{display:block}
+
+  /* viewers */
+  #viewer3d{
+    width:100%;height:520px;border-radius:var(--r);border:1px solid var(--line-strong);
+    background:radial-gradient(600px 400px at 50% 0%, #1c2420, #0d0f0c);
+    display:block;
+  }
+  #map3dContainer{
+    width:100%;height:520px;border-radius:var(--r);border:1px solid var(--line-strong);overflow:hidden;
+    background:var(--bg-2);position:relative;
+  }
+  #map3dContainer gmp-map-3d{width:100%;height:100%}
+  .toolbar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end}
+  .toolbar .field{flex:1;min-width:220px}
+  .placeholder-msg{
+    position:absolute;inset:0;display:grid;place-items:center;color:var(--muted-txt);
+    font-family:'Space Mono',monospace;font-size:.8rem;text-align:center;padding:24px;
+  }
+
+  /* geometry summary chips */
+  .geo-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0}
+  .geo-stat{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .geo-stat .v{font-family:'Fraunces',serif;font-size:1.4rem;color:var(--lime)}
+  .geo-stat .k{font-size:.72rem;color:var(--muted-txt);text-transform:uppercase;letter-spacing:.08em}
+
+  /* materials */
+  .mat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:8px}
+  .mat-card{background:var(--bg-2);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .mat-card h4{font-family:'Fraunces',serif;font-size:1.05rem;margin-bottom:10px;color:var(--cream);display:flex;gap:8px;align-items:center}
+  .mat-card h4 .tag{font-family:'Space Mono',monospace;font-size:.62rem;background:rgba(87,195,137,.15);color:var(--clay-soft);border-radius:6px;padding:2px 8px;letter-spacing:.08em}
+  .mat-card ul{list-style:none}
+  .mat-card li{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.88rem}
+  .mat-card li:last-child{border-bottom:none}
+  .mat-card li span:first-child{color:var(--muted-txt)}
+  .mat-card li span:last-child{color:var(--cream);font-weight:600;text-align:right}
+
+  table.rebar{width:100%;border-collapse:collapse;margin-top:12px;font-size:.86rem}
+  table.rebar th{
+    text-align:left;font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted-txt);padding:10px 12px;border-bottom:1px solid var(--line-strong);
+  }
+  table.rebar td{padding:11px 12px;border-bottom:1px solid var(--line)}
+  table.rebar td:first-child{color:var(--lime);font-family:'Space Mono',monospace}
+  .table-scroll{overflow-x:auto}
+
+  .reco-list{list-style:none;margin-top:8px}
+  .reco-list li{
+    display:flex;gap:12px;padding:12px 0;border-bottom:1px dashed var(--line);font-size:.93rem;color:var(--cream);
+  }
+  .reco-list li::before{content:"→";color:var(--lime);flex:none}
+
+  /* failures */
+  .first-failure{
+    border:1px solid rgba(224,109,90,.45);background:linear-gradient(140deg, rgba(224,109,90,.10), rgba(224,109,90,.03));
+    border-radius:var(--r);padding:26px;margin-bottom:22px;
+  }
+  .first-failure .ff-label{font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--danger);margin-bottom:8px}
+  .first-failure h3{font-family:'Fraunces',serif;font-size:1.5rem;margin-bottom:6px}
+  .first-failure .ff-time{font-family:'Fraunces',serif;font-size:2.4rem;color:var(--danger)}
+  .first-failure .ff-time small{font-size:1rem;color:var(--muted-txt);font-family:'Hanken Grotesk',sans-serif}
+  .first-failure p{color:var(--muted-txt);font-size:.93rem;margin-top:10px;max-width:760px}
+
+  .fail-row{
+    display:grid;grid-template-columns:minmax(160px,1.3fr) 90px 110px 1fr;gap:14px;align-items:center;
+    padding:14px 0;border-bottom:1px solid var(--line);font-size:.88rem;
+  }
+  @media(max-width:760px){.fail-row{grid-template-columns:1fr 1fr}}
+  .fail-row .name{font-weight:700}
+  .fail-row .name small{display:block;font-weight:400;color:var(--muted-txt);font-size:.75rem}
+  .sev{font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.06em;border-radius:6px;padding:3px 8px;text-transform:uppercase;justify-self:start}
+  .sev.baja{background:rgba(87,195,137,.15);color:var(--clay-soft)}
+  .sev.media{background:rgba(224,185,90,.15);color:var(--warn)}
+  .sev.alta,.sev.crítica,.sev.critica{background:rgba(224,109,90,.15);color:var(--danger)}
+  .years{font-family:'Space Mono',monospace;color:var(--cream);font-size:.8rem}
+  .bar-track{height:8px;border-radius:99px;background:var(--bg-2);border:1px solid var(--line);overflow:hidden}
+  .bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--clay-soft),var(--warn),var(--danger))}
+  .prob-label{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted-txt);margin-top:4px}
+
+  .disclaimer{
+    margin:30px 0 60px;border:1px solid var(--line);border-radius:var(--r);padding:20px 24px;
+    color:var(--muted-txt);font-size:.82rem;background:var(--bg-2);
+  }
+  .disclaimer b{color:var(--warn)}
+
+  details.raw{margin-top:18px}
+  details.raw summary{cursor:pointer;font-family:'Space Mono',monospace;font-size:.75rem;color:var(--muted-txt)}
+  details.raw pre{
+    margin-top:10px;background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:16px;
+    font-size:.72rem;overflow-x:auto;color:var(--clay-soft);max-height:340px;
+  }
+  .hidden{display:none !important}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="./"><span class="dot"></span>BrickBit <em>· Gemelo Digital</em></a>
+    <a class="back" href="./">← Volver a BrickBit</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">◈ Nueva función · Beta</div>
+    <h1>Convierte tus planos en un <em>gemelo digital 3D</em> que piensa como ingeniero</h1>
+    <p>Sube el plano de un arquitecto y la IA de Anthropic (Claude) lo interpreta: genera un render 3D, lo coloca sobre el mapa 3D fotorrealista de Google, recomienda materiales, calidades y tipos de varilla, y predice las fallas arquitectónicas — incluida cuál sería la primera falla y en cuánto tiempo.</p>
+    <div class="steps" id="stepsRail">
+      <div class="step-chip" data-step="1"><span class="n">1</span> Plano</div>
+      <div class="step-chip" data-step="2"><span class="n">2</span> Análisis IA</div>
+      <div class="step-chip" data-step="3"><span class="n">3</span> Render 3D</div>
+      <div class="step-chip" data-step="4"><span class="n">4</span> Mapa 3D</div>
+      <div class="step-chip" data-step="5"><span class="n">5</span> Materiales</div>
+      <div class="step-chip" data-step="6"><span class="n">6</span> Predicción de fallas</div>
+    </div>
+  </div>
+
+  <!-- ===== 0. CONFIG ===== -->
+  <section class="card" id="secConfig">
+    <div class="card-head"><span class="knum">00 /</span><h2>Configuración de APIs (demo)</h2></div>
+    <p class="sub">Esta demo corre 100% en tu navegador. Las llaves se guardan solo en <code>localStorage</code> de tu equipo y se envían directamente a cada API. Para producción, BrickBit moverá estas llamadas a un backend.</p>
+    <div class="grid-2">
+      <div>
+        <label for="anthropicKey">Llave API de Anthropic (Claude)</label>
+        <input type="password" id="anthropicKey" placeholder="sk-ant-api03-..." autocomplete="off">
+        <div class="hint">Obtén una en <a href="https://platform.claude.com/" target="_blank" rel="noopener">platform.claude.com</a>. Requerida para el análisis del plano.</div>
+      </div>
+      <div>
+        <label for="gmapsKey">Llave API de Google Maps (demo, Maps JavaScript API)</label>
+        <input type="password" id="gmapsKey" placeholder="AIza..." autocomplete="off">
+        <div class="hint">Con <b>Maps JavaScript API</b> habilitada (canal <code>alpha</code> para mapas 3D fotorrealistas). Opcional: solo para el paso 4.</div>
+      </div>
+    </div>
+    <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-ghost" id="btnSaveKeys">Guardar llaves</button>
+      <button class="btn btn-ghost" id="btnDemo">Probar con proyecto de ejemplo (sin llaves)</button>
+    </div>
+  </section>
+
+  <!-- ===== 1. UPLOAD ===== -->
+  <section class="card" id="secUpload">
+    <div class="card-head"><span class="knum">01 /</span><h2>Sube el plano del arquitecto</h2></div>
+    <p class="sub">Acepta imágenes (PNG, JPG, WebP) o PDF. Funciona mejor con plantas arquitectónicas con cotas visibles; si el plano incluye cortes o detalles estructurales, la IA también los aprovecha.</p>
+    <div class="dropzone" id="dropzone">
+      <div class="icon">▤</div>
+      <strong>Arrastra tu plano aquí</strong>
+      <p>o haz clic para seleccionarlo · PNG · JPG · WebP · PDF (máx. ~20&nbsp;MB)</p>
+      <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp,application/pdf" hidden>
+    </div>
+    <div class="preview" id="preview">
+      <img id="previewImg" alt="Vista previa del plano">
+      <div class="file-meta" id="fileMeta"></div>
+    </div>
+    <div style="margin-top:22px">
+      <button class="btn btn-primary" id="btnAnalyze" disabled>Generar gemelo digital →</button>
+    </div>
+    <div class="status" id="statusAnalyze"><span class="spinner"></span><span id="statusAnalyzeTxt">Claude está interpretando el plano…</span></div>
+    <div class="error-box" id="errAnalyze"></div>
+  </section>
+
+  <!-- ===== 2/3. GEOMETRY + 3D ===== -->
+  <section class="card hidden" id="secModel">
+    <div class="card-head"><span class="knum">02–03 /</span><h2>Gemelo digital 3D</h2></div>
+    <p class="sub" id="modelSummary"></p>
+    <div class="geo-stats" id="geoStats"></div>
+    <canvas id="viewer3d"></canvas>
+    <div class="hint" style="margin-top:10px">Arrastra para orbitar · rueda para acercar · clic derecho para desplazar.</div>
+    <details class="raw"><summary>Ver geometría extraída (JSON)</summary><pre id="geoJson"></pre></details>
+  </section>
+
+  <!-- ===== 4. MAP ===== -->
+  <section class="card hidden" id="secMap">
+    <div class="card-head"><span class="knum">04 /</span><h2>Colócalo en el mapa 3D de Google</h2></div>
+    <p class="sub">Busca la dirección del terreno o haz clic en el mapa: el volumen del proyecto se extruye sobre el mapa 3D fotorrealista para evaluar contexto urbano, orientación y escala.</p>
+    <div class="toolbar">
+      <div class="field">
+        <label for="addressInput">Dirección o lugar</label>
+        <input type="text" id="addressInput" placeholder="Ej. Av. Reforma 222, CDMX">
+      </div>
+      <button class="btn btn-ghost" id="btnGeocode">Buscar</button>
+      <button class="btn btn-ghost" id="btnLoadMap">Cargar mapa 3D</button>
+    </div>
+    <div id="map3dContainer">
+      <div class="placeholder-msg" id="mapPlaceholder">Ingresa tu llave de Google Maps en la configuración<br>y presiona “Cargar mapa 3D”.</div>
+    </div>
+  </section>
+
+  <!-- ===== 5. MATERIALS ===== -->
+  <section class="card hidden" id="secMaterials">
+    <div class="card-head"><span class="knum">05 /</span><h2>Materiales recomendados por IA</h2></div>
+    <p class="sub" id="matSummary"></p>
+    <div class="status" id="statusEng"><span class="spinner"></span><span>Claude está calculando materiales y analizando riesgos estructurales…</span></div>
+    <div class="error-box" id="errEng"></div>
+    <div id="matContent" class="hidden">
+      <div class="mat-grid" id="matGrid"></div>
+      <h3 style="font-family:'Fraunces',serif;margin:28px 0 4px;font-size:1.15rem">Acero de refuerzo (varillas)</h3>
+      <div class="table-scroll">
+        <table class="rebar">
+          <thead><tr><th>Tipo</th><th>Ø (mm)</th><th>Grado</th><th>Cantidad (kg)</th><th>Separación</th><th>Ubicación / uso</th></tr></thead>
+          <tbody id="rebarBody"></tbody>
+        </table>
+      </div>
+      <h3 style="font-family:'Fraunces',serif;margin:28px 0 4px;font-size:1.15rem">Recomendaciones de obra</h3>
+      <ul class="reco-list" id="recoList"></ul>
+    </div>
+  </section>
+
+  <!-- ===== 6. FAILURES ===== -->
+  <section class="card hidden" id="secFailures">
+    <div class="card-head"><span class="knum">06 /</span><h2>Predicción de fallas arquitectónicas</h2></div>
+    <p class="sub">A partir de la geometría, el sistema estructural y los materiales recomendados, el modelo estima qué fallas de diseño o construcción podrían aparecer, con qué probabilidad y en qué horizonte de tiempo.</p>
+    <div id="failContent">
+      <div class="first-failure" id="firstFailure"></div>
+      <div id="failList"></div>
+    </div>
+    <details class="raw"><summary>Ver análisis completo (JSON)</summary><pre id="engJson"></pre></details>
+  </section>
+
+  <div class="disclaimer">
+    <b>Aviso:</b> este gemelo digital es una herramienta de apoyo generada por IA para exploración temprana de proyectos. Las cantidades de materiales, calidades y predicciones de fallas son estimaciones y <b>no sustituyen</b> el cálculo estructural, la memoria de cálculo ni la revisión de un ingeniero estructurista o DRO conforme a los reglamentos de construcción aplicables.
+  </div>
+
+</div>
+
+<!-- Three.js via import map -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* =====================================================================
+   Estado global
+===================================================================== */
+const state = {
+  file: null,          // { base64, mediaType, name, sizeKB, isPdf }
+  geometry: null,      // JSON extraído por Claude (paso 2)
+  engineering: null,   // JSON de materiales + fallas (pasos 5-6)
+  mapReady: false,
+  map3d: null,
+  buildingPoly: null,
+  markerLib: null,
+};
+
+const $ = (id) => document.getElementById(id);
+const ANTHROPIC_MODEL = 'claude-opus-4-8';
+
+/* =====================================================================
+   Config de llaves
+===================================================================== */
+$('anthropicKey').value = localStorage.getItem('bb_anthropic_key') || '';
+$('gmapsKey').value     = localStorage.getItem('bb_gmaps_key') || '';
+
+$('btnSaveKeys').addEventListener('click', () => {
+  localStorage.setItem('bb_anthropic_key', $('anthropicKey').value.trim());
+  localStorage.setItem('bb_gmaps_key', $('gmapsKey').value.trim());
+  $('btnSaveKeys').textContent = '✓ Guardadas';
+  setTimeout(() => $('btnSaveKeys').textContent = 'Guardar llaves', 1600);
+});
+
+/* =====================================================================
+   Rail de pasos
+===================================================================== */
+function setStep(n, mode = 'active') {
+  document.querySelectorAll('.step-chip').forEach(ch => {
+    const s = Number(ch.dataset.step);
+    ch.classList.toggle('done', s < n);
+    ch.classList.toggle('active', s === n && mode === 'active');
+    if (mode === 'done' && s <= n) { ch.classList.add('done'); ch.classList.remove('active'); }
+  });
+}
+setStep(1);
+
+/* =====================================================================
+   Paso 1 — carga del plano
+===================================================================== */
+const dropzone = $('dropzone');
+dropzone.addEventListener('click', () => $('fileInput').click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault(); dropzone.classList.remove('drag');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+$('fileInput').addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  const okTypes = ['image/png','image/jpeg','image/webp','application/pdf'];
+  if (!okTypes.includes(file.type)) { showError('errAnalyze', 'Formato no soportado. Usa PNG, JPG, WebP o PDF.'); return; }
+  if (file.size > 20 * 1024 * 1024) { showError('errAnalyze', 'El archivo excede 20 MB. Exporta el plano a menor resolución.'); return; }
+  hideError('errAnalyze');
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64 = reader.result.split(',')[1];
+    state.file = {
+      base64,
+      mediaType: file.type,
+      name: file.name,
+      sizeKB: Math.round(file.size / 1024),
+      isPdf: file.type === 'application/pdf',
+    };
+    $('preview').classList.add('show');
+    if (state.file.isPdf) {
+      $('previewImg').style.display = 'none';
+    } else {
+      $('previewImg').style.display = 'block';
+      $('previewImg').src = reader.result;
+    }
+    $('fileMeta').innerHTML =
+      `<b>${escapeHtml(file.name)}</b><br>${state.file.sizeKB} KB · ${file.type}<br>Listo para analizar.`;
+    $('btnAnalyze').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* =====================================================================
+   Esquemas JSON (salida estructurada de Claude)
+===================================================================== */
+const GEOMETRY_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["nombreProyecto","niveles","alturaEntrepisoM","anchoM","fondoM","areaTotalM2","sistemaEstructural","footprint","muros","columnas","espacios","notas"],
+  properties: {
+    nombreProyecto: { type: "string" },
+    niveles: { type: "integer", description: "Número de niveles/pisos del proyecto" },
+    alturaEntrepisoM: { type: "number", description: "Altura de entrepiso en metros" },
+    anchoM: { type: "number", description: "Ancho total del edificio en metros (eje X)" },
+    fondoM: { type: "number", description: "Fondo total del edificio en metros (eje Y)" },
+    areaTotalM2: { type: "number" },
+    sistemaEstructural: { type: "string", description: "Ej: marcos de concreto, muros de carga de mampostería confinada, acero, etc." },
+    footprint: {
+      type: "array", minItems: 3,
+      description: "Polígono del contorno del edificio en metros, origen en esquina inferior izquierda, sentido antihorario",
+      items: { type: "object", additionalProperties: false, required: ["x","y"],
+        properties: { x: { type: "number" }, y: { type: "number" } } }
+    },
+    muros: {
+      type: "array",
+      description: "Muros principales como segmentos en metros",
+      items: { type: "object", additionalProperties: false, required: ["x1","y1","x2","y2","carga"],
+        properties: {
+          x1:{type:"number"}, y1:{type:"number"}, x2:{type:"number"}, y2:{type:"number"},
+          carga:{type:"boolean", description:"true si es muro de carga/estructural"}
+        } }
+    },
+    columnas: {
+      type: "array",
+      description: "Posiciones de columnas en metros",
+      items: { type: "object", additionalProperties: false, required: ["x","y"],
+        properties: { x:{type:"number"}, y:{type:"number"} } }
+    },
+    espacios: {
+      type: "array",
+      description: "Espacios/habitaciones identificados con su centro aproximado",
+      items: { type: "object", additionalProperties: false, required: ["nombre","x","y","areaM2"],
+        properties: { nombre:{type:"string"}, x:{type:"number"}, y:{type:"number"}, areaM2:{type:"number"} } }
+    },
+    notas: { type: "string", description: "Observaciones del plano: cotas ilegibles, supuestos tomados, etc." }
+  }
+};
+
+const ENGINEERING_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["resumen","materiales","varillas","recomendaciones","costoEstimadoMXN","fallas","primeraFalla"],
+  properties: {
+    resumen: { type: "string" },
+    materiales: {
+      type: "array",
+      description: "Materiales principales agrupados por categoría",
+      items: { type: "object", additionalProperties: false,
+        required: ["categoria","items"],
+        properties: {
+          categoria: { type: "string", description: "Ej: Concreto, Mampostería, Cemento y morteros, Acabados" },
+          items: {
+            type: "array",
+            items: { type: "object", additionalProperties: false,
+              required: ["concepto","cantidad","unidad","calidad"],
+              properties: {
+                concepto: { type: "string" },
+                cantidad: { type: "number" },
+                unidad: { type: "string" },
+                calidad: { type: "string", description: "Especificación de calidad, ej. f'c 250 kg/cm², clase A" }
+              } }
+          }
+        } }
+    },
+    varillas: {
+      type: "array",
+      description: "Acero de refuerzo recomendado",
+      items: { type: "object", additionalProperties: false,
+        required: ["tipo","diametroMm","grado","cantidadKg","separacionCm","ubicacion"],
+        properties: {
+          tipo: { type: "string", description: "Ej: #3 (3/8\"), #4 (1/2\"), #5 (5/8\")" },
+          diametroMm: { type: "number" },
+          grado: { type: "string", description: "Ej: fy 4200 kg/cm² (Grado 42)" },
+          cantidadKg: { type: "number" },
+          separacionCm: { type: "number", description: "Separación típica en cm; 0 si no aplica" },
+          ubicacion: { type: "string", description: "Dónde se usa: castillos, losas, trabes, cimentación…" }
+        } }
+    },
+    recomendaciones: { type: "array", items: { type: "string" } },
+    costoEstimadoMXN: {
+      type: "object", additionalProperties: false, required: ["minimo","maximo"],
+      properties: { minimo: { type: "number" }, maximo: { type: "number" } }
+    },
+    fallas: {
+      type: "array",
+      description: "Fallas potenciales ordenadas de más próxima a más lejana",
+      items: { type: "object", additionalProperties: false,
+        required: ["nombre","tipo","probabilidadPct","severidad","aniosEstimados","descripcion","prevencion"],
+        properties: {
+          nombre: { type: "string" },
+          tipo: { type: "string", enum: ["estructural","diseño","instalaciones","humedad","suelo","otro"] },
+          probabilidadPct: { type: "number" },
+          severidad: { type: "string", enum: ["baja","media","alta","crítica"] },
+          aniosEstimados: { type: "number", description: "Años estimados hasta que la falla se manifieste" },
+          descripcion: { type: "string" },
+          prevencion: { type: "string" }
+        } }
+    },
+    primeraFalla: {
+      type: "object", additionalProperties: false,
+      required: ["nombre","aniosEstimados","confianzaPct","explicacion"],
+      properties: {
+        nombre: { type: "string" },
+        aniosEstimados: { type: "number" },
+        confianzaPct: { type: "number" },
+        explicacion: { type: "string" }
+      }
+    }
+  }
+};
+
+/* =====================================================================
+   Llamadas a la API de Anthropic (directo desde navegador, demo)
+===================================================================== */
+async function callClaude({ system, content, schema }) {
+  const apiKey = ($('anthropicKey').value || '').trim();
+  if (!apiKey) throw new Error('Falta la llave API de Anthropic. Agrégala en la sección de configuración (o usa el proyecto de ejemplo).');
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: ANTHROPIC_MODEL,
+      max_tokens: 16000,
+      thinking: { type: 'adaptive' },
+      system,
+      output_config: { format: { type: 'json_schema', schema } },
+      messages: [{ role: 'user', content }],
+    }),
+  });
+
+  if (!res.ok) {
+    let detail = '';
+    try { detail = (await res.json()).error?.message || ''; } catch {}
+    throw new Error(`Error ${res.status} de la API de Anthropic. ${detail}`);
+  }
+  const data = await res.json();
+  if (data.stop_reason === 'refusal') {
+    throw new Error('El modelo declinó procesar esta solicitud. Intenta con otro plano.');
+  }
+  const textBlock = (data.content || []).find(b => b.type === 'text');
+  if (!textBlock) throw new Error('La respuesta del modelo no incluyó contenido de texto.');
+  return JSON.parse(textBlock.text);
+}
+
+function planContentBlock() {
+  if (state.file.isPdf) {
+    return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: state.file.base64 } };
+  }
+  return { type: 'image', source: { type: 'base64', media_type: state.file.mediaType, data: state.file.base64 } };
+}
+
+async function extractGeometry() {
+  return callClaude({
+    system: 'Eres un arquitecto e ingeniero civil experto en interpretar planos arquitectónicos mexicanos y latinoamericanos. Extraes geometría en unidades métricas. Si el plano no tiene cotas legibles, estima dimensiones razonables a partir de elementos estándar (puertas ≈ 0.9 m, escalones, muebles) y decláralo en las notas.',
+    content: [
+      planContentBlock(),
+      { type: 'text', text: 'Analiza este plano arquitectónico y extrae su geometría para construir un gemelo digital 3D. Devuelve el contorno (footprint), muros principales, columnas, espacios con nombre y área, número de niveles y sistema estructural. Usa metros, con origen en la esquina inferior izquierda del edificio.' },
+    ],
+    schema: GEOMETRY_SCHEMA,
+  });
+}
+
+async function analyzeEngineering(geometry) {
+  return callClaude({
+    system: 'Eres un ingeniero estructurista y residente de obra con 25 años de experiencia en México. Cuantificas materiales conforme a prácticas comunes (NTC/CFE/ONNCCE), recomiendas calidades y acero de refuerzo por elemento, y evalúas riesgos de falla de diseño y construcción con horizontes de tiempo realistas. Sé específico y conservador; incluye desperdicio típico en cantidades.',
+    content: [
+      planContentBlock(),
+      { type: 'text', text:
+`Con base en el plano adjunto y en la geometría ya extraída del proyecto (JSON abajo), genera:
+1) La cuantificación y recomendación de materiales (concreto con su f'c, mampostería, cemento/morteros, etc.) con cantidad, unidad y calidad.
+2) El acero de refuerzo: tipos de varilla (#3, #4, #5…), diámetro, grado, kilogramos, separación y ubicación (cimentación, castillos, trabes, losas).
+3) Recomendaciones de obra concretas.
+4) Un rango de costo estimado de obra negra en MXN.
+5) Predicción de fallas arquitectónicas/estructurales/de diseño: nombre, tipo, probabilidad (%), severidad, años estimados hasta manifestarse, descripción y prevención.
+6) La PRIMERA falla esperada: cuál será, en cuántos años, con qué confianza y por qué.
+
+GEOMETRÍA DEL PROYECTO:
+${JSON.stringify(geometry, null, 2)}` },
+    ],
+    schema: ENGINEERING_SCHEMA,
+  });
+}
+
+/* =====================================================================
+   Orquestación del flujo
+===================================================================== */
+$('btnAnalyze').addEventListener('click', async () => {
+  if (!state.file) return;
+  hideError('errAnalyze');
+  $('btnAnalyze').disabled = true;
+  $('statusAnalyze').classList.add('show');
+  setStep(2);
+  try {
+    $('statusAnalyzeTxt').textContent = 'Claude está interpretando el plano (geometría, muros, columnas, espacios)…';
+    state.geometry = await extractGeometry();
+    $('statusAnalyze').classList.remove('show');
+    renderModelSection();
+    setStep(4);
+    runEngineering();
+  } catch (err) {
+    $('statusAnalyze').classList.remove('show');
+    showError('errAnalyze', err.message);
+    $('btnAnalyze').disabled = false;
+    setStep(1);
+  }
+});
+
+async function runEngineering() {
+  $('secMaterials').classList.remove('hidden');
+  $('secFailures').classList.add('hidden');
+  $('statusEng').classList.add('show');
+  hideError('errEng');
+  try {
+    state.engineering = await analyzeEngineering(state.geometry);
+    $('statusEng').classList.remove('show');
+    renderEngineering();
+    setStep(6, 'done');
+  } catch (err) {
+    $('statusEng').classList.remove('show');
+    showError('errEng', err.message);
+  }
+}
+
+/* =====================================================================
+   Demo sin llaves — proyecto de ejemplo
+===================================================================== */
+$('btnDemo').addEventListener('click', () => {
+  state.geometry = DEMO_GEOMETRY;
+  state.engineering = DEMO_ENGINEERING;
+  renderModelSection();
+  renderEngineering();
+  $('secMaterials').classList.remove('hidden');
+  $('statusEng').classList.remove('show');
+  setStep(6, 'done');
+  $('secModel').scrollIntoView({ behavior: 'smooth' });
+});
+
+const DEMO_GEOMETRY = {
+  nombreProyecto: "Casa habitación — ejemplo BrickBit",
+  niveles: 2,
+  alturaEntrepisoM: 2.7,
+  anchoM: 10, fondoM: 14, areaTotalM2: 240,
+  sistemaEstructural: "Mampostería confinada con castillos y cadenas de concreto, losas macizas",
+  footprint: [ {x:0,y:0},{x:10,y:0},{x:10,y:14},{x:4,y:14},{x:4,y:10},{x:0,y:10} ],
+  muros: [
+    {x1:0,y1:0,x2:10,y2:0,carga:true},{x1:10,y1:0,x2:10,y2:14,carga:true},
+    {x1:10,y1:14,x2:4,y2:14,carga:true},{x1:4,y1:14,x2:4,y2:10,carga:true},
+    {x1:4,y1:10,x2:0,y2:10,carga:true},{x1:0,y1:10,x2:0,y2:0,carga:true},
+    {x1:0,y1:5,x2:6,y2:5,carga:false},{x1:6,y1:0,x2:6,y2:5,carga:false},
+    {x1:4,y1:5,x2:4,y2:10,carga:false},{x1:4,y1:7.5,x2:10,y2:7.5,carga:false}
+  ],
+  columnas: [ {x:0,y:0},{x:10,y:0},{x:10,y:14},{x:4,y:14},{x:0,y:10},{x:6,y:5},{x:4,y:10},{x:10,y:7.5} ],
+  espacios: [
+    {nombre:"Sala",x:2.8,y:2.5,areaM2:28},{nombre:"Cocina",x:8,y:2.5,areaM2:19},
+    {nombre:"Comedor",x:2,y:7.5,areaM2:18},{nombre:"Recámara 1",x:7,y:6.2,areaM2:20},
+    {nombre:"Recámara 2",x:7,y:11,areaM2:26}
+  ],
+  notas: "Proyecto de demostración con dimensiones típicas de vivienda media en México."
+};
+
+const DEMO_ENGINEERING = {
+  resumen: "Vivienda de 2 niveles (~240 m²) en mampostería confinada. Cuantificación de obra negra con desperdicio del 7%.",
+  materiales: [
+    { categoria: "Concreto", items: [
+      { concepto: "Concreto para losas macizas (12 cm)", cantidad: 29, unidad: "m³", calidad: "f'c 250 kg/cm², rev. 12 cm" },
+      { concepto: "Concreto para castillos y cadenas", cantidad: 9, unidad: "m³", calidad: "f'c 200 kg/cm²" },
+      { concepto: "Concreto para zapatas corridas", cantidad: 12, unidad: "m³", calidad: "f'c 250 kg/cm²" } ]},
+    { categoria: "Mampostería", items: [
+      { concepto: "Tabique rojo recocido 7×14×28", cantidad: 12500, unidad: "pza", calidad: "Clase A, resistencia ≥ 60 kg/cm²" },
+      { concepto: "Mortero cemento-arena 1:4", cantidad: 11, unidad: "m³", calidad: "Tipo I, 125 kg/cm²" } ]},
+    { categoria: "Cemento y agregados", items: [
+      { concepto: "Cemento gris CPC 30R", cantidad: 320, unidad: "saco 50 kg", calidad: "NMX-C-414" },
+      { concepto: "Arena de río", cantidad: 34, unidad: "m³", calidad: "Lavada, libre de arcillas" },
+      { concepto: "Grava 3/4\"", cantidad: 38, unidad: "m³", calidad: "Triturada basáltica" } ]}
+  ],
+  varillas: [
+    { tipo: "#3 (3/8\")", diametroMm: 9.5, grado: "fy 4200 kg/cm² (G42)", cantidadKg: 980, separacionCm: 20, ubicacion: "Estribos de castillos y cadenas" },
+    { tipo: "#4 (1/2\")", diametroMm: 12.7, grado: "fy 4200 kg/cm² (G42)", cantidadKg: 2350, separacionCm: 15, ubicacion: "Losas macizas (lecho bajo y alto)" },
+    { tipo: "#4 (1/2\")", diametroMm: 12.7, grado: "fy 4200 kg/cm² (G42)", cantidadKg: 1150, separacionCm: 0, ubicacion: "Armado longitudinal de castillos K-1" },
+    { tipo: "#5 (5/8\")", diametroMm: 15.9, grado: "fy 4200 kg/cm² (G42)", cantidadKg: 890, separacionCm: 15, ubicacion: "Zapatas corridas y trabe de liga" }
+  ],
+  recomendaciones: [
+    "Colar castillos y cadenas monolíticamente con la mampostería (confinamiento real, no simulado).",
+    "Curar losas mínimo 7 días con agua o membrana de curado para alcanzar el f'c de diseño.",
+    "Impermeabilizar cadena de desplante para cortar humedad ascendente por capilaridad.",
+    "Verificar recubrimientos mínimos: 3 cm en castillos, 2 cm en losas, 5 cm en cimentación.",
+    "El muro largo del eje Y (14 m) requiere castillos intermedios a máximo 3.5 m de separación."
+  ],
+  costoEstimadoMXN: { minimo: 1450000, maximo: 1850000 },
+  fallas: [
+    { nombre: "Fisuración por contracción en losa de azotea", tipo: "diseño", probabilidadPct: 72, severidad: "media", aniosEstimados: 2,
+      descripcion: "Losa de gran claro sin juntas de control; el ciclo térmico de azotea genera fisuras de retracción en esquinas y zonas de cambio de sección.",
+      prevencion: "Malla por temperatura, curado prolongado y junta de control en el quiebre en L del footprint." },
+    { nombre: "Humedad por capilaridad en muros de planta baja", tipo: "humedad", probabilidadPct: 55, severidad: "media", aniosEstimados: 4,
+      descripcion: "Sin barrera impermeable en desplante, la humedad del suelo asciende y degrada aplanados y pintura.",
+      prevencion: "Impermeabilizante integral en cadena de desplante y aplanado con mortero hidrófugo en el primer metro." },
+    { nombre: "Grieta diagonal en esquina entrante (quiebre en L)", tipo: "estructural", probabilidadPct: 40, severidad: "alta", aniosEstimados: 8,
+      descripcion: "Las plantas en L concentran esfuerzos en la esquina entrante ante sismo o asentamiento diferencial.",
+      prevencion: "Castillo doble en la esquina entrante y refuerzo adicional de losa en esa zona." },
+    { nombre: "Asentamiento diferencial", tipo: "suelo", probabilidadPct: 25, severidad: "crítica", aniosEstimados: 12,
+      descripcion: "Sin estudio de mecánica de suelos, una zapata corrida puede asentarse de forma desigual en suelos blandos.",
+      prevencion: "Estudio de mecánica de suelos previo; rigidizar cimentación con trabes de liga en ambos sentidos." }
+  ],
+  primeraFalla: {
+    nombre: "Fisuración por contracción en losa de azotea",
+    aniosEstimados: 2, confianzaPct: 78,
+    explicacion: "Es la patología más frecuente en viviendas de este tipo: aparece en los primeros 1–3 años por curado insuficiente y ausencia de juntas de control, agravada por el quiebre en L de la planta. No compromete la estabilidad de inmediato, pero abre la puerta a filtraciones y corrosión del acero de losa si no se atiende."
+  }
+};
+
+/* =====================================================================
+   Paso 2/3 — resumen + render 3D (Three.js)
+===================================================================== */
+let three = null; // { renderer, scene, camera, controls }
+
+function renderModelSection() {
+  const g = state.geometry;
+  $('secModel').classList.remove('hidden');
+  $('secMap').classList.remove('hidden');
+  $('modelSummary').textContent =
+    `${g.nombreProyecto} — ${g.niveles} nivel(es), ${g.anchoM}×${g.fondoM} m, sistema: ${g.sistemaEstructural}. ${g.notas || ''}`;
+  $('geoStats').innerHTML = [
+    [g.niveles, 'Niveles'],
+    [`${fmt(g.areaTotalM2)} m²`, 'Área total'],
+    [`${g.anchoM}×${g.fondoM} m`, 'Huella'],
+    [g.columnas.length, 'Columnas'],
+    [g.muros.length, 'Muros'],
+    [g.espacios.length, 'Espacios'],
+  ].map(([v,k]) => `<div class="geo-stat"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
+  $('geoJson').textContent = JSON.stringify(g, null, 2);
+  buildScene(g);
+  $('secModel').scrollIntoView({ behavior: 'smooth' });
+}
+
+function initThree() {
+  const canvas = $('viewer3d');
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 2000);
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI / 2.05;
+
+  scene.fog = new THREE.Fog(0x0d0f0c, 60, 220);
+  scene.add(new THREE.HemisphereLight(0xf5ede3, 0x1a2018, 0.9));
+  const sun = new THREE.DirectionalLight(0xfff4e0, 1.6);
+  sun.position.set(30, 45, 20);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = sun.shadow.camera.bottom = -40;
+  sun.shadow.camera.right = sun.shadow.camera.top = 40;
+  scene.add(sun);
+  renderer.shadowMap.enabled = true;
+
+  function resize() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  (function loop() {
+    requestAnimationFrame(loop);
+    controls.update();
+    renderer.render(scene, camera);
+  })();
+
+  return { renderer, scene, camera, controls, resize };
+}
+
+function buildScene(g) {
+  if (!three) three = initThree();
+  const { scene, camera, controls } = three;
+
+  // limpiar edificio previo
+  const prev = scene.getObjectByName('building');
+  if (prev) scene.remove(prev);
+  const prevGround = scene.getObjectByName('ground');
+  if (prevGround) scene.remove(prevGround);
+
+  const group = new THREE.Group();
+  group.name = 'building';
+
+  const h = g.alturaEntrepisoM;
+  const slabT = 0.15;
+  const wallT = 0.15;
+  const cx = g.anchoM / 2, cy = g.fondoM / 2;
+
+  const matSlab   = new THREE.MeshStandardMaterial({ color: 0xb8b2a7, roughness: 0.9 });
+  const matWallC  = new THREE.MeshStandardMaterial({ color: 0xf5ede3, roughness: 0.85 });
+  const matWallP  = new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: 0.85 });
+  const matCol    = new THREE.MeshStandardMaterial({ color: 0x8f8779, roughness: 0.7 });
+  const matEdge   = new THREE.LineBasicMaterial({ color: 0xcdf25a, transparent: true, opacity: 0.5 });
+
+  // forma del footprint (plano XY → XZ de three)
+  const shape = new THREE.Shape();
+  g.footprint.forEach((p, i) => i === 0 ? shape.moveTo(p.x - cx, p.y - cy) : shape.lineTo(p.x - cx, p.y - cy));
+  shape.closePath();
+
+  for (let lvl = 0; lvl <= g.niveles; lvl++) {
+    // losa (incluye la de azotea en lvl = niveles)
+    const slabGeo = new THREE.ExtrudeGeometry(shape, { depth: slabT, bevelEnabled: false });
+    slabGeo.rotateX(-Math.PI / 2);
+    const slab = new THREE.Mesh(slabGeo, matSlab);
+    slab.position.y = lvl * h;
+    slab.castShadow = slab.receiveShadow = true;
+    group.add(slab);
+    group.add(new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), matEdge).translateY(lvl * h));
+
+    if (lvl === g.niveles) break;
+
+    // muros del nivel
+    for (const w of g.muros) {
+      const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
+      const len = Math.hypot(dx, dy);
+      if (len < 0.05) continue;
+      const geo = new THREE.BoxGeometry(len, h - slabT, wallT);
+      const mesh = new THREE.Mesh(geo, w.carga ? matWallC : matWallP);
+      mesh.position.set(
+        (w.x1 + w.x2) / 2 - cx,
+        lvl * h + slabT + (h - slabT) / 2,
+        (w.y1 + w.y2) / 2 - cy
+      );
+      mesh.rotation.y = -Math.atan2(dy, dx);
+      mesh.castShadow = mesh.receiveShadow = true;
+      group.add(mesh);
+    }
+
+    // columnas
+    for (const c of g.columnas) {
+      const geo = new THREE.BoxGeometry(0.3, h, 0.3);
+      const mesh = new THREE.Mesh(geo, matCol);
+      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
+      mesh.castShadow = true;
+      group.add(mesh);
+    }
+  }
+
+  scene.add(group);
+
+  // terreno (agrupado para poder limpiarlo al regenerar)
+  const groundGroup = new THREE.Group();
+  groundGroup.name = 'ground';
+  const groundSize = Math.max(g.anchoM, g.fondoM) * 5;
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(groundSize, 48),
+    new THREE.MeshStandardMaterial({ color: 0x1c2420, roughness: 1 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.01;
+  ground.receiveShadow = true;
+  groundGroup.add(ground);
+  const grid = new THREE.GridHelper(groundSize, 40, 0x2c3a30, 0x22291f);
+  grid.position.y = 0.001;
+  groundGroup.add(grid);
+  scene.add(groundGroup);
+
+  // cámara
+  const totalH = g.niveles * h;
+  const d = Math.max(g.anchoM, g.fondoM, totalH) * 1.8;
+  camera.position.set(d, d * 0.75, d);
+  controls.target.set(0, totalH / 2, 0);
+  three.resize();
+}
+
+/* =====================================================================
+   Paso 4 — Mapa 3D fotorrealista de Google (API demo)
+===================================================================== */
+let gmapsLoading = null;
+
+function loadGoogleMaps(key) {
+  if (gmapsLoading) return gmapsLoading;
+  gmapsLoading = new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&v=alpha&libraries=maps3d,geocoding&loading=async&callback=__gmapsReady`;
+    window.__gmapsReady = () => resolve(window.google);
+    s.onerror = () => { gmapsLoading = null; reject(new Error('No se pudo cargar Google Maps. Verifica la llave y que Maps JavaScript API esté habilitada.')); };
+    document.head.appendChild(s);
+  });
+  return gmapsLoading;
+}
+
+$('btnLoadMap').addEventListener('click', initMap3D);
+$('btnGeocode').addEventListener('click', geocodeAndPlace);
+$('addressInput').addEventListener('keydown', e => { if (e.key === 'Enter') geocodeAndPlace(); });
+
+async function initMap3D(center) {
+  const key = ($('gmapsKey').value || '').trim();
+  if (!key) {
+    $('mapPlaceholder').innerHTML = '⚠ Falta la llave de Google Maps.<br>Agrégala en la sección de configuración y vuelve a intentar.';
+    return;
+  }
+  try {
+    $('mapPlaceholder').textContent = 'Cargando mapa 3D fotorrealista…';
+    const google = await loadGoogleMaps(key);
+    const { Map3DElement } = await google.maps.importLibrary('maps3d');
+
+    if (!state.map3d) {
+      const c = center || { lat: 19.4326, lng: -99.1332 }; // CDMX por defecto
+      const map = new Map3DElement({
+        center: { lat: c.lat, lng: c.lng, altitude: 0 },
+        range: 400, tilt: 62, heading: 25,
+        mode: 'HYBRID',
+      });
+      $('map3dContainer').innerHTML = '';
+      $('map3dContainer').appendChild(map);
+      state.map3d = map;
+
+      // clic en el mapa → recolocar el edificio
+      map.addEventListener('gmp-click', (ev) => {
+        if (ev.position) placeBuildingAt({ lat: ev.position.lat, lng: ev.position.lng });
+      });
+      placeBuildingAt(c);
+    } else if (center) {
+      state.map3d.center = { lat: center.lat, lng: center.lng, altitude: 0 };
+      placeBuildingAt(center);
+    }
+    state.mapReady = true;
+  } catch (err) {
+    $('map3dContainer').innerHTML = `<div class="placeholder-msg">⚠ ${escapeHtml(err.message)}</div>`;
+    state.map3d = null;
+    gmapsLoading = null;
+  }
+}
+
+async function placeBuildingAt(center) {
+  if (!state.map3d || !state.geometry) return;
+  const google = window.google;
+  const { Polygon3DElement, AltitudeMode } = await google.maps.importLibrary('maps3d');
+  const g = state.geometry;
+  const height = g.niveles * g.alturaEntrepisoM;
+
+  // metros → grados alrededor del centro
+  const mLat = 1 / 111320;
+  const mLng = 1 / (111320 * Math.cos(center.lat * Math.PI / 180));
+  const cx = g.anchoM / 2, cy = g.fondoM / 2;
+  const coords = g.footprint.map(p => ({
+    lat: center.lat + (p.y - cy) * mLat,
+    lng: center.lng + (p.x - cx) * mLng,
+    altitude: height,
+  }));
+
+  if (state.buildingPoly) state.buildingPoly.remove();
+  const poly = new Polygon3DElement({
+    altitudeMode: AltitudeMode.RELATIVE_TO_GROUND,
+    extruded: true,
+    fillColor: 'rgba(205, 242, 90, 0.55)',
+    strokeColor: '#1a7d50',
+    strokeWidth: 2,
+  });
+  poly.outerCoordinates = coords;
+  state.map3d.appendChild(poly);
+  state.buildingPoly = poly;
+
+  state.map3d.center = { lat: center.lat, lng: center.lng, altitude: 0 };
+  state.map3d.range = Math.max(g.anchoM, g.fondoM) * 12;
+}
+
+async function geocodeAndPlace() {
+  const addr = $('addressInput').value.trim();
+  if (!addr) return;
+  if (!state.map3d) await initMap3D();
+  if (!state.map3d) return;
+  try {
+    const { Geocoder } = await window.google.maps.importLibrary('geocoding');
+    const geocoder = new Geocoder();
+    const { results } = await geocoder.geocode({ address: addr });
+    if (results && results[0]) {
+      const loc = results[0].geometry.location;
+      const c = { lat: loc.lat(), lng: loc.lng() };
+      state.map3d.center = { ...c, altitude: 0 };
+      placeBuildingAt(c);
+    }
+  } catch {
+    alert('No se encontró la dirección. Verifica que Geocoding API esté habilitada en tu llave.');
+  }
+}
+
+/* =====================================================================
+   Pasos 5/6 — materiales y fallas
+===================================================================== */
+function renderEngineering() {
+  const e = state.engineering;
+  $('secMaterials').classList.remove('hidden');
+  $('secFailures').classList.remove('hidden');
+  $('matContent').classList.remove('hidden');
+  $('matSummary').textContent = e.resumen;
+
+  // materiales por categoría + costo
+  const costCard = `
+    <div class="mat-card">
+      <h4>Costo estimado de obra <span class="tag">MXN</span></h4>
+      <ul>
+        <li><span>Mínimo</span><span>$${fmt(e.costoEstimadoMXN.minimo)}</span></li>
+        <li><span>Máximo</span><span>$${fmt(e.costoEstimadoMXN.maximo)}</span></li>
+      </ul>
+    </div>`;
+  $('matGrid').innerHTML = e.materiales.map(cat => `
+    <div class="mat-card">
+      <h4>${escapeHtml(cat.categoria)} <span class="tag">IA</span></h4>
+      <ul>${cat.items.map(it => `
+        <li><span>${escapeHtml(it.concepto)}<br><small style="color:var(--clay-soft)">${escapeHtml(it.calidad)}</small></span>
+        <span>${fmt(it.cantidad)} ${escapeHtml(it.unidad)}</span></li>`).join('')}
+      </ul>
+    </div>`).join('') + costCard;
+
+  // varillas
+  $('rebarBody').innerHTML = e.varillas.map(v => `
+    <tr>
+      <td>${escapeHtml(v.tipo)}</td>
+      <td>${v.diametroMm}</td>
+      <td>${escapeHtml(v.grado)}</td>
+      <td><b>${fmt(v.cantidadKg)}</b></td>
+      <td>${v.separacionCm ? '@ ' + v.separacionCm + ' cm' : '—'}</td>
+      <td>${escapeHtml(v.ubicacion)}</td>
+    </tr>`).join('');
+
+  $('recoList').innerHTML = e.recomendaciones.map(r => `<li>${escapeHtml(r)}</li>`).join('');
+
+  // primera falla
+  const ff = e.primeraFalla;
+  $('firstFailure').innerHTML = `
+    <div class="ff-label">⚠ Primera falla predicha · confianza ${Math.round(ff.confianzaPct)}%</div>
+    <h3>${escapeHtml(ff.nombre)}</h3>
+    <div class="ff-time">~${fmt(ff.aniosEstimados)} <small>años después de terminada la obra</small></div>
+    <p>${escapeHtml(ff.explicacion)}</p>`;
+
+  // lista de fallas
+  const sorted = [...e.fallas].sort((a,b) => a.aniosEstimados - b.aniosEstimados);
+  $('failList').innerHTML = sorted.map(f => `
+    <div class="fail-row">
+      <div class="name">${escapeHtml(f.nombre)}<small>${escapeHtml(f.tipo)} · ${escapeHtml(f.descripcion)}</small>
+        <small style="color:var(--clay-soft)">Prevención: ${escapeHtml(f.prevencion)}</small></div>
+      <span class="sev ${f.severidad.normalize('NFD').replace(/[\u0300-\u036f]/g,'')}">${escapeHtml(f.severidad)}</span>
+      <span class="years">~${fmt(f.aniosEstimados)} años</span>
+      <div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, Math.max(3, f.probabilidadPct))}%"></div></div>
+        <div class="prob-label">${Math.round(f.probabilidadPct)}% de probabilidad</div>
+      </div>
+    </div>`).join('');
+
+  $('engJson').textContent = JSON.stringify(e, null, 2);
+}
+
+/* =====================================================================
+   Utilidades
+===================================================================== */
+function fmt(n) {
+  return Number(n).toLocaleString('es-MX', { maximumFractionDigits: 1 });
+}
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function showError(id, msg) { const el = $(id); el.textContent = msg; el.classList.add('show'); }
+function hideError(id) { $(id).classList.remove('show'); }
+</script>
+
+</body>
+</html>

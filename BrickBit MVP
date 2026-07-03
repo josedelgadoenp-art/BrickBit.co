@@ -353,6 +353,7 @@
         <a href="#ia" class="link">Análisis IA</a>
         <a href="#publico" class="link">Para quién</a>
         <a href="#futuro" class="link">Lo que viene</a>
+        <a href="gemelo-digital.html" class="link" style="color:var(--lime)">Gemelo Digital 3D</a>
       </div>
       <div class="nav-cta">
         <a href="#ia" class="btn btn-ghost">Ver demo</a>
@@ -678,6 +679,7 @@
           <a href="#analiza">Qué analiza</a>
           <a href="#ia">Análisis IA</a>
           <a href="#futuro">Hoja de ruta</a>
+          <a href="gemelo-digital.html">Gemelo Digital 3D</a>
         </div>
         <div>
           <h4>Para</h4>
