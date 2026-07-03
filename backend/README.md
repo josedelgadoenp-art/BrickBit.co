@@ -64,6 +64,33 @@ El comparador (`comparar.html`) usa la misma configuración automáticamente.
   sobre la ruta `/api/claude`, o un chequeo de token de sesión propio en
   `worker.js`.
 
+## Habilitar "Compartir proyecto" (enlaces cortos)
+
+El botón **🔗 Compartir proyecto** funciona de dos formas:
+
+- **Sin backend**: el enlace lleva el proyecto completo comprimido dentro de la
+  propia URL. Funciona siempre, pero el enlace es largo.
+- **Con backend + KV**: se genera un enlace corto (`?share=abc123`) que dura
+  90 días. Para habilitarlo:
+
+```bash
+cd backend
+
+# 1. Crea el almacén de enlaces (imprime un id)
+npx wrangler kv namespace create SHARES
+
+# 2. Descomenta el bloque [[kv_namespaces]] en wrangler.toml
+#    y pega el id que imprimió el paso anterior
+
+# 3. Vuelve a desplegar
+npx wrangler deploy
+```
+
+Endpoints que agrega:
+
+- `POST /api/share` — guarda el proyecto (máx. 300 KB) y devuelve `{ id }`
+- `GET /api/share/{id}` — devuelve el proyecto guardado
+
 ## Probar el backend
 
 ```bash

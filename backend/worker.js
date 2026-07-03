@@ -23,7 +23,7 @@ function corsHeaders(env, origin) {
   else if (configured.includes(origin)) allow = origin;
   return {
     'access-control-allow-origin': allow,
-    'access-control-allow-methods': 'POST, OPTIONS',
+    'access-control-allow-methods': 'GET, POST, OPTIONS',
     'access-control-allow-headers': 'content-type',
     'access-control-max-age': '86400',
     'vary': 'origin',
@@ -47,8 +47,18 @@ export default {
     }
 
     const url = new URL(request.url);
+
+    /* ---- Compartir proyectos (requiere KV namespace SHARES) ---- */
+    if (url.pathname === '/api/share' && request.method === 'POST') {
+      return handleShareCreate(request, env, headers);
+    }
+    const shareMatch = url.pathname.match(/^\/api\/share\/([a-z0-9]{4,20})$/);
+    if (shareMatch && request.method === 'GET') {
+      return handleShareGet(shareMatch[1], env, headers);
+    }
+
     if (url.pathname !== '/api/claude' || request.method !== 'POST') {
-      return json({ error: { message: 'No encontrado. Usa POST /api/claude' } }, 404, headers);
+      return json({ error: { message: 'No encontrado. Usa POST /api/claude, POST /api/share o GET /api/share/{id}' } }, 404, headers);
     }
 
     // Si se configuraron orígenes explícitos, rechaza los demás
@@ -103,3 +113,42 @@ export default {
     });
   },
 };
+
+
+/* =====================================================================
+   Compartir proyectos — enlaces cortos con Cloudflare KV
+   Configuración: npx wrangler kv namespace create SHARES
+   y agrega el binding en wrangler.toml (ver backend/README.md)
+===================================================================== */
+const SHARE_TTL_SECONDS = 60 * 60 * 24 * 90; // 90 días
+const SHARE_MAX_BYTES = 300 * 1024;
+
+async function handleShareCreate(request, env, headers) {
+  if (!env.SHARES) {
+    return json({ error: { message: 'El backend no tiene configurado el almacén de enlaces (KV namespace SHARES). Ver backend/README.md.' } }, 501, headers);
+  }
+  const body = await request.text();
+  if (body.length > SHARE_MAX_BYTES) {
+    return json({ error: { message: 'El proyecto es demasiado grande para compartir.' } }, 413, headers);
+  }
+  let data;
+  try { data = JSON.parse(body); } catch { data = null; }
+  if (!data || typeof data !== 'object' || !data.geometry || !data.engineering) {
+    return json({ error: { message: 'Proyecto inválido: se esperan geometry y engineering.' } }, 400, headers);
+  }
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const id = [...crypto.getRandomValues(new Uint8Array(8))].map(b => alphabet[b % 36]).join('');
+  await env.SHARES.put(id, body, { expirationTtl: SHARE_TTL_SECONDS });
+  return json({ id, expiresInDays: 90 }, 200, headers);
+}
+
+async function handleShareGet(id, env, headers) {
+  if (!env.SHARES) {
+    return json({ error: { message: 'El backend no tiene configurado el almacén de enlaces (KV namespace SHARES).' } }, 501, headers);
+  }
+  const value = await env.SHARES.get(id);
+  if (!value) {
+    return json({ error: { message: 'Enlace no encontrado o expirado (los enlaces duran 90 días).' } }, 404, headers);
+  }
+  return new Response(value, { status: 200, headers: { ...headers, 'content-type': 'application/json' } });
+}

@@ -6,3 +6,11 @@ compatibility_date = "2026-07-01"
 # En producción cámbialo por tu dominio, p. ej. "https://brickbit.co"
 [vars]
 ALLOWED_ORIGINS = "*"
+
+# Para habilitar los enlaces cortos de "Compartir proyecto":
+#   1. npx wrangler kv namespace create SHARES
+#   2. Copia el id que imprime y descomenta estas líneas:
+#
+# [[kv_namespaces]]
+# binding = "SHARES"
+# id = "PEGA_AQUI_EL_ID"
