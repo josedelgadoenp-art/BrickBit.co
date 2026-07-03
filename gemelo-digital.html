@@ -249,6 +249,40 @@
     margin-top:10px;background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:16px;
     font-size:.72rem;overflow-x:auto;color:var(--clay-soft);max-height:340px;
   }
+  /* simulador 4D */
+  .sim-controls{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+  .sim-controls input[type=range]{flex:1;min-width:200px;accent-color:var(--lime);cursor:pointer}
+  .year-display{font-family:'Fraunces',serif;font-size:1.35rem;color:var(--lime);min-width:100px;text-align:right}
+  .sim-wrap{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}
+  @media(max-width:900px){.sim-wrap{grid-template-columns:1fr}}
+  #simCanvas{width:100%;height:460px;border-radius:var(--r);border:1px solid var(--line-strong);background:radial-gradient(600px 400px at 50% 0%, #1c2420, #0d0f0c);display:block}
+  .sim-panel{display:flex;flex-direction:column;gap:14px}
+  .sim-block{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .sim-block .k{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted-txt);margin-bottom:6px}
+  .sim-block .v{font-family:'Fraunces',serif;font-size:1.25rem}
+  .sim-block .v.danger{color:var(--danger)}
+  .sim-block .v.lime{color:var(--lime)}
+  .sim-costs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:1100px){.sim-costs{grid-template-columns:1fr}}
+  .health-track{height:10px;border-radius:99px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;margin:4px 0 8px}
+  .health-fill{height:100%;border-radius:99px;width:100%;transition:width .25s, background .25s}
+  .sim-fails{display:flex;flex-direction:column;gap:9px;max-height:190px;overflow-y:auto}
+  .sim-fail{font-size:.8rem;display:flex;gap:9px;align-items:baseline;color:var(--cream)}
+  .sim-fail .num{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:.62rem;font-family:'Space Mono',monospace;color:#100c0a;font-weight:700}
+  .sim-fail small{color:var(--muted-txt)}
+  .sim-empty{color:var(--muted-txt);font-size:.82rem}
+
+  /* análisis de inversión */
+  .mini-h{font-family:'Fraunces',serif;font-size:1.1rem;margin-bottom:4px}
+  .reco-list.warn li::before{content:"⚠";color:var(--warn)}
+  .valbars{margin-top:20px;display:flex;flex-direction:column;gap:10px}
+  .valbar{display:grid;grid-template-columns:170px 1fr 130px;gap:14px;align-items:center;font-size:.85rem}
+  @media(max-width:700px){.valbar{grid-template-columns:1fr;gap:4px}}
+  .valbar .lbl{color:var(--muted-txt)}
+  .valbar .amt{font-family:'Space Mono',monospace;font-size:.78rem;text-align:right;color:var(--cream)}
+  .valbar-track{height:14px;border-radius:8px;background:var(--bg-2);border:1px solid var(--line);overflow:hidden}
+  .valbar-fill{height:100%;border-radius:8px;transition:width .6s}
+
   .proj-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px dashed var(--line);font-size:.92rem}
   .proj-row .meta{color:var(--muted-txt);font-size:.74rem;font-family:'Space Mono',monospace}
   .proj-row .del{background:none;border:1px solid transparent;color:var(--danger);cursor:pointer;font-size:.78rem;padding:6px 10px;border-radius:8px}
@@ -279,6 +313,8 @@
       <div class="step-chip" data-step="4"><span class="n">4</span> Mapa 3D</div>
       <div class="step-chip" data-step="5"><span class="n">5</span> Materiales</div>
       <div class="step-chip" data-step="6"><span class="n">6</span> Predicción de fallas</div>
+      <div class="step-chip" data-step="7"><span class="n">7</span> Simulador 4D</div>
+      <div class="step-chip" data-step="8"><span class="n">8</span> Inversión</div>
     </div>
   </div>
 
@@ -392,9 +428,71 @@
     <details class="raw"><summary>Ver análisis completo (JSON)</summary><pre id="engJson"></pre></details>
   </section>
 
-  <!-- ===== 7. SAVED PROJECTS ===== -->
+  <!-- ===== 7. 4D SIMULATOR ===== -->
+  <section class="card hidden" id="secSim">
+    <div class="card-head"><span class="knum">07 /</span><h2>Simulador 4D — la vida de tu edificio</h2></div>
+    <p class="sub">Recorre los próximos 30 años del proyecto. Los marcadores numerados aparecen sobre el modelo en la zona y el año en que cada falla predicha se manifestaría, el edificio envejece visualmente, y comparas en vivo cuánto cuesta reparar sobre la marcha contra prevenir desde la construcción.</p>
+    <div class="sim-controls">
+      <button class="btn btn-ghost" id="btnPlay">▶ Reproducir 30 años</button>
+      <input type="range" id="yearSlider" min="0" max="30" value="0" step="1" aria-label="Año de simulación">
+      <div class="year-display" id="yearLabel">Año 0</div>
+    </div>
+    <div class="sim-wrap">
+      <canvas id="simCanvas"></canvas>
+      <div class="sim-panel">
+        <div class="sim-block">
+          <div class="k">Salud del edificio</div>
+          <div class="health-track"><div class="health-fill" id="healthFill"></div></div>
+          <div class="v" id="healthPct">100%</div>
+        </div>
+        <div class="sim-block sim-costs">
+          <div><div class="k">Reparar al fallar (acum.)</div><div class="v danger" id="costRep">$0</div></div>
+          <div><div class="k">Prevenir en obra (total)</div><div class="v lime" id="costPrev">$0</div></div>
+          <div><div class="k">Ahorro por prevenir</div><div class="v" id="costSave">—</div></div>
+        </div>
+        <div class="sim-block" id="simValueBlock" style="display:none">
+          <div class="k">Valor estimado del inmueble en este año</div>
+          <div class="v lime" id="simValue">—</div>
+        </div>
+        <div class="sim-block">
+          <div class="k">Fallas manifestadas</div>
+          <div id="simFailList" class="sim-fails"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 8. INVESTMENT ===== -->
+  <section class="card hidden" id="secInvest">
+    <div class="card-head"><span class="knum">08 /</span><h2>Análisis de inversión — Valor Futuro</h2></div>
+    <p class="sub">El corazón de BrickBit aplicado a tu gemelo digital: la IA estima el valor del inmueble terminado, su plusvalía a 5 y 10 años, la renta esperada y el ROI del desarrollador contra el costo de obra ya calculado.</p>
+    <div class="toolbar">
+      <div class="field">
+        <label for="invLocation">Ubicación del proyecto</label>
+        <input type="text" id="invLocation" placeholder="Ej. Col. Roma Norte, CDMX (si la dejas vacía se usa la dirección del paso 4)">
+      </div>
+      <button class="btn btn-primary" id="btnInvest">Calcular análisis →</button>
+    </div>
+    <div class="status" id="statusInvest"><span class="spinner"></span><span>Claude está estimando valor futuro, plusvalía, renta y ROI…</span></div>
+    <div class="error-box" id="errInvest"></div>
+    <div id="invContent" class="hidden">
+      <p class="sub" id="invResumen" style="margin-top:8px"></p>
+      <div class="geo-stats" id="invStats"></div>
+      <div class="valbars" id="valBars"></div>
+      <div class="grid-2" style="margin-top:26px">
+        <div><h3 class="mini-h">Factores de plusvalía</h3><ul class="reco-list" id="invFactores"></ul></div>
+        <div><h3 class="mini-h">Riesgos de inversión</h3><ul class="reco-list warn" id="invRiesgos"></ul></div>
+      </div>
+      <div class="first-failure" style="border-color:rgba(205,242,90,.4);background:linear-gradient(140deg, rgba(205,242,90,.08), rgba(26,125,80,.05));margin-top:24px">
+        <div class="ff-label" style="color:var(--lime)">Recomendación del analista IA</div>
+        <p id="invReco" style="color:var(--cream);margin-top:4px"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 9. SAVED PROJECTS ===== -->
   <section class="card" id="secProjects">
-    <div class="card-head"><span class="knum">07 /</span><h2>Proyectos guardados</h2></div>
+    <div class="card-head"><span class="knum">09 /</span><h2>Proyectos guardados</h2></div>
     <p class="sub">Cada análisis terminado se guarda en este navegador. Compara dos versiones de un plano o proyectos distintos lado a lado: geometría, materiales, costo y predicción de fallas.</p>
     <div id="projList"></div>
     <div style="margin-top:18px">
@@ -430,6 +528,7 @@ const state = {
   file: null,          // { base64, mediaType, name, sizeKB, isPdf }
   geometry: null,      // JSON extraído por Claude (paso 2)
   engineering: null,   // JSON de materiales + fallas (pasos 5-6)
+  investment: null,    // JSON de valor futuro / ROI (paso 8)
   mapReady: false,
   map3d: null,
   buildingPoly: null,
@@ -604,13 +703,21 @@ const ENGINEERING_SCHEMA = {
       type: "array",
       description: "Fallas potenciales ordenadas de más próxima a más lejana",
       items: { type: "object", additionalProperties: false,
-        required: ["nombre","tipo","probabilidadPct","severidad","aniosEstimados","descripcion","prevencion"],
+        required: ["nombre","tipo","probabilidadPct","severidad","aniosEstimados","zona","costoReparacionMXN","costoPrevencionMXN","descripcion","prevencion"],
         properties: {
           nombre: { type: "string" },
           tipo: { type: "string", enum: ["estructural","diseño","instalaciones","humedad","suelo","otro"] },
           probabilidadPct: { type: "number" },
           severidad: { type: "string", enum: ["baja","media","alta","crítica"] },
           aniosEstimados: { type: "number", description: "Años estimados hasta que la falla se manifieste" },
+          zona: { type: "object", additionalProperties: false, required: ["x","y","nivel"],
+            description: "Zona aproximada del plano donde se manifestaría la falla",
+            properties: {
+              x: { type: "number" }, y: { type: "number" },
+              nivel: { type: "integer", description: "Nivel donde aparece; 1 = planta baja, usa el último nivel para azotea" }
+            } },
+          costoReparacionMXN: { type: "number", description: "Costo estimado de reparar la falla ya manifestada" },
+          costoPrevencionMXN: { type: "number", description: "Costo de prevenirla durante la construcción" },
           descripcion: { type: "string" },
           prevencion: { type: "string" }
         } }
@@ -708,7 +815,7 @@ async function analyzeEngineering(geometry) {
 2) El acero de refuerzo: tipos de varilla (#3, #4, #5…), diámetro, grado, kilogramos, separación y ubicación (cimentación, castillos, trabes, losas).
 3) Recomendaciones de obra concretas.
 4) Un rango de costo estimado de obra negra en MXN.
-5) Predicción de fallas arquitectónicas/estructurales/de diseño: nombre, tipo, probabilidad (%), severidad, años estimados hasta manifestarse, descripción y prevención.
+5) Predicción de fallas arquitectónicas/estructurales/de diseño: nombre, tipo, probabilidad (%), severidad, años estimados hasta manifestarse, la zona aproximada donde aparecería (coordenadas x, y en metros dentro del plano y nivel; 1 = planta baja), el costo en MXN de repararla ya manifestada vs. prevenirla en obra, descripción y prevención.
 6) La PRIMERA falla esperada: cuál será, en cuántos años, con qué confianza y por qué.
 
 GEOMETRÍA DEL PROYECTO:
@@ -723,6 +830,8 @@ ${JSON.stringify(geometry, null, 2)}` },
 ===================================================================== */
 $('btnAnalyze').addEventListener('click', async () => {
   if (!state.file) return;
+  state.investment = null;
+  $('invContent').classList.add('hidden');
   hideError('errAnalyze');
   $('btnAnalyze').disabled = true;
   $('statusAnalyze').classList.add('show');
@@ -751,6 +860,8 @@ async function runEngineering() {
     state.engineering = await analyzeEngineering(state.geometry);
     $('statusEng').classList.remove('show');
     renderEngineering();
+    initSimulator();
+    $('secInvest').classList.remove('hidden');
     saveCurrentProject();
     setStep(6, 'done');
   } catch (err) {
@@ -767,6 +878,9 @@ $('btnDemo').addEventListener('click', () => {
   state.engineering = DEMO_ENGINEERING;
   renderModelSection();
   renderEngineering();
+  initSimulator();
+  state.investment = DEMO_INVESTMENT;
+  renderInvestment();
   saveCurrentProject();
   $('secMaterials').classList.remove('hidden');
   $('statusEng').classList.remove('show');
@@ -828,15 +942,19 @@ const DEMO_ENGINEERING = {
   costoEstimadoMXN: { minimo: 1450000, maximo: 1850000 },
   fallas: [
     { nombre: "Fisuración por contracción en losa de azotea", tipo: "diseño", probabilidadPct: 72, severidad: "media", aniosEstimados: 2,
+      zona: { x: 5, y: 7, nivel: 2 }, costoReparacionMXN: 85000, costoPrevencionMXN: 18000,
       descripcion: "Losa de gran claro sin juntas de control; el ciclo térmico de azotea genera fisuras de retracción en esquinas y zonas de cambio de sección.",
       prevencion: "Malla por temperatura, curado prolongado y junta de control en el quiebre en L del footprint." },
     { nombre: "Humedad por capilaridad en muros de planta baja", tipo: "humedad", probabilidadPct: 55, severidad: "media", aniosEstimados: 4,
+      zona: { x: 1, y: 5, nivel: 1 }, costoReparacionMXN: 60000, costoPrevencionMXN: 12000,
       descripcion: "Sin barrera impermeable en desplante, la humedad del suelo asciende y degrada aplanados y pintura.",
       prevencion: "Impermeabilizante integral en cadena de desplante y aplanado con mortero hidrófugo en el primer metro." },
     { nombre: "Grieta diagonal en esquina entrante (quiebre en L)", tipo: "estructural", probabilidadPct: 40, severidad: "alta", aniosEstimados: 8,
+      zona: { x: 4, y: 10, nivel: 1 }, costoReparacionMXN: 140000, costoPrevencionMXN: 25000,
       descripcion: "Las plantas en L concentran esfuerzos en la esquina entrante ante sismo o asentamiento diferencial.",
       prevencion: "Castillo doble en la esquina entrante y refuerzo adicional de losa en esa zona." },
     { nombre: "Asentamiento diferencial", tipo: "suelo", probabilidadPct: 25, severidad: "crítica", aniosEstimados: 12,
+      zona: { x: 8, y: 3, nivel: 1 }, costoReparacionMXN: 450000, costoPrevencionMXN: 60000,
       descripcion: "Sin estudio de mecánica de suelos, una zapata corrida puede asentarse de forma desigual en suelos blandos.",
       prevencion: "Estudio de mecánica de suelos previo; rigidizar cimentación con trabes de liga en ambos sentidos." }
   ],
@@ -871,8 +989,8 @@ function renderModelSection() {
   $('secModel').scrollIntoView({ behavior: 'smooth' });
 }
 
-function initThree() {
-  const canvas = $('viewer3d');
+function initThree(canvas) {
+  canvas = canvas || $('viewer3d');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   const scene = new THREE.Scene();
@@ -1183,6 +1301,342 @@ function renderEngineering() {
 
   $('engJson').textContent = JSON.stringify(e, null, 2);
 }
+
+/* =====================================================================
+   Paso 7 — Simulador 4D: la vida del edificio en 30 años
+===================================================================== */
+let simThree = null;
+const sim = { markers: [], wallMats: [], year: 0, playing: false };
+
+const SEV_COLOR  = { baja: '#57c389', media: '#e0b95a', alta: '#e06d5a', 'crítica': '#e06d5a' };
+const SEV_WEIGHT = { baja: 5, media: 12, alta: 22, 'crítica': 35 };
+
+function numberSprite(n, color) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(64, 64, 54, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = 8; ctx.strokeStyle = '#100c0a'; ctx.stroke();
+  ctx.fillStyle = '#100c0a';
+  ctx.font = 'bold 60px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(String(n), 64, 68);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false }));
+  spr.scale.set(1.5, 1.5, 1);
+  return spr;
+}
+
+function makeSimBuilding(g) {
+  const group = new THREE.Group();
+  const wallMats = [];
+  const h = g.alturaEntrepisoM, slabT = 0.15, wallT = 0.15;
+  const cx = g.anchoM / 2, cy = g.fondoM / 2;
+  const matSlab  = new THREE.MeshStandardMaterial({ color: 0xb8b2a7, roughness: 0.9 });
+  const matWallC = new THREE.MeshStandardMaterial({ color: 0xf5ede3, roughness: 0.85 });
+  const matWallP = new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: 0.85 });
+  const matCol   = new THREE.MeshStandardMaterial({ color: 0x8f8779, roughness: 0.7 });
+  const matEdge  = new THREE.LineBasicMaterial({ color: 0xcdf25a, transparent: true, opacity: 0.4 });
+  for (const m of [matSlab, matWallC, matWallP]) wallMats.push({ mat: m, base: m.color.clone() });
+
+  const shape = new THREE.Shape();
+  g.footprint.forEach((p, i) => i === 0 ? shape.moveTo(p.x - cx, p.y - cy) : shape.lineTo(p.x - cx, p.y - cy));
+  shape.closePath();
+
+  for (let lvl = 0; lvl <= g.niveles; lvl++) {
+    const slabGeo = new THREE.ExtrudeGeometry(shape, { depth: slabT, bevelEnabled: false });
+    slabGeo.rotateX(-Math.PI / 2);
+    const slab = new THREE.Mesh(slabGeo, matSlab);
+    slab.position.y = lvl * h;
+    slab.castShadow = slab.receiveShadow = true;
+    group.add(slab);
+    group.add(new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), matEdge).translateY(lvl * h));
+    if (lvl === g.niveles) break;
+    for (const w of g.muros) {
+      const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
+      const len = Math.hypot(dx, dy);
+      if (len < 0.05) continue;
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, h - slabT, wallT), w.carga ? matWallC : matWallP);
+      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, (w.y1 + w.y2) / 2 - cy);
+      mesh.rotation.y = -Math.atan2(dy, dx);
+      mesh.castShadow = mesh.receiveShadow = true;
+      group.add(mesh);
+    }
+    for (const c of g.columnas) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, h, 0.3), matCol);
+      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
+      mesh.castShadow = true;
+      group.add(mesh);
+    }
+  }
+  return { group, wallMats };
+}
+
+function initSimulator() {
+  if (!state.geometry || !state.engineering) return;
+  $('secSim').classList.remove('hidden');
+  if (!simThree) simThree = initThree($('simCanvas'));
+  const scene = simThree.scene;
+  const prev = scene.getObjectByName('simWorld');
+  if (prev) scene.remove(prev);
+
+  const g = state.geometry;
+  const h = g.alturaEntrepisoM, cx = g.anchoM / 2, cy = g.fondoM / 2;
+  const world = new THREE.Group();
+  world.name = 'simWorld';
+
+  const { group, wallMats } = makeSimBuilding(g);
+  sim.wallMats = wallMats;
+  world.add(group);
+
+  const groundSize = Math.max(g.anchoM, g.fondoM) * 4;
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(groundSize, 48),
+    new THREE.MeshStandardMaterial({ color: 0x1c2420, roughness: 1 })
+  );
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.01;
+  ground.receiveShadow = true;
+  world.add(ground);
+  const grid = new THREE.GridHelper(groundSize, 36, 0x2c3a30, 0x22291f);
+  grid.position.y = 0.001;
+  world.add(grid);
+
+  // Marcadores de falla (numerados, aparecen según el año)
+  sim.markers = [];
+  state.engineering.fallas.forEach((f, i) => {
+    const z = f.zona || {};
+    const nivel = Math.min(Math.max(1, z.nivel || 1), g.niveles);
+    const isTop = (z.nivel || 1) >= g.niveles && /losa|azotea|techo/i.test(f.nombre);
+    const yPos = isTop ? g.niveles * h + 0.7 : (nivel - 1) * h + h * 0.7;
+    const spr = numberSprite(i + 1, SEV_COLOR[f.severidad] || '#e06d5a');
+    spr.position.set((z.x ?? g.anchoM / 2) - cx, yPos, (z.y ?? g.fondoM / 2) - cy);
+    spr.visible = false;
+    world.add(spr);
+    sim.markers.push(spr);
+  });
+
+  scene.add(world);
+  const totalH = g.niveles * h;
+  const d = Math.max(g.anchoM, g.fondoM, totalH) * 1.9;
+  simThree.camera.position.set(d, d * 0.7, d);
+  simThree.controls.target.set(0, totalH / 2, 0);
+  simThree.resize();
+  setSimYear(0);
+  markChip(7);
+}
+
+function setSimYear(y) {
+  sim.year = y;
+  $('yearSlider').value = y;
+  $('yearLabel').textContent = 'Año ' + y;
+  const fallas = state.engineering.fallas;
+  const manifested = [];
+  fallas.forEach((f, i) => {
+    const on = f.aniosEstimados <= y;
+    if (sim.markers[i]) sim.markers[i].visible = on;
+    if (on) manifested.push([f, i]);
+  });
+
+  // Salud: penaliza fallas manifestadas (por severidad × probabilidad) + desgaste natural
+  let health = 100
+    - manifested.reduce((s, [f]) => s + (SEV_WEIGHT[f.severidad] || 15) * (f.probabilidadPct || 50) / 100, 0)
+    - y * 0.4;
+  health = Math.max(15, Math.round(health));
+  $('healthFill').style.width = health + '%';
+  $('healthFill').style.background = health > 70 ? 'var(--clay-soft)' : health > 45 ? 'var(--warn)' : 'var(--danger)';
+  $('healthPct').textContent = health + '%';
+
+  // Envejecimiento visual de los materiales
+  const t = Math.min(1, y / 30) * 0.55;
+  const aged = new THREE.Color(0x8d857a);
+  for (const m of sim.wallMats) m.mat.color.copy(m.base).lerp(aged, t);
+
+  // Reparar al fallar vs prevenir en obra
+  const rep = manifested.reduce((s, [f]) => s + (f.costoReparacionMXN || 0), 0);
+  const prevAll = fallas.reduce((s, f) => s + (f.costoPrevencionMXN || 0), 0);
+  $('costRep').textContent = '$' + fmt(rep);
+  $('costPrev').textContent = '$' + fmt(prevAll);
+  const save = rep - prevAll;
+  $('costSave').textContent = save > 0 ? '$' + fmt(save) : '—';
+  $('costSave').style.color = save > 0 ? 'var(--lime)' : 'var(--muted-txt)';
+
+  updateSimValue();
+
+  $('simFailList').innerHTML = manifested.length
+    ? manifested.map(([f, i]) => `
+      <div class="sim-fail">
+        <span class="num" style="background:${SEV_COLOR[f.severidad] || '#e06d5a'}">${i + 1}</span>
+        <span>${escapeHtml(f.nombre)} <small>· año ~${fmt(f.aniosEstimados)} · ${escapeHtml(f.severidad)}</small></span>
+      </div>`).join('')
+    : '<div class="sim-empty">Sin fallas manifestadas todavía. Mueve la línea de tiempo →</div>';
+}
+
+function estimatedValueAtYear(y) {
+  const v = state.investment;
+  if (!v) return null;
+  const v0 = (v.valorTerminadoMXN.minimo + v.valorTerminadoMXN.maximo) / 2;
+  if (y <= 0) return v0;
+  if (y <= 5) return v0 + (v.valorEn5AniosMXN - v0) * (y / 5);
+  if (y <= 10) return v.valorEn5AniosMXN + (v.valorEn10AniosMXN - v.valorEn5AniosMXN) * ((y - 5) / 5);
+  return v.valorEn10AniosMXN * Math.pow(1 + (v.plusvaliaAnualPct || 0) / 100, y - 10);
+}
+
+function updateSimValue() {
+  const val = estimatedValueAtYear(sim.year);
+  $('simValueBlock').style.display = val === null ? 'none' : 'block';
+  if (val !== null) $('simValue').textContent = '$' + fmt(Math.round(val)) + ' MXN';
+}
+
+$('yearSlider').addEventListener('input', e => {
+  stopPlaying();
+  setSimYear(Number(e.target.value));
+});
+
+function stopPlaying() {
+  sim.playing = false;
+  $('btnPlay').textContent = '▶ Reproducir 30 años';
+}
+
+$('btnPlay').addEventListener('click', () => {
+  if (sim.playing) { stopPlaying(); return; }
+  if (!state.engineering) return;
+  sim.playing = true;
+  $('btnPlay').textContent = '⏸ Pausa';
+  if (sim.year >= 30) setSimYear(0);
+  const from = sim.year;
+  const start = performance.now();
+  const msPerYear = 320;
+  (function tick(now) {
+    if (!sim.playing) return;
+    const yr = Math.min(30, from + (now - start) / msPerYear);
+    setSimYear(Math.round(yr));
+    if (yr >= 30) { stopPlaying(); return; }
+    requestAnimationFrame(tick);
+  })(start);
+});
+
+function markChip(n) {
+  document.querySelector(`.step-chip[data-step="${n}"]`)?.classList.add('done');
+}
+
+/* =====================================================================
+   Paso 8 — Análisis de inversión (Valor Futuro)
+===================================================================== */
+const INVESTMENT_SCHEMA = {
+  type: "object", additionalProperties: false,
+  required: ["resumen","valorTerminadoMXN","valorEn5AniosMXN","valorEn10AniosMXN","plusvaliaAnualPct","rentaMensualMXN","capRatePct","roiDesarrolloPct","puntoEquilibrioAnios","factoresPlusvalia","riesgos","recomendacion"],
+  properties: {
+    resumen: { type: "string" },
+    valorTerminadoMXN: { type: "object", additionalProperties: false, required: ["minimo","maximo"],
+      properties: { minimo: { type: "number" }, maximo: { type: "number" } } },
+    valorEn5AniosMXN: { type: "number" },
+    valorEn10AniosMXN: { type: "number" },
+    plusvaliaAnualPct: { type: "number" },
+    rentaMensualMXN: { type: "number" },
+    capRatePct: { type: "number", description: "Renta anual / valor del inmueble × 100" },
+    roiDesarrolloPct: { type: "number", description: "(Valor terminado - costo de obra) / costo de obra × 100" },
+    puntoEquilibrioAnios: { type: "number", description: "Años de renta necesarios para recuperar el costo de obra" },
+    factoresPlusvalia: { type: "array", items: { type: "string" } },
+    riesgos: { type: "array", items: { type: "string" } },
+    recomendacion: { type: "string" }
+  }
+};
+
+$('btnInvest').addEventListener('click', async () => {
+  if (!state.geometry || !state.engineering) return;
+  hideError('errInvest');
+  $('btnInvest').disabled = true;
+  $('statusInvest').classList.add('show');
+  try {
+    const ubicacion = $('invLocation').value.trim() || $('addressInput').value.trim() || 'México (ubicación no especificada; asume ciudad media)';
+    state.investment = await callClaude({
+      system: 'Eres un analista senior de inversión inmobiliaria en México, experto en valuación, plusvalía por zona, impacto de obra pública, ciclos económicos y rentas de mercado. Trabajas para BrickBit ("Valor Futuro"). Das cifras realistas y conservadoras en MXN, coherentes con la ubicación indicada, la tipología del proyecto y el costo de obra calculado. El valor del inmueble incluye un supuesto razonable de valor de terreno para la zona: decláralo en el resumen.',
+      content: [{ type: 'text', text:
+`Analiza la inversión de este proyecto para un desarrollador.
+
+UBICACIÓN: ${ubicacion}
+
+GEOMETRÍA DEL PROYECTO:
+${JSON.stringify(state.geometry)}
+
+COSTO DE OBRA NEGRA ESTIMADO (MXN): ${JSON.stringify(state.engineering.costoEstimadoMXN)}
+RESUMEN TÉCNICO: ${state.engineering.resumen}
+PRIMERA FALLA PREDICHA: ${state.engineering.primeraFalla.nombre} (~${state.engineering.primeraFalla.aniosEstimados} años)
+
+Entrega: valor del inmueble terminado (rango), valor a 5 y 10 años, plusvalía anual, renta mensual esperada, cap rate, ROI del desarrollador contra el costo de obra, punto de equilibrio en años de renta, factores de plusvalía de la zona, riesgos y una recomendación clara (desarrollar / renegociar / no desarrollar).` }],
+      schema: INVESTMENT_SCHEMA,
+    });
+    renderInvestment();
+  } catch (err) {
+    showError('errInvest', err.message);
+  } finally {
+    $('statusInvest').classList.remove('show');
+    $('btnInvest').disabled = false;
+  }
+});
+
+function renderInvestment() {
+  const v = state.investment;
+  if (!v) return;
+  $('secInvest').classList.remove('hidden');
+  $('invContent').classList.remove('hidden');
+  $('invResumen').textContent = v.resumen;
+
+  const prom = (v.valorTerminadoMXN.minimo + v.valorTerminadoMXN.maximo) / 2;
+  $('invStats').innerHTML = [
+    ['$' + fmt(prom), 'Valor al terminar (prom.)'],
+    [fmt(v.plusvaliaAnualPct) + '%', 'Plusvalía anual'],
+    ['$' + fmt(v.rentaMensualMXN), 'Renta mensual est.'],
+    [fmt(v.capRatePct) + '%', 'Cap rate'],
+    [fmt(v.roiDesarrolloPct) + '%', 'ROI del desarrollo'],
+    [fmt(v.puntoEquilibrioAnios) + ' años', 'Equilibrio vía renta'],
+  ].map(([val, k]) => `<div class="geo-stat"><div class="v">${val}</div><div class="k">${k}</div></div>`).join('');
+
+  const costoProm = (state.engineering.costoEstimadoMXN.minimo + state.engineering.costoEstimadoMXN.maximo) / 2;
+  const rows = [
+    ['Costo de obra', costoProm, 'var(--muted-txt)'],
+    ['Valor al terminar', prom, 'var(--clay-soft)'],
+    ['Valor a 5 años', v.valorEn5AniosMXN, 'var(--lime)'],
+    ['Valor a 10 años', v.valorEn10AniosMXN, 'var(--lime)'],
+  ];
+  const mx = Math.max(...rows.map(r => r[1]));
+  $('valBars').innerHTML = rows.map(([l, val, color]) => `
+    <div class="valbar">
+      <span class="lbl">${l}</span>
+      <div class="valbar-track"><div class="valbar-fill" style="width:${Math.max(2, val / mx * 100)}%;background:${color}"></div></div>
+      <span class="amt">$${fmt(val)}</span>
+    </div>`).join('');
+
+  $('invFactores').innerHTML = v.factoresPlusvalia.map(f => `<li>${escapeHtml(f)}</li>`).join('');
+  $('invRiesgos').innerHTML = v.riesgos.map(f => `<li>${escapeHtml(f)}</li>`).join('');
+  $('invReco').textContent = v.recomendacion;
+  markChip(8);
+  updateSimValue();
+}
+
+const DEMO_INVESTMENT = {
+  resumen: "Vivienda media de 240 m² en zona habitacional consolidada (supuesto de terreno propio valuado en ~$900,000). Con costo de obra de $1.45–1.85 MDP, el proyecto muestra margen de desarrollo saludable y plusvalía sostenida por infraestructura urbana.",
+  valorTerminadoMXN: { minimo: 2900000, maximo: 3400000 },
+  valorEn5AniosMXN: 4230000,
+  valorEn10AniosMXN: 5680000,
+  plusvaliaAnualPct: 6.1,
+  rentaMensualMXN: 21500,
+  capRatePct: 8.2,
+  roiDesarrolloPct: 91,
+  puntoEquilibrioAnios: 6.4,
+  factoresPlusvalia: [
+    "Zona habitacional consolidada con servicios completos y equipamiento urbano",
+    "Obra pública vial anunciada a 1.5 km que reduce tiempos de traslado",
+    "Déficit de vivienda media en el submercado local",
+    "Tipología de 2 niveles con alta demanda de compra familiar"
+  ],
+  riesgos: [
+    "Un alza de tasas hipotecarias podría enfriar la demanda de compra",
+    "El costo de acero y cemento puede mover el presupuesto ±8%",
+    "La primera falla predicha (losa de azotea, año ~2) castiga el valor de reventa si no se previene"
+  ],
+  recomendacion: "Desarrollar. El ROI estimado de ~91% sobre costo de obra supera con holgura el umbral típico de 30–40% del desarrollador residencial. Invierte los ~$115,000 de prevención de fallas: protege el valor de reventa y se recupera casi 5 veces en ahorro de reparaciones a 30 años."
+};
 
 /* =====================================================================
    Exportar el gemelo digital a glTF (.glb)
