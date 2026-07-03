@@ -91,6 +91,36 @@ Endpoints que agrega:
 - `POST /api/share` — guarda el proyecto (máx. 300 KB) y devuelve `{ id }`
 - `GET /api/share/{id}` — devuelve el proyecto guardado
 
+## Informe de zona con búsqueda web
+
+`POST /api/claude` acepta ahora `"webSearch": true`: el Worker agrega la
+herramienta de búsqueda web de Anthropic y maneja las pausas de turno
+(`pause_turn`). Lo usa el botón **🗞️ Informe IA en vivo** de `zona3d.html`.
+No requiere configuración extra (la búsqueda web se cobra por uso en tu
+cuenta de Anthropic).
+
+## Alertas Valor Futuro (correo mensual)
+
+El botón **🔔 Suscribirme** de `zona3d.html` guarda `{email, zona}` en el KV
+(`POST /api/alerts`, requiere el namespace SHARES). Un **cron mensual**
+(`[triggers]` en `wrangler.toml`, día 1 a las 14:00 UTC) genera el informe de
+cada zona con Claude + búsqueda web y lo envía por correo con
+[Resend](https://resend.com) (gratis hasta 3,000 correos/mes):
+
+```bash
+# 1. Crea una cuenta en resend.com y una API key
+# 2. Guárdala como secreto
+npx wrangler secret put RESEND_API_KEY
+
+# 3. (Opcional) remitente propio con dominio verificado en Resend
+#    npx wrangler secret put ALERTS_FROM   # ej. "BrickBit <alertas@brickbit.co>"
+
+# 4. Redespliega
+npx wrangler deploy
+```
+
+Sin `RESEND_API_KEY`, el cron simplemente no hace nada (no falla).
+
 ## Probar el backend
 
 ```bash

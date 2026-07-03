@@ -57,6 +57,11 @@ export default {
       return handleShareGet(shareMatch[1], env, headers);
     }
 
+    /* ---- Alertas Valor Futuro (requiere KV SHARES; email opcional con RESEND_API_KEY) ---- */
+    if (url.pathname === '/api/alerts' && request.method === 'POST') {
+      return handleAlertSubscribe(request, env, headers);
+    }
+
     if (url.pathname !== '/api/claude' || request.method !== 'POST') {
       return json({ error: { message: 'No encontrado. Usa POST /api/claude, POST /api/share o GET /api/share/{id}' } }, 404, headers);
     }
@@ -79,7 +84,7 @@ export default {
     try { payload = await request.json(); }
     catch { return json({ error: { message: 'Cuerpo JSON inválido.' } }, 400, headers); }
 
-    const { system, content, schema } = payload || {};
+    const { system, content, schema, webSearch } = payload || {};
     if (typeof system !== 'string' || !Array.isArray(content) || content.length === 0 ||
         typeof schema !== 'object' || schema === null) {
       return json({ error: { message: 'Cuerpo inválido: se esperan { system, content, schema }.' } }, 400, headers);
@@ -88,29 +93,52 @@ export default {
       return json({ error: { message: 'Tipo de bloque de contenido no permitido.' } }, 400, headers);
     }
 
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: ANTHROPIC_MODEL,
-        max_tokens: MAX_TOKENS,
-        thinking: { type: 'adaptive' },
-        system,
-        output_config: { format: { type: 'json_schema', schema } },
-        messages: [{ role: 'user', content }],
-      }),
-    });
+    // Petición base; con webSearch se agrega la herramienta de búsqueda del servidor
+    const base = {
+      model: ANTHROPIC_MODEL,
+      max_tokens: MAX_TOKENS,
+      thinking: { type: 'adaptive' },
+      system,
+      output_config: { format: { type: 'json_schema', schema } },
+    };
+    if (webSearch === true) base.tools = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 6 }];
 
-    // Devuelve la respuesta de Anthropic tal cual (mismo formato que espera el frontend)
-    const body = await upstream.text();
-    return new Response(body, {
-      status: upstream.status,
+    // Con herramientas de servidor la API puede pausar el turno (pause_turn):
+    // se reenvía la conversación para que continúe donde se quedó.
+    let messages = [{ role: 'user', content }];
+    let bodyText = '', status = 500;
+    for (let i = 0; i < 4; i++) {
+      const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': env.ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({ ...base, messages }),
+      });
+      status = upstream.status;
+      bodyText = await upstream.text();
+      if (!upstream.ok) break;
+      let data;
+      try { data = JSON.parse(bodyText); } catch { break; }
+      if (data.stop_reason === 'pause_turn') {
+        messages = [...messages, { role: 'assistant', content: data.content }];
+        continue;
+      }
+      break;
+    }
+
+    return new Response(bodyText, {
+      status,
       headers: { ...headers, 'content-type': 'application/json' },
     });
+  },
+
+  /* Cron mensual (ver [triggers] en wrangler.toml): envía el informe de zona
+     por correo a los suscriptores. Requiere KV SHARES + RESEND_API_KEY. */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(runMonthlyAlerts(env));
   },
 };
 
@@ -151,4 +179,116 @@ async function handleShareGet(id, env, headers) {
     return json({ error: { message: 'Enlace no encontrado o expirado (los enlaces duran 90 días).' } }, 404, headers);
   }
   return new Response(value, { status: 200, headers: { ...headers, 'content-type': 'application/json' } });
+}
+
+
+/* =====================================================================
+   Alertas Valor Futuro — suscripción + envío mensual por correo
+   Requiere: KV SHARES (mismo del share) y, para el envío,
+   el secreto RESEND_API_KEY (resend.com) y opcionalmente ALERTS_FROM.
+===================================================================== */
+async function handleAlertSubscribe(request, env, headers) {
+  if (!env.SHARES) {
+    return json({ error: { message: 'El backend no tiene KV configurado (namespace SHARES). Ver backend/README.md.' } }, 501, headers);
+  }
+  let data;
+  try { data = await request.json(); } catch { data = null; }
+  const email = data && String(data.email || '').trim();
+  const zona = data && String(data.zona || '').trim();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !zona || zona.length > 60) {
+    return json({ error: { message: 'Se esperan { email, zona } válidos.' } }, 400, headers);
+  }
+  // clave determinista → suscribirse dos veces no duplica
+  const keyBase = (zona + '|' + email).toLowerCase();
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(keyBase));
+  const id = [...new Uint8Array(digest)].slice(0, 10).map(b => b.toString(16).padStart(2, '0')).join('');
+  await env.SHARES.put('alert:' + id, JSON.stringify({ email, zona, creada: new Date().toISOString() }));
+  return json({ ok: true, zona }, 200, headers);
+}
+
+async function runMonthlyAlerts(env) {
+  if (!env.SHARES || !env.ANTHROPIC_API_KEY || !env.RESEND_API_KEY) return;
+  // agrupar suscriptores por zona
+  const byZone = {};
+  let cursor;
+  do {
+    const page = await env.SHARES.list({ prefix: 'alert:', cursor });
+    for (const k of page.keys) {
+      const v = await env.SHARES.get(k.name);
+      if (!v) continue;
+      try {
+        const a = JSON.parse(v);
+        (byZone[a.zona] = byZone[a.zona] || []).push(a.email);
+      } catch {}
+    }
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor);
+
+  for (const [zona, emails] of Object.entries(byZone)) {
+    try {
+      const informe = await zoneReportText(env, zona);
+      await sendAlertEmail(env, emails, zona, informe);
+    } catch (err) {
+      console.error('[alertas]', zona, err && err.message);
+    }
+  }
+}
+
+async function zoneReportText(env, zona) {
+  let messages = [{
+    role: 'user',
+    content: [{ type: 'text', text:
+      'Busca noticias recientes relevantes para el valor inmobiliario de ' + zona +
+      ', México (obra pública, desarrollos, uso de suelo, economía local) y redacta un informe breve en español, en HTML simple (párrafos y listas <ul>), de máximo 300 palabras, terminando con el efecto esperado en la plusvalía.' }],
+  }];
+  let data;
+  for (let i = 0; i < 4; i++) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 4000,
+        thinking: { type: 'adaptive' },
+        tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 }],
+        messages,
+      }),
+    });
+    if (!res.ok) throw new Error('Anthropic ' + res.status);
+    data = await res.json();
+    if (data.stop_reason === 'pause_turn') {
+      messages = [...messages, { role: 'assistant', content: data.content }];
+      continue;
+    }
+    break;
+  }
+  const texts = (data.content || []).filter(b => b.type === 'text');
+  return texts.length ? texts[texts.length - 1].text : 'Sin novedades relevantes este mes.';
+}
+
+async function sendAlertEmail(env, emails, zona, informeHtml) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'authorization': 'Bearer ' + env.RESEND_API_KEY,
+    },
+    body: JSON.stringify({
+      from: env.ALERTS_FROM || 'BrickBit <onboarding@resend.dev>',
+      to: [emails[0]],
+      bcc: emails.slice(1),
+      subject: '🏗️ BrickBit Valor Futuro — informe mensual de ' + zona,
+      html: '<div style="font-family:Georgia,serif;max-width:560px;margin:auto;color:#22201d">' +
+            '<h2 style="color:#1a7d50">■ BrickBit · Valor Futuro</h2>' +
+            '<h3>' + zona + ' — ' + new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) + '</h3>' +
+            informeHtml +
+            '<hr><p style="font-size:12px;color:#888">Informe generado con IA y búsqueda web. No es asesoría de inversión. ' +
+            'Para dejar de recibirlo, responde a este correo.</p></div>',
+    }),
+  });
+  if (!res.ok) throw new Error('Resend ' + res.status + ': ' + (await res.text()).slice(0, 200));
 }

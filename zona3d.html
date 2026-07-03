@@ -117,6 +117,7 @@
       <button class="b primary" id="analyze-btn">Analizar con IA →</button>
       <button class="b ghost" id="vol-btn" onclick="toggleVolPanel()">🏗️ Volumen</button>
       <button class="b ghost" id="twin-btn" onclick="toggleTwinPanel()">🏢 Mi gemelo</button>
+      <button class="b ghost" id="intel-btn" onclick="toggleIntelPanel()">🛰️ Inteligencia</button>
     </div>
   </div>
 
@@ -138,6 +139,30 @@
         <a class="b ghost" id="twin-open" href="gemelo-digital.html" style="text-decoration:none">Abrir gemelo completo →</a>
       </div>
       <span class="soon">▦ El color del edificio refleja su salud en el año elegido</span>
+    </div>
+  </div>
+
+  <!-- ====== INTELIGENCIA DE ZONA: informe IA + radar + alertas ====== -->
+  <div class="glass" id="intel-panel" style="display:none">
+    <h2>Inteligencia de zona</h2>
+    <p>Noticias, obra pública y competencia alrededor de esta zona — el "porqué" detrás de la plusvalía.</p>
+    <div class="btnrow">
+      <button class="b primary" id="report-btn" onclick="generateReport()">🗞️ Informe IA en vivo</button>
+      <button class="b ghost" id="radar-btn" onclick="toggleRadar()">📍 Radar competencia</button>
+    </div>
+    <div id="intel-status" class="vread"></div>
+    <div id="report-out" style="display:none">
+      <div class="sread" id="report-read"></div>
+      <div class="sctx" id="report-ctx"></div>
+    </div>
+    <div id="radar-out" style="display:none">
+      <div class="sread" id="radar-read"></div>
+    </div>
+    <div class="simsec">
+      <p style="margin-bottom:8px">🔔 <b>Alertas Valor Futuro</b>: recibe cada mes el informe de esta zona por correo.</p>
+      <div class="frow" style="gap:8px"><input id="alert-email" type="email" placeholder="tu@correo.com" style="width:100%;text-align:left"></div>
+      <div class="btnrow"><button class="b ghost" onclick="subscribeAlerts()" style="width:100%">Suscribirme a esta zona</button></div>
+      <div id="alert-status" class="vread"></div>
     </div>
   </div>
 
@@ -565,6 +590,145 @@ function removeTwin(){
   if(twinPoly){ twinPoly.remove ? twinPoly.remove() : (twinPoly.parentNode && twinPoly.parentNode.removeChild(twinPoly)); }
   twinPoly=null; twinProj=null;
   $('twin-info').innerHTML=''; $('twin4d').style.display='none';
+}
+
+/* ====== INTELIGENCIA DE ZONA ====== */
+function toggleIntelPanel(){
+  const p=$('intel-panel'); const open=p.style.display==='none';
+  p.style.display=open?'block':'none';
+  $('intel-btn').classList.toggle('primary', open);
+}
+
+/* --- informe IA en vivo (Claude + búsqueda web) --- */
+const REPORT_SCHEMA = {
+  type:"object", additionalProperties:false,
+  required:["resumen","noticias","obraPublica","desarrollos","efectoPlusvalia","recomendacion"],
+  properties:{
+    resumen:{type:"string"},
+    noticias:{type:"array",items:{type:"object",additionalProperties:false,required:["titulo","impacto"],
+      properties:{titulo:{type:"string"},impacto:{type:"string"}}}},
+    obraPublica:{type:"array",items:{type:"object",additionalProperties:false,required:["titulo","impacto"],
+      properties:{titulo:{type:"string"},impacto:{type:"string"}}}},
+    desarrollos:{type:"array",items:{type:"object",additionalProperties:false,required:["titulo","impacto"],
+      properties:{titulo:{type:"string"},impacto:{type:"string"}}}},
+    efectoPlusvalia:{type:"string",enum:["al alza","estable","a la baja"]},
+    recomendacion:{type:"string"}
+  }
+};
+
+async function callClaudeZ({ system, content, schema, webSearch }){
+  const backend=(localStorage.getItem('bb_backend_url')||'').trim();
+  const apiKey=(localStorage.getItem('bb_anthropic_key')||'').trim();
+  let data;
+  if(backend){
+    const res=await fetch(backend.replace(/\/+$/,'')+'/api/claude',{
+      method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({system,content,schema,webSearch:!!webSearch})});
+    if(!res.ok){let d='';try{d=(await res.json()).error?.message||''}catch{};throw new Error('Error '+res.status+' del análisis IA. '+d);}
+    data=await res.json();
+  }else{
+    if(!apiKey) throw new Error('Configura el backend o la llave de Anthropic en el Gemelo Digital (sección 00).');
+    let messages=[{role:'user',content}];
+    for(let i=0;i<4;i++){
+      const payload={model:'claude-opus-4-8',max_tokens:16000,thinking:{type:'adaptive'},system,
+        output_config:{format:{type:'json_schema',schema}},messages};
+      if(webSearch) payload.tools=[{type:'web_search_20260209',name:'web_search',max_uses:6}];
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'content-type':'application/json','x-api-key':apiKey,
+          'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify(payload)});
+      if(!res.ok){let d='';try{d=(await res.json()).error?.message||''}catch{};throw new Error('Error '+res.status+' del análisis IA. '+d);}
+      data=await res.json();
+      if(data.stop_reason==='pause_turn'){ messages=[...messages,{role:'assistant',content:data.content}]; continue; }
+      break;
+    }
+  }
+  if(data.stop_reason==='refusal') throw new Error('El modelo declinó la solicitud.');
+  const texts=(data.content||[]).filter(b=>b.type==='text');
+  if(!texts.length) throw new Error('La respuesta no incluyó contenido.');
+  return JSON.parse(texts[texts.length-1].text);
+}
+
+async function generateReport(){
+  const z=simZona();
+  $('intel-status').innerHTML='<span style="color:var(--grn)">⏳ Claude está buscando noticias y obra pública de '+esc(z.nombre)+'… (30–60 s)</span>';
+  $('report-btn').disabled=true;
+  try{
+    const r=await callClaudeZ({
+      system:'Eres un analista de inteligencia inmobiliaria de BrickBit. Buscas en la web noticias RECIENTES y relevantes para el valor inmobiliario de una zona: obra pública e infraestructura, cambios de uso de suelo, nuevos desarrollos, seguridad y economía local. Sé concreto y cita hechos con fecha aproximada; si no encuentras algo relevante en una categoría, devuélvela vacía.',
+      content:[{type:'text',text:'Investiga la situación inmobiliaria actual de: '+z.nombre+', México (coordenadas '+z.lat+', '+z.lng+'). Datos BrickBit de referencia: precio '+z.precio_m2+' MXN/m², plusvalía '+z.plusvalia+'%/año, yield '+z.yld+'%. Resume qué está pasando y cómo afecta la plusvalía.'}],
+      schema:REPORT_SCHEMA, webSearch:true });
+    const sect=(t,items)=>items.length?'<div class="row total"><span>'+t+'</span><span></span></div>'+
+      items.map(n=>'<div class="row"><span>'+esc(n.titulo)+'<br><span style="color:var(--mut);font-size:11px">'+esc(n.impacto)+'</span></span></div>').join(''):'';
+    $('report-read').innerHTML=
+      '<div class="row"><span>'+esc(r.resumen)+'</span></div>'+
+      sect('📰 Noticias',r.noticias)+sect('🚧 Obra pública',r.obraPublica)+sect('🏗️ Desarrollos',r.desarrollos)+
+      '<div class="row total"><span>Efecto en plusvalía</span><span class="'+(r.efectoPlusvalia==='al alza'?'pos':r.efectoPlusvalia==='a la baja'?'negv':'ambv')+'">'+esc(r.efectoPlusvalia)+'</span></div>'+
+      '<div class="row"><span style="color:var(--mut)">'+esc(r.recomendacion)+'</span></div>';
+    $('report-ctx').innerHTML='<span class="chip">Generado con búsqueda web en vivo · '+new Date().toLocaleDateString('es-MX')+'</span>';
+    $('report-out').style.display='block';
+    $('intel-status').innerHTML='';
+  }catch(err){
+    $('intel-status').innerHTML='<span style="color:var(--neg)">'+esc(err.message)+'</span>';
+  }finally{ $('report-btn').disabled=false; }
+}
+
+/* --- radar de competencia (Places API New) --- */
+let radarMarkers=[], radarOn=false;
+async function toggleRadar(){
+  if(radarOn){ radarMarkers.forEach(m=>{try{m.remove()}catch{}}); radarMarkers=[]; radarOn=false;
+    $('radar-out').style.display='none'; $('radar-btn').classList.remove('primary'); return; }
+  if(!map){ $('intel-status').innerHTML='<span style="color:var(--neg)">Espera a que cargue el mapa 3D.</span>'; return; }
+  $('intel-status').innerHTML='<span style="color:var(--grn)">⏳ Buscando desarrollos y competencia cercana…</span>';
+  try{
+    const {Place,SearchNearbyRankPreference}=await google.maps.importLibrary('places');
+    const {Marker3DElement}=await google.maps.importLibrary('maps3d');
+    const c=twinCenter||volCenter||mapCenter()||viewCenter;
+    const {places}=await Place.searchNearby({
+      fields:['displayName','location','types'],
+      locationRestriction:{center:{lat:c.lat,lng:c.lng},radius:900},
+      includedTypes:['apartment_building','apartment_complex','condominium_complex','real_estate_agency'],
+      maxResultCount:12,
+      rankPreference:SearchNearbyRankPreference?SearchNearbyRankPreference.DISTANCE:undefined,
+    });
+    let rows='';
+    for(const pl of (places||[])){
+      const lat=pl.location.lat(), lng=pl.location.lng();
+      const dist=Math.round(Math.hypot((lat-c.lat)*111320,(lng-c.lng)*111320*Math.cos(c.lat*Math.PI/180)));
+      const mk=new Marker3DElement({position:{lat,lng,altitude:30},label:pl.displayName||''});
+      if(map.append) map.append(mk); else map.appendChild(mk);
+      radarMarkers.push(mk);
+      rows+='<div class="row"><span>'+esc(pl.displayName||'—')+'</span><span>'+dist+' m</span></div>';
+    }
+    $('radar-read').innerHTML=rows||'<div class="row"><span>Sin resultados en 900 m. Prueba en otra ubicación del mapa.</span></div>';
+    $('radar-out').style.display='block';
+    $('radar-btn').classList.add('primary');
+    radarOn=true;
+    $('intel-status').innerHTML='';
+  }catch(err){
+    console.error('[radar]',err);
+    $('intel-status').innerHTML='<span style="color:var(--neg)">No se pudo consultar Places. Habilita <b>Places API (New)</b> en tu llave de Google Cloud.</span>';
+  }
+}
+
+/* --- alertas mensuales por correo (requiere backend) --- */
+async function subscribeAlerts(){
+  const email=($('alert-email').value||'').trim();
+  const backend=(localStorage.getItem('bb_backend_url')||'').trim();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ $('alert-status').innerHTML='<span style="color:var(--neg)">Escribe un correo válido.</span>'; return; }
+  if(!backend){ $('alert-status').innerHTML='<span style="color:var(--neg)">Las alertas requieren el backend de BrickBit (configúralo en el Gemelo Digital, sección 00).</span>'; return; }
+  try{
+    const z=simZona();
+    const res=await fetch(backend.replace(/\/+$/,'')+'/api/alerts',{
+      method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({email,zona:z.nombre})});
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(j.error?.message||('Error '+res.status));
+    $('alert-status').innerHTML='<span class="g">✓ Listo: recibirás el informe mensual de '+esc(z.nombre)+' en '+esc(email)+'.</span>';
+  }catch(err){
+    $('alert-status').innerHTML='<span style="color:var(--neg)">'+esc(err.message)+'</span>';
+  }
 }
 
 /* ====== overlays de ayuda ====== */
