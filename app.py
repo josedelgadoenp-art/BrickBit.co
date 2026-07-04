@@ -137,13 +137,60 @@ def estado_en(valores: np.ndarray, año: float) -> tuple[np.ndarray, np.ndarray]
     continuo (el organismo "respira" en vez de saltar). Devuelve el valor en
     el instante `año` y la tasa de crecimiento anual instantánea por unidad.
     """
-    t0 = int(np.clip(math.floor(año), 0, AÑOS))
-    t1 = int(np.clip(t0 + 1, 0, AÑOS))
-    f = año - t0
+    n = valores.shape[0] - 1
+    t0 = int(np.clip(math.floor(año), 0, n))
+    t1 = int(np.clip(t0 + 1, 0, n))
+    f = np.clip(año - t0, 0, 1)
     v_t = valores[t0] * (1 - f) + valores[t1] * f
     tasa = (valores[t1] - valores[t0]) / valores[t0] if t1 > t0 \
         else (valores[t0] - valores[t0 - 1]) / valores[t0 - 1]
     return v_t, tasa
+
+
+RETRO = 5   # años de retro-simulación del time-lapse bidireccional
+
+
+def extender_pasado(valores: np.ndarray, años: int = RETRO) -> np.ndarray:
+    """
+    Time-lapse bidireccional: antepone una RETRO-SIMULACIÓN (claramente
+    etiquetada) integrando el crecimiento del primer año hacia atrás, para
+    ver de dónde VIENE la ola además de a dónde va. Con datos históricos
+    reales (DENUE/SHF vía scripts de ingesta) este tramo se vuelve real.
+    """
+    r = (valores[1] / valores[0] - 1) * 0.8
+    filas = [valores[0] / (1 + r) ** k for k in range(años, 0, -1)]
+    return np.vstack(filas + [valores])
+
+
+def moran_local(v: np.ndarray, pares: tuple) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Moran LOCAL (LISA): z-score de cada célula y el promedio de sus vecinas
+    (lag espacial). El cuadrante Low-High (célula barata rodeada de caras)
+    es el FRENTE DE ONDA de la gentrificación: ahí rompe la siguiente ola.
+    """
+    pi, pj, g = pares
+    z = (v - v.mean()) / (v.std() + 1e-9)
+    lag = np.bincount(pi, weights=z[pj], minlength=v.size) / g
+    return z, lag
+
+
+def frente_de_onda(v: np.ndarray, pares: tuple) -> np.ndarray:
+    """Máscara Low-High del LISA: la frontera donde la ola va a romper."""
+    z, lag = moran_local(v, pares)
+    return (z < -0.05) & (lag > 0.15)
+
+
+def score_brickbit(v_t: np.ndarray, v0: np.ndarray, potencial: np.ndarray,
+                   tasa: np.ndarray) -> np.ndarray:
+    """
+    Score BrickBit 0–10 por célula: plusvalía proyectada (40%) + potencial
+    morfogenético (25%) + velocidad de contagio (20%) + accesibilidad de
+    entrada (15%). Cada punto es auditable en '🔎 Origen del crecimiento'.
+    """
+    acum = v_t / v0 - 1
+    s = (0.40 * norm01(acum) + 0.25 * np.asarray(potencial, dtype=float)
+         + 0.20 * norm01(tasa) + 0.15 * (1 - norm01(v_t)))
+    return np.round(10 * np.clip(s, 0, 1), 1)
 
 
 def clasificar_bio(tasa: np.ndarray) -> np.ndarray:
@@ -433,13 +480,29 @@ def _sar(v0: np.ndarray, potencial: np.ndarray, g_propio: np.ndarray,
     return valores
 
 
-def _args_nacion(rho: float, megaproyecto: str) -> dict:
+def _shock_clic(lng: np.ndarray, lat: np.ndarray, clic: tuple | None,
+                radio: float) -> np.ndarray | None:
+    """
+    Detonante point-and-click: el usuario hace clic en cualquier célula del
+    mapa y el motor inyecta ahí una célula madre (shock gaussiano en año 1).
+    SimCity al revés: pon tu hipótesis y mira la onda expansiva.
+    """
+    if clic is None:
+        return None
+    return np.exp(-((lng - clic[0]) ** 2 + (lat - clic[1]) ** 2)
+                  / (2 * radio ** 2))
+
+
+def _args_nacion(rho: float, megaproyecto: str, clic: tuple = None) -> dict:
     """Argumentos del núcleo SAR para la escala estados."""
     df = datos_estatales()
     pi, pj, g = vecindad_estados()
     mega = MEGAPROYECTOS.get(megaproyecto)
     mask = df["estado"].isin(mega["estados"]).to_numpy().astype(float) \
         if mega else None
+    m_clic = _shock_clic(df["lng"].to_numpy(), df["lat"].to_numpy(), clic, 1.2)
+    if m_clic is not None:
+        mask, mega = m_clic, dict(año=1, fuerza=0.6)
     return dict(v0=df["precio_m2"].to_numpy(dtype=float),
                 potencial=df["potencial"].to_numpy(dtype=float),
                 g_propio=df["plusvalia"].to_numpy(dtype=float) / 100.0 * 0.55,
@@ -449,18 +512,22 @@ def _args_nacion(rho: float, megaproyecto: str) -> dict:
 
 
 @st.cache_data(show_spinner="🧬 Simulando morfogénesis estatal (SAR)…")
-def simular_nacion(rho: float, megaproyecto: str) -> np.ndarray:
+def simular_nacion(rho: float, megaproyecto: str,
+                   clic: tuple = None) -> np.ndarray:
     """SAR sobre la contigüidad real de los 32 estados."""
-    return _sar(**_args_nacion(rho, megaproyecto))
+    return _sar(**_args_nacion(rho, megaproyecto, clic))
 
 
-def _args_municipios(rho: float, megaproyecto: str) -> dict:
+def _args_municipios(rho: float, megaproyecto: str, clic: tuple = None) -> dict:
     """Argumentos del núcleo SAR para la escala municipios."""
     df = datos_municipales()
     pi, pj, g = vecindad_municipios()
     mega = MEGAPROYECTOS.get(megaproyecto)
     mask = df["estado"].isin(mega["estados"]).to_numpy().astype(float) \
         if mega else None
+    m_clic = _shock_clic(df["lng"].to_numpy(), df["lat"].to_numpy(), clic, 0.30)
+    if m_clic is not None:
+        mask, mega = m_clic, dict(año=1, fuerza=0.65)
     return dict(v0=df["precio_actual"].to_numpy(dtype=float),
                 potencial=df["potencial_crecimiento"].to_numpy(dtype=float),
                 g_propio=df["plusvalia_estatal"].to_numpy(dtype=float)
@@ -471,12 +538,13 @@ def _args_municipios(rho: float, megaproyecto: str) -> dict:
 
 
 @st.cache_data(show_spinner="🧬 Simulando morfogénesis municipal (2,436 células)…")
-def simular_municipios(rho: float, megaproyecto: str) -> np.ndarray:
+def simular_municipios(rho: float, megaproyecto: str,
+                       clic: tuple = None) -> np.ndarray:
     """
     SAR sobre las ~15,000 fronteras municipales reales: la plusvalía se
     contagia municipio a municipio, como células de un mismo tejido.
     """
-    return _sar(**_args_municipios(rho, megaproyecto))
+    return _sar(**_args_municipios(rho, megaproyecto, clic))
 
 
 def indice_moran(v: np.ndarray, pares: tuple) -> float:
@@ -646,6 +714,21 @@ def _respiracion(t: np.ndarray, fase: float) -> np.ndarray:
     return 0.88 + 0.12 * np.sin(2 * math.pi * (fase + t * 2.0))
 
 
+def capa_frente_onda(contornos: pd.DataFrame, idx_col: str,
+                     frente: np.ndarray) -> pdk.Layer:
+    """
+    🌊 Frente de onda (LISA Low-High): contorno crema brillante sobre las
+    células baratas rodeadas de caras — donde la ola va a romper.
+    """
+    marcadas = contornos[contornos[idx_col].map(
+        lambda i: bool(frente[int(i)]))]
+    return pdk.Layer(
+        "PolygonLayer", data=marcadas, get_polygon="contorno",
+        filled=False, stroked=True, get_line_color=RGB_CREMA + [235],
+        line_width_min_pixels=2.2, pickable=False,
+    )
+
+
 def preparar_estados_render(valores: np.ndarray, año: float,
                             fase: float) -> pd.DataFrame:
     """Color/latido de cada estado: valor proyectado + plusvalía acumulada."""
@@ -657,6 +740,7 @@ def preparar_estados_render(valores: np.ndarray, año: float,
     alfa = np.clip((80 + 130 * t) * _respiracion(t, fase), 45, 235)
     base = pd.DataFrame({
         "nombre": df["estado"],
+        "lng": df["lng"], "lat": df["lat"],
         "color": np.column_stack([rgb, alfa]).astype(int).tolist(),
         "estado_bio": clasificar_bio(tasa),
         "precio_txt": [f"${p:,.0f} MXN/m²" for p in v_t],
@@ -680,6 +764,7 @@ def preparar_municipios_render(valores: np.ndarray, año: float,
     alfa = np.clip((70 + 145 * t) * _respiracion(t, fase), 40, 235)
     base = pd.DataFrame({
         "nombre": df["municipio"] + " · " + df["estado"],
+        "lng": df["lng"], "lat": df["lat"],
         "color": np.column_stack([rgb, alfa]).astype(int).tolist(),
         "estado_bio": clasificar_bio(tasa),
         "precio_txt": [f"${p:,.0f} MXN/m²" for p in v_t],
@@ -708,7 +793,8 @@ def construir_deck_nacion(valores: np.ndarray, año: float, fase: float,
                           flujos: pd.DataFrame) -> pdk.Deck:
     """Escala estados: piel estatal + órganos ZM + sangre de capital."""
     capas = [pdk.Layer(
-        "PolygonLayer", data=preparar_estados_render(valores, año, fase),
+        "PolygonLayer", id="celulas",
+        data=preparar_estados_render(valores, año, fase),
         get_polygon="contorno", get_fill_color="color",
         get_line_color=RGB_ARCILLA_SUAVE + [110], line_width_min_pixels=1,
         stroked=True, pickable=True, auto_highlight=True,
@@ -739,14 +825,15 @@ def construir_deck_municipios(valores: np.ndarray, año: float, fase: float,
                               mostrar_flujos: bool, mostrar_torres: bool,
                               mostrar_etiquetas: bool, estilo: str,
                               flujos: pd.DataFrame,
-                              valores_edo: np.ndarray) -> pdk.Deck:
+                              valores_edo: np.ndarray,
+                              mostrar_lisa: bool = False) -> pdk.Deck:
     """
     Escala municipios: 2,436 células reales + delimitación estatal encima
     (como Google Maps) + el mismo sistema circulatorio metropolitano.
     """
     capas = [
         pdk.Layer(
-            "PolygonLayer",
+            "PolygonLayer", id="celulas",
             data=preparar_municipios_render(valores, año, fase),
             get_polygon="contorno", get_fill_color="color",
             get_line_color=RGB_LIMA + [22], line_width_min_pixels=0.5,
@@ -755,6 +842,10 @@ def construir_deck_municipios(valores: np.ndarray, año: float, fase: float,
         ),
         capa_bordes_estatales(),
     ]
+    if mostrar_lisa:
+        v_t, _ = estado_en(valores, año)
+        capas.append(capa_frente_onda(contornos_municipales(), "idx_mun",
+                                      frente_de_onda(v_t, vecindad_municipios())))
     torres = torres_metropolitanas(valores_edo, año)
     if mostrar_torres:
         capas.append(pdk.Layer(
@@ -1037,15 +1128,31 @@ def datos_cp() -> pd.DataFrame:
                                    / (2 * sigma ** 2))
     potencial = np.clip(potencial + 0.15 * (1 - norm01(precio)), 0.02, 1)
 
-    return pd.DataFrame({
+    df = pd.DataFrame({
         "cp": gdf["cp"], "alcaldia": gdf["alcaldia"],
         "lng": lng, "lat": lat,
         "precio_actual": precio.round(0),
         "potencial_crecimiento": potencial.round(3),
+        "airbnb": 0,
     })
 
+    # 🛰 Señal alternativa auto-detectada: presión Airbnb por CP
+    # (generada por scripts/ingerir_senales.py con datos de InsideAirbnb)
+    ruta_abnb = os.path.join(_DIR, "data", "senal_airbnb_cdmx.csv")
+    if os.path.exists(ruta_abnb):
+        abnb = pd.read_csv(ruta_abnb, dtype={"cp": str})
+        df = df.merge(abnb, on="cp", how="left").fillna(
+            {"n_listados": 0, "precio_noche": 0})
+        df["airbnb"] = df["n_listados"].astype(int)
+        # la presión de renta corta acelera la receptividad de la célula
+        df["potencial_crecimiento"] = np.clip(
+            df["potencial_crecimiento"]
+            + 0.20 * norm01(np.log1p(df["n_listados"].to_numpy())),
+            0.02, 1).round(3)
+    return df
 
-def _args_cp(rho: float, detonante: str) -> dict:
+
+def _args_cp(rho: float, detonante: str, clic: tuple = None) -> dict:
     """Argumentos del núcleo SAR para la escala postal."""
     df = datos_cp()
     pi, pj, g = vecindad_cp()
@@ -1055,6 +1162,10 @@ def _args_cp(rho: float, detonante: str) -> dict:
         mask = np.exp(-((df["lng"].to_numpy() - det["lng"]) ** 2
                         + (df["lat"].to_numpy() - det["lat"]) ** 2)
                       / (2 * det["radio"] ** 2))
+    m_clic = _shock_clic(df["lng"].to_numpy(), df["lat"].to_numpy(),
+                         clic, 0.022)
+    if m_clic is not None:
+        mask, det = m_clic, dict(año=1, fuerza=0.60)
     return dict(v0=df["precio_actual"].to_numpy(dtype=float),
                 potencial=df["potencial_crecimiento"].to_numpy(dtype=float),
                 g_propio=np.full(len(df), 0.051 * 0.55),   # plusvalía CDMX
@@ -1066,12 +1177,13 @@ def _args_cp(rho: float, detonante: str) -> dict:
 
 
 @st.cache_data(show_spinner="🧬 Simulando morfogénesis postal (SEPOMEX)…")
-def simular_cp(rho: float, detonante: str) -> np.ndarray:
-    return _sar(**_args_cp(rho, detonante))
+def simular_cp(rho: float, detonante: str, clic: tuple = None) -> np.ndarray:
+    return _sar(**_args_cp(rho, detonante, clic))
 
 
 def construir_deck_cp(valores: np.ndarray, año: float, fase: float,
-                      mostrar_flujos: bool, estilo: str) -> pdk.Deck:
+                      mostrar_flujos: bool, estilo: str,
+                      mostrar_lisa: bool = False) -> pdk.Deck:
     """1,182 células postales reales de CDMX latiendo."""
     df = datos_cp()
     v_t, tasa = estado_en(valores, año)
@@ -1081,6 +1193,7 @@ def construir_deck_cp(valores: np.ndarray, año: float, fase: float,
     alfa = np.clip((75 + 145 * t) * _respiracion(t, fase), 40, 235)
     base = pd.DataFrame({
         "nombre": "CP " + df["cp"] + " · " + df["alcaldia"],
+        "lng": df["lng"], "lat": df["lat"],
         "color": np.column_stack([rgb, alfa]).astype(int).tolist(),
         "estado_bio": clasificar_bio(tasa),
         "precio_txt": [f"${p:,.0f} MXN/m²" for p in v_t],
@@ -1090,12 +1203,16 @@ def construir_deck_cp(valores: np.ndarray, año: float, fase: float,
                       for q in df["potencial_crecimiento"]],
     })
     capas = [pdk.Layer(
-        "PolygonLayer", data=contornos_cp().join(base, on="idx_cp"),
+        "PolygonLayer", id="celulas",
+        data=contornos_cp().join(base, on="idx_cp"),
         get_polygon="contorno", get_fill_color="color",
         get_line_color=RGB_LIMA + [22], line_width_min_pixels=0.5,
         stroked=True, pickable=True, auto_highlight=True,
         highlight_color=RGB_CREMA + [110],
     )]
+    if mostrar_lisa:
+        capas.append(capa_frente_onda(contornos_cp(), "idx_cp",
+                                      frente_de_onda(v_t, vecindad_cp())))
     if mostrar_flujos:
         # corazones = CP más caros; emergentes = mayor contagio
         fuentes = np.argsort(v_t)[-5:]
@@ -1273,7 +1390,58 @@ def expediente_calles() -> pd.DataFrame:
     df["potencial_crecimiento"] = np.clip(
         0.50 * np.clip(ancla, 0, 1) + 0.35 * (1 - vital)
         + 0.15 * norm01(df["n_estab"]), 0.02, 1).round(3)
+
+    # resiliencia: entropía de Shannon del mix sectorial — una calle
+    # monocultivo (todo talleres) es frágil; una diversificada aguanta shocks
+    mix = estab.groupby(["calle", "sector"]).size().unstack(fill_value=0)
+    p = mix.div(mix.sum(axis=1), axis=0).clip(lower=1e-9)
+    entropia = (-(p * np.log(p)).sum(axis=1) / math.log(len(SECTORES)))
+    df["resiliencia"] = df["nombre"].map(entropia).fillna(0.0).round(3)
     return df
+
+
+# ── Sismógrafo de gentrificación: especies indicadoras del DENUE ─────────────
+RUTA_SISMO = os.path.join(_DIR, "data", "sismografo_azcapotzalco.json")
+
+# Giros cuya APARICIÓN precede a la plusvalía 2-3 años (literatura de
+# gentrificación). scripts/ingerir_denue.py --csv-anterior los detecta
+# comparando dos cortes reales del DENUE.
+ESPECIES_INDICADORAS = ["Café de especialidad", "Coworking", "Galería",
+                        "Barbería premium", "Estudio de yoga",
+                        "Panadería artesanal", "Veterinaria", "Gym boutique"]
+
+
+@st.cache_data
+def sismografo_calles() -> tuple[pd.DataFrame, bool]:
+    """
+    Metabolismo de cada calle entre dos cortes del DENUE: altas y bajas de
+    establecimientos, con foco en las ESPECIES INDICADORAS que anticipan la
+    mutación. Real si existe data/sismografo_*.json (ingesta INEGI);
+    demo etiquetada si no.
+    """
+    df = expediente_calles()
+    if os.path.exists(RUTA_SISMO):
+        with open(RUTA_SISMO, encoding="utf-8") as f:
+            sismo = pd.DataFrame(json.load(f)["calles"])
+        sismo = df[["nombre"]].merge(sismo, on="nombre", how="left").fillna(0)
+        es_real = True
+    else:
+        rng = np.random.default_rng(SEMILLA + 7)
+        pot = df["potencial_crecimiento"].to_numpy()
+        vit = df["vitalidad"].to_numpy()
+        altas = rng.poisson(2 + 9 * pot)
+        bajas = rng.poisson(1 + 4 * (1 - vit) * (1 - pot))
+        indicadoras = rng.binomial(altas, np.clip(pot * 0.55, 0, 1))
+        especies = [", ".join(rng.choice(ESPECIES_INDICADORAS,
+                                         size=min(int(k), 3), replace=False))
+                    if k > 0 else "—" for k in indicadoras]
+        sismo = pd.DataFrame({"nombre": df["nombre"], "altas": altas,
+                              "bajas": bajas, "indicadoras": indicadoras,
+                              "especies": especies})
+        es_real = False
+    sismo["magnitud"] = norm01(2.2 * sismo["indicadoras"] + sismo["altas"]
+                               - 0.8 * sismo["bajas"]).round(3)
+    return sismo, es_real
 
 
 @st.cache_data(show_spinner="🧠 Detectando cruces entre calles…")
@@ -1285,7 +1453,7 @@ def vecindad_calles() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return _vecindad(geoms, 0.0006)
 
 
-def _args_calles(rho: float, catalizador: str) -> dict:
+def _args_calles(rho: float, catalizador: str, clic: tuple = None) -> dict:
     df = expediente_calles()
     pi, pj, g = vecindad_calles()
     mids = np.array([np.mean(c, axis=0) for c in df["camino"]])
@@ -1295,6 +1463,9 @@ def _args_calles(rho: float, catalizador: str) -> dict:
         mask = np.exp(-((mids[:, 0] - cat["lng"]) ** 2
                         + (mids[:, 1] - cat["lat"]) ** 2)
                       / (2 * cat["radio"] ** 2))
+    m_clic = _shock_clic(mids[:, 0], mids[:, 1], clic, 0.008)
+    if m_clic is not None:
+        mask, cat = m_clic, dict(año=1, fuerza=0.75)
     return dict(v0=df["valor_actual"].to_numpy(dtype=float),
                 potencial=df["potencial_crecimiento"].to_numpy(dtype=float),
                 g_propio=(0.018 + 0.022 * df["vitalidad"].to_numpy()),
@@ -1306,8 +1477,9 @@ def _args_calles(rho: float, catalizador: str) -> dict:
 
 
 @st.cache_data(show_spinner="🧬 Simulando morfogénesis vial…")
-def simular_calles(rho: float, catalizador: str) -> np.ndarray:
-    return _sar(**_args_calles(rho, catalizador))
+def simular_calles(rho: float, catalizador: str,
+                   clic: tuple = None) -> np.ndarray:
+    return _sar(**_args_calles(rho, catalizador, clic))
 
 
 def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
@@ -1323,8 +1495,10 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
     rgb = paleta_marca(t ** 0.85)
     alfa = np.clip((110 + 130 * t) * _respiracion(t, fase), 60, 255)
 
+    mids_c = np.array([np.mean(c, axis=0) for c in df["camino"]])
     calles_render = pd.DataFrame({
         "camino": df["camino"],
+        "lng": mids_c[:, 0], "lat": mids_c[:, 1],
         "color": np.column_stack([rgb, alfa]).astype(int).tolist(),
         "ancho": (2.5 + 9 * df["vitalidad"].to_numpy()).tolist(),
         "nombre": df["nombre"],
@@ -1337,7 +1511,7 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
                                          df["sector"])],
     })
     capas = [pdk.Layer(
-        "PathLayer", data=calles_render, get_path="camino",
+        "PathLayer", id="celulas", data=calles_render, get_path="camino",
         get_color="color", get_width="ancho", width_units="pixels",
         width_min_pixels=2, pickable=True, auto_highlight=True,
         highlight_color=RGB_CREMA + [160], cap_rounded=True,
@@ -1419,7 +1593,8 @@ _PLOTLY_MARCA = dict(
 
 
 def tab_ranking_estados(valores: np.ndarray, año: float,
-                        flujos: pd.DataFrame) -> None:
+                        flujos: pd.DataFrame,
+                        score: np.ndarray = None) -> None:
     """Expediente completo y ordenable de los 32 estados en el año t."""
     df = datos_estatales()
     v_t, tasa = estado_en(valores, año)
@@ -1428,6 +1603,8 @@ def tab_ranking_estados(valores: np.ndarray, año: float,
         .set_index("ciudad")["estado"]).value_counts()
     tabla = pd.DataFrame({
         "Estado": df["estado"],
+        "Score BrickBit": score if score is not None
+        else score_brickbit(v_t, valores[0], df["potencial"], tasa),
         "ZM principal": df["ciudad"],
         "Precio hoy (m²)": df["precio_m2"],
         f"Precio año {año:.0f} (m²)": v_t.round(0),
@@ -1441,12 +1618,16 @@ def tab_ranking_estados(valores: np.ndarray, año: float,
     _tabla_ranking(tabla, año)
 
 
-def tab_ranking_municipios(valores: np.ndarray, año: float) -> None:
+def tab_ranking_municipios(valores: np.ndarray, año: float,
+                           score: np.ndarray = None) -> None:
     """Los 40 municipios con mutación más agresiva en el año t."""
     df = datos_municipales()
     v_t, tasa = estado_en(valores, año)
     tabla = pd.DataFrame({
         "Municipio": df["municipio"],
+        "Score BrickBit": score if score is not None
+        else score_brickbit(v_t, valores[0],
+                            df["potencial_crecimiento"], tasa),
         "Estado": df["estado"],
         "Precio hoy (m²)": df["precio_actual"],
         f"Precio año {año:.0f} (m²)": v_t.round(0),
@@ -1471,6 +1652,9 @@ def _tabla_ranking(tabla: pd.DataFrame, año: float) -> None:
             "Tasa anual": st.column_config.NumberColumn(format="percent"),
             "Potencial": st.column_config.ProgressColumn(
                 min_value=0, max_value=1),
+            "Resiliencia": st.column_config.ProgressColumn(
+                min_value=0, max_value=1),
+            "Score BrickBit": st.column_config.NumberColumn(format="%.1f ⚡"),
             "Precio hoy (m²)": st.column_config.NumberColumn(format="$%d"),
             f"Precio año {año:.0f} (m²)": st.column_config.NumberColumn(
                 format="$%d"),
@@ -1628,6 +1812,7 @@ def tab_origen(nombres: pd.Series, args_sar: dict, idx_defecto: int,
             **_PLOTLY_MARCA)
         st.plotly_chart(fig2, width="stretch")
 
+    lider, pct_lider = "—", 0.0
     if len(vecinos):
         lider = str(nombres.iloc[vecinos[int(np.argmax(aporte_vec))]])
         pct_lider = aporte_vec.max() / (total_c + 1e-9) * 100
@@ -1637,6 +1822,188 @@ def tab_origen(nombres: pd.Series, args_sar: dict, idx_defecto: int,
             f"<b>{lider}</b> encabeza ese bombeo con el "
             f"<b>{pct_lider:.0f}%</b> del contagio total.</div>",
             unsafe_allow_html=True)
+
+    # ── Tesis de inversión narrada (el organismo habla) ───────────────────────
+    with st.expander("🧠 Tesis de inversión narrada"):
+        v_fin = v0 + total
+        fase_txt = ("mutación temprana — la ventana de entrada está abierta"
+                    if total_c / total > 0.55 else
+                    "crecimiento orgánico consolidado — menor riesgo, menor alfa")
+        st.markdown(f"""
+**Tesis BrickBit — {sel}**
+
+*Punto de partida:* ${v0:,.0f}/m² hoy → **${v_fin:,.0f}/m² proyectado a 10
+años** (+{total / v0 * 100:.0f}%).
+
+*Anatomía del crecimiento:* el **{total_p / total * 100:.0f}%** es metabolismo
+propio (plusvalía/vitalidad intrínseca) y el
+**{total_c / total * 100:.0f}%** llega por contagio de sus {len(vecinos)}
+vecinos directos. El vector dominante es **{lider}**, responsable del
+{pct_lider:.0f}% del contagio: si esa zona sostiene su trayectoria, arrastra
+a {sel} con ella — y viceversa: es también su principal exposición.
+
+*Diagnóstico:* {fase_txt}.
+
+*Regla de lectura BrickBit:* comprar contagio temprano (vecino fuerte,
+célula aún barata) rinde más que comprar el núcleo ya consolidado.
+
+<span style='color:{TEXTO_SUAVE};font-size:.8rem'>Generado por el motor SAR
+con datos {'reales DENUE' if hay_datos_denue() else 'simulados'} —
+no es asesoría de inversión.</span>
+        """, unsafe_allow_html=True)
+
+
+def tab_gemelos(nombres: pd.Series, X: np.ndarray, idx_defecto: int,
+                unidad: str) -> None:
+    """
+    🧬 ADN urbano: cada célula tiene un genoma (precio, potencial, mezcla,
+    trayectoria). Esta pestaña encuentra sus GEMELOS GENÉTICOS: células con
+    el mismo ADN en otro punto del país/ciudad — posibles 'Roma Norte 2012'
+    aún baratas.
+    """
+    opciones = list(nombres)
+    sel = st.selectbox(f"Elige {unidad} de referencia", opciones,
+                       index=int(idx_defecto), key=f"gemelos_{unidad}")
+    idx = opciones.index(sel)
+    Xs = (X - X.mean(axis=0)) / (X.std(axis=0) + 1e-9)
+    ref = Xs[idx]
+    sim = (Xs @ ref) / (np.linalg.norm(Xs, axis=1)
+                        * np.linalg.norm(ref) + 1e-9)
+    sim[idx] = -np.inf
+    orden = np.argsort(sim)[::-1][:10]
+    st.dataframe(pd.DataFrame({
+        "Gemelo genético": [str(nombres.iloc[i]) for i in orden],
+        "Similitud de ADN": np.clip(sim[orden], 0, 1),
+        "Score BrickBit": [f"{s:.1f}" for s in X[orden, -1] * 10]
+        if X.shape[1] else "",
+    }), hide_index=True, width="stretch",
+        column_config={"Similitud de ADN": st.column_config.ProgressColumn(
+            format="percent", min_value=0, max_value=1)})
+    st.markdown(f"<div class='leyenda'>🧬 El genoma incluye precio relativo, "
+                f"potencial, velocidad de contagio y trayectoria. Un gemelo "
+                f"con ADN ≈ al de <b>{sel}</b> pero más barato es la tesis "
+                f"de inversión clásica de BrickBit.</div>",
+                unsafe_allow_html=True)
+
+
+def tab_carteras(valores: np.ndarray) -> None:
+    """💼 Carteras sintéticas por tesis: canastas de células con retorno
+    proyectado y riesgo (dispersión), listas para tokenizar."""
+    df = datos_municipales()
+    acum = valores[-1] / valores[0] - 1
+    tasa = valores[1] / valores[0] - 1
+    v5, _ = estado_en(valores, 5.0)
+    frente = frente_de_onda(v5, vecindad_municipios())
+    tesis = {
+        "🌅 Anillo periurbano del sureste": (
+            df["estado"].isin(["Yucatán", "Quintana Roo", "Campeche"])
+            & df["dist_zm_km"].between(8, 45)),
+        "🏭 Corredor nearshoring norte": (
+            df["estado"].isin(["Nuevo León", "Coahuila", "Chihuahua",
+                               "Tamaulipas", "Baja California", "Sonora"])
+            & (df["dist_zm_km"] < 35)),
+        "🌊 Frente de onda (LISA)": pd.Series(frente, index=df.index),
+    }
+    cols = st.columns(3)
+    resumen = []
+    for col, (nombre, mask) in zip(cols, tesis.items()):
+        n = int(mask.sum())
+        ret = float(acum[mask].mean() * 100) if n else 0.0
+        riesgo = float(acum[mask].std() * 100) if n else 0.0
+        top = df.loc[mask].assign(a=acum[mask]).nlargest(4, "a")
+        with col:
+            st.metric(nombre, f"+{ret:.0f}% / 10 años",
+                      f"{n} municipios · σ {riesgo:.0f}%")
+            st.markdown("<div class='leyenda'>" + "<br/>".join(
+                f"· {m} ({e})" for m, e in zip(top["municipio"],
+                                               top["estado"]))
+                + "</div>", unsafe_allow_html=True)
+        resumen.append((nombre, ret, riesgo))
+    fig = go.Figure(go.Bar(
+        x=[r[0] for r in resumen], y=[r[1] for r in resumen],
+        error_y=dict(type="data", array=[r[2] for r in resumen],
+                     color=CREMA),
+        marker_color=[LIMA, ARCILLA_SUAVE, ARCILLA]))
+    fig.update_layout(title="💼 Retorno proyectado por tesis (± dispersión)",
+                      yaxis_title="% acumulado a 10 años", height=340,
+                      **_PLOTLY_MARCA)
+    st.plotly_chart(fig, width="stretch")
+    st.caption("Canastas ilustrativas generadas por el motor — el paso "
+               "natural hacia carteras tokenizadas BrickBit por tesis.")
+
+
+def tab_sismografo() -> None:
+    """🌡 Sismógrafo de gentrificación: metabolismo de establecimientos y
+    especies indicadoras que anticipan la mutación 2-3 años."""
+    sismo, es_real = sismografo_calles()
+    if not es_real:
+        st.info("🧪 Churn de demostración. Con dos cortes reales del DENUE "
+                "(`ingerir_denue.py --csv-anterior denue_2023.csv`) el "
+                "sismógrafo detecta altas/bajas y especies indicadoras "
+                "reales calle por calle.")
+    top = sismo.nlargest(12, "magnitud")
+    c1, c2 = st.columns([2, 3])
+    with c1:
+        lider = sismo.loc[sismo["magnitud"].idxmax()]
+        st.metric("🌡 Epicentro de mutación", lider["nombre"],
+                  f"{int(lider['indicadoras'])} especies indicadoras")
+        st.dataframe(top[["nombre", "altas", "bajas", "especies"]].rename(
+            columns={"nombre": "Calle", "altas": "Altas", "bajas": "Bajas",
+                     "especies": "Especies indicadoras"}),
+            hide_index=True, width="stretch", height=300)
+    with c2:
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=top["nombre"], y=top["altas"],
+                             name="Altas", marker_color=LIMA))
+        fig.add_trace(go.Bar(x=top["nombre"], y=-top["bajas"],
+                             name="Bajas", marker_color="#8a5a44"))
+        fig.add_trace(go.Scatter(x=top["nombre"], y=top["indicadoras"],
+                                 name="Especies indicadoras",
+                                 mode="markers",
+                                 marker=dict(size=12, color=CREMA,
+                                             symbol="diamond")))
+        fig.update_layout(barmode="relative",
+                          title="🌡 Metabolismo por calle (altas/bajas entre "
+                                "cortes DENUE)",
+                          height=380, **_PLOTLY_MARCA)
+        st.plotly_chart(fig, width="stretch")
+    st.markdown("<div class='leyenda'>📚 Las <b>especies indicadoras</b> "
+                "(café de especialidad, coworking, galería, barbería premium…) "
+                "preceden a la plusvalía 2-3 años según la literatura de "
+                "gentrificación: son el canario en la mina, pero al revés — "
+                "anuncian el oro.</div>", unsafe_allow_html=True)
+
+
+def tab_huecos() -> None:
+    """🕳 Radar de huecos de mercado: dónde hay demanda (empleo/vitalidad)
+    sin oferta de un giro — inteligencia B2B para retail y franquicias."""
+    df = expediente_calles()
+    _, estab, es_real = cargar_red_vial()
+    oferta = estab.groupby(["calle", "sector"]).size().unstack(fill_value=0)
+    filas = []
+    for _, c in df.iterrows():
+        of = oferta.loc[c["nombre"]] if c["nombre"] in oferta.index \
+            else pd.Series(0, index=list(SECTORES))
+        for sector in SECTORES:
+            n_of = int(of.get(sector, 0))
+            demanda = c["empleo"] * (0.5 + c["cercania_ancla"])
+            hueco = demanda / (1 + 2.5 * n_of)
+            filas.append({"Calle": c["nombre"], "Giro faltante": sector,
+                          "Demanda (empleos zona)": int(c["empleo"]),
+                          "Locales del giro hoy": n_of,
+                          "Score hueco": hueco})
+    tabla = pd.DataFrame(filas)
+    tabla["Score hueco"] = norm01(tabla["Score hueco"].to_numpy()).round(2)
+    tabla = tabla.nlargest(15, "Score hueco")
+    st.dataframe(tabla, hide_index=True, width="stretch",
+                 column_config={"Score hueco": st.column_config.ProgressColumn(
+                     min_value=0, max_value=1)})
+    st.markdown("<div class='leyenda'>🕳 Lectura B2B: una calle con alta "
+                "demanda (empleo + anclas) y cero locales de un giro es una "
+                "ubicación de apertura con viento a favor — la misma data "
+                "que valúa el ladrillo le dice a una franquicia dónde abrir."
+                + (" (demo etiquetada)" if not es_real else "")
+                + "</div>", unsafe_allow_html=True)
 
 
 TEXTO_MODELO = f"""
@@ -1745,14 +2112,44 @@ def encabezado() -> None:
         unsafe_allow_html=True)
 
 
-def animar(lienzo, fabricar_deck, cuadros: int = 90) -> None:
-    """Reproduce la década completa: el año avanza y todo el organismo late."""
+def animar(lienzo, fabricar_deck, cuadros: int = 90,
+           años_span: float = float(AÑOS)) -> None:
+    """Reproduce la línea de tiempo completa: el año avanza y todo late."""
     for f in range(cuadros + 1):
         lienzo.pydeck_chart(
-            fabricar_deck(AÑOS * f / cuadros, (f * 0.045) % 1.0),
+            fabricar_deck(años_span * f / cuadros, (f * 0.045) % 1.0),
             width="stretch")
         time.sleep(0.05)
     st.toast("🧬 Morfogénesis completa: año 10 alcanzado", icon="✅")
+
+
+def render_mapa(lienzo, fabricar, año_idx: float, reproducir: bool,
+                cuadros: int, años_span: float, clic_activo: bool,
+                clave: str) -> None:
+    """
+    Renderiza el mapa (o la animación) y, con el detonante-por-clic activo,
+    captura la célula seleccionada y la convierte en epicentro del shock.
+    """
+    if reproducir:
+        animar(lienzo, fabricar, cuadros=cuadros, años_span=años_span)
+        return
+    deck = fabricar(año_idx, (año_idx * 0.4) % 1.0)
+    if not clic_activo:
+        lienzo.pydeck_chart(deck, width="stretch")
+        return
+    ev = lienzo.pydeck_chart(deck, width="stretch", on_select="rerun",
+                             selection_mode="single-object", key=clave)
+    objetos = {}
+    try:
+        objetos = ev.selection.objects or {}
+    except AttributeError:
+        pass
+    celda = (objetos.get("celulas") or [None])[0]
+    if celda and celda.get("lng") is not None:
+        nuevo = (round(float(celda["lng"]), 4), round(float(celda["lat"]), 4))
+        if st.session_state.get("clic_epicentro") != nuevo:
+            st.session_state["clic_epicentro"] = nuevo
+            st.rerun()
 
 
 def main() -> None:
@@ -1776,7 +2173,12 @@ def main() -> None:
                                "estados hasta la banqueta, negocio a negocio.")
 
         st.markdown("### ⏳ Línea de tiempo")
-        año = st.slider("Predicción (años hacia el futuro)", 0.0, float(AÑOS),
+        retro = st.checkbox("⏪ Time-lapse bidireccional (retro-simulación)",
+                            False,
+                            help="Extiende la línea de tiempo 5 años hacia "
+                                 "atrás para ver de dónde viene la ola.")
+        año = st.slider("Predicción (años)",
+                        -float(RETRO) if retro else 0.0, float(AÑOS),
                         0.0, step=0.25, format="%.2f años")
 
         st.markdown("### 🧫 Parámetros del organismo")
@@ -1806,6 +2208,25 @@ def main() -> None:
             mostrar_torres = st.checkbox("🏙 Torres metropolitanas 3D", True)
             mostrar_etiquetas = st.checkbox("🏷 Nombres de ciudades", True)
 
+        mostrar_lisa = False
+        if escala.startswith(("🏛", "🏘")):
+            mostrar_lisa = st.checkbox("🌊 Frente de onda (LISA)", False,
+                                       help="Moran local: contorno crema en "
+                                            "las células baratas rodeadas de "
+                                            "caras — donde romperá la ola.")
+
+        st.markdown("### 🎯 Detonante por clic")
+        clic_activo = st.checkbox("Activar clic-para-detonar", False,
+                                  help="Haz clic en cualquier célula del mapa "
+                                       "e inyecta ahí una célula madre; mira "
+                                       "la onda expansiva (SimCity al revés).")
+        clic = st.session_state.get("clic_epicentro") if clic_activo else None
+        if clic_activo and clic:
+            st.caption(f"Epicentro activo: {clic[1]:.3f}, {clic[0]:.3f}")
+            if st.button("🧹 Quitar epicentro", width="stretch"):
+                del st.session_state["clic_epicentro"]
+                st.rerun()
+
         st.markdown("---")
         reproducir = st.button("▶ Reproducir morfogénesis (10 años)",
                                width="stretch")
@@ -1817,14 +2238,19 @@ def main() -> None:
 
     # ══ REPÚBLICA · MUNICIPIOS ════════════════════════════════════════════════
     if escala.startswith("🏛"):
-        valores = simular_municipios(rho, detonante)
-        valores_edo = simular_nacion(rho, detonante)
+        valores = simular_municipios(rho, detonante, clic)
+        valores_edo = simular_nacion(rho, detonante, clic)
         df_m = datos_municipales()
-        v_t, tasa = estado_en(valores, año)
-        flujos = flujos_nacionales(valores_edo, año)
+        vv, ve = (extender_pasado(valores), extender_pasado(valores_edo)) \
+            if retro else (valores, valores_edo)
+        año_idx = año + (RETRO if retro else 0)
+        v_t, tasa = estado_en(vv, año_idx)
+        flujos = flujos_nacionales(ve, año_idx)
 
         moran = indice_moran(v_t, vecindad_municipios())
         mutante = int(np.argmax(v_t / valores[0] - 1))
+        score = score_brickbit(v_t, valores[0],
+                               df_m["potencial_crecimiento"], tasa)
         with lienzo_kpi:
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("💰 Precio municipal medio", f"${v_t.mean():,.0f} /m²",
@@ -1839,52 +2265,62 @@ def main() -> None:
                       f"{df_m['estado'].iloc[mutante]} · "
                       f"+{(v_t[mutante] / valores[0][mutante] - 1) * 100:.0f}%")
             c5.metric("📅 Horizonte", f"Año {año:.1f} / {AÑOS}",
-                      detonante if MEGAPROYECTOS[detonante] else "sin megaproyecto")
+                      "🎯 epicentro por clic" if clic else
+                      (detonante if MEGAPROYECTOS[detonante] else "sin megaproyecto"))
 
         def fabricar(a, f):
             return construir_deck_municipios(
-                valores, a, f, mostrar_flujos, mostrar_torres,
-                mostrar_etiquetas, estilo, flujos_nacionales(valores_edo, a),
-                valores_edo)
+                vv, a, f, mostrar_flujos, mostrar_torres,
+                mostrar_etiquetas, estilo, flujos_nacionales(ve, a),
+                ve, mostrar_lisa)
 
-        if reproducir:
-            animar(lienzo, fabricar, cuadros=48)
-        else:
-            lienzo.pydeck_chart(fabricar(año, (año * 0.4) % 1.0),
-                                width="stretch")
+        render_mapa(lienzo, fabricar, año_idx, reproducir, 48,
+                    float(vv.shape[0] - 1), clic_activo, "deck_mun")
 
-        t1, t2, t3, t4, t5 = st.tabs(["🏆 Ranking municipal",
-                                      "🔎 Origen del crecimiento",
-                                      "📈 Trayectorias 10 años",
-                                      "⚗️ Nube de fases",
-                                      "🔬 El modelo"])
+        nombres_m = df_m["municipio"] + " · " + df_m["estado"]
+        t1, t2, t3, t4, t5, t6, t7 = st.tabs(
+            ["🏆 Ranking municipal", "🔎 Origen del crecimiento",
+             "🧬 Gemelos de ADN", "💼 Carteras por tesis",
+             "📈 Trayectorias 10 años", "⚗️ Nube de fases", "🔬 El modelo"])
         with t1:
-            tab_ranking_municipios(valores, año)
+            tab_ranking_municipios(valores, año, score)
         with t2:
-            tab_origen(df_m["municipio"] + " · " + df_m["estado"],
-                       _args_municipios(rho, detonante), mutante,
-                       "el municipio")
+            tab_origen(nombres_m, _args_municipios(rho, detonante, clic),
+                       mutante, "el municipio")
         with t3:
+            acum10 = valores[-1] / valores[0] - 1
+            X = np.column_stack([
+                norm01(df_m["precio_actual"]),
+                df_m["potencial_crecimiento"],
+                norm01(df_m["dist_zm_km"]), norm01(acum10),
+                score / 10])
+            tab_gemelos(nombres_m, X, mutante, "el municipio")
+        with t4:
+            tab_carteras(valores)
+        with t5:
             tab_trayectorias(valores, año,
                              df_m["municipio"] + " (" + df_m["estado"] + ")",
                              "🧬 Trayectoria de precios — top 8 municipios en mutación")
-        with t4:
+        with t6:
             tab_fases_municipios(valores, año)
-        with t5:
+        with t7:
             st.markdown(TEXTO_MODELO)
 
     # ══ REPÚBLICA · ESTADOS ═══════════════════════════════════════════════════
     elif escala.startswith("🇲🇽"):
-        valores = simular_nacion(rho, detonante)
+        valores = simular_nacion(rho, detonante, clic)
         df_e = datos_estatales()
-        v_t, tasa = estado_en(valores, año)
-        flujos = flujos_nacionales(valores, año)
+        vv = extender_pasado(valores) if retro else valores
+        año_idx = año + (RETRO if retro else 0)
+        v_t, tasa = estado_en(vv, año_idx)
+        flujos = flujos_nacionales(vv, año_idx)
 
         pob = df_e["poblacion"].to_numpy()
         medio = float((v_t * pob).sum() / pob.sum())
         medio_0 = float((valores[0] * pob).sum() / pob.sum())
         moran = indice_moran(v_t, vecindad_estados())
         mutante = int(np.argmax(v_t / valores[0] - 1))
+        score = score_brickbit(v_t, valores[0], df_e["potencial"], tasa)
         with lienzo_kpi:
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("💰 Valor medio nacional", f"${medio:,.0f} /m²",
@@ -1897,44 +2333,54 @@ def main() -> None:
             c4.metric("🧬 Estado más mutante", df_e["estado"].iloc[mutante],
                       f"+{(v_t[mutante] / valores[0][mutante] - 1) * 100:.0f}% acumulado")
             c5.metric("📅 Horizonte", f"Año {año:.1f} / {AÑOS}",
-                      detonante if MEGAPROYECTOS[detonante] else "sin megaproyecto")
+                      "🎯 epicentro por clic" if clic else
+                      (detonante if MEGAPROYECTOS[detonante] else "sin megaproyecto"))
 
         def fabricar(a, f):
-            return construir_deck_nacion(valores, a, f, mostrar_flujos,
+            return construir_deck_nacion(vv, a, f, mostrar_flujos,
                                          mostrar_torres, mostrar_etiquetas,
-                                         estilo, flujos_nacionales(valores, a))
+                                         estilo, flujos_nacionales(vv, a))
 
-        if reproducir:
-            animar(lienzo, fabricar)
-        else:
-            lienzo.pydeck_chart(fabricar(año, (año * 0.4) % 1.0),
-                                width="stretch")
+        render_mapa(lienzo, fabricar, año_idx, reproducir, 90,
+                    float(vv.shape[0] - 1), clic_activo, "deck_edo")
 
-        t1, t2, t3, t4, t5 = st.tabs(["🏆 Ranking de mutación",
-                                      "🔎 Origen del crecimiento",
-                                      "📈 Trayectorias 10 años",
-                                      "⚗️ Diagrama de fases",
-                                      "🔬 El modelo"])
+        t1, t2, t3, t4, t5, t6 = st.tabs(["🏆 Ranking de mutación",
+                                          "🔎 Origen del crecimiento",
+                                          "🧬 Gemelos de ADN",
+                                          "📈 Trayectorias 10 años",
+                                          "⚗️ Diagrama de fases",
+                                          "🔬 El modelo"])
         with t1:
-            tab_ranking_estados(valores, año, flujos)
+            tab_ranking_estados(valores, año, flujos, score)
         with t2:
-            tab_origen(df_e["estado"], _args_nacion(rho, detonante),
+            tab_origen(df_e["estado"], _args_nacion(rho, detonante, clic),
                        mutante, "el estado")
         with t3:
+            X = np.column_stack([
+                norm01(df_e["precio_m2"]), df_e["potencial"],
+                norm01(df_e["plusvalia"]), norm01(df_e["yld"]),
+                norm01(df_e["pib_pc"]),
+                norm01(valores[-1] / valores[0] - 1), score / 10])
+            tab_gemelos(df_e["estado"], X, mutante, "el estado")
+        with t4:
             tab_trayectorias(valores, año, df_e["estado"],
                              "🧬 Trayectoria de precios — top 8 estados en mutación")
-        with t4:
-            tab_fases_estados(valores, año)
         with t5:
+            tab_fases_estados(valores, año)
+        with t6:
             st.markdown(TEXTO_MODELO)
 
     # ══ CDMX · CÓDIGOS POSTALES (SEPOMEX real) ════════════════════════════════
     elif escala.startswith("🏘"):
-        valores = simular_cp(rho, detonante)
+        valores = simular_cp(rho, detonante, clic)
         df_cp = datos_cp()
-        v_t, tasa = estado_en(valores, año)
+        vv = extender_pasado(valores) if retro else valores
+        año_idx = año + (RETRO if retro else 0)
+        v_t, tasa = estado_en(vv, año_idx)
         moran = indice_moran(v_t, vecindad_cp())
         mutante = int(np.argmax(v_t / valores[0] - 1))
+        score = score_brickbit(v_t, valores[0],
+                               df_cp["potencial_crecimiento"], tasa)
         with lienzo_kpi:
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("💰 Precio medio CDMX", f"${v_t.mean():,.0f} /m²",
@@ -1947,27 +2393,33 @@ def main() -> None:
                       f"{df_cp['alcaldia'].iloc[mutante]} · "
                       f"+{(v_t[mutante] / valores[0][mutante] - 1) * 100:.0f}%")
             c5.metric("📅 Horizonte", f"Año {año:.1f} / {AÑOS}",
-                      detonante if DETONANTES_CDMX[detonante] else "sin detonante")
+                      "🎯 epicentro por clic" if clic else
+                      (detonante if DETONANTES_CDMX[detonante] else "sin detonante"))
 
         def fabricar(a, f):
-            return construir_deck_cp(valores, a, f, mostrar_flujos, estilo)
+            return construir_deck_cp(vv, a, f, mostrar_flujos, estilo,
+                                     mostrar_lisa)
 
-        if reproducir:
-            animar(lienzo, fabricar, cuadros=60)
-        else:
-            lienzo.pydeck_chart(fabricar(año, (año * 0.4) % 1.0),
-                                width="stretch")
+        render_mapa(lienzo, fabricar, año_idx, reproducir, 60,
+                    float(vv.shape[0] - 1), clic_activo, "deck_cp")
 
         nombres_cp = "CP " + df_cp["cp"] + " · " + df_cp["alcaldia"]
-        t1, t2, t3 = st.tabs(["🔎 Origen del crecimiento",
-                              "📈 Trayectorias 10 años", "🔬 El modelo"])
+        t1, t2, t3, t4 = st.tabs(["🔎 Origen del crecimiento",
+                                  "🧬 Gemelos de ADN",
+                                  "📈 Trayectorias 10 años", "🔬 El modelo"])
         with t1:
-            tab_origen(nombres_cp, _args_cp(rho, detonante), mutante,
+            tab_origen(nombres_cp, _args_cp(rho, detonante, clic), mutante,
                        "el código postal")
         with t2:
+            X = np.column_stack([
+                norm01(df_cp["precio_actual"]),
+                df_cp["potencial_crecimiento"],
+                norm01(valores[-1] / valores[0] - 1), score / 10])
+            tab_gemelos(nombres_cp, X, mutante, "el código postal")
+        with t3:
             tab_trayectorias(valores, año, nombres_cp,
                              "🧬 Trayectoria de precios — top 8 CP en mutación")
-        with t3:
+        with t4:
             st.markdown(TEXTO_MODELO)
             st.caption("Polígonos postales reales de SEPOMEX (vía "
                        "open-mexico/mexico-geojson); precio y potencial "
@@ -1978,9 +2430,13 @@ def main() -> None:
     elif escala.startswith("🛣"):
         calles_df = expediente_calles()
         _, estab_df, es_real = cargar_red_vial()
-        valores = simular_calles(rho, detonante)
-        v_t, tasa = estado_en(valores, año)
+        valores = simular_calles(rho, detonante, clic)
+        vv = extender_pasado(valores) if retro else valores
+        año_idx = año + (RETRO if retro else 0)
+        v_t, tasa = estado_en(vv, año_idx)
         mutante = int(np.argmax(v_t / valores[0] - 1))
+        score = score_brickbit(v_t, valores[0],
+                               calles_df["potencial_crecimiento"], tasa)
 
         if es_real:
             st.success("✅ **DATOS REALES DENUE/INEGI** — establecimientos y "
@@ -2005,44 +2461,53 @@ def main() -> None:
                       calles_df["nombre"].iloc[mutante],
                       f"+{(v_t[mutante] / valores[0][mutante] - 1) * 100:.0f}% acumulado")
             c5.metric("📅 Horizonte", f"Año {año:.1f} / {AÑOS}",
-                      detonante if CATALIZADORES[detonante] else "sin catalizador")
+                      "🎯 epicentro por clic" if clic else
+                      (detonante if CATALIZADORES[detonante] else "sin catalizador"))
 
         def fabricar(a, f):
-            return construir_deck_calles(valores, a, f, mostrar_estab,
+            return construir_deck_calles(vv, a, f, mostrar_estab,
                                          mostrar_flujos, estilo)
 
-        if reproducir:
-            animar(lienzo, fabricar, cuadros=60)
-        else:
-            lienzo.pydeck_chart(fabricar(año, (año * 0.4) % 1.0),
-                                width="stretch")
+        render_mapa(lienzo, fabricar, año_idx, reproducir, 60,
+                    float(vv.shape[0] - 1), clic_activo, "deck_calle")
 
-        t1, t2, t3, t4 = st.tabs(["🔎 Origen del crecimiento",
-                                  "🏆 Ranking de calles",
-                                  "📈 Trayectorias 10 años",
-                                  "🔬 El modelo"])
+        t1, t2, t3, t4, t5, t6, t7 = st.tabs(
+            ["🔎 Origen del crecimiento", "🌡 Sismógrafo",
+             "🕳 Huecos de mercado", "🧬 Gemelos de ADN",
+             "🏆 Ranking de calles", "📈 Trayectorias", "🔬 El modelo"])
         with t1:
-            tab_origen(calles_df["nombre"], _args_calles(rho, detonante),
+            tab_origen(calles_df["nombre"],
+                       _args_calles(rho, detonante, clic),
                        mutante, "la calle")
         with t2:
+            tab_sismografo()
+        with t3:
+            tab_huecos()
+        with t4:
+            mezcla = pd.get_dummies(calles_df["sector"]).to_numpy(dtype=float)
+            X = np.column_stack([
+                calles_df["vitalidad"], calles_df["cercania_ancla"],
+                calles_df["resiliencia"], mezcla,
+                norm01(valores[-1] / valores[0] - 1), score / 10])
+            tab_gemelos(calles_df["nombre"], X, mutante, "la calle")
+        with t5:
             tabla = pd.DataFrame({
                 "Calle": calles_df["nombre"],
+                "Score BrickBit": score,
                 "Negocios": calles_df["n_estab"].astype(int),
                 "Empleos": calles_df["empleo"].astype(int),
                 "Sector dominante": calles_df["sector"],
-                "Índice hoy (m²)": calles_df["valor_actual"],
-                f"Índice año {año:.0f} (m²)": v_t.round(0),
+                "Resiliencia": calles_df["resiliencia"],
+                "Precio hoy (m²)": calles_df["valor_actual"],
+                f"Precio año {año:.0f} (m²)": v_t.round(0),
                 "Plusvalía acumulada": (v_t / valores[0] - 1),
                 "Potencial": calles_df["potencial_crecimiento"],
             }).sort_values("Plusvalía acumulada", ascending=False)
-            _tabla_ranking(tabla.rename(
-                columns={"Índice hoy (m²)": "Precio hoy (m²)",
-                         f"Índice año {año:.0f} (m²)":
-                         f"Precio año {año:.0f} (m²)"}), año)
-        with t3:
+            _tabla_ranking(tabla, año)
+        with t6:
             tab_trayectorias(valores, año, calles_df["nombre"],
                              "🧬 Trayectoria — top 8 calles en mutación")
-        with t4:
+        with t7:
             st.markdown(TEXTO_MODELO)
             st.caption("A esta escala, el crecimiento NACE de la actividad "
                        "económica observable: cada negocio suma vitalidad a "

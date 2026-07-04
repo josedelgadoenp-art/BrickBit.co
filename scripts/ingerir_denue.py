@@ -154,6 +154,56 @@ def procesar(df: pd.DataFrame, municipio: str, salida_dir: str,
           "'🛣 Calle · establecimiento' usará los datos reales del DENUE.")
 
 
+# Palabras clave de ESPECIES INDICADORAS de gentrificación: su aparición
+# entre dos cortes del DENUE anticipa la plusvalía 2-3 años.
+INDICADORAS = {
+    "Café de especialidad": ["CAFE", "COFFEE", "TOSTADOR", "ESPRESSO"],
+    "Coworking": ["COWORK", "OFICINAS COMPARTIDAS", "WEWORK"],
+    "Galería": ["GALERIA", "ARTE CONTEMPOR"],
+    "Barbería premium": ["BARBER", "BARBERIA"],
+    "Estudio de yoga": ["YOGA", "PILATES"],
+    "Panadería artesanal": ["ARTESANAL", "SOURDOUGH", "MASA MADRE"],
+    "Veterinaria": ["VETERINAR", "PET SHOP", "ESTETICA CANINA"],
+    "Gym boutique": ["CROSSFIT", "BOX FIT", "CYCLING", "BARRE"],
+}
+
+
+def sismografo(df_nuevo: pd.DataFrame, df_viejo: pd.DataFrame,
+               salida_dir: str, sufijo: str) -> None:
+    """
+    🌡 SISMÓGRAFO DE GENTRIFICACIÓN: compara dos cortes reales del DENUE y
+    detecta por calle las altas, bajas y especies indicadoras. Escribe
+    data/sismografo_<sufijo>.json (la pestaña 🌡 lo detecta sola).
+    """
+    def llaves(d):
+        return d.assign(llave=d["nombre"].map(sin_acentos) + "|"
+                        + d["calle"].map(sin_acentos))
+
+    nuevo, viejo = llaves(df_nuevo), llaves(df_viejo)
+    setv = set(viejo["llave"])
+    setn = set(nuevo["llave"])
+    altas_df = nuevo[~nuevo["llave"].isin(setv)]
+    bajas_df = viejo[~viejo["llave"].isin(setn)]
+
+    def especies_de(nombre_estab):
+        n = sin_acentos(nombre_estab)
+        return [esp for esp, kws in INDICADORAS.items()
+                if any(k in n for k in kws)]
+
+    filas = []
+    for calle, g in altas_df.groupby("calle"):
+        esp = sorted({e for n in g["nombre"] for e in especies_de(n)})
+        filas.append({"nombre": calle, "altas": int(len(g)),
+                      "bajas": int((bajas_df["calle"] == calle).sum()),
+                      "indicadoras": int(sum(bool(especies_de(n))
+                                             for n in g["nombre"])),
+                      "especies": ", ".join(esp[:3]) if esp else "—"})
+    ruta = os.path.join(salida_dir, f"sismografo_{sufijo}.json")
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump({"calles": filas}, f, ensure_ascii=False)
+    print(f"✓ {ruta} ({len(filas)} calles con actividad)")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Ingesta DENUE → Morfogénesis")
     ap.add_argument("--estado", default="09",
@@ -161,14 +211,29 @@ def main() -> None:
     ap.add_argument("--municipio", default="Azcapotzalco")
     ap.add_argument("--csv", default=None,
                     help="ruta a un CSV DENUE ya descargado (omite descarga)")
+    ap.add_argument("--csv-anterior", default=None,
+                    help="CSV DENUE de un corte anterior → activa el "
+                         "sismógrafo de gentrificación (altas/bajas)")
     ap.add_argument("--salida", default=os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data"))
     args = ap.parse_args()
 
     df = pd.read_csv(args.csv, encoding="latin-1", low_memory=False) \
         if args.csv else descargar_denue(args.estado)
-    procesar(df, args.municipio, args.salida,
-             sin_acentos(args.municipio).lower().replace(" ", "_"))
+    sufijo = sin_acentos(args.municipio).lower().replace(" ", "_")
+    procesar(df, args.municipio, args.salida, sufijo)
+
+    if args.csv_anterior:
+        viejo = pd.read_csv(args.csv_anterior, encoding="latin-1",
+                            low_memory=False)
+        # reusar el mismo pipeline de columnas del corte nuevo
+        ruta_e = os.path.join(args.salida,
+                              f"establecimientos_{sufijo}.csv.gz")
+        nuevo_proc = pd.read_csv(ruta_e)
+        procesar(viejo, args.municipio, args.salida, sufijo + "_anterior")
+        viejo_proc = pd.read_csv(os.path.join(
+            args.salida, f"establecimientos_{sufijo}_anterior.csv.gz"))
+        sismografo(nuevo_proc, viejo_proc, args.salida, sufijo)
 
 
 if __name__ == "__main__":
