@@ -1,12 +1,11 @@
-# BrickBit · Morfogénesis Urbana — Dark Mode por defecto
-# Fuerza el tema oscuro para que el tejido neón resalte también en los widgets.
+# BrickBit · Morfogénesis Urbana — tema oficial brickbit.co
+# Tierra oscura + arcilla verde + lima eléctrico + crema.
 [theme]
 base = "dark"
-primaryColor = "#00F5FF"
-backgroundColor = "#05010F"
-secondaryBackgroundColor = "#0B0520"
-textColor = "#E8E6FF"
-font = "monospace"
+primaryColor = "#CDF25A"
+backgroundColor = "#100C0A"
+secondaryBackgroundColor = "#1D1713"
+textColor = "#F5EDE3"
 
 [server]
 headless = true

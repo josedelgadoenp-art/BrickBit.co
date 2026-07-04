@@ -1,31 +1,39 @@
 # -*- coding: utf-8 -*-
 """
 ═══════════════════════════════════════════════════════════════════════════════
- BrickBit · MOTOR DE MORFOGÉNESIS URBANA — ESCALA NACIONAL 🇲🇽
+ BrickBit · MOTOR DE MORFOGÉNESIS URBANA — MÉXICO A RESOLUCIÓN MUNICIPAL 🇲🇽
 ═══════════════════════════════════════════════════════════════════════════════
- La República como ORGANISMO VIVO. Dos escalas de un mismo tejido:
+ La República como ORGANISMO VIVO, en tres escalas de un mismo tejido:
 
- 🇲🇽 ORGANISMO NACIONAL — los 32 estados con delimitación real (GeoJSON),
-    32 zonas metropolitanas como órganos, y el capital circulando entre
-    ellas como sistema circulatorio. El contagio de plusvalía viaja por
-    la matriz de contigüidad REAL entre estados (SAR nacional).
+ 🏛 REPÚBLICA · MUNICIPIOS — las 2,436 células administrativas reales del
+    país, con la delimitación estatal superpuesta (estilo Google Maps).
+    El contagio de plusvalía viaja municipio a municipio por su matriz de
+    contigüidad real (15 mil fronteras compartidas).
+
+ 🇲🇽 REPÚBLICA · ESTADOS — los 32 órganos del organismo y el capital
+    circulando entre las 32 zonas metropolitanas dominantes.
 
  🧫 MICROTEJIDO — zoom celular a Azcapotzalco/Vallejo (CDMX): cada manzana
     es una célula que muta al ritmo de sus vecinas.
 
  Analítica integrada: Índice de Moran (cohesión espacial), ranking de
- mutación estatal, trayectorias proyectadas, diagrama de fases del mercado
- y megaproyectos detonantes (Tren Maya, nearshoring, Interoceánico…).
+ mutación, trayectorias proyectadas, diagrama de fases del mercado y
+ megaproyectos detonantes (Tren Maya, nearshoring, Interoceánico…).
+
+ Identidad visual: paleta, tipografía (Fraunces · Hanken Grotesk · Space
+ Mono) y logo oficiales de https://brickbit.co
 
  Ejecución:
      pip install -r requirements.txt
      streamlit run app.py
 
  Datos: precios/plusvalía/yield del dataset BrickBit (zonas.js) + población
- y PIB per cápita aproximados. Proyecciones 100% simuladas (demo visual).
+ y PIB per cápita aproximados; el detalle municipal se sintetiza por
+ proximidad a las ZM. Proyecciones 100% simuladas (demo visual).
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+import base64
 import json
 import math
 import os
@@ -41,37 +49,76 @@ import streamlit as st
 from shapely.geometry import box
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 1 · CONFIGURACIÓN GLOBAL Y PALETA BIOLUMINISCENTE
+# 1 · IDENTIDAD BRICKBIT + CONFIGURACIÓN GLOBAL
 # ══════════════════════════════════════════════════════════════════════════════
+
+# ── Design tokens oficiales de brickbit.co ────────────────────────────────────
+TIERRA = "#100c0a"          # --bg          fondo tierra oscura
+SUPERFICIE = "#1d1713"      # --surface     tarjetas / paneles
+CREMA = "#f5ede3"           # --cream       texto principal
+TEXTO_SUAVE = "#a89a8c"     # --muted-txt   texto secundario
+ARCILLA_PROF = "#0c4a30"    # --clay-deep
+ARCILLA = "#1a7d50"         # --clay        verde marca
+ARCILLA_SUAVE = "#57c389"   # --clay-soft
+LIMA = "#cdf25a"            # --lime        acento eléctrico
+LIMA_PROF = "#a9d23f"       # --lime-deep
+
+FUENTES_URL = ("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700"
+               "&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700"
+               "&display=swap")
 
 SEMILLA = 42
 AÑOS = 10                          # horizonte de simulación
 CRECIMIENTO_BASE = 0.018           # inflación inmobiliaria de fondo (micro)
 
-RUTA_ESTADOS = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            "data", "mexico_estados.json")
+_DIR = os.path.dirname(os.path.abspath(__file__))
+RUTA_ESTADOS = os.path.join(_DIR, "data", "mexico_estados.json")
+RUTA_MUNICIPIOS = os.path.join(_DIR, "data", "mexico_municipios.json")
+RUTA_LOGO = os.path.join(_DIR, "assets", "brickbit_logo.png")
 URL_ESTADOS = ("https://raw.githubusercontent.com/angelnmara/geojson/"
                "master/mexicoHigh.json")
+URL_MUNICIPIOS = ("https://raw.githubusercontent.com/strotgen/mexico-leaflet/"
+                  "master/municipalities.geojson")
 
 # Estilos de basemap (Carto, sin token). "Voyager" ≈ look Google Maps.
 ESTILOS_MAPA = {
-    "🌑 Neón profundo": "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",
+    "🌱 Tierra BrickBit (oscuro)": "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",
     "🗺 Voyager (estilo Google Maps)": "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
     "☀️ Positron claro": "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
 }
 
-# Paleta bioluminiscente: violeta profundo → azul eléctrico → cian → magenta → blanco solar
-_STOPS_T = np.array([0.00, 0.32, 0.58, 0.82, 1.00])
-_STOPS_R = np.array([26.0, 0.0, 0.0, 255.0, 255.0])
-_STOPS_G = np.array([8.0, 105.0, 245.0, 46.0, 226.0])
-_STOPS_B = np.array([64.0, 255.0, 255.0, 154.0, 168.0])
+# Rampa "vegetal" BrickBit: arcilla profunda → arcilla → arcilla suave → lima → crema
+_STOPS_T = np.array([0.00, 0.30, 0.55, 0.80, 1.00])
+_STOPS_R = np.array([12.0, 26.0, 87.0, 205.0, 245.0])
+_STOPS_G = np.array([74.0, 125.0, 195.0, 242.0, 237.0])
+_STOPS_B = np.array([48.0, 80.0, 137.0, 90.0, 227.0])
 
-NEON = ["#00f5ff", "#ff2e9a", "#ffe2a8", "#7c4dff", "#00ff9d",
-        "#ff6d3a", "#4da6ff", "#ff4df0"]
+# Colorway Plotly de marca
+NEON = [LIMA, ARCILLA_SUAVE, CREMA, LIMA_PROF, ARCILLA,
+        "#7ce0a8", "#e8ffb0", "#3da06c"]
+ESCALA_PLOTLY = [[0.0, ARCILLA_PROF], [0.30, ARCILLA],
+                 [0.55, ARCILLA_SUAVE], [0.80, LIMA], [1.0, CREMA]]
+
+# Colores RGBA de capas (sistema circulatorio en verdes/lima de marca)
+RGB_ARCILLA_SUAVE = [87, 195, 137]
+RGB_LIMA = [205, 242, 90]
+RGB_CREMA = [245, 237, 227]
+
+# Claves INEGI de entidad federativa (state_code del GeoJSON municipal)
+CODIGO_ESTADO = {
+    1: "Aguascalientes", 2: "Baja California", 3: "Baja California Sur",
+    4: "Campeche", 5: "Coahuila", 6: "Colima", 7: "Chiapas", 8: "Chihuahua",
+    9: "Ciudad de México", 10: "Durango", 11: "Guanajuato", 12: "Guerrero",
+    13: "Hidalgo", 14: "Jalisco", 15: "México", 16: "Michoacán", 17: "Morelos",
+    18: "Nayarit", 19: "Nuevo León", 20: "Oaxaca", 21: "Puebla",
+    22: "Querétaro", 23: "Quintana Roo", 24: "San Luis Potosí", 25: "Sinaloa",
+    26: "Sonora", 27: "Tabasco", 28: "Tamaulipas", 29: "Tlaxcala",
+    30: "Veracruz", 31: "Yucatán", 32: "Zacatecas",
+}
 
 
-def paleta_neon(t: np.ndarray) -> np.ndarray:
-    """Mapea valores normalizados [0,1] a la rampa bioluminiscente RGB."""
+def paleta_marca(t: np.ndarray) -> np.ndarray:
+    """Mapea valores normalizados [0,1] a la rampa vegetal BrickBit (RGB)."""
     t = np.clip(t, 0, 1)
     return np.stack([np.interp(t, _STOPS_T, _STOPS_R),
                      np.interp(t, _STOPS_T, _STOPS_G),
@@ -99,11 +146,16 @@ def estado_en(valores: np.ndarray, año: float) -> tuple[np.ndarray, np.ndarray]
     return v_t, tasa
 
 
+def clasificar_bio(tasa: np.ndarray) -> np.ndarray:
+    """Etiqueta biológica por percentil de contagio."""
+    p85, p55 = np.quantile(tasa, 0.85), np.quantile(tasa, 0.55)
+    return np.where(tasa >= p85, "🧬 Mutación activa",
+                    np.where(tasa >= p55, "🌱 Expansión", "💤 Latente"))
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # 2 · DATASET NACIONAL — 32 ZONAS METROPOLITANAS · 32 ESTADOS
 #     precio_m2 / plusvalía / yield: dataset BrickBit "Valor Futuro" (zonas.js)
-#     pob_zm (millones, ZM aprox) · pob_edo (millones, censo 2020 aprox)
-#     pib_pc (PIB per cápita estatal aprox, miles MXN/año)
 # ══════════════════════════════════════════════════════════════════════════════
 
 CIUDADES = [
@@ -166,8 +218,6 @@ PIB_PC = {  # PIB per cápita estatal aprox, miles de MXN/año
     "Veracruz": 115, "Yucatán": 160, "Zacatecas": 130,
 }
 
-# Megaproyectos: "células madre" a escala nación. Elevan el potencial de una
-# región en su año de arranque y detonan la mutación en cadena.
 MEGAPROYECTOS = {
     "— Sin megaproyecto —": None,
     "🚄 Tren Maya + Riviera (sureste)": dict(
@@ -185,62 +235,81 @@ MEGAPROYECTOS = {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 3 · GEOMETRÍA NACIONAL — POLÍGONOS ESTATALES Y CONTIGÜIDAD REAL
+# 3 · GEOMETRÍA — ESTADOS Y MUNICIPIOS CON CONTIGÜIDAD REAL
 # ══════════════════════════════════════════════════════════════════════════════
+
+def _cargar_geojson(ruta: str, url: str) -> dict:
+    """GeoJSON local con fallback a descarga (se persiste para la siguiente corrida)."""
+    if os.path.exists(ruta):
+        with open(ruta, encoding="utf-8") as f:
+            return json.load(f)
+    with urllib.request.urlopen(url, timeout=120) as r:
+        geo = json.load(r)
+    try:
+        os.makedirs(os.path.dirname(ruta), exist_ok=True)
+        with open(ruta, "w", encoding="utf-8") as f:
+            json.dump(geo, f)
+    except OSError:
+        pass
+    return geo
+
 
 @st.cache_data(show_spinner="🗺 Cargando delimitación estatal…")
 def cargar_estados() -> gpd.GeoDataFrame:
-    """
-    Carga los 32 polígonos estatales (GeoJSON local en /data, con fallback a
-    descarga). Devuelve GeoDataFrame con columnas: estado, geometry.
-    """
-    if os.path.exists(RUTA_ESTADOS):
-        with open(RUTA_ESTADOS, encoding="utf-8") as f:
-            geo = json.load(f)
-    else:  # fallback: descarga y persiste para la siguiente corrida
-        with urllib.request.urlopen(URL_ESTADOS, timeout=60) as r:
-            geo = json.load(r)
-        try:
-            os.makedirs(os.path.dirname(RUTA_ESTADOS), exist_ok=True)
-            with open(RUTA_ESTADOS, "w", encoding="utf-8") as f:
-                json.dump(geo, f)
-        except OSError:
-            pass
+    """Los 32 polígonos estatales → GeoDataFrame(estado, geometry)."""
+    geo = _cargar_geojson(RUTA_ESTADOS, URL_ESTADOS)
     gdf = gpd.GeoDataFrame.from_features(geo["features"], crs="EPSG:4326")
     gdf = gdf.rename(columns={"name": "estado"})[["estado", "geometry"]]
     return gdf.sort_values("estado").reset_index(drop=True)
 
 
-@st.cache_data(show_spinner="🧠 Tejiendo la matriz de contigüidad…")
-def vecindad_estados() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+@st.cache_data(show_spinner="🏛 Cargando los 2,436 municipios…")
+def cargar_municipios() -> gpd.GeoDataFrame:
     """
-    Matriz W del SAR nacional: pares (i, j) de estados que comparten frontera
-    (con tolerancia de 3 km para topologías imperfectas). BCS solo toca a BC:
-    el contagio hacia la península viaja por esa única "arteria".
+    Las 2,436 células administrativas reales del país (GeoJSON simplificado a
+    ~800 m). Columnas: municipio, estado, lng, lat (centroide), geometry.
     """
-    gdf = cargar_estados()
-    geoms = [g.buffer(0.03) for g in gdf.geometry]
-    pares_i, pares_j = [], []
-    for i in range(len(geoms)):
-        for j in range(i + 1, len(geoms)):
-            if geoms[i].intersects(geoms[j]):
-                pares_i += [i, j]
-                pares_j += [j, i]
-    pares_i, pares_j = np.asarray(pares_i), np.asarray(pares_j)
-    grados = np.bincount(pares_i, minlength=len(geoms)).astype(float)
+    geo = _cargar_geojson(RUTA_MUNICIPIOS, URL_MUNICIPIOS)
+    gdf = gpd.GeoDataFrame.from_features(geo["features"], crs="EPSG:4326")
+    gdf["geometry"] = gdf.geometry.simplify(0.008, preserve_topology=True)
+    gdf["municipio"] = gdf["mun_name"]
+    gdf["estado"] = gdf["state_code"].map(CODIGO_ESTADO)
+    cen = gdf.geometry.representative_point()
+    gdf["lng"], gdf["lat"] = cen.x, cen.y
+    return gdf[["municipio", "estado", "lng", "lat", "geometry"]] \
+        .reset_index(drop=True)
+
+
+def _vecindad(geoms: list, tolerancia: float) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Pares (i, j) de geometrías que se tocan (matriz W del SAR, vía STRtree)."""
+    gdf = gpd.GeoDataFrame(geometry=list(geoms), crs="EPSG:4326")
+    buf = gdf.copy()
+    buf["geometry"] = buf.geometry.buffer(tolerancia)
+    join = gpd.sjoin(buf, gdf, predicate="intersects")
+    pi = join.index.to_numpy()
+    pj = join["index_right"].to_numpy()
+    mask = pi != pj
+    pi, pj = pi[mask], pj[mask]
+    grados = np.bincount(pi, minlength=len(gdf)).astype(float)
     grados[grados == 0] = 1.0
-    return pares_i, pares_j, grados
+    return pi, pj, grados
+
+
+@st.cache_data(show_spinner="🧠 Tejiendo contigüidad estatal…")
+def vecindad_estados() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    return _vecindad(cargar_estados().geometry.tolist(), 0.03)
+
+
+@st.cache_data(show_spinner="🧠 Tejiendo las ~15,000 fronteras municipales…")
+def vecindad_municipios() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    return _vecindad(cargar_municipios().geometry.tolist(), 0.015)
 
 
 @st.cache_data
 def contornos_estatales() -> pd.DataFrame:
-    """
-    Pre-explota MultiPolygons (islas incluidas) a anillos exteriores listos
-    para PyDeck: una fila por polígono con el índice de su estado.
-    """
-    gdf = cargar_estados()
+    """MultiPolygons estatales explotados a anillos exteriores para PyDeck."""
     filas = []
-    for idx, fila in gdf.iterrows():
+    for idx, fila in cargar_estados().iterrows():
         geoms = fila.geometry.geoms if fila.geometry.geom_type == "MultiPolygon" \
             else [fila.geometry]
         for g in geoms:
@@ -250,101 +319,176 @@ def contornos_estatales() -> pd.DataFrame:
 
 
 @st.cache_data
+def contornos_municipales() -> pd.DataFrame:
+    """Anillos municipales (coordenadas a 4 decimales ≈ 11 m para aligerar)."""
+    filas = []
+    for idx, geom in enumerate(cargar_municipios().geometry):
+        geoms = geom.geoms if geom.geom_type == "MultiPolygon" else [geom]
+        for g in geoms:
+            filas.append({"idx_mun": idx,
+                          "contorno": [[[round(x, 4), round(y, 4)]
+                                        for x, y in g.exterior.coords]]})
+    return pd.DataFrame(filas)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 4 · EXPEDIENTES — ATRIBUTOS ESTATALES Y MUNICIPALES
+# ══════════════════════════════════════════════════════════════════════════════
+
+@st.cache_data
 def datos_estatales() -> pd.DataFrame:
-    """
-    Ensambla el expediente completo de cada estado (alineado al orden del
-    GeoDataFrame): precio de su capital/ZM principal, plusvalía, yield,
-    población, PIB per cápita, masa económica y potencial morfogenético.
-    """
+    """Expediente de cada estado alineado al GeoDataFrame estatal."""
     gdf = cargar_estados()
     df_c = pd.DataFrame(CIUDADES, columns=[
         "ciudad", "estado", "lat", "lng", "precio_m2",
         "plusvalia", "yld", "pob_zm"])
-    # CDMX aparece una vez como ciudad y una como estado: tomar la primera
     ref = df_c.drop_duplicates("estado").set_index("estado")
     df = pd.DataFrame({"estado": gdf["estado"]})
     for col in ["ciudad", "lat", "lng", "precio_m2", "plusvalia", "yld"]:
         df[col] = df["estado"].map(ref[col])
     df["poblacion"] = df["estado"].map(POB_ESTADO)
     df["pib_pc"] = df["estado"].map(PIB_PC)
-    df["masa_economica"] = df["poblacion"] * df["pib_pc"]   # proxy de PIB estatal
-
-    # Potencial morfogenético: qué tan receptivo es el estado a la "infección"
-    # de plusvalía → alta plusvalía + buen yield + precio aún accesible.
+    df["masa_economica"] = df["poblacion"] * df["pib_pc"]
     df["potencial"] = np.clip(
         0.55 * norm01(df["plusvalia"]) + 0.25 * norm01(df["yld"])
         + 0.20 * (1 - norm01(df["precio_m2"])), 0, 1).round(3)
     return df
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 4 · MOTOR SAR NACIONAL + ÍNDICE DE MORAN
-# ══════════════════════════════════════════════════════════════════════════════
-
-@st.cache_data(show_spinner="🧬 Simulando morfogénesis nacional (SAR)…")
-def simular_nacion(rho: float, megaproyecto: str) -> np.ndarray:
+@st.cache_data(show_spinner="🧫 Sintetizando el expediente municipal…")
+def datos_municipales() -> pd.DataFrame:
     """
-    SAR a escala República, año a año:
+    Expediente de los 2,436 municipios. Sin microdatos públicos por municipio,
+    el precio se sintetiza con un gradiente de accesibilidad realista:
 
-        precio[t+1] = precio[t] · (1 + g_propio + ρ · (W·precio_norm[t]) · potencial)
+        precio = precio_estatal · (0.42 + 0.78·e^-(d/0.30)²) · ruido
 
-    · g_propio  → la plusvalía histórica del estado (amortiguada al 55%).
-    · W         → contigüidad REAL entre estados: la plusvalía de Quintana Roo
-                  contagia a Yucatán, la de Nuevo León a Coahuila…
-    · potencial → receptividad estatal (plusvalía + yield + accesibilidad).
-
-    Un megaproyecto eleva el potencial de su región en su año de arranque.
-    Devuelve matriz (AÑOS+1, 32) de precios estatales.
+    donde d es la distancia a la ZM más cercana → los municipios conurbados
+    heredan el precio metropolitano y el México profundo queda accesible.
+    El potencial pico vive en el ANILLO PERIURBANO (d≈25 km): la frontera de
+    expansión donde la mancha urbana muta primero.
     """
-    df = datos_estatales()
-    pares_i, pares_j, grados = vecindad_estados()
+    rng = np.random.default_rng(SEMILLA)
+    gdf = cargar_municipios()
+    df_e = datos_estatales().set_index("estado")
 
-    precio = df["precio_m2"].to_numpy(dtype=float)
-    potencial = df["potencial"].to_numpy(dtype=float).copy()
-    g_propio = df["plusvalia"].to_numpy(dtype=float) / 100.0 * 0.55
+    lng, lat = gdf["lng"].to_numpy(), gdf["lat"].to_numpy()
+    c_lng = np.array([c[3] for c in CIUDADES])
+    c_lat = np.array([c[2] for c in CIUDADES])
+    # distancia (en grados ≈ 105 km/grado) a la ZM más cercana
+    d = np.sqrt((lng[:, None] - c_lng[None, :]) ** 2
+                + (lat[:, None] - c_lat[None, :]) ** 2)
+    zm_idx = d.argmin(axis=1)
+    d_zm = d.min(axis=1)
 
-    mega = MEGAPROYECTOS.get(megaproyecto)
-    valores = np.empty((AÑOS + 1, precio.size))
-    valores[0] = precio
+    precio_e = gdf["estado"].map(df_e["precio_m2"]).to_numpy(dtype=float)
+    plusv_e = gdf["estado"].map(df_e["plusvalia"]).to_numpy(dtype=float)
+    pot_e = gdf["estado"].map(df_e["potencial"]).to_numpy(dtype=float)
 
+    gradiente = 0.42 + 0.78 * np.exp(-(d_zm / 0.30) ** 2)
+    precio = precio_e * gradiente * rng.lognormal(0.0, 0.08, len(gdf))
+
+    anillo = np.exp(-((d_zm - 0.22) / 0.22) ** 2)   # anillo periurbano
+    potencial = np.clip(0.55 * pot_e + 0.50 * anillo
+                        + rng.normal(0, 0.06, len(gdf)), 0.02, 1)
+
+    return pd.DataFrame({
+        "municipio": gdf["municipio"], "estado": gdf["estado"],
+        "lng": lng, "lat": lat,
+        "precio_actual": precio.round(0),
+        "potencial_crecimiento": potencial.round(3),
+        "plusvalia_estatal": plusv_e,
+        "zm_cercana": [CIUDADES[i][0] for i in zm_idx],
+        "dist_zm_km": (d_zm * 105).round(0),
+    })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 5 · MOTOR SAR (ESTADOS · MUNICIPIOS) + ÍNDICE DE MORAN
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _sar(v0: np.ndarray, potencial: np.ndarray, g_propio: np.ndarray,
+         pares_i: np.ndarray, pares_j: np.ndarray, grados: np.ndarray,
+         rho: float, escala_rho: float, shock_mask: np.ndarray | None,
+         shock_año: int, shock_fuerza: float) -> np.ndarray:
+    """
+    Núcleo del proceso espacial autorregresivo, común a todas las escalas:
+
+        v[t+1] = v[t] · (1 + g_propio + ρ·k · (W·v_norm[t]) · potencial)
+
+    El shock (megaproyecto/catalizador) eleva el potencial en su año de
+    arranque y detona la mutación en cadena.
+    """
+    potencial = potencial.copy()
+    valores = np.empty((AÑOS + 1, v0.size))
+    valores[0] = v0
     for t in range(AÑOS):
         v = valores[t]
-        if mega is not None and t == mega["año"]:
-            afectados = df["estado"].isin(mega["estados"]).to_numpy()
-            potencial = np.clip(potencial + mega["fuerza"] * afectados, 0, 1.35)
-
-        v_norm = norm01(v)
-        derrame = np.bincount(pares_i, weights=v_norm[pares_j],
+        if shock_mask is not None and t == shock_año:
+            potencial = np.clip(potencial + shock_fuerza * shock_mask, 0, 1.35)
+        derrame = np.bincount(pares_i, weights=norm01(v)[pares_j],
                               minlength=v.size) / grados
-        crecimiento = g_propio + rho * 0.10 * derrame * potencial
-        valores[t + 1] = v * (1.0 + crecimiento)
-
+        valores[t + 1] = v * (1.0 + g_propio + rho * escala_rho
+                              * derrame * potencial)
     return valores
 
 
-def indice_moran(v: np.ndarray) -> float:
+@st.cache_data(show_spinner="🧬 Simulando morfogénesis estatal (SAR)…")
+def simular_nacion(rho: float, megaproyecto: str) -> np.ndarray:
+    """SAR sobre la contigüidad real de los 32 estados."""
+    df = datos_estatales()
+    pi, pj, g = vecindad_estados()
+    mega = MEGAPROYECTOS.get(megaproyecto)
+    mask = df["estado"].isin(mega["estados"]).to_numpy().astype(float) \
+        if mega else None
+    return _sar(df["precio_m2"].to_numpy(dtype=float),
+                df["potencial"].to_numpy(dtype=float),
+                df["plusvalia"].to_numpy(dtype=float) / 100.0 * 0.55,
+                pi, pj, g, rho, 0.10, mask,
+                mega["año"] if mega else 0, mega["fuerza"] if mega else 0)
+
+
+@st.cache_data(show_spinner="🧬 Simulando morfogénesis municipal (2,436 células)…")
+def simular_municipios(rho: float, megaproyecto: str) -> np.ndarray:
     """
-    Índice de Moran I sobre los precios estatales: mide si el organismo crece
-    de forma COHESIONADA (valores altos junto a valores altos → I > 0) o
-    fragmentada (I ≈ 0). Es el electrocardiograma espacial del mercado.
+    SAR sobre las ~15,000 fronteras municipales reales: la plusvalía se
+    contagia municipio a municipio, como células de un mismo tejido.
     """
-    pares_i, pares_j, _ = vecindad_estados()
+    df = datos_municipales()
+    pi, pj, g = vecindad_municipios()
+    mega = MEGAPROYECTOS.get(megaproyecto)
+    mask = df["estado"].isin(mega["estados"]).to_numpy().astype(float) \
+        if mega else None
+    return _sar(df["precio_actual"].to_numpy(dtype=float),
+                df["potencial_crecimiento"].to_numpy(dtype=float),
+                df["plusvalia_estatal"].to_numpy(dtype=float) / 100.0 * 0.45,
+                pi, pj, g, rho, 0.14, mask,
+                mega["año"] if mega else 0,
+                (mega["fuerza"] * 0.9) if mega else 0)
+
+
+def indice_moran(v: np.ndarray, pares: tuple) -> float:
+    """
+    Índice de Moran I: el electrocardiograma espacial del mercado. Mide si el
+    organismo crece cohesionado (I→1, valores altos junto a altos) o
+    fragmentado (I≈0).
+    """
+    pi, pj, _ = pares
     z = v - v.mean()
-    numerador = float((z[pares_i] * z[pares_j]).sum())
-    return (len(v) / len(pares_i)) * numerador / float((z ** 2).sum() + 1e-12)
+    return (len(v) / len(pi)) * float((z[pi] * z[pj]).sum()) \
+        / float((z ** 2).sum() + 1e-12)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 5 · SISTEMA CIRCULATORIO NACIONAL — CAPITAL ENTRE ZONAS METROPOLITANAS
+# 6 · SISTEMA CIRCULATORIO — CAPITAL ENTRE ZONAS METROPOLITANAS
 # ══════════════════════════════════════════════════════════════════════════════
 
 def flujos_nacionales(valores: np.ndarray, año: float,
                       n_fuentes: int = 6, n_destinos: int = 20) -> pd.DataFrame:
     """
     Modelo gravitacional de rotación de capital: las ZM con mayor masa
-    económica bombean liquidez hacia los estados con mayor crecimiento
-    proyectado. atracción = masa_fuente / distancia^1.2. Cada arco estima el
-    capital anual en juego (MXN, mil millones — mock calibrado).
+    económica bombean liquidez hacia los estados de mayor crecimiento
+    proyectado. atracción = masa_fuente / distancia^1.2.
     """
     df_e = datos_estatales()
     v_t, tasa = estado_en(valores, año)
@@ -360,8 +504,8 @@ def flujos_nacionales(valores: np.ndarray, año: float,
     masa = df_c["pob_zm"].to_numpy() * precio_t
 
     fuentes = np.argsort(masa)[-n_fuentes:]
-    candidatos = np.argsort(tasa_c)[::-1]
-    destinos = [c for c in candidatos if c not in set(fuentes)][:n_destinos]
+    destinos = [c for c in np.argsort(tasa_c)[::-1]
+                if c not in set(fuentes)][:n_destinos]
 
     lng, lat = df_c["lng"].to_numpy(), df_c["lat"].to_numpy()
     filas = []
@@ -382,10 +526,7 @@ def flujos_nacionales(valores: np.ndarray, año: float,
 
 
 def construir_trayectos(flujos: pd.DataFrame) -> list[dict]:
-    """
-    Convierte cada arco en un trayecto curvo con timestamps para el TripsLayer:
-    los "glóbulos" de capital que viajan por las venas del organismo.
-    """
+    """Arcos → trayectos curvos con timestamps (los glóbulos del TripsLayer)."""
     trayectos = []
     for _, fl in flujos.iterrows():
         (x0, y0), (x1, y1) = fl["origen"], fl["destino"]
@@ -401,10 +542,7 @@ def construir_trayectos(flujos: pd.DataFrame) -> list[dict]:
 
 
 def torres_metropolitanas(valores: np.ndarray, año: float) -> pd.DataFrame:
-    """
-    Las 32 ZM como torres de energía: altura = precio proyectado, color = tasa
-    de contagio. Incluye el expediente completo para el tooltip analítico.
-    """
+    """Las 32 ZM como torres de energía: altura = precio, color = contagio."""
     df_e = datos_estatales()
     v_t, tasa = estado_en(valores, año)
     ratio = v_t / valores[0]
@@ -417,12 +555,12 @@ def torres_metropolitanas(valores: np.ndarray, año: float) -> pd.DataFrame:
     precio_t = df_c["precio_m2"].to_numpy() * ratio[ie]
     tasa_c = tasa[ie]
 
-    rgb = paleta_neon(norm01(tasa_c) ** 0.8)
+    rgb = paleta_marca(norm01(tasa_c) ** 0.8)
     return pd.DataFrame({
         "pos": [[float(a), float(b)] for a, b in zip(df_c["lng"], df_c["lat"])],
         "nombre": df_c["ciudad"],
         "altura": (precio_t * 5.5).tolist(),
-        "color": np.column_stack([rgb, np.full(len(df_c), 210)])
+        "color": np.column_stack([rgb, np.full(len(df_c), 215)])
                    .astype(int).tolist(),
         "masa": (df_c["pob_zm"].to_numpy() * precio_t).tolist(),
         "estado_bio": "",
@@ -435,32 +573,80 @@ def torres_metropolitanas(valores: np.ndarray, año: float) -> pd.DataFrame:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 6 · RENDER NACIONAL — EL ORGANISMO REPÚBLICA EN PYDECK
+# 7 · RENDER PYDECK — CAPAS DEL ORGANISMO EN LOS COLORES BRICKBIT
 # ══════════════════════════════════════════════════════════════════════════════
+
+def _capas_circulatorias(flujos: pd.DataFrame, fase: float,
+                         escala: float = 1.0) -> list[pdk.Layer]:
+    """Venas (arcos), glóbulos (trips) y corazones (glow), en verdes/lima."""
+    pulso = 0.5 + 0.5 * math.sin(2 * math.pi * fase)
+    nodos = pd.DataFrame({"pos": flujos["origen"]
+                         .apply(tuple).drop_duplicates().apply(list).tolist()})
+    return [
+        pdk.Layer(
+            "ArcLayer", data=flujos,
+            get_source_position="origen", get_target_position="destino",
+            get_source_color=RGB_ARCILLA_SUAVE + [int(80 + 120 * pulso)],
+            get_target_color=RGB_LIMA + [int(140 + 110 * pulso)],
+            get_width=f"1.5 + intensidad * {3.0 + 3.0 * pulso}",
+            get_height=0.35, great_circle=False,
+        ),
+        pdk.Layer(
+            "TripsLayer", data=construir_trayectos(flujos),
+            get_path="camino", get_timestamps="marcas",
+            get_color=[232, 255, 176], width_min_pixels=3,
+            trail_length=0.30, current_time=(fase * 2.0) % 2.0, opacity=0.9,
+        ),
+        pdk.Layer(
+            "ScatterplotLayer", data=nodos, get_position="pos",
+            get_radius=(26000 + 16000 * pulso) * escala,
+            get_fill_color=RGB_LIMA + [int(40 + 55 * pulso)],
+            stroked=True,
+            get_line_color=RGB_CREMA + [int(110 + 90 * pulso)],
+            line_width_min_pixels=2,
+        ),
+    ]
+
+
+def _tooltip() -> dict:
+    """Tooltip de marca: superficie tierra, borde lima, texto crema."""
+    return {
+        "html": (
+            "<div style='font-family:Space Mono,monospace'>"
+            f"<b style='color:{LIMA}'>{{nombre}}</b> {{estado_bio}}<br/>"
+            "💰 <b>{precio_txt}</b><br/>"
+            f"🧬 Contagio: <b style='color:{ARCILLA_SUAVE}'>{{crec_txt}}</b> · "
+            "📈 {plusvalia_txt}<br/>"
+            f"<span style='color:{TEXTO_SUAVE}'>{{extra_txt}}</span></div>"
+        ),
+        "style": {"backgroundColor": SUPERFICIE, "color": CREMA,
+                  "border": f"1px solid {LIMA}", "borderRadius": "8px"},
+    }
+
+
+def _vista(lng, lat, zoom, pitch=46, bearing=-8):
+    return pdk.ViewState(longitude=lng, latitude=lat, zoom=zoom,
+                         pitch=pitch, bearing=bearing)
+
+
+def _respiracion(t: np.ndarray, fase: float) -> np.ndarray:
+    """Latido de opacidad: las zonas calientes respiran más fuerte."""
+    return 0.88 + 0.12 * np.sin(2 * math.pi * (fase + t * 2.0))
+
 
 def preparar_estados_render(valores: np.ndarray, año: float,
                             fase: float) -> pd.DataFrame:
-    """
-    Colorea cada polígono estatal según su mutación: mezcla de valor proyectado
-    (45%) y plusvalía acumulada (55%), con opacidad que "respira" con la fase.
-    """
+    """Color/latido de cada estado: valor proyectado + plusvalía acumulada."""
     df = datos_estatales()
     v_t, tasa = estado_en(valores, año)
     acum = v_t / valores[0] - 1
-
     t = 0.45 * norm01(v_t) + 0.55 * norm01(acum)
-    rgb = paleta_neon(t ** 0.85)
-    latido = 0.88 + 0.12 * np.sin(2 * math.pi * (fase + t * 2.0))
-    alfa = np.clip((80 + 130 * t) * latido, 45, 235)
-
-    p85, p55 = np.quantile(tasa, 0.85), np.quantile(tasa, 0.55)
-    estado_bio = np.where(tasa >= p85, "🧬 Mutación activa",
-                          np.where(tasa >= p55, "🌱 Expansión", "💤 Latente"))
-
+    rgb = paleta_marca(t ** 0.85)
+    alfa = np.clip((80 + 130 * t) * _respiracion(t, fase), 45, 235)
     base = pd.DataFrame({
         "nombre": df["estado"],
         "color": np.column_stack([rgb, alfa]).astype(int).tolist(),
-        "estado_bio": estado_bio,
+        "estado_bio": clasificar_bio(tasa),
         "precio_txt": [f"${p:,.0f} MXN/m²" for p in v_t],
         "crec_txt": [f"+{r * 100:.1f}% anual" for r in tasa],
         "plusvalia_txt": [f"+{a * 100:.0f}% vs hoy" for a in acum],
@@ -468,124 +654,118 @@ def preparar_estados_render(valores: np.ndarray, año: float,
                       for p, g, q in zip(df["poblacion"], df["pib_pc"],
                                          df["potencial"])],
     })
-    # une atributos estatales a cada polígono explotado (islas incluidas)
     return contornos_estatales().join(base, on="idx_estado")
+
+
+def preparar_municipios_render(valores: np.ndarray, año: float,
+                               fase: float) -> pd.DataFrame:
+    """Color/latido de las 2,436 células municipales."""
+    df = datos_municipales()
+    v_t, tasa = estado_en(valores, año)
+    acum = v_t / valores[0] - 1
+    t = 0.40 * norm01(v_t) + 0.60 * norm01(acum)
+    rgb = paleta_marca(t ** 0.9)
+    alfa = np.clip((70 + 145 * t) * _respiracion(t, fase), 40, 235)
+    base = pd.DataFrame({
+        "nombre": df["municipio"] + " · " + df["estado"],
+        "color": np.column_stack([rgb, alfa]).astype(int).tolist(),
+        "estado_bio": clasificar_bio(tasa),
+        "precio_txt": [f"${p:,.0f} MXN/m²" for p in v_t],
+        "crec_txt": [f"+{r * 100:.1f}% anual" for r in tasa],
+        "plusvalia_txt": [f"+{a * 100:.0f}% vs hoy" for a in acum],
+        "extra_txt": [f"ZM más cercana: {z} ({d:.0f} km) · potencial {q:.2f}"
+                      for z, d, q in zip(df["zm_cercana"], df["dist_zm_km"],
+                                         df["potencial_crecimiento"])],
+    })
+    return contornos_municipales().join(base, on="idx_mun")
+
+
+def capa_bordes_estatales() -> pdk.Layer:
+    """Delimitación estatal superpuesta (estilo Google Maps), en crema."""
+    return pdk.Layer(
+        "PolygonLayer", data=contornos_estatales(),
+        get_polygon="contorno", filled=False, stroked=True,
+        get_line_color=RGB_CREMA + [130], line_width_min_pixels=1.6,
+        pickable=False,
+    )
 
 
 def construir_deck_nacion(valores: np.ndarray, año: float, fase: float,
                           mostrar_flujos: bool, mostrar_torres: bool,
-                          mostrar_etiquetas: bool, estilo: str) -> pdk.Deck:
-    """Ensambla el organismo nacional: piel (estados), órganos (ZM) y sangre (capital)."""
-    pulso = 0.5 + 0.5 * math.sin(2 * math.pi * fase)
-
-    capas = [
-        # ── Piel del organismo: estados que respiran, con frontera neón ───────
-        pdk.Layer(
-            "PolygonLayer",
-            data=preparar_estados_render(valores, año, fase),
-            get_polygon="contorno",
-            get_fill_color="color",
-            get_line_color=[0, 245, 255, 110],
-            line_width_min_pixels=1,
-            stroked=True,
-            pickable=True,
-            auto_highlight=True,
-            highlight_color=[255, 255, 255, 90],
-        )
-    ]
-
+                          mostrar_etiquetas: bool, estilo: str,
+                          flujos: pd.DataFrame) -> pdk.Deck:
+    """Escala estados: piel estatal + órganos ZM + sangre de capital."""
+    capas = [pdk.Layer(
+        "PolygonLayer", data=preparar_estados_render(valores, año, fase),
+        get_polygon="contorno", get_fill_color="color",
+        get_line_color=RGB_ARCILLA_SUAVE + [110], line_width_min_pixels=1,
+        stroked=True, pickable=True, auto_highlight=True,
+        highlight_color=RGB_CREMA + [90],
+    )]
     torres = torres_metropolitanas(valores, año)
     if mostrar_torres:
-        # ── Órganos: cada zona metropolitana como torre de energía ────────────
         capas.append(pdk.Layer(
-            "ColumnLayer",
-            data=torres,
-            get_position="pos",
-            get_elevation="altura",
-            get_fill_color="color",
-            radius=16000,
-            elevation_scale=1.0,
-            pickable=True,
-            auto_highlight=True,
+            "ColumnLayer", data=torres, get_position="pos",
+            get_elevation="altura", get_fill_color="color",
+            radius=16000, pickable=True, auto_highlight=True,
         ))
-
     if mostrar_flujos:
-        flujos = flujos_nacionales(valores, año)
-        # ── Venas: arcos pulsantes de capital interestatal ─────────────────────
-        capas.append(pdk.Layer(
-            "ArcLayer",
-            data=flujos,
-            get_source_position="origen",
-            get_target_position="destino",
-            get_source_color=[0, 245, 255, int(80 + 120 * pulso)],
-            get_target_color=[255, 46, 154, int(140 + 110 * pulso)],
-            get_width=f"1.5 + intensidad * {3.0 + 3.0 * pulso}",
-            get_height=0.35,
-            great_circle=False,
-        ))
-        # ── Glóbulos: pulsos de capital viajando por las venas ─────────────────
-        capas.append(pdk.Layer(
-            "TripsLayer",
-            data=construir_trayectos(flujos),
-            get_path="camino",
-            get_timestamps="marcas",
-            get_color=[120, 255, 245],
-            width_min_pixels=3,
-            trail_length=0.30,
-            current_time=(fase * 2.0) % 2.0,
-            opacity=0.9,
-        ))
-        # ── Corazones: glow pulsante en los nodos que bombean ─────────────────
-        nodos = pd.DataFrame({"pos": flujos["origen"]
-                             .apply(tuple).drop_duplicates().apply(list).tolist()})
-        capas.append(pdk.Layer(
-            "ScatterplotLayer",
-            data=nodos,
-            get_position="pos",
-            get_radius=26000 + 16000 * pulso,
-            get_fill_color=[255, 46, 154, int(45 + 55 * pulso)],
-            stroked=True,
-            get_line_color=[255, 226, 168, int(110 + 90 * pulso)],
-            line_width_min_pixels=2,
-        ))
-
+        capas += _capas_circulatorias(flujos, fase)
     if mostrar_etiquetas:
-        # ── Rótulos de las 14 ZM con mayor masa económica ──────────────────────
-        top = torres.nlargest(14, "masa")
         capas.append(pdk.Layer(
-            "TextLayer",
-            data=top,
-            get_position="pos",
-            get_text="nombre",
-            get_size=13,
-            get_color=[210, 208, 235, 210],
-            get_alignment_baseline="'top'",
-            get_pixel_offset=[0, 10],
+            "TextLayer", data=torres.nlargest(14, "masa"),
+            get_position="pos", get_text="nombre", get_size=13,
+            get_color=RGB_CREMA + [210],
+            get_alignment_baseline="'top'", get_pixel_offset=[0, 10],
         ))
+    return pdk.Deck(layers=capas,
+                    initial_view_state=_vista(-102.4, 23.9, 4.4),
+                    map_style=ESTILOS_MAPA[estilo], tooltip=_tooltip())
 
-    return pdk.Deck(
-        layers=capas,
-        initial_view_state=pdk.ViewState(
-            longitude=-102.4, latitude=23.9, zoom=4.4, pitch=46, bearing=-8,
+
+def construir_deck_municipios(valores: np.ndarray, año: float, fase: float,
+                              mostrar_flujos: bool, mostrar_torres: bool,
+                              mostrar_etiquetas: bool, estilo: str,
+                              flujos: pd.DataFrame,
+                              valores_edo: np.ndarray) -> pdk.Deck:
+    """
+    Escala municipios: 2,436 células reales + delimitación estatal encima
+    (como Google Maps) + el mismo sistema circulatorio metropolitano.
+    """
+    capas = [
+        pdk.Layer(
+            "PolygonLayer",
+            data=preparar_municipios_render(valores, año, fase),
+            get_polygon="contorno", get_fill_color="color",
+            get_line_color=RGB_LIMA + [22], line_width_min_pixels=0.5,
+            stroked=True, pickable=True, auto_highlight=True,
+            highlight_color=RGB_CREMA + [110],
         ),
-        map_style=ESTILOS_MAPA[estilo],
-        tooltip={
-            "html": (
-                "<div style='font-family:monospace'>"
-                "<b style='color:#00f5ff'>{nombre}</b> {estado_bio}<br/>"
-                "💰 <b>{precio_txt}</b><br/>"
-                "🧬 Contagio: <b style='color:#ff2e9a'>{crec_txt}</b> · "
-                "📈 {plusvalia_txt}<br/>"
-                "<span style='color:#8f88b8'>{extra_txt}</span></div>"
-            ),
-            "style": {"backgroundColor": "#0b0520", "color": "#e8e6ff",
-                      "border": "1px solid #00f5ff", "borderRadius": "8px"},
-        },
-    )
+        capa_bordes_estatales(),
+    ]
+    torres = torres_metropolitanas(valores_edo, año)
+    if mostrar_torres:
+        capas.append(pdk.Layer(
+            "ColumnLayer", data=torres, get_position="pos",
+            get_elevation="altura", get_fill_color="color",
+            radius=12000, pickable=True, auto_highlight=True,
+        ))
+    if mostrar_flujos:
+        capas += _capas_circulatorias(flujos, fase)
+    if mostrar_etiquetas:
+        capas.append(pdk.Layer(
+            "TextLayer", data=torres.nlargest(14, "masa"),
+            get_position="pos", get_text="nombre", get_size=13,
+            get_color=RGB_CREMA + [210],
+            get_alignment_baseline="'top'", get_pixel_offset=[0, 10],
+        ))
+    return pdk.Deck(layers=capas,
+                    initial_view_state=_vista(-102.4, 23.9, 4.6, pitch=42),
+                    map_style=ESTILOS_MAPA[estilo], tooltip=_tooltip())
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 7 · ESCALA MICRO — TEJIDO CELULAR AZCAPOTZALCO/VALLEJO (motor original)
+# 8 · ESCALA MICRO — TEJIDO CELULAR AZCAPOTZALCO/VALLEJO (motor original)
 # ══════════════════════════════════════════════════════════════════════════════
 
 NX, NY = 26, 26
@@ -633,14 +813,11 @@ def generar_tejido_urbano() -> gpd.GeoDataFrame:
                         + 0.65 * nucleo(-99.199, 19.494, 0.009)
                         + 0.40 * nucleo(-99.174, 19.478, 0.010)
                         + rng.uniform(0.05, 0.22, precio.size), 0, 1)
-    flujo = np.clip(0.55 * norm01(precio) + 0.45 * potencial
-                    + rng.normal(0, 0.05, precio.size), 0, 1)
     qx, qy = np.minimum(ix * 3 // NX, 2), np.minimum(iy * 3 // NY, 2)
     gdf = gpd.GeoDataFrame({
         "barrio": [BARRIOS[int(b)] for b in (qy * 3 + qx)],
         "precio_actual": precio.round(0),
         "potencial_crecimiento": potencial.round(3),
-        "flujo_capital": flujo.round(3),
         "lng": cx, "lat": cy,
     }, geometry=geometrias, crs="EPSG:4326")
     gdf["contorno"] = gdf.geometry.apply(
@@ -670,26 +847,20 @@ def vecindad_reina() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
 @st.cache_data(show_spinner="🧬 Simulando morfogénesis celular…")
 def simular_micro(rho: float, catalizador: str) -> np.ndarray:
-    """SAR celular: precio[t+1] = precio[t]·(1 + g + ρ·(W·v_norm)·potencial)."""
+    """SAR celular con catalizador gaussiano (célula madre puntual)."""
     gdf = generar_tejido_urbano()
-    pares_i, pares_j, grados = vecindad_reina()
-    potencial = gdf["potencial_crecimiento"].to_numpy(dtype=float).copy()
+    pi, pj, g = vecindad_reina()
     cx, cy = gdf["lng"].to_numpy(), gdf["lat"].to_numpy()
     cat = CATALIZADORES.get(catalizador)
-
-    valores = np.empty((AÑOS + 1, len(gdf)))
-    valores[0] = gdf["precio_actual"].to_numpy(dtype=float)
-    for t in range(AÑOS):
-        v = valores[t]
-        if cat is not None and t == cat["año"]:
-            campo = np.exp(-((cx - cat["lng"]) ** 2 + (cy - cat["lat"]) ** 2)
-                           / (2 * cat["radio"] ** 2))
-            potencial = np.clip(potencial + cat["fuerza"] * campo, 0, 1.4)
-        derrame = np.bincount(pares_i, weights=norm01(v)[pares_j],
-                              minlength=v.size) / grados
-        valores[t + 1] = v * (1 + CRECIMIENTO_BASE
-                              + rho * 0.16 * derrame * potencial)
-    return valores
+    mask = None
+    if cat is not None:
+        mask = np.exp(-((cx - cat["lng"]) ** 2 + (cy - cat["lat"]) ** 2)
+                      / (2 * cat["radio"] ** 2))
+    return _sar(gdf["precio_actual"].to_numpy(dtype=float),
+                gdf["potencial_crecimiento"].to_numpy(dtype=float),
+                np.full(len(gdf), CRECIMIENTO_BASE),
+                pi, pj, g, rho, 0.16, mask,
+                cat["año"] if cat else 0, cat["fuerza"] if cat else 0)
 
 
 def flujos_micro(gdf: gpd.GeoDataFrame, valores: np.ndarray,
@@ -716,21 +887,17 @@ def preparar_celulas(gdf: gpd.GeoDataFrame, valores: np.ndarray, año: float,
     """Color, latido y altura de cada célula del microtejido."""
     precio_t, tasa = estado_en(valores, año)
     base = valores[0]
-    t = (precio_t - base.min()) / (valores[-1].max() - base.min())
-    rgb = paleta_neon(np.clip(t, 0, 1) ** 0.85)
-    latido = 0.88 + 0.12 * np.sin(2 * math.pi * (fase + t * 2.0))
-    alfa = (95 + 150 * t) * (0.75 + 0.5 * norm01(tasa)) * latido
-    p90, p60 = np.quantile(tasa, 0.90), np.quantile(tasa, 0.60)
-    estado_bio = np.where(tasa >= p90, "🧬 Mutación activa",
-                          np.where(tasa >= p60, "🌱 Expansión", "💤 Latente"))
+    t = np.clip((precio_t - base.min())
+                / (valores[-1].max() - base.min()), 0, 1)
+    rgb = paleta_marca(t ** 0.85)
+    alfa = (95 + 150 * t) * (0.75 + 0.5 * norm01(tasa)) * _respiracion(t, fase)
     return pd.DataFrame({
         "contorno": gdf["contorno"].tolist(),
         "color": np.column_stack([rgb, np.clip(alfa, 30, 255)])
                    .astype(int).tolist(),
-        "altura": ((np.clip(t, 0, 1) ** 1.5) * 900
-                   * (1.0 if extrusion else 0.0)).tolist(),
+        "altura": ((t ** 1.5) * 900 * (1.0 if extrusion else 0.0)).tolist(),
         "nombre": gdf["barrio"].tolist(),
-        "estado_bio": estado_bio.tolist(),
+        "estado_bio": clasificar_bio(tasa).tolist(),
         "precio_txt": [f"${p:,.0f} MXN/m²" for p in precio_t],
         "crec_txt": [f"+{r * 100:.1f}% anual" for r in tasa],
         "plusvalia_txt": [f"+{(pt / b - 1) * 100:.0f}% vs hoy"
@@ -746,77 +913,35 @@ def construir_deck_micro(gdf: gpd.GeoDataFrame, valores: np.ndarray,
     capas = [pdk.Layer(
         "PolygonLayer",
         data=preparar_celulas(gdf, valores, año, fase, extrusion),
-        get_polygon="contorno",
-        get_fill_color="color",
-        get_elevation="altura",
-        extruded=extrusion,
-        get_line_color=[0, 245, 255, 40],
-        line_width_min_pixels=1,
-        pickable=True,
-        auto_highlight=True,
-        highlight_color=[255, 255, 255, 120],
+        get_polygon="contorno", get_fill_color="color",
+        get_elevation="altura", extruded=extrusion,
+        get_line_color=RGB_ARCILLA_SUAVE + [40], line_width_min_pixels=1,
+        pickable=True, auto_highlight=True,
+        highlight_color=RGB_CREMA + [120],
     )]
     if mostrar_flujos:
-        flujos = flujos_micro(gdf, valores, año)
-        pulso = 0.5 + 0.5 * math.sin(2 * math.pi * fase)
-        capas.append(pdk.Layer(
-            "ArcLayer", data=flujos,
-            get_source_position="origen", get_target_position="destino",
-            get_source_color=[0, 245, 255, int(90 + 130 * pulso)],
-            get_target_color=[255, 46, 154, int(150 + 100 * pulso)],
-            get_width=f"2 + intensidad * {3.5 + 3.0 * pulso}",
-            get_height=0.6, great_circle=False,
-        ))
-        capas.append(pdk.Layer(
-            "TripsLayer", data=construir_trayectos(flujos),
-            get_path="camino", get_timestamps="marcas",
-            get_color=[120, 255, 245], width_min_pixels=3,
-            trail_length=0.35, current_time=(fase * 2.0) % 2.0, opacity=0.9,
-        ))
-        nodos = pd.DataFrame({"pos": flujos["origen"]
-                             .apply(tuple).drop_duplicates().apply(list).tolist()})
-        capas.append(pdk.Layer(
-            "ScatterplotLayer", data=nodos, get_position="pos",
-            get_radius=110 + 90 * pulso,
-            get_fill_color=[255, 46, 154, int(50 + 60 * pulso)],
-            stroked=True,
-            get_line_color=[255, 226, 168, int(120 + 100 * pulso)],
-            line_width_min_pixels=2,
-        ))
-    return pdk.Deck(
-        layers=capas,
-        initial_view_state=pdk.ViewState(
-            longitude=CENTRO_LNG, latitude=CENTRO_LAT,
-            zoom=13.1, pitch=52, bearing=-16),
-        map_style=ESTILOS_MAPA[estilo],
-        tooltip={
-            "html": (
-                "<div style='font-family:monospace'>"
-                "<b style='color:#00f5ff'>{nombre}</b> {estado_bio}<br/>"
-                "💰 <b>{precio_txt}</b><br/>"
-                "🧬 Contagio: <b style='color:#ff2e9a'>{crec_txt}</b> · "
-                "📈 {plusvalia_txt}</div>"
-            ),
-            "style": {"backgroundColor": "#0b0520", "color": "#e8e6ff",
-                      "border": "1px solid #00f5ff", "borderRadius": "8px"},
-        },
-    )
+        capas += _capas_circulatorias(flujos_micro(gdf, valores, año),
+                                      fase, escala=0.006)
+    return pdk.Deck(layers=capas,
+                    initial_view_state=_vista(CENTRO_LNG, CENTRO_LAT, 13.1,
+                                              pitch=52, bearing=-16),
+                    map_style=ESTILOS_MAPA[estilo], tooltip=_tooltip())
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 8 · LABORATORIO ANALÍTICO — RANKING · TRAYECTORIAS · DIAGRAMA DE FASES
+# 9 · LABORATORIO ANALÍTICO — RANKING · TRAYECTORIAS · DIAGRAMA DE FASES
 # ══════════════════════════════════════════════════════════════════════════════
 
-_PLOTLY_OSCURO = dict(
+_PLOTLY_MARCA = dict(
     template="plotly_dark",
-    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(11,5,32,.6)",
-    font=dict(family="monospace", color="#c9c6e8"),
-    colorway=NEON, margin=dict(l=10, r=10, t=40, b=10),
+    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(29,23,19,.55)",
+    font=dict(family="Space Mono, monospace", color=TEXTO_SUAVE),
+    colorway=NEON, margin=dict(l=10, r=10, t=42, b=10),
 )
 
 
-def tab_ranking(valores: np.ndarray, año: float,
-                flujos: pd.DataFrame) -> None:
+def tab_ranking_estados(valores: np.ndarray, año: float,
+                        flujos: pd.DataFrame) -> None:
     """Expediente completo y ordenable de los 32 estados en el año t."""
     df = datos_estatales()
     v_t, tasa = estado_en(valores, año)
@@ -835,6 +960,30 @@ def tab_ranking(valores: np.ndarray, año: float,
         "PIB pc (k MXN)": df["pib_pc"],
         "Arterias entrantes": df["estado"].map(presion).fillna(0).astype(int),
     }).sort_values("Plusvalía acumulada", ascending=False)
+    _tabla_ranking(tabla, año)
+
+
+def tab_ranking_municipios(valores: np.ndarray, año: float) -> None:
+    """Los 40 municipios con mutación más agresiva en el año t."""
+    df = datos_municipales()
+    v_t, tasa = estado_en(valores, año)
+    tabla = pd.DataFrame({
+        "Municipio": df["municipio"],
+        "Estado": df["estado"],
+        "Precio hoy (m²)": df["precio_actual"],
+        f"Precio año {año:.0f} (m²)": v_t.round(0),
+        "Plusvalía acumulada": (v_t / valores[0] - 1),
+        "Tasa anual": tasa,
+        "Potencial": df["potencial_crecimiento"],
+        "ZM más cercana": df["zm_cercana"],
+        "Dist. ZM (km)": df["dist_zm_km"],
+    }).nlargest(40, "Plusvalía acumulada")
+    st.caption("🏆 Top 40 de 2,436 municipios por plusvalía acumulada — "
+               "el anillo periurbano de las ZM domina la mutación.")
+    _tabla_ranking(tabla, año)
+
+
+def _tabla_ranking(tabla: pd.DataFrame, año: float) -> None:
     st.dataframe(
         tabla, height=430, hide_index=True, width="stretch",
         column_config={
@@ -850,94 +999,176 @@ def tab_ranking(valores: np.ndarray, año: float,
         })
 
 
-def tab_trayectorias(valores: np.ndarray, año: float) -> None:
+def tab_trayectorias(valores: np.ndarray, año: float,
+                     nombres: pd.Series, titulo: str) -> None:
     """Evolución proyectada del precio: las 8 mutaciones más agresivas."""
-    df = datos_estatales()
     acum = valores[-1] / valores[0] - 1
     top = np.argsort(acum)[::-1][:8]
     fig = go.Figure()
     for c, i in zip(NEON, top):
         fig.add_trace(go.Scatter(
             x=list(range(AÑOS + 1)), y=valores[:, i],
-            name=df["estado"].iloc[i], mode="lines+markers",
+            name=str(nombres.iloc[i]), mode="lines+markers",
             line=dict(width=2.4, color=c), marker=dict(size=5)))
-    fig.add_vline(x=año, line_dash="dot", line_color="#ffe2a8",
+    fig.add_vline(x=año, line_dash="dot", line_color=CREMA,
                   annotation_text=f"año {año:.1f}",
-                  annotation_font_color="#ffe2a8")
-    fig.update_layout(
-        title="🧬 Trayectoria de precios — top 8 estados en mutación",
-        xaxis_title="año", yaxis_title="MXN/m²", height=420,
-        **_PLOTLY_OSCURO)
+                  annotation_font_color=CREMA)
+    fig.update_layout(title=titulo, xaxis_title="año",
+                      yaxis_title="MXN/m²", height=420, **_PLOTLY_MARCA)
     st.plotly_chart(fig, width="stretch")
 
 
-def tab_fases(valores: np.ndarray, año: float) -> None:
-    """
-    Diagrama de fases del organismo: precio (accesibilidad) vs velocidad de
-    contagio; el tamaño es la población y el color el potencial. Los estados
-    del cuadrante superior-izquierdo son las oportunidades: baratos y mutando.
-    """
+def tab_fases_estados(valores: np.ndarray, año: float) -> None:
+    """Diagrama de fases estatal: precio vs contagio (burbuja = población)."""
     df = datos_estatales()
     v_t, tasa = estado_en(valores, año)
     fig = go.Figure(go.Scatter(
         x=v_t, y=tasa * 100, mode="markers+text",
         text=df["estado"], textposition="top center",
-        textfont=dict(size=9, color="#8f88b8"),
-        marker=dict(
-            size=np.sqrt(df["poblacion"]) * 11 + 6,
-            color=df["potencial"], cmin=0, cmax=1,
-            colorscale=[[0.0, "#1a083e"], [0.35, "#0069ff"],
-                        [0.60, "#00f5ff"], [0.85, "#ff2e9a"],
-                        [1.0, "#ffe2a8"]],
-            colorbar=dict(title="potencial"), opacity=0.85,
-            line=dict(width=1, color="#00f5ff")),
+        textfont=dict(size=9, color=TEXTO_SUAVE),
+        marker=dict(size=np.sqrt(df["poblacion"]) * 11 + 6,
+                    color=df["potencial"], cmin=0, cmax=1,
+                    colorscale=ESCALA_PLOTLY,
+                    colorbar=dict(title="potencial"), opacity=0.88,
+                    line=dict(width=1, color=ARCILLA_SUAVE)),
         hovertemplate="<b>%{text}</b><br>precio $%{x:,.0f}/m²"
                       "<br>contagio +%{y:.1f}%/año<extra></extra>"))
     fig.update_layout(
-        title=f"⚗️ Diagrama de fases del mercado — año {año:.1f} "
+        title=f"⚗️ Diagrama de fases — año {año:.1f} "
               "(arriba-izquierda = oportunidad)",
         xaxis_title="precio proyectado MXN/m²",
         yaxis_title="velocidad de contagio (%/año)", height=460,
-        **_PLOTLY_OSCURO)
+        **_PLOTLY_MARCA)
     st.plotly_chart(fig, width="stretch")
 
 
+def tab_fases_municipios(valores: np.ndarray, año: float) -> None:
+    """Nube de fases de los 2,436 municipios (WebGL)."""
+    df = datos_municipales()
+    v_t, tasa = estado_en(valores, año)
+    fig = go.Figure(go.Scattergl(
+        x=v_t, y=tasa * 100, mode="markers",
+        marker=dict(size=5, color=df["potencial_crecimiento"],
+                    cmin=0, cmax=1, colorscale=ESCALA_PLOTLY,
+                    colorbar=dict(title="potencial"), opacity=0.75),
+        text=df["municipio"] + " · " + df["estado"],
+        hovertemplate="<b>%{text}</b><br>precio $%{x:,.0f}/m²"
+                      "<br>contagio +%{y:.1f}%/año<extra></extra>"))
+    fig.update_layout(
+        title=f"⚗️ Nube de fases municipal — 2,436 células · año {año:.1f}",
+        xaxis_title="precio proyectado MXN/m² (síntesis)",
+        yaxis_title="velocidad de contagio (%/año)", height=460,
+        **_PLOTLY_MARCA)
+    st.plotly_chart(fig, width="stretch")
+
+
+TEXTO_MODELO = f"""
+**La República no es un mapa: es un organismo.** Cada unidad (estado,
+municipio o manzana) es una célula cuyo metabolismo depende de sus
+vecinas — la primera ley de la geografía de Tobler, formalizada como un
+proceso espacial autorregresivo (SAR):
+
+```
+precio[t+1] = precio[t] · (1 + g_propio + ρ · (W · precio_norm[t]) · potencial)
+```
+
+- **W**: contigüidad geográfica REAL — 136 fronteras estatales y ~15,000
+  fronteras municipales (BCS solo respira a través de BC).
+- **ρ**: virulencia del contagio de plusvalía entre vecinos.
+- **potencial**: receptividad = plusvalía histórica + yield + accesibilidad
+  (dataset BrickBit "Valor Futuro"). A escala municipal, el pico vive en el
+  **anillo periurbano** (~25 km de cada ZM): la frontera de expansión.
+- **Megaproyectos**: células madre regionales (Tren Maya, nearshoring,
+  Interoceánico, Bajío aeroespacial) que detonan la mutación en cadena.
+- **Índice de Moran I**: el electrocardiograma espacial — mide si el
+  organismo crece cohesionado (I→1) o fragmentado (I→0).
+- **Sistema circulatorio**: modelo gravitacional
+  `masa económica / distancia^1.2` de las ZM dominantes hacia las zonas
+  de mayor crecimiento proyectado.
+
+*Población y PIB per cápita aproximados; el detalle municipal se sintetiza
+por proximidad a las ZM (sin microdatos oficiales). Proyecciones 100%
+simuladas con fines de visualización — no es asesoría de inversión.*
+"""
+
+
 # ══════════════════════════════════════════════════════════════════════════════
-# 9 · INTERFAZ STREAMLIT — DARK MODE NEÓN
+# 10 · INTERFAZ STREAMLIT — IDENTIDAD BRICKBIT
 # ══════════════════════════════════════════════════════════════════════════════
 
 def inyectar_css() -> None:
-    """Dark mode profundo para que el organismo neón resalte."""
-    st.markdown("""
+    """Dark mode tierra BrickBit: Fraunces + Hanken Grotesk + Space Mono."""
+    st.markdown(f"""
     <style>
-      .stApp { background: radial-gradient(ellipse at top, #0d0524 0%, #05010f 60%); }
-      section[data-testid="stSidebar"] {
-          background: #080316; border-right: 1px solid #1d1140;
-      }
-      h1, h2, h3 { color: #e8e6ff !important; }
-      .neon-title {
-          font-family: monospace; font-size: 2.0rem; font-weight: 800;
-          background: linear-gradient(90deg, #00f5ff, #ff2e9a 70%, #ffe2a8);
+      @import url('{FUENTES_URL}');
+      .stApp {{
+          background: radial-gradient(ellipse at top, #1d1713 0%, {TIERRA} 62%);
+          font-family: 'Hanken Grotesk', sans-serif;
+      }}
+      section[data-testid="stSidebar"] {{
+          background: #171210; border-right: 1px solid #2a221c;
+      }}
+      h1, h2, h3 {{ color: {CREMA} !important;
+                    font-family: 'Fraunces', serif !important; }}
+      .brand-title {{
+          font-family: 'Fraunces', serif; font-size: 2.05rem; font-weight: 600;
+          background: linear-gradient(90deg, {CREMA} 15%, {LIMA} 85%);
           -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-          letter-spacing: .02em;
-      }
-      .neon-sub { color: #8f88b8; font-family: monospace; margin-top: -.6rem; }
-      div[data-testid="stMetric"] {
-          background: #0b0520; border: 1px solid #1d1140; border-radius: 12px;
-          padding: .6rem .9rem;
-          box-shadow: 0 0 18px rgba(0,245,255,.07);
-      }
-      div[data-testid="stMetricValue"] { color: #00f5ff; font-size: 1.45rem; }
-      div[data-testid="stMetricLabel"] { color: #8f88b8; }
-      button[data-baseweb="tab"] { font-family: monospace; }
-      #MainMenu, footer { visibility: hidden; }
+          letter-spacing: .01em; line-height: 1.1;
+      }}
+      .brand-sub {{ color: {TEXTO_SUAVE}; font-family: 'Space Mono', monospace;
+                    font-size: .85rem; margin-top: .15rem; }}
+      div[data-testid="stMetric"] {{
+          background: {SUPERFICIE}; border: 1px solid #2a221c;
+          border-radius: 14px; padding: .6rem .9rem;
+          box-shadow: 0 0 18px rgba(205,242,90,.06);
+      }}
+      div[data-testid="stMetricValue"] {{
+          color: {LIMA}; font-family: 'Space Mono', monospace;
+          font-size: 1.4rem;
+      }}
+      div[data-testid="stMetricLabel"] {{ color: {TEXTO_SUAVE};
+          font-family: 'Hanken Grotesk', sans-serif; }}
+      button[data-baseweb="tab"] {{ font-family: 'Space Mono', monospace; }}
+      .stButton button {{
+          background: {ARCILLA}; color: {CREMA}; border: 1px solid {ARCILLA_SUAVE};
+          font-family: 'Hanken Grotesk', sans-serif; font-weight: 600;
+      }}
+      .stButton button:hover {{ background: {ARCILLA_SUAVE}; color: {TIERRA};
+          border-color: {LIMA}; }}
+      .leyenda {{ font-family: 'Space Mono', monospace; color: {TEXTO_SUAVE};
+                  font-size: .82rem; }}
+      #MainMenu, footer {{ visibility: hidden; }}
     </style>
     """, unsafe_allow_html=True)
 
 
-def animar(lienzo, fabricar_deck) -> None:
-    """Reproduce la década completa (~6 s): el año avanza y todo late."""
-    cuadros = 90
+@st.cache_data
+def _logo_b64() -> str:
+    """Logo BrickBit (blanco/transparente) en base64 para el encabezado."""
+    if os.path.exists(RUTA_LOGO):
+        with open(RUTA_LOGO, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return ""
+
+
+def encabezado() -> None:
+    """Logo oficial + título Fraunces con degradado crema→lima."""
+    logo = _logo_b64()
+    img = (f'<img src="data:image/png;base64,{logo}" '
+           'style="height:46px;width:auto"/>' if logo else "")
+    st.markdown(
+        f'<div style="display:flex;align-items:center;gap:18px;'
+        f'padding:.2rem 0 .6rem 0">{img}<div>'
+        '<div class="brand-title">Motor de Morfogénesis Urbana</div>'
+        '<div class="brand-sub">la República como organismo vivo — '
+        '2,436 municipios · 32 estados · proyección simulada a 10 años</div>'
+        '</div></div>',
+        unsafe_allow_html=True)
+
+
+def animar(lienzo, fabricar_deck, cuadros: int = 90) -> None:
+    """Reproduce la década completa: el año avanza y todo el organismo late."""
     for f in range(cuadros + 1):
         lienzo.pydeck_chart(
             fabricar_deck(AÑOS * f / cuadros, (f * 0.045) % 1.0),
@@ -951,19 +1182,18 @@ def main() -> None:
                        page_icon="🧬", layout="wide",
                        initial_sidebar_state="expanded")
     inyectar_css()
-
-    st.markdown('<div class="neon-title">🧬 MOTOR DE MORFOGÉNESIS URBANA · MÉXICO</div>',
-                unsafe_allow_html=True)
-    st.markdown('<p class="neon-sub">BrickBit · la República como organismo vivo — '
-                '32 estados · 32 zonas metropolitanas · proyección simulada a 10 años</p>',
-                unsafe_allow_html=True)
+    if os.path.exists(RUTA_LOGO):
+        st.logo(RUTA_LOGO, size="large")
+    encabezado()
 
     # ── Panel lateral ─────────────────────────────────────────────────────────
     with st.sidebar:
         escala = st.radio("🔭 Escala del organismo",
-                          ["🇲🇽 Organismo nacional", "🧫 Microtejido (CDMX)"],
-                          help="El mismo motor SAR a dos escalas: estados que "
-                               "se contagian entre sí, o manzanas célula a célula.")
+                          ["🏛 República · municipios",
+                           "🇲🇽 República · estados",
+                           "🧫 Microtejido (CDMX)"],
+                          help="El mismo motor SAR a tres escalas: 2,436 "
+                               "municipios, 32 estados o manzana a manzana.")
 
         st.markdown("### ⏳ Línea de tiempo")
         año = st.slider("Predicción (años hacia el futuro)", 0.0, float(AÑOS),
@@ -972,46 +1202,98 @@ def main() -> None:
         st.markdown("### 🧫 Parámetros del organismo")
         rho = st.slider("Virulencia del contagio (ρ)", 0.0, 1.5, 0.85, 0.05,
                         help="Coeficiente espacial autorregresivo: cuánto pesa "
-                             "el vecindario en el crecimiento de cada unidad.")
-        if escala.startswith("🇲🇽"):
-            detonante = st.selectbox("Megaproyecto detonante",
-                                     list(MEGAPROYECTOS.keys()),
-                                     help="Célula madre a escala nación: eleva el "
-                                          "potencial de toda una región.")
-        else:
+                             "el vecindario en el crecimiento de cada célula.")
+        if escala.startswith("🧫"):
             detonante = st.selectbox("Célula madre (catalizador urbano)",
                                      list(CATALIZADORES.keys()))
+        else:
+            detonante = st.selectbox("Megaproyecto detonante",
+                                     list(MEGAPROYECTOS.keys()),
+                                     help="Célula madre a escala nación: eleva "
+                                          "el potencial de toda una región.")
 
         st.markdown("### 👁 Capas y estilo")
         estilo = st.selectbox("Estilo de mapa", list(ESTILOS_MAPA.keys()))
         mostrar_flujos = st.checkbox("🫀 Sistema circulatorio de capital", True)
-        if escala.startswith("🇲🇽"):
+        if escala.startswith("🧫"):
+            extrusion = st.checkbox("⛰ Relieve 3D del tejido", True)
+        else:
             mostrar_torres = st.checkbox("🏙 Torres metropolitanas 3D", True)
             mostrar_etiquetas = st.checkbox("🏷 Nombres de ciudades", True)
-        else:
-            extrusion = st.checkbox("⛰ Relieve 3D del tejido", True)
 
         st.markdown("---")
         reproducir = st.button("▶ Reproducir morfogénesis (10 años)",
                                width="stretch")
-        st.caption("Las venas cian→magenta bombean capital de los corazones "
+        st.caption("Las venas verdes→lima bombean capital de los corazones "
                    "hacia las zonas emergentes. Datos simulados.")
 
     lienzo_kpi = st.container()
     lienzo = st.empty()
 
-    # ══ ESCALA NACIONAL ═══════════════════════════════════════════════════════
-    if escala.startswith("🇲🇽"):
+    # ══ REPÚBLICA · MUNICIPIOS ════════════════════════════════════════════════
+    if escala.startswith("🏛"):
+        valores = simular_municipios(rho, detonante)
+        valores_edo = simular_nacion(rho, detonante)
+        df_m = datos_municipales()
+        v_t, tasa = estado_en(valores, año)
+        flujos = flujos_nacionales(valores_edo, año)
+
+        moran = indice_moran(v_t, vecindad_municipios())
+        mutante = int(np.argmax(v_t / valores[0] - 1))
+        with lienzo_kpi:
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric("💰 Precio municipal medio", f"${v_t.mean():,.0f} /m²",
+                      f"+{(v_t.mean() / valores[0].mean() - 1) * 100:.1f}% vs hoy")
+            c2.metric("🧲 Índice de Moran", f"{moran:.3f}",
+                      "cohesión espacial" if moran > 0.15 else "tejido fragmentado")
+            c3.metric("🫀 Capital en rotación",
+                      f"${flujos['capital_mmd'].sum():,.0f} mmd/año",
+                      f"{len(flujos)} arterias activas")
+            c4.metric("🧬 Municipio más mutante",
+                      df_m["municipio"].iloc[mutante],
+                      f"{df_m['estado'].iloc[mutante]} · "
+                      f"+{(v_t[mutante] / valores[0][mutante] - 1) * 100:.0f}%")
+            c5.metric("📅 Horizonte", f"Año {año:.1f} / {AÑOS}",
+                      detonante if MEGAPROYECTOS[detonante] else "sin megaproyecto")
+
+        def fabricar(a, f):
+            return construir_deck_municipios(
+                valores, a, f, mostrar_flujos, mostrar_torres,
+                mostrar_etiquetas, estilo, flujos_nacionales(valores_edo, a),
+                valores_edo)
+
+        if reproducir:
+            animar(lienzo, fabricar, cuadros=48)
+        else:
+            lienzo.pydeck_chart(fabricar(año, (año * 0.4) % 1.0),
+                                width="stretch")
+
+        t1, t2, t3, t4 = st.tabs(["🏆 Ranking municipal",
+                                  "📈 Trayectorias 10 años",
+                                  "⚗️ Nube de fases",
+                                  "🔬 El modelo"])
+        with t1:
+            tab_ranking_municipios(valores, año)
+        with t2:
+            tab_trayectorias(valores, año,
+                             df_m["municipio"] + " (" + df_m["estado"] + ")",
+                             "🧬 Trayectoria de precios — top 8 municipios en mutación")
+        with t3:
+            tab_fases_municipios(valores, año)
+        with t4:
+            st.markdown(TEXTO_MODELO)
+
+    # ══ REPÚBLICA · ESTADOS ═══════════════════════════════════════════════════
+    elif escala.startswith("🇲🇽"):
         valores = simular_nacion(rho, detonante)
         df_e = datos_estatales()
         v_t, tasa = estado_en(valores, año)
         flujos = flujos_nacionales(valores, año)
 
-        # ── Signos vitales de la República ────────────────────────────────────
         pob = df_e["poblacion"].to_numpy()
         medio = float((v_t * pob).sum() / pob.sum())
         medio_0 = float((valores[0] * pob).sum() / pob.sum())
-        moran = indice_moran(v_t)
+        moran = indice_moran(v_t, vecindad_estados())
         mutante = int(np.argmax(v_t / valores[0] - 1))
         with lienzo_kpi:
             c1, c2, c3, c4, c5 = st.columns(5)
@@ -1030,7 +1312,7 @@ def main() -> None:
         def fabricar(a, f):
             return construir_deck_nacion(valores, a, f, mostrar_flujos,
                                          mostrar_torres, mostrar_etiquetas,
-                                         estilo)
+                                         estilo, flujos_nacionales(valores, a))
 
         if reproducir:
             animar(lienzo, fabricar)
@@ -1038,47 +1320,21 @@ def main() -> None:
             lienzo.pydeck_chart(fabricar(año, (año * 0.4) % 1.0),
                                 width="stretch")
 
-        # ── Laboratorio analítico ─────────────────────────────────────────────
         t1, t2, t3, t4 = st.tabs(["🏆 Ranking de mutación",
                                   "📈 Trayectorias 10 años",
                                   "⚗️ Diagrama de fases",
                                   "🔬 El modelo"])
         with t1:
-            tab_ranking(valores, año, flujos)
+            tab_ranking_estados(valores, año, flujos)
         with t2:
-            tab_trayectorias(valores, año)
+            tab_trayectorias(valores, año, df_e["estado"],
+                             "🧬 Trayectoria de precios — top 8 estados en mutación")
         with t3:
-            tab_fases(valores, año)
+            tab_fases_estados(valores, año)
         with t4:
-            st.markdown("""
-            **La República no es un mapa: es un organismo.** Cada estado es un
-            órgano cuyo metabolismo depende de sus fronteras — formalizado como
-            un proceso espacial autorregresivo (SAR) sobre la matriz de
-            contigüidad **real** entre los 32 estados:
+            st.markdown(TEXTO_MODELO)
 
-            ```
-            precio[t+1] = precio[t] · (1 + g_propio + ρ · (W · precio_norm[t]) · potencial)
-            ```
-
-            - **W**: contigüidad geográfica real (Quintana Roo contagia a
-              Yucatán; Nuevo León a Coahuila; BCS solo respira a través de BC).
-            - **ρ**: virulencia del contagio de plusvalía entre estados vecinos.
-            - **potencial**: receptividad estatal = plusvalía histórica + yield
-              + accesibilidad de precio (dataset BrickBit "Valor Futuro").
-            - **Megaproyectos**: células madre regionales (Tren Maya,
-              nearshoring, Interoceánico, Bajío aeroespacial) que elevan el
-              potencial de su región y detonan la mutación en cadena.
-            - **Índice de Moran I**: el electrocardiograma espacial — mide si
-              el organismo crece cohesionado (I→1) o fragmentado (I→0).
-            - **Sistema circulatorio**: modelo gravitacional
-              `masa económica / distancia^1.2` de las ZM dominantes hacia los
-              estados de mayor crecimiento proyectado.
-
-            *Población y PIB per cápita aproximados; proyecciones 100%
-            simuladas con fines de visualización — no es asesoría de inversión.*
-            """)
-
-    # ══ ESCALA MICRO (motor original) ═════════════════════════════════════════
+    # ══ MICROTEJIDO (motor original) ══════════════════════════════════════════
     else:
         gdf = generar_tejido_urbano()
         valores = simular_micro(rho, detonante)
@@ -1104,15 +1360,15 @@ def main() -> None:
             lienzo.pydeck_chart(fabricar(año, (año * 0.4) % 1.0),
                                 width="stretch")
 
-    # ── Leyenda común ─────────────────────────────────────────────────────────
+    # ── Leyenda de marca ──────────────────────────────────────────────────────
     st.markdown(
-        "<div style='font-family:monospace;color:#8f88b8;font-size:.85rem'>"
-        "<span style='color:#1a083e'>■</span> latente&nbsp;&nbsp;"
-        "<span style='color:#0069ff'>■</span> despertando&nbsp;&nbsp;"
-        "<span style='color:#00f5ff'>■</span> expansión&nbsp;&nbsp;"
-        "<span style='color:#ff2e9a'>■</span> mutación&nbsp;&nbsp;"
-        "<span style='color:#ffe2a8'>■</span> núcleo consolidado"
-        "&nbsp;&nbsp;·&nbsp;&nbsp; arcos cian→magenta = capital fluyendo "
+        f"<div class='leyenda'>"
+        f"<span style='color:{ARCILLA_PROF}'>■</span> latente&nbsp;&nbsp;"
+        f"<span style='color:{ARCILLA}'>■</span> despertando&nbsp;&nbsp;"
+        f"<span style='color:{ARCILLA_SUAVE}'>■</span> expansión&nbsp;&nbsp;"
+        f"<span style='color:{LIMA}'>■</span> mutación&nbsp;&nbsp;"
+        f"<span style='color:{CREMA}'>■</span> núcleo consolidado"
+        "&nbsp;&nbsp;·&nbsp;&nbsp; arcos verde→lima = capital fluyendo "
         "de corazones a zonas emergentes</div>",
         unsafe_allow_html=True,
     )
