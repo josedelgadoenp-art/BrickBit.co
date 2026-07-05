@@ -197,10 +197,14 @@ def procesar(df: pd.DataFrame, municipio: str, salida_dir: str,
 
     # ── establecimientos ──────────────────────────────────────────────────────
     os.makedirs(salida_dir, exist_ok=True)
+    # año de alta (para el sismógrafo y la validación de contagio espacial)
+    if "fecha_alta" in d.columns:
+        d["anio"] = pd.to_numeric(d["fecha_alta"].str[:4], errors="coerce")
+    cols_e = ["nombre", "sector", "calle", "lat", "lng", "empleo"] \
+        + (["anio"] if "anio" in d.columns else [])
     ruta_e = os.path.join(salida_dir, f"establecimientos_{sufijo}.csv.gz")
     with gzip.open(ruta_e, "wt", encoding="utf-8") as f:
-        d[["nombre", "sector", "calle", "lat", "lng", "empleo"]] \
-            .to_csv(f, index=False)
+        d[cols_e].to_csv(f, index=False)
     print(f"✓ {ruta_e} ({len(d):,} filas)")
 
     # ── calles: polilínea por nombre vial ordenando los puntos sobre su eje ──

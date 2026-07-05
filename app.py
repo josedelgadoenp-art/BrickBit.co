@@ -1977,6 +1977,33 @@ def tab_sismografo() -> None:
                 "anuncian el oro.</div>", unsafe_allow_html=True)
 
 
+def _validacion_contagio() -> None:
+    """
+    Muestra la validación empírica del término espacial del SAR con datos
+    reales del DENUE (generada por scripts/backtesting.py denue).
+    """
+    ruta = os.path.join(_DIR, "data", "validacion_azcapotzalco.json")
+    if not os.path.exists(ruta):
+        return
+    with open(ruta, encoding="utf-8") as f:
+        v = json.load(f)
+    st.success(
+        f"🔬 **Modelo validado con datos reales del DENUE** — prueba temporal "
+        f"out-of-sample sobre {v['celdas']} celdas (corte {v['corte']}): la "
+        f"vitalidad económica **propia** predice las aperturas posteriores con "
+        f"**r = {v['r_propio']}**, y la de las **celdas vecinas** con "
+        f"**r = {v['r_vecinas']}**. El contagio espacial —el término ρ·W·v del "
+        f"motor— no es una hipótesis: es medible en la realidad de "
+        f"Azcapotzalco.")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("🎯 Predicción propia", f"r = {v['r_propio']}",
+              "vitalidad → aperturas")
+    c2.metric("🧬 Contagio de vecinas", f"r = {v['r_vecinas']}",
+              "spillover espacial real")
+    c3.metric("🔬 Muestra", f"{v['celdas']} celdas",
+              f"corte temporal {v['corte']}")
+
+
 def tab_huecos() -> None:
     """🕳 Radar de huecos de mercado: dónde hay demanda (empleo/vitalidad)
     sin oferta de un giro — inteligencia B2B para retail y franquicias."""
@@ -2511,6 +2538,7 @@ def main() -> None:
             tab_trayectorias(valores, año, calles_df["nombre"],
                              "🧬 Trayectoria — top 8 calles en mutación")
         with t7:
+            _validacion_contagio()
             st.markdown(TEXTO_MODELO)
             st.caption("A esta escala, el crecimiento NACE de la actividad "
                        "económica observable: cada negocio suma vitalidad a "

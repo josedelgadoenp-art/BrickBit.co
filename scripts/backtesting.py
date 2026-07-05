@@ -87,12 +87,74 @@ def backtest(ruta_csv: str) -> None:
     print(salida.nsmallest(5, "error_pp").to_string(index=False))
 
 
+def validar_contagio_denue(sufijo: str = "azcapotzalco") -> None:
+    """
+    VALIDACIÓN CON DATOS REALES — sin necesidad del índice SHF. Usa el propio
+    DENUE (columna `anio` = fecha_alta) para poner a prueba la premisa central
+    del motor: ¿la actividad económica se CONTAGIA espacialmente?
+
+    Prueba out-of-sample temporal: ¿la vitalidad de una zona y de sus VECINAS
+    ANTES de un corte predice dónde ABREN negocios DESPUÉS? Si el coeficiente
+    del vecindario es alto, el término espacial del SAR (ρ·W·v) está
+    empíricamente justificado.
+    """
+    import gzip
+    ruta = os.path.join(_DIR, "data", f"establecimientos_{sufijo}.csv.gz")
+    if not os.path.exists(ruta):
+        print(f"✗ No existe {ruta}. Genera los datos con "
+              f"ingerir_denue.py primero.")
+        return
+    with gzip.open(ruta, "rt", encoding="utf-8") as f:
+        d = pd.read_csv(f)
+    if "anio" not in d.columns:
+        print("✗ El export no tiene columna 'anio'. Reejecuta ingerir_denue.py.")
+        return
+    d = d.dropna(subset=["lat", "lng", "anio"])
+
+    # rejilla ~300 m
+    gy = np.round((d["lat"] - d["lat"].min()) / 0.0027).astype(int)
+    gx = np.round((d["lng"] - d["lng"].min()) / 0.0027).astype(int)
+    d = d.assign(celda=gy * 10000 + gx)
+    corte = d["anio"].quantile(0.6)
+    viejo = d[d["anio"] <= corte].groupby("celda").size()
+    nuevo = d[d["anio"] > corte].groupby("celda").size()
+    cel = pd.DataFrame({"viejo": viejo, "nuevo": nuevo}).fillna(0)
+
+    idx = cel.index.values
+    gyv, gxv, vv = idx // 10000, idx % 10000, cel["viejo"].values
+    vecino = np.array([vv[(np.abs(gyv - gyv[i]) <= 1)
+                          & (np.abs(gxv - gxv[i]) <= 1)].sum() - vv[i]
+                       for i in range(len(idx))])
+    r_prop = float(np.corrcoef(cel["viejo"], cel["nuevo"])[0, 1])
+    r_vec = float(np.corrcoef(vecino, cel["nuevo"])[0, 1])
+
+    print(f"\n🔬 VALIDACIÓN DE CONTAGIO ESPACIAL — DENUE real ({sufijo})")
+    print(f"   {len(cel)} celdas · corte temporal en {corte:.0f}")
+    print(f"   vitalidad PROPIA (pre-corte) → aperturas post-corte : r = {r_prop:.3f}")
+    print(f"   vitalidad de VECINAS (pre-corte) → aperturas post    : r = {r_vec:.3f}")
+    veredicto = ("✅ el término espacial del SAR está EMPÍRICAMENTE justificado"
+                 if r_vec > 0.25 else "⚠️ señal espacial débil en esta zona")
+    print(f"   {veredicto}")
+    # persiste el resultado para que la app lo muestre
+    salida = os.path.join(_DIR, "data", f"validacion_{sufijo}.json")
+    import json
+    with open(salida, "w", encoding="utf-8") as f:
+        json.dump({"r_propio": round(r_prop, 3), "r_vecinas": round(r_vec, 3),
+                   "celdas": int(len(cel)), "corte": int(corte)}, f)
+    print(f"   ✓ {salida}")
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "denue":
+        validar_contagio_denue(sys.argv[2] if len(sys.argv) > 2
+                               else "azcapotzalco")
+        sys.exit(0)
     ruta = sys.argv[1] if len(sys.argv) > 1 \
         else os.path.join(_DIR, "data", "indice_shf.csv")
     if not os.path.exists(ruta):
         print(f"✗ No existe {ruta}. Descarga el Índice SHF por entidad "
-              "(https://www.gob.mx/shf) y guárdalo con columnas: "
-              "estado, año, indice")
+              "(https://transparencia.shf.gob.mx) y guárdalo con columnas: "
+              "estado, año, indice.\n"
+              "   Alternativa REAL sin SHF: python scripts/backtesting.py denue")
         sys.exit(1)
     backtest(ruta)
