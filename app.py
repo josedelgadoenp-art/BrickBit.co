@@ -321,9 +321,12 @@ def cargar_municipios() -> gpd.GeoDataFrame:
     gdf["geometry"] = gdf.geometry.simplify(0.008, preserve_topology=True)
     gdf["municipio"] = gdf["mun_name"]
     gdf["estado"] = gdf["state_code"].map(CODIGO_ESTADO)
+    # CVEGEO INEGI (entidad 2 díg + municipio 3 díg) para cruzar con el DENUE
+    gdf["cvegeo"] = (gdf["state_code"].astype(int).astype(str).str.zfill(2)
+                     + gdf["mun_code"].astype(int).astype(str).str.zfill(3))
     cen = gdf.geometry.representative_point()
     gdf["lng"], gdf["lat"] = cen.x, cen.y
-    return gdf[["municipio", "estado", "lng", "lat", "geometry"]] \
+    return gdf[["municipio", "estado", "cvegeo", "lng", "lat", "geometry"]] \
         .reset_index(drop=True)
 
 
@@ -439,15 +442,47 @@ def datos_municipales() -> pd.DataFrame:
     potencial = np.clip(0.55 * pot_e + 0.50 * anillo
                         + rng.normal(0, 0.06, len(gdf)), 0.02, 1)
 
-    return pd.DataFrame({
+    df = pd.DataFrame({
         "municipio": gdf["municipio"], "estado": gdf["estado"],
+        "cvegeo": gdf["cvegeo"],
         "lng": lng, "lat": lat,
         "precio_actual": precio.round(0),
         "potencial_crecimiento": potencial.round(3),
         "plusvalia_estatal": plusv_e,
         "zm_cercana": [CIUDADES[i][0] for i in zm_idx],
         "dist_zm_km": (d_zm * 105).round(0),
+        "n_estab": 0, "empleo": 0, "resiliencia": 0.0,
+        "indicadoras": 0, "vitalidad_real": np.nan,
     })
+
+    # 🏪 Vitalidad económica REAL del DENUE por municipio (si fue ingerida
+    # con scripts/ingerir_denue_nacional.py). Ancla precio y potencial en la
+    # densidad de negocios/empleo observada, no solo en el gradiente a la ZM.
+    ruta = os.path.join(_DIR, "data", "denue_municipal.csv")
+    if os.path.exists(ruta):
+        den = pd.read_csv(ruta, dtype={"cvegeo": str})
+        df = df.merge(den[["cvegeo", "n_estab", "empleo", "resiliencia",
+                           "indicadoras"]], on="cvegeo", how="left",
+                      suffixes=("", "_r"))
+        for c in ["n_estab_r", "empleo_r", "resiliencia_r", "indicadoras_r"]:
+            base = c[:-2]
+            df[base] = df[c].fillna(df[base])
+            df.drop(columns=c, inplace=True)
+        # vitalidad real = densidad económica (negocios + empleo) normalizada
+        vital = norm01(np.log1p(df["n_estab"].to_numpy())
+                       + 0.6 * norm01(np.log1p(df["empleo"].to_numpy())))
+        tiene = df["n_estab"].to_numpy() > 0
+        df["vitalidad_real"] = np.where(tiene, vital, np.nan)
+        # el precio real-informado: mezcla el gradiente con la densidad real
+        precio_real = precio_e * (0.35 + 1.3 * vital) \
+            * rng.lognormal(0.0, 0.05, len(df))
+        df.loc[tiene, "precio_actual"] = precio_real[tiene].round(0)
+        # el potencial sube donde hay especies indicadoras recientes reales
+        ind = norm01(df["indicadoras"].to_numpy())
+        df.loc[tiene, "potencial_crecimiento"] = np.clip(
+            0.45 * potencial + 0.30 * anillo + 0.25 * ind, 0.02, 1
+        )[tiene].round(3)
+    return df
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -770,9 +805,14 @@ def preparar_municipios_render(valores: np.ndarray, año: float,
         "precio_txt": [f"${p:,.0f} MXN/m²" for p in v_t],
         "crec_txt": [f"+{r * 100:.1f}% anual" for r in tasa],
         "plusvalia_txt": [f"+{a * 100:.0f}% vs hoy" for a in acum],
-        "extra_txt": [f"ZM más cercana: {z} ({d:.0f} km) · potencial {q:.2f}"
-                      for z, d, q in zip(df["zm_cercana"], df["dist_zm_km"],
-                                         df["potencial_crecimiento"])],
+        "extra_txt": [
+            (f"🏪 {int(n):,} negocios · {int(e):,} empleos (DENUE) · "
+             f"resiliencia {r:.2f}" if n > 0 else
+             f"ZM más cercana: {z} ({d:.0f} km) · potencial {q:.2f}")
+            for n, e, r, z, d, q in zip(
+                df["n_estab"], df["empleo"], df["resiliencia"],
+                df["zm_cercana"], df["dist_zm_km"],
+                df["potencial_crecimiento"])],
     })
     return contornos_municipales().join(base, on="idx_mun")
 
@@ -1626,7 +1666,8 @@ def tab_ranking_municipios(valores: np.ndarray, año: float,
     """Los 40 municipios con mutación más agresiva en el año t."""
     df = datos_municipales()
     v_t, tasa = estado_en(valores, año)
-    tabla = pd.DataFrame({
+    hay_real = "n_estab" in df.columns and df["n_estab"].sum() > 0
+    cols = {
         "Municipio": df["municipio"],
         "Score BrickBit": score if score is not None
         else score_brickbit(v_t, valores[0],
@@ -1637,11 +1678,20 @@ def tab_ranking_municipios(valores: np.ndarray, año: float,
         "Plusvalía acumulada": (v_t / valores[0] - 1),
         "Tasa anual": tasa,
         "Potencial": df["potencial_crecimiento"],
-        "ZM más cercana": df["zm_cercana"],
-        "Dist. ZM (km)": df["dist_zm_km"],
-    }).nlargest(40, "Plusvalía acumulada")
-    st.caption("🏆 Top 40 de 2,436 municipios por plusvalía acumulada — "
-               "el anillo periurbano de las ZM domina la mutación.")
+    }
+    if hay_real:                       # columnas de vitalidad REAL del DENUE
+        cols["Negocios (DENUE)"] = df["n_estab"].astype(int)
+        cols["Empleo (DENUE)"] = df["empleo"].astype(int)
+        cols["Resiliencia"] = df["resiliencia"]
+    cols["ZM más cercana"] = df["zm_cercana"]
+    cols["Dist. ZM (km)"] = df["dist_zm_km"]
+    tabla = pd.DataFrame(cols).nlargest(40, "Plusvalía acumulada")
+    st.caption(
+        ("🏆 Top 40 de 2,436 municipios — precio y potencial anclados en la "
+         "**vitalidad económica REAL del DENUE** (negocios y empleo por "
+         "municipio)." if hay_real else
+         "🏆 Top 40 de 2,436 municipios por plusvalía acumulada — "
+         "el anillo periurbano de las ZM domina la mutación."))
     _tabla_ranking(tabla, año)
 
 
@@ -1658,6 +1708,8 @@ def _tabla_ranking(tabla: pd.DataFrame, año: float) -> None:
             "Resiliencia": st.column_config.ProgressColumn(
                 min_value=0, max_value=1),
             "Score BrickBit": st.column_config.NumberColumn(format="%.1f ⚡"),
+            "Negocios (DENUE)": st.column_config.NumberColumn(format="%d"),
+            "Empleo (DENUE)": st.column_config.NumberColumn(format="%d"),
             "Precio hoy (m²)": st.column_config.NumberColumn(format="$%d"),
             f"Precio año {año:.0f} (m²)": st.column_config.NumberColumn(
                 format="$%d"),
@@ -2281,15 +2333,20 @@ def main() -> None:
         mutante = int(np.argmax(v_t / valores[0] - 1))
         score = score_brickbit(v_t, valores[0],
                                df_m["potencial_crecimiento"], tasa)
+        neg_real = int(df_m["n_estab"].sum())
         with lienzo_kpi:
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("💰 Precio municipal medio", f"${v_t.mean():,.0f} /m²",
                       f"+{(v_t.mean() / valores[0].mean() - 1) * 100:.1f}% vs hoy")
             c2.metric("🧲 Índice de Moran", f"{moran:.3f}",
                       "cohesión espacial" if moran > 0.15 else "tejido fragmentado")
-            c3.metric("🫀 Capital en rotación",
-                      f"${flujos['capital_mmd'].sum():,.0f} mmd/año",
-                      f"{len(flujos)} arterias activas")
+            if neg_real > 0:
+                c3.metric("🏪 Negocios reales (DENUE)", f"{neg_real / 1e6:.2f} M",
+                          f"{int((df_m['n_estab'] > 0).sum())} municipios cubiertos")
+            else:
+                c3.metric("🫀 Capital en rotación",
+                          f"${flujos['capital_mmd'].sum():,.0f} mmd/año",
+                          f"{len(flujos)} arterias activas")
             c4.metric("🧬 Municipio más mutante",
                       df_m["municipio"].iloc[mutante],
                       f"{df_m['estado'].iloc[mutante]} · "
