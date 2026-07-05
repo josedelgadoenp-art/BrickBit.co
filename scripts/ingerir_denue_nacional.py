@@ -161,6 +161,52 @@ def main(entidades: list) -> None:
               "la vitalidad económica REAL de cada municipio.")
 
 
+def agregar_por_cp(ee: str = "09",
+                   salida: str = None) -> None:
+    """
+    Agrega el DENUE de una entidad por CÓDIGO POSTAL (para la escala
+    '🏘 CDMX · códigos postales'). Escribe data/denue_cp_<e0>.csv.
+    """
+    salida = salida or os.path.join(_DIR, "data", "denue_cp_cdmx.csv")
+    d = descargar_por_cp(ee)
+    d.to_csv(salida, index=False)
+    print(f"✓ {salida}: {len(d)} CP · {d['n_estab'].sum():,} negocios")
+
+
+def descargar_por_cp(ee: str) -> pd.DataFrame:
+    url = URL.format(ee=ee)
+    with urllib.request.urlopen(url, timeout=600) as r:
+        datos = r.read()
+    with zipfile.ZipFile(io.BytesIO(datos)) as z:
+        nombre = max((n for n in z.namelist() if n.lower().endswith(".csv")),
+                     key=lambda n: z.getinfo(n).file_size)
+        with z.open(nombre) as f:
+            d = pd.read_csv(f, encoding="latin-1", low_memory=False,
+                            usecols=["cod_postal", "codigo_act", "per_ocu",
+                                     "nombre_act", "fecha_alta"])
+    d = d.dropna(subset=["cod_postal"])
+    d["cp"] = d["cod_postal"].astype(int).astype(str).str.zfill(5)
+    d["sector"] = d["codigo_act"].astype(str).str[:2].map(SCIAN).fillna("servicios")
+    d["empleo"] = d["per_ocu"].map(EMPLEO).fillna(3)
+    act = d["nombre_act"].fillna("").str.upper()
+    d["ind"] = act.apply(lambda a: any(k in a for k in INDICADORAS))
+    fechas = sorted(d["fecha_alta"].dropna().unique())
+    rec = set(fechas[-2:]) if len(fechas) >= 2 else set()
+    d["reciente"] = d["fecha_alta"].isin(rec)
+    filas = []
+    for cp, g in d.groupby("cp"):
+        sec = g["sector"].value_counts(); nn = len(g)
+        p = (sec / nn).clip(lower=1e-9)
+        ent = float(-(p * np.log(p)).sum() / math.log(4))
+        filas.append({"cp": cp, "n_estab": nn, "empleo": int(g["empleo"].sum()),
+                      "resiliencia": round(ent, 3),
+                      "indicadoras": int((g["ind"] & g["reciente"]).sum())})
+    return pd.DataFrame(filas)
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "cp":
+        agregar_por_cp(sys.argv[2] if len(sys.argv) > 2 else "09")
+        sys.exit(0)
     ents = sys.argv[1:] or [f"{i:02d}" for i in range(1, 33)]
     main([e.zfill(2) for e in ents])

@@ -1173,8 +1173,32 @@ def datos_cp() -> pd.DataFrame:
         "lng": lng, "lat": lat,
         "precio_actual": precio.round(0),
         "potencial_crecimiento": potencial.round(3),
-        "airbnb": 0,
+        "airbnb": 0, "n_estab": 0, "empleo": 0, "resiliencia": 0.0,
+        "indicadoras": 0,
     })
+
+    # 🏪 Vitalidad económica REAL del DENUE por código postal (CDMX), generada
+    # al agregar el DENUE de CDMX por cod_postal. Ancla precio y potencial en
+    # la densidad de negocios/empleo observada por CP.
+    ruta_den = os.path.join(_DIR, "data", "denue_cp_cdmx.csv")
+    if os.path.exists(ruta_den):
+        den = pd.read_csv(ruta_den, dtype={"cp": str})
+        den["cp"] = den["cp"].str.zfill(5)
+        df = df.merge(den, on="cp", how="left", suffixes=("", "_r"))
+        for c in ["n_estab_r", "empleo_r", "resiliencia_r", "indicadoras_r"]:
+            df[c[:-2]] = df[c].fillna(df[c[:-2]])
+            df.drop(columns=c, inplace=True)
+        tiene = df["n_estab"].to_numpy() > 0
+        vital = norm01(np.log1p(df["n_estab"].to_numpy())
+                       + 0.6 * norm01(np.log1p(df["empleo"].to_numpy())))
+        precio_real = 14000 + 26000 * vital
+        df.loc[tiene, "precio_actual"] = (precio_real
+                                          * rng.lognormal(0, 0.05, len(df))
+                                          )[tiene].round(0)
+        ind = norm01(df["indicadoras"].to_numpy()) if "indicadoras" in df else 0
+        df.loc[tiene, "potencial_crecimiento"] = np.clip(
+            0.55 * potencial + 0.25 * (1 - vital) + 0.20 * ind, 0.02, 1
+        )[tiene].round(3)
 
     # 🛰 Señal alternativa auto-detectada: presión Airbnb por CP
     # (generada por scripts/ingerir_senales.py con datos de InsideAirbnb)
