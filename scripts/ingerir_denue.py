@@ -69,6 +69,58 @@ def sin_acentos(s: str) -> str:
         .decode().upper().strip()
 
 
+# Especies indicadoras por nombre de actividad SCIAN (nombre_act del DENUE):
+# su apertura RECIENTE precede a la plusvalía 2-3 años (gentrificación).
+INDICADORAS_ACT = {
+    "☕ Café/neverías": ["CAFETERIAS"],
+    "🍺 Bar/cantina": ["BARES, CANTINAS"],
+    "🐕 Veterinaria": ["VETERINARIOS PARA MASCOTAS"],
+    "💈 Estética/belleza": ["SALONES Y CLINICAS DE BELLEZA"],
+    "🏋 Gimnasio": ["DEPORTIVOS", "GIMNASIO", "ACONDICIONAMIENTO FISICO"],
+    "🎨 Galería/arte": ["GALERIAS", "OBRAS DE ARTE"],
+}
+
+
+def sismografo_altas(d: pd.DataFrame, salida_dir: str, sufijo: str) -> None:
+    """
+    🌡 SISMÓGRAFO desde UN corte del DENUE usando `fecha_alta`: mide, por
+    calle, las aperturas recientes (últimos 2 cortes) y cuántas son ESPECIES
+    INDICADORAS de gentrificación. Escribe data/sismografo_<sufijo>.json.
+    """
+    if "fecha_alta" not in d.columns or "nombre_act" not in d.columns:
+        return
+    fechas = sorted(d["fecha_alta"].dropna().unique())
+    if len(fechas) < 2:
+        return
+    recientes_set = set(fechas[-2:])          # los 2 cortes más nuevos
+    d = d.assign(reciente=d["fecha_alta"].isin(recientes_set))
+    act = d["nombre_act"].fillna("").map(sin_acentos)
+
+    def especie(a):
+        return next((esp for esp, kws in INDICADORAS_ACT.items()
+                     if any(k in a for k in kws)), None)
+    d = d.assign(especie=[especie(a) for a in act])
+
+    filas = []
+    for calle, g in d.groupby("calle"):
+        recientes = g[g["reciente"]]
+        ind = recientes[recientes["especie"].notna()]
+        especies = sorted(ind["especie"].dropna().unique())
+        filas.append({
+            "nombre": calle,
+            "altas": int(len(recientes)),
+            "bajas": 0,                        # un corte no observa cierres
+            "indicadoras": int(len(ind)),
+            "especies": ", ".join(especies[:4]) if especies else "—",
+        })
+    ruta = os.path.join(salida_dir, f"sismografo_{sufijo}.json")
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump({"calles": filas, "fuente": "fecha_alta DENUE (1 corte)"},
+                  f, ensure_ascii=False)
+    print(f"✓ {ruta} ({len(filas)} calles · {int(d['reciente'].sum())} "
+          f"altas recientes · especies indicadoras detectadas)")
+
+
 def descargar_denue(estado: str) -> pd.DataFrame:
     """Intenta descargar el CSV masivo del DENUE para la entidad `estado`."""
     errores = []
@@ -79,8 +131,10 @@ def descargar_denue(estado: str) -> pd.DataFrame:
             with urllib.request.urlopen(url, timeout=300) as r:
                 datos = r.read()
             with zipfile.ZipFile(io.BytesIO(datos)) as z:
-                nombre = next(n for n in z.namelist()
-                              if n.lower().endswith(".csv"))
+                # el ZIP del DENUE trae varios CSV (diccionario, metadatos y
+                # el dataset): elige el más grande = el conjunto de datos
+                csvs = [n for n in z.namelist() if n.lower().endswith(".csv")]
+                nombre = max(csvs, key=lambda n: z.getinfo(n).file_size)
                 with z.open(nombre) as f:
                     df = pd.read_csv(f, encoding="latin-1", low_memory=False)
             print(f"✓ {len(df):,} establecimientos descargados")
@@ -116,10 +170,28 @@ def procesar(df: pd.DataFrame, municipio: str, salida_dir: str,
     d["sector"] = d[col("codigo_act", "cod_actividad")].astype(str).str[:2] \
         .map(SCIAN_SECTOR).fillna("Servicios")
     d["empleo"] = d[col("per_ocu", "personal_ocupado")].map(EMPLEO).fillna(3)
-    d["calle"] = d[col("nom_vial", "nombre_vialidad")].astype(str).str.title()
+    # nombre de calle = tipo + nombre de vialidad (Avenida X ≠ Calle X),
+    # evitando duplicar el tipo cuando nom_vial ya lo incluye
+    def _s(x):
+        return "" if x is None or (isinstance(x, float) and pd.isna(x)) \
+            else str(x).strip()
+
+    nomv = [_s(x) for x in d[col("nom_vial", "nombre_vialidad")]]
+    try:
+        tipo_v = [_s(x) for x in d[col("tipo_vial")]]
+        calle = [(n if (not t or n.upper().startswith(t.upper() + " "))
+                  else f"{t} {n}") for t, n in zip(tipo_v, nomv)]
+    except KeyError:
+        calle = nomv
+    d["calle"] = pd.Series(calle, index=d.index).str.title().str.strip()
     d["lat"] = pd.to_numeric(d[col("latitud", "lat")], errors="coerce")
     d["lng"] = pd.to_numeric(d[col("longitud", "lng", "lon")], errors="coerce")
     d["nombre"] = d[col("nom_estab", "nombre")].astype(str).str.title()
+    try:                              # se conserva para el sismógrafo
+        d["fecha_alta"] = d[col("fecha_alta")].astype(str)
+        d["nombre_act"] = d[col("nombre_act", "nombre_actividad")].astype(str)
+    except KeyError:
+        pass
     d = d.dropna(subset=["lat", "lng"])
     d = d[d["calle"].str.len() > 2]
 
@@ -150,6 +222,10 @@ def procesar(df: pd.DataFrame, municipio: str, salida_dir: str,
     with open(ruta_c, "w", encoding="utf-8") as f:
         json.dump({"calles": calles}, f, ensure_ascii=False)
     print(f"✓ {ruta_c} ({len(calles)} calles)")
+
+    # 🌡 sismógrafo real desde fecha_alta (un solo corte del DENUE)
+    sismografo_altas(d, salida_dir, sufijo)
+
     print("\nListo: reinicia la app (streamlit run app.py) y la escala "
           "'🛣 Calle · establecimiento' usará los datos reales del DENUE.")
 

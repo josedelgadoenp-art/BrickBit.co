@@ -1423,7 +1423,10 @@ def sismografo_calles() -> tuple[pd.DataFrame, bool]:
     if os.path.exists(RUTA_SISMO):
         with open(RUTA_SISMO, encoding="utf-8") as f:
             sismo = pd.DataFrame(json.load(f)["calles"])
-        sismo = df[["nombre"]].merge(sismo, on="nombre", how="left").fillna(0)
+        sismo = df[["nombre"]].merge(sismo, on="nombre", how="left")
+        sismo[["altas", "bajas", "indicadoras"]] = sismo[
+            ["altas", "bajas", "indicadoras"]].fillna(0)
+        sismo["especies"] = sismo["especies"].fillna("—")
         es_real = True
     else:
         rng = np.random.default_rng(SEMILLA + 7)
