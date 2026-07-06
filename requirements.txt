@@ -1,0 +1,8 @@
+# BrickBit · Motor de Morfogénesis Urbana
+streamlit>=1.49
+pandas>=2.0
+numpy>=1.26
+geopandas>=0.14
+shapely>=2.0
+pydeck>=0.8.1
+plotly>=5.18

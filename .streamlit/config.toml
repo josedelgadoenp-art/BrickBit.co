@@ -1,0 +1,11 @@
+# BrickBit · Morfogénesis Urbana — tema oficial brickbit.co
+# Tierra oscura + arcilla verde + lima eléctrico + crema.
+[theme]
+base = "dark"
+primaryColor = "#CDF25A"
+backgroundColor = "#100C0A"
+secondaryBackgroundColor = "#1D1713"
+textColor = "#F5EDE3"
+
+[server]
+headless = true

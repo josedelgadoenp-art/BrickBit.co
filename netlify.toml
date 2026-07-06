@@ -1,0 +1,23 @@
+# BrickBit · configuración de despliegue en Netlify
+# El sitio es 100% estático (HTML en la raíz del repo): no hay build.
+#
+# NOTA: el Motor de Morfogénesis (app.py, Streamlit) NO corre en Netlify —
+# se despliega gratis en Streamlit Community Cloud desde este mismo repo
+# (share.streamlit.io → app.py) y el sitio lo integra vía morfogenesis.html.
+
+[build]
+  publish = "."
+  command = ""
+
+# URL bonita para el motor
+[[redirects]]
+  from = "/morfogenesis"
+  to = "/morfogenesis.html"
+  status = 200
+
+# Cabeceras básicas de seguridad
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
