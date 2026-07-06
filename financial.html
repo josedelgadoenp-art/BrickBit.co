@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Encuentra tu seguro ideal · BrickBit</title>
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1A2230; --ink-soft:#46505F; --paper:#FCFBF8; --card:#FFFFFF;
+    --naranja:#F2711C; --naranja-d:#C8541F; --naranja-soft:#FFF1E6;
+    --azul:#1F6F8B; --verde:#2E7D5B; --muted:#717A86;
+    --line:#EAE5DB; --line-2:#F1ECE3;
+    --shadow:0 1px 2px rgba(26,34,48,.04),0 10px 30px rgba(26,34,48,.07);
+    --serif:"Fraunces",Georgia,serif; --sans:"Inter",system-ui,-apple-system,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .shell{max-width:640px;margin:0 auto;padding:0 18px 60px}
+
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0 8px}
+  .logo{height:46px;width:auto;max-width:70%;display:block}
+  .badge-gnp{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--naranja-d);background:var(--naranja-soft);padding:6px 11px;border-radius:20px;white-space:nowrap}
+
+  .prog{display:flex;gap:6px;margin:14px 0 20px}
+  .prog .seg{height:5px;flex:1;border-radius:3px;background:var(--line);transition:.3s}
+  .prog .seg.on{background:var(--naranja)}
+  .prog.hide{display:none}
+
+  .hero{padding:16px 2px 6px;animation:fade .4s ease}
+  .hero .eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--naranja);margin:0 0 10px}
+  .hero h1{font-family:var(--serif);font-weight:500;font-size:clamp(28px,7vw,40px);line-height:1.08;letter-spacing:-.015em;margin:0 0 14px}
+  .hero p{font-size:16.5px;color:var(--ink-soft);margin:0 0 12px;max-width:31em}
+  .hero .firma{font-size:14px;color:var(--muted);margin:0 0 26px}
+  .hero .firma b{color:var(--ink-soft)}
+
+  .step{animation:fade .35s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .qhead{margin:6px 0 20px}
+  .qhead .count{font-size:12.5px;font-weight:600;color:var(--muted);letter-spacing:.02em;margin-bottom:8px}
+  .qhead h2{font-family:var(--serif);font-weight:500;font-size:clamp(22px,5vw,30px);line-height:1.18;letter-spacing:-.01em;margin:0}
+  .qhead .sub{font-size:14.5px;color:var(--muted);margin-top:9px}
+  .swipetip{margin-top:12px;display:flex;align-items:center;gap:8px;justify-content:center;
+    background:var(--naranja-soft);border:1px solid #F3D7C7;border-radius:12px;padding:10px 14px;
+    font-size:13px;color:var(--naranja-d);font-weight:600;text-align:center}
+  .swipetip b{color:var(--ink)}
+  .swipetip .dchev{font-size:20px;line-height:1;animation:dbob 1.3s ease-in-out infinite}
+  @keyframes dbob{0%,100%{transform:translateY(-2px)}50%{transform:translateY(4px)}}
+
+  .options{display:flex;flex-direction:column;gap:11px}
+  .opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;cursor:pointer;background:var(--card);
+    border:1.5px solid var(--line);border-radius:15px;padding:17px 18px;font-family:var(--sans);font-size:16px;font-weight:500;color:var(--ink);transition:.16s;box-shadow:var(--shadow)}
+  .opt:hover{border-color:var(--naranja);transform:translateY(-1px)}
+  .opt:focus-visible{outline:3px solid var(--naranja-soft);outline-offset:0;border-color:var(--naranja)}
+  .opt .emoji{font-size:24px;flex:0 0 auto;width:28px;text-align:center}
+  .opt .txt{flex:1}
+  .opt .txt small{display:block;font-weight:400;font-size:13px;color:var(--muted);margin-top:2px}
+  .opt .chev{color:var(--muted);flex:0 0 auto;transition:.16s}
+  .opt:hover .chev{color:var(--naranja);transform:translateX(2px)}
+
+  /* form persona */
+  .pform{display:flex;flex-direction:column;gap:15px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  @media(max-width:440px){.row2{grid-template-columns:1fr}}
+  .fld label{display:block;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:6px}
+  .inp{position:relative;display:flex;align-items:center}
+  .inp .pre{position:absolute;left:13px;color:var(--muted);font-size:15px;pointer-events:none}
+  .pform input{width:100%;font-family:var(--sans);font-size:16px;color:var(--ink);border:1.5px solid var(--line);border-radius:12px;padding:13px 14px;background:var(--card);transition:.15s}
+  .pform input.peso{padding-left:28px}
+  .pform input:focus{outline:none;border-color:var(--naranja);box-shadow:0 0 0 3px var(--naranja-soft)}
+  .priv{font-size:12.5px;color:var(--muted);display:flex;gap:8px;align-items:flex-start;margin-top:2px}
+
+  /* radar */
+  .radar-box{background:var(--card);border:1.5px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px}
+  .radar-box svg{width:100%;max-width:340px;display:block;margin:0 auto}
+  .rlegend{display:flex;justify-content:center;gap:18px;font-size:12px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+  .rlegend span{display:flex;align-items:center;gap:6px}
+  .rlegend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .axes{display:flex;flex-direction:column;gap:15px}
+  .axis .alab{font-size:14px;font-weight:600;color:var(--ink-soft);margin-bottom:7px;display:flex;align-items:center;gap:8px}
+  .seg3{display:flex;border:1.5px solid var(--line);border-radius:11px;overflow:hidden}
+  .seg3 button{flex:1;border:none;background:#F1ECE3;cursor:pointer;font-family:var(--sans);font-weight:600;font-size:13px;color:#9AA1AA;padding:11px 6px;transition:.12s;border-right:1.5px solid var(--line)}
+  .seg3 button:last-child{border-right:none}
+  .seg3 button:hover{background:#E9E3D8;color:var(--ink-soft)}
+  .seg3 button.on{background:var(--ink);color:#fff}
+  .seg3 button.on.lo{background:var(--naranja)}
+  .seg3 button.on.mid{background:var(--azul)}
+  .seg3 button.on.hi{background:var(--verde)}
+  .chk{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:2px solid var(--line);
+    color:transparent;font-size:12px;font-weight:800;vertical-align:middle;margin-right:6px;transition:.18s}
+  .axis.done .chk{background:var(--verde);border-color:var(--verde);color:#fff}
+  .axis.done .alab{color:var(--ink)}
+  .prog-wrap{position:sticky;top:0;z-index:5;background:var(--paper);padding:10px 0 12px;margin-bottom:4px}
+  .prog-top{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;color:var(--ink-soft);margin-bottom:6px}
+  .prog-top #prog-pct{color:var(--naranja-d)}
+  .prog-track{height:8px;background:#EDE7DC;border-radius:99px;overflow:hidden}
+  .prog-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--naranja),var(--verde));border-radius:99px;transition:width .4s cubic-bezier(.2,.8,.2,1)}
+  .btn-primary.ready{animation:pulseR 1.4s ease-in-out 2}
+  @keyframes pulseR{0%,100%{box-shadow:0 5px 16px rgba(242,113,28,.32)}50%{box-shadow:0 5px 26px rgba(46,125,91,.6)}}
+
+  .backrow{margin-top:22px}
+  .back{background:none;border:none;cursor:pointer;color:var(--muted);font-family:var(--sans);font-size:14px;font-weight:600;padding:8px 4px;display:inline-flex;align-items:center;gap:7px}
+  .back:hover{color:var(--ink)}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border:none;cursor:pointer;font-family:var(--sans);font-weight:600;font-size:16px;padding:15px 26px;border-radius:13px;transition:.16s;text-decoration:none;width:100%}
+  .btn-primary{background:var(--naranja);color:#fff;box-shadow:0 5px 16px rgba(242,113,28,.32)}
+  .btn-primary:hover{background:var(--naranja-d);transform:translateY(-1px)}
+  .btn-wa{background:#1FA855;color:#fff;box-shadow:0 5px 16px rgba(31,168,85,.3)}
+  .btn-wa:hover{background:#178a45;transform:translateY(-1px)}
+  .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+  .btn-ghost:hover{background:var(--line-2)}
+  .btnrow{margin-top:22px}
+
+  /* result */
+  .result{animation:fade .4s ease}
+  .greet{font-family:var(--serif);font-weight:500;font-size:clamp(24px,6vw,32px);letter-spacing:-.01em;margin:6px 0 4px}
+  .greet-sub{color:var(--muted);font-size:15px;margin:0 0 22px}
+  .res-line{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--azul);background:#EAF3F6;padding:6px 11px;border-radius:20px;display:inline-block;margin-bottom:12px}
+  .res-card{background:var(--card);border:1.5px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:24px;overflow:hidden;margin-bottom:24px}
+  .res-emoji{font-size:38px;line-height:1;margin-bottom:6px}
+  .res-card h2{font-family:var(--serif);font-weight:600;font-size:26px;letter-spacing:-.01em;margin:0 0 4px}
+  .res-card .lead{font-size:15.5px;color:var(--ink-soft);margin:0 0 18px}
+  .feat{list-style:none;padding:0;margin:0 0 18px;display:flex;flex-direction:column;gap:9px}
+  .feat li{display:flex;gap:10px;font-size:14.5px;color:var(--ink-soft);align-items:flex-start}
+  .feat li .tick{color:var(--verde);flex:0 0 auto;margin-top:2px}
+  .res-note{font-size:13px;color:var(--muted);background:var(--line-2);border-radius:11px;padding:11px 13px;margin-bottom:18px}
+  .why{margin:0 0 18px;padding:14px 15px;background:var(--naranja-soft);border-radius:12px}
+  .why .t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--naranja-d);margin-bottom:9px}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{font-size:12.5px;background:#fff;border:1px solid #F3D7C7;color:var(--ink-soft);padding:5px 11px;border-radius:20px}
+  .terms{margin:18px 0 0;border-top:1px solid var(--line-2);padding-top:16px}
+  .terms .t{font-size:12.5px;font-weight:700;color:var(--ink-soft);margin-bottom:10px}
+  .term-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .term-chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--ink);background:var(--paper);border:1px solid var(--line);padding:6px 8px 6px 12px;border-radius:20px}
+
+  .section-h{font-family:var(--serif);font-weight:500;font-size:22px;margin:0 0 4px}
+  .section-p{color:var(--muted);font-size:14px;margin:0 0 14px}
+  .gap-note{font-size:14px;color:var(--ink-soft);background:#EAF3F6;border-radius:12px;padding:13px 15px;margin-top:6px}
+  .gap-note b{color:var(--azul)}
+
+  .cta{display:flex;flex-direction:column;gap:11px;margin-top:8px}
+  .cta-note{font-size:12.5px;color:var(--muted);text-align:center}
+  .restart{margin-top:20px;text-align:center}
+
+  .help{display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;border:none;cursor:pointer;background:var(--ink);color:#fff;font-family:var(--sans);font-weight:700;font-size:12px;line-height:1;padding:0;vertical-align:middle;transition:.15s}
+  .term-chip .help{background:var(--naranja);width:18px;height:18px}
+  .axis .help{width:17px;height:17px;background:var(--muted)}
+  .help:hover{transform:scale(1.12)}
+  .help:focus-visible{outline:3px solid var(--naranja-soft);outline-offset:1px}
+
+  #tip{position:fixed;z-index:90;max-width:280px;background:var(--ink);color:#fff;font-size:13px;line-height:1.5;padding:13px 15px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.22);opacity:0;visibility:hidden;transform:translateY(4px);transition:opacity .15s,transform .15s;pointer-events:none}
+  #tip.show{opacity:1;visibility:visible;transform:none}
+  #tip b{color:#FFC9AC;display:block;margin-bottom:3px;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em}
+  #tip::after{content:"";position:absolute;top:-6px;left:var(--ax,20px);border:6px solid transparent;border-top:0;border-bottom-color:var(--ink)}
+
+  .advice{margin-top:26px;background:linear-gradient(135deg,#FFF1E6,#FFE8D6);border:1.5px solid #F3D7C7;border-radius:18px;padding:22px;text-align:center}
+  .advice h3{font-family:var(--serif);font-weight:600;font-size:21px;margin:0 0 6px}
+  .advice p{font-size:14px;color:var(--ink-soft);margin:0 0 14px;line-height:1.55}
+  .advice .free{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--naranja-d);background:#fff;border:1px solid #F3D7C7;border-radius:20px;padding:5px 12px;margin-bottom:10px}
+  .scrollhint{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:80;
+    display:flex;align-items:center;gap:9px;background:var(--ink);color:#fff;border-radius:999px;
+    padding:10px 18px;font-size:13.5px;font-weight:600;box-shadow:0 10px 28px rgba(26,34,48,.28);
+    opacity:0;visibility:hidden;transition:opacity .3s}
+  .scrollhint.show{opacity:1;visibility:visible}
+  .scrollhint .finger{font-size:19px;animation:swipe 1.5s ease-in-out infinite}
+  .scrollhint .chev{color:#FFC9AC;animation:bob 1.5s ease-in-out infinite}
+  @keyframes swipe{0%,100%{transform:translateY(5px)}50%{transform:translateY(-5px)}}
+  @keyframes bob{0%,100%{transform:translateY(-2px)}50%{transform:translateY(4px)}}
+  footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <img class="logo" src="data:image/png;base64,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" alt="BrickBit Finance & Strategy">
+    <div class="badge-gnp">Agente GNP</div>
+  </header>
+  <div class="prog hide" id="prog"></div>
+  <main id="app"></main>
+  <footer id="foot"></footer>
+</div>
+<div id="tip" role="tooltip"></div>
+<div class="scrollhint" id="scrollhint" aria-hidden="true"><span class="finger">👆</span> Desliza para continuar <span class="chev">▾</span></div>
+<script>
+/* ============================================================
+   CONFIGURACIÓN
+============================================================ */
+const LEAD_ENDPOINT = "/api/lead";   // función Netlify → Google Sheet (déjalo "" para desactivar)
+function sendLead(data){
+  if(!LEAD_ENDPOINT) return;
+  try{ fetch(LEAD_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data),keepalive:true}).catch(()=>{}); }catch(e){}
+}
+const AGENTE = {
+  nombre:   "José Delgado",
+  rol:      "Asesor Profesional en Seguros",
+  whatsapp: "5215584681927",   // 52 + 1 + 10 dígitos
+  email:    ""                 // agrega tu correo si quieres botón de email
+};
+
+const pesos = new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
+const fmtPeso = v => pesos.format(Math.round(v||0));
+
+/* ============================================================
+   PRODUCTOS  (verifica los nombres con tu catálogo GNP vigente)
+============================================================ */
+const PRODUCTS = {
+  esencial:{linea:"Gastos Médicos",emoji:"🏥",nombre:"GMM Esencial",
+    lead:"Un plan hospitalario accesible que te cubre lo importante cuando necesitas internarte, cuidando tu bolsillo.",
+    feat:["Buen equilibrio entre costo y cobertura","Cubre hospitalización y cirugías","Libre elección de médico","Variedad de hospitales según el plan"],terms:["deducible","coaseguro","suma_asegurada"]},
+  versatil:{linea:"Gastos Médicos",emoji:"🏥",nombre:"GMM Versátil",
+    lead:"Te da flexibilidad: eliges deducible y coaseguro en el momento del siniestro según el hospital al que vayas.",
+    feat:["Ajustas deducible y coaseguro al usarlo","Acceso a hospitales privados de México","Libre elección de médico","Cubre ciertas condiciones congénitas"],terms:["deducible","coaseguro","suma_asegurada"]},
+  platino:{linea:"Gastos Médicos",emoji:"💠",nombre:"GMM Platino",
+    lead:"La cobertura de mayor nivel: coaseguro topado en cualquier hospital y ventajas pensadas para tu estilo de vida.",
+    feat:["Coaseguro topado sin importar el hospital","Recién nacido cubierto sin costo","Respaldo ante imprevistos en el extranjero","Asistencias y ventajas exclusivas"],terms:["coaseguro_topado","coaseguro","suma_asegurada"]},
+  internacional:{linea:"Gastos Médicos",emoji:"✈️",nombre:"GMM Internacional",
+    lead:"Para quienes viajan dentro y fuera de México. Acceso a hospitales en todo el mundo y libre elección de médico.",
+    feat:["Cobertura en México y el extranjero","Acceso a hospitales en todo el mundo","Pago directo con instituciones de prestigio","Alta suma asegurada para maternidad"],terms:["suma_asegurada","deducible"]},
+  plenitud:{linea:"Gastos Médicos",emoji:"🌿",nombre:"GMM Plenitud",
+    lead:"Diseñado para adultos de 50 años en adelante. Es indemnizatorio: paga montos definidos sin deducible ni coaseguro.",
+    feat:["Sin deducible ni coaseguro","Monto definido por cirugía y por noche de hospital","Tres niveles de suma asegurada","Pensado para personas mayores de 50"],terms:["indemnizatorio","deducible","coaseguro"]},
+  conexion:{linea:"Gastos Médicos",emoji:"🔗",nombre:"GMM Conexión",
+    lead:"Complementa el seguro de gastos médicos que ya te da tu empresa y te deja conservar una póliza individual al salir de ella.",
+    feat:["Funciona como excedente del seguro colectivo","Conservas cobertura al dejar la empresa","Mantienes tu antigüedad","Sin volver a pasar por selección médica"],terms:["suma_asegurada","preexistencia"]},
+  empresarial_gmm:{linea:"Empresarial",emoji:"🏢",nombre:"Gastos Médicos Colectivo (Línea Azul)",
+    lead:"Gastos médicos para los colaboradores de una empresa, a la medida del negocio y deducible de impuestos.",
+    feat:["Cobertura para tu plantilla","Se ajusta a cada empresa","Deducible de impuestos","Orientación médica incluida"],terms:["suma_asegurada"]},
+  vida_proteccion:{linea:"Vida",emoji:"🛡️",nombre:"Seguro de Vida — Protección",
+    lead:"Un respaldo económico para tu familia si tú llegaras a faltar: reciben la suma asegurada libre de impuestos.",
+    feat:["Tu familia recibe la suma asegurada","Pago libre de impuestos a beneficiarios","Puedes añadir invalidez y muerte accidental","Tú defines el monto de protección"],terms:["suma_asegurada","beneficiario","prima"],
+    note:"Tu asesor te ayuda a elegir la modalidad (temporal o dotal) según tu caso."},
+  vida_ahorro:{linea:"Vida + Ahorro",emoji:"📈",nombre:"Capitaliza / Vida Inversión",
+    lead:"Combina protección por fallecimiento con un ahorro de largo plazo que inviertes en distintos portafolios.",
+    feat:["Protección y ahorro en un solo plan","Portafolios de inversión a elegir","Flexibilidad para definir tu estrategia","Beneficios fiscales sobre el ahorro"],terms:["suma_asegurada","prima"]},
+  accidentes:{linea:"Accidentes",emoji:"🚑",nombre:"Accidentes Familiar",
+    lead:"Una cobertura accesible que protege a tu familia ante muerte o lesiones a causa de un accidente.",
+    feat:["Protección ante accidentes","Costo accesible","Cobertura para toda la familia","Un buen primer paso de protección"],terms:["suma_asegurada"]},
+  profesional:{linea:"Ahorro Educativo",emoji:"🎓",nombre:"Profesional (ahorro educativo)",
+    lead:"Va formando un fondo para la educación de tus hijos —incluso desde su gestación— a la vez que ofrece protección.",
+    feat:["Ahorro para los estudios de los hijos","Se puede iniciar desde la gestación","Combina protección y ahorro","Plazos pensados para el futuro académico"],terms:["suma_asegurada","prima"],
+    note:"En el mercado también se le conoce como seguro dotal educativo."},
+  retiro:{linea:"Retiro",emoji:"🌅",nombre:"Consolida / Proyecta (plan de retiro)",
+    lead:"Forma un ahorro garantizado para tu retiro que recibes a la edad que elijas, con beneficios fiscales por tus aportaciones.",
+    feat:["Ahorro garantizado para el retiro","Lo recibes a los 55, 60, 65 o 70 años","Aportaciones deducibles de impuestos","Se actualiza con la inflación"],terms:["suma_asegurada","prima"]},
+  ahorra_mas:{linea:"Ahorro",emoji:"🪙",nombre:"Ahorra Más",
+    lead:"Un plan para ahorrar con un propósito a 5, 10 o 15 años, con protección por fallecimiento incluida.",
+    feat:["Plazos de 5, 10 o 15 años","Ahorro con una meta concreta","Protección por fallecimiento incluida","Exención de pago de primas por invalidez"],terms:["prima"]},
+  auto_rc:{linea:"Auto",emoji:"🚗",nombre:"Auto GNP Básico (Responsabilidad Civil)",
+    lead:"La cobertura mínima que pide la ley: responde por los daños que llegues a causar a terceros.",
+    feat:["Cumple el requisito legal","Cubre daños a terceros","Gastos médicos a ocupantes","La opción más económica"],terms:["responsabilidad_civil"]},
+  auto_amplia:{linea:"Auto",emoji:"🚗",nombre:"Auto Amplia",
+    lead:"La cobertura completa: protege tu propio auto ante daños y robo total, además de la responsabilidad a terceros.",
+    feat:["Daños a tu propio auto","Robo total","Responsabilidad civil a terceros","Gastos médicos a ocupantes"],terms:["cobertura_amplia","responsabilidad_civil","deducible"]},
+  auto_elite:{linea:"Auto",emoji:"🏁",nombre:"Auto Elite",
+    lead:"Cobertura amplia con beneficios adicionales que dan mayor protección y respaldo sobre el paquete completo.",
+    feat:["Todo lo de la cobertura amplia","Coberturas y beneficios extra","Mayor respaldo ante siniestros","Para quien busca lo máximo"],terms:["cobertura_amplia","deducible"]},
+  motos:{linea:"Moto",emoji:"🏍️",nombre:"Seguro para Motos",
+    lead:"Protección para tu moto con distintos paquetes según el tipo de motocicleta y el nivel de cobertura.",
+    feat:["Paquetes según tu tipo de moto","Distintos niveles de protección","Responsabilidad civil a terceros","Opciones de daños y robo"],terms:["responsabilidad_civil"]},
+  chofer:{linea:"Auto",emoji:"🚕",nombre:"GNP Chofer Privado",
+    lead:"Para quien usa su auto en apps de transporte: te protege a ti, a tus pasajeros y a tu vehículo mientras trabajas.",
+    feat:["Cobertura mientras das servicio","Te protege a ti y a tus pasajeros","Pensado para apps de transporte","Tu vehículo respaldado"],terms:["responsabilidad_civil"]},
+  mascota:{linea:"Mascota",emoji:"🐾",nombre:"Mi Mascota GNP",
+    lead:"Protege a tu perro o gato, porque también son parte de la familia.",
+    feat:["Cobertura para perros y gatos","Gastos por accidente o enfermedad","Responsabilidad civil por tu mascota","Asistencias para tu mascota"],terms:["responsabilidad_civil"]},
+  empresarial:{linea:"Empresarial",emoji:"🏢",nombre:"Soluciones Empresariales",
+    lead:"Esquemas a la medida para proteger a tu empresa y a tus colaboradores: gastos médicos, vida de grupo y más.",
+    feat:["Gastos médicos colectivos","Seguro de vida de grupo","Se ajusta al tamaño de tu empresa","Deducible de impuestos"],terms:["suma_asegurada"]}
+};
+
+/* ============================================================
+   GLOSARIO
+============================================================ */
+const GLOSARIO = {
+  suma_asegurada:["Suma asegurada","Es el monto máximo que la aseguradora pagará. En vida, lo que recibe tu familia; en gastos médicos, el tope de cobertura por año."],
+  prima:["Prima","Es el pago que haces por tu seguro (mensual, anual, etc.) para mantenerlo activo."],
+  deducible:["Deducible","La parte inicial del gasto que tú cubres antes de que el seguro empiece a pagar. A mayor deducible, suele ser menor la prima."],
+  coaseguro:["Coaseguro","El porcentaje del gasto que pagas junto con el seguro una vez cubierto el deducible. Por ejemplo, el 10% de la atención."],
+  coaseguro_topado:["Coaseguro topado","Un límite máximo a lo que pagarás por coaseguro, sin importar cuánto crezca el gasto médico."],
+  responsabilidad_civil:["Responsabilidad civil","Cubre los daños que llegues a causarle a otras personas o a sus bienes. Es la cobertura mínima obligatoria en autos."],
+  cobertura_amplia:["Cobertura amplia","El paquete de auto más completo: incluye daños a tu propio vehículo, robo total y responsabilidad a terceros."],
+  indemnizatorio:["Indemnizatorio","El seguro te entrega un monto ya definido por el evento (por ejemplo, por cirugía o noche de hospital), en vez de reembolsar gastos."],
+  preexistencia:["Preexistencia","Una enfermedad o condición que ya tenías antes de contratar el seguro. Suele tener reglas especiales de cobertura."],
+  beneficiario:["Beneficiario","La persona que tú designas para recibir la suma asegurada en caso de fallecimiento."],
+  fondo_emergencia:["Fondo de emergencia","Un ahorro líquido equivalente a 3–6 meses de tus gastos, para imprevistos sin recurrir a deudas."],
+  proteccion_ingreso:["Protección de ingreso","Cobertura que reemplaza parte de tu sueldo si una invalidez te impide trabajar."]
+};
+
+/* ============================================================
+   FLUJO de preguntas (next: id  ó  "r:clave")
+============================================================ */
+const FLOW = {
+  start:{q:"¿Qué te gustaría proteger o lograr?",opts:[
+    {e:"🏥",l:"Mi salud y la de mi familia",next:"salud_quien"},
+    {e:"🛡️",l:"A mi familia, si yo llegara a faltar",next:"vida_tipo"},
+    {e:"📈",l:"Mi dinero para el futuro",next:"futuro_meta"},
+    {e:"🚗",l:"Mi auto o mi moto",next:"auto_tipo"},
+    {e:"🐾",l:"A mi mascota",next:"r:mascota"},
+    {e:"🏢",l:"Mi empresa o mis empleados",next:"r:empresarial"}]},
+  salud_quien:{q:"¿Para quién es principalmente la cobertura médica?",opts:[
+    {e:"👨‍👩‍👧",l:"Para mí o mi familia",next:"salud_donde"},
+    {e:"🌿",l:"Para mis papás o personas mayores de 50",next:"r:plenitud"},
+    {e:"🔗",l:"Ya tengo seguro de empresa y quiero ampliarlo",next:"r:conexion"},
+    {e:"🏢",l:"Para los empleados de mi empresa",next:"r:empresarial_gmm"}]},
+  salud_donde:{q:"¿Dónde te gustaría poder atenderte?",opts:[
+    {e:"🇲🇽",l:"Principalmente en México",next:"salud_prioridad"},
+    {e:"🌎",l:"En México y el extranjero, o viajo seguido",next:"r:internacional"}]},
+  salud_prioridad:{q:"¿Qué es lo más importante para ti?",opts:[
+    {e:"💰",l:"Que sea accesible y cubra lo esencial",next:"r:esencial"},
+    {e:"⚖️",l:"Flexibilidad para elegir hospital y ajustar el costo",next:"r:versatil"},
+    {e:"💠",l:"La cobertura más amplia y de mayor nivel",next:"r:platino"}]},
+  vida_tipo:{q:"Cuando piensas en proteger a tu familia, ¿qué buscas?",opts:[
+    {e:"🛡️",l:"Dejarles un respaldo económico si yo falto",next:"r:vida_proteccion"},
+    {e:"📈",l:"Protección y, a la vez, ir formando un ahorro",next:"r:vida_ahorro"},
+    {e:"🚑",l:"Algo accesible que cubra accidentes",next:"r:accidentes"}]},
+  futuro_meta:{q:"¿Cuál es tu meta principal?",opts:[
+    {e:"🎓",l:"Asegurar la educación de mis hijos",next:"r:profesional"},
+    {e:"🌅",l:"Formar un fondo para mi retiro",next:"r:retiro"},
+    {e:"📈",l:"Hacer crecer mi dinero con protección incluida",next:"r:vida_ahorro"},
+    {e:"🪙",l:"Ahorrar para una meta a pocos años",next:"r:ahorra_mas"}]},
+  auto_tipo:{q:"¿Qué vehículo quieres proteger?",opts:[
+    {e:"🚗",l:"Un auto particular",next:"auto_cobertura"},
+    {e:"🏍️",l:"Una moto",next:"r:motos"},
+    {e:"🚕",l:"Lo uso para apps de transporte (Uber, DiDi…)",next:"r:chofer"}]},
+  auto_cobertura:{q:"¿Qué nivel de cobertura buscas para tu auto?",opts:[
+    {e:"📋",l:"Solo lo que exige la ley",s:"Responsabilidad civil: los daños que causes a terceros",next:"r:auto_rc"},
+    {e:"🛡️",l:"Cobertura completa: daños, robo y más",next:"r:auto_amplia"},
+    {e:"🏁",l:"Cobertura completa con beneficios adicionales",next:"r:auto_elite"}]}
+};
+
+/* radar */
+const RADAR=[
+  {key:"vida",  short:"Vida",        full:"Seguro de vida"},
+  {key:"gmm",   short:"Médicos",     full:"Gastos médicos (GMM)"},
+  {key:"auto",  short:"Auto",        full:"Seguro de auto"},
+  {key:"retiro",short:"Retiro",      full:"Retiro o ahorro para el futuro"},
+  {key:"emerg", short:"Emergencia",  full:"Fondo de emergencia", term:"fondo_emergencia"},
+  {key:"ingreso",short:"Ingreso",    full:"Protección de tu ingreso (invalidez)", term:"proteccion_ingreso"}
+];
+
+/* ============================================================
+   ESTADO
+============================================================ */
+let phase="hero";
+let persona={nombre:"",apellido:"",edad:"",ingreso:""};
+let finderHistory=[], chosen=[], stepId="start", lastFinderId="start", productKey=null;
+let radarVals={vida:0,gmm:0,auto:0,retiro:0,emerg:0,ingreso:0};
+let radarDone={vida:false,gmm:false,auto:false,retiro:false,emerg:false,ingreso:false};
+function updateRadarProgress(){
+  const total=RADAR.length;
+  const done=RADAR.filter(a=>radarDone[a.key]).length;
+  const pct=Math.round(done/total*100);
+  const fill=document.getElementById('prog-fill'); if(fill) fill.style.width=pct+'%';
+  const txt=document.getElementById('prog-txt'); if(txt) txt.textContent=done+' de '+total+' áreas';
+  const pc=document.getElementById('prog-pct'); if(pc) pc.textContent=pct+'%';
+  const cont=document.getElementById('rContinue');
+  if(cont){
+    if(done===total){ cont.classList.add('ready'); cont.innerHTML='Ver mi resultado <span aria-hidden="true">→</span>'; }
+    else { cont.classList.remove('ready'); }
+  }
+}
+
+const app=document.getElementById('app');
+const prog=document.getElementById('prog');
+
+function helpHTML(term){if(!GLOSARIO[term])return'';return `<button class="help" data-term="${term}" aria-label="¿Qué es ${GLOSARIO[term][0]}?">?</button>`;}
+
+function setProg(n){ // n: 1 datos, 2 preguntas, 3 radar, 4 resultado
+  prog.classList.remove('hide');
+  prog.innerHTML=[1,2,3,4].map(i=>`<span class="seg ${i<=n?'on':''}"></span>`).join('');
+}
+
+/* ---------- HERO ---------- */
+function renderHero(){
+  phase="hero"; prog.classList.add('hide');
+  app.innerHTML=`
+    <section class="hero">
+      <p class="eyebrow">Diagnóstico en minutos</p>
+      <h1>Encuentra el seguro<br>ideal para ti</h1>
+      <p>Responde unas preguntas sencillas y te diré qué protección de GNP encaja mejor contigo. Además verás tu <b>radar de protección</b>, para descubrir tus áreas descubiertas. Cada término lleva su explicación.</p>
+      <p class="firma">Te acompaña <b>${AGENTE.nombre}</b> · ${AGENTE.rol} · incluye <b>asesoría financiera gratuita</b></p>
+      <button class="btn btn-primary" id="startBtn">Comenzar <span aria-hidden="true">→</span></button>
+    </section>`;
+  document.getElementById('startBtn').addEventListener('click',renderPersona);
+}
+
+/* ---------- PERSONA ---------- */
+function renderPersona(){
+  phase="persona"; setProg(1);
+  app.innerHTML=`
+    <section class="step">
+      <div class="qhead">
+        <div class="count">Paso 1 de 3</div>
+        <h2>Primero, cuéntanos de ti</h2>
+        <div class="sub">Para darte un resultado personalizado y que tu asesor te contacte con la mejor opción.</div>
+      </div>
+      <div class="pform">
+        <div class="row2">
+          <div class="fld"><label for="pn">Nombre</label><input id="pn" type="text" autocomplete="given-name" value="${persona.nombre}"></div>
+          <div class="fld"><label for="pa">Apellido</label><input id="pa" type="text" autocomplete="family-name" value="${persona.apellido}"></div>
+        </div>
+        <div class="row2">
+          <div class="fld"><label for="pe">Edad</label><input id="pe" type="number" min="18" max="90" inputmode="numeric" value="${persona.edad}"></div>
+          <div class="fld"><label for="pi">Ingreso mensual estimado</label><div class="inp"><span class="pre">$</span><input id="pi" class="peso" type="number" min="0" step="1000" inputmode="numeric" value="${persona.ingreso}"></div></div>
+        </div>
+        <div class="priv"><span aria-hidden="true">🔒</span><span>Tus datos solo se usan para personalizar tu resultado. No se guardan ni se envían a nadie hasta que tú decidas contactar a tu asesor.</span></div>
+      </div>
+      <div class="btnrow"><button class="btn btn-primary" id="pContinue">Continuar <span aria-hidden="true">→</span></button></div>
+      <div class="backrow"><button class="back" id="backBtn">← Volver al inicio</button></div>
+    </section>`;
+  document.getElementById('pContinue').addEventListener('click',()=>{
+    persona.nombre=document.getElementById('pn').value.trim();
+    persona.apellido=document.getElementById('pa').value.trim();
+    persona.edad=document.getElementById('pe').value.trim();
+    persona.ingreso=document.getElementById('pi').value.trim();
+    finderHistory=[]; chosen=[]; goFinder('start',true);
+  });
+  document.getElementById('backBtn').addEventListener('click',renderHero);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ---------- FINDER ---------- */
+function renderFinder(){
+  phase="finder"; setProg(2);
+  const node=FLOW[stepId]; if(!node)return;
+  const n=finderHistory.length;
+  const hello=persona.nombre?` ${persona.nombre},`:"";
+  app.innerHTML=`
+    <section class="step">
+      <div class="qhead">
+        <div class="count">Paso 2 de 3 · Pregunta ${n}</div>
+        <h2>${n===1?`Bien${hello} empecemos. `:""}${node.q}</h2>
+      </div>
+      <div class="options">
+        ${node.opts.map((o,i)=>`
+          <button class="opt" data-i="${i}">
+            <span class="emoji" aria-hidden="true">${o.e||"•"}</span>
+            <span class="txt">${o.l}${o.s?`<small>${o.s}</small>`:""}</span>
+            <span class="chev" aria-hidden="true">→</span>
+          </button>`).join('')}
+      </div>
+      <div class="backrow"><button class="back" id="backBtn">← ${n>1?"Pregunta anterior":"Volver a mis datos"}</button></div>
+    </section>`;
+  app.querySelectorAll('.opt').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const o=node.opts[+btn.dataset.i];
+      chosen.push(o.l);
+      if(o.next.startsWith('r:')){ productKey=o.next.slice(2); lastFinderId=stepId; renderRadar(); }
+      else goFinder(o.next);
+    });
+  });
+  document.getElementById('backBtn').addEventListener('click',finderBack);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function goFinder(id){ finderHistory.push(id); stepId=id; renderFinder(); }
+function finderBack(){
+  finderHistory.pop(); chosen.pop();
+  const prev=finderHistory[finderHistory.length-1];
+  if(!prev){ renderPersona(); } else { stepId=prev; renderFinder(); }
+}
+
+/* ---------- RADAR ---------- */
+function renderRadar(){
+  phase="radar"; setProg(3);
+  app.innerHTML=`
+    <section class="step">
+      <div class="qhead">
+        <div class="count">Paso 3 de 3</div>
+        <h2>¿Cómo está tu protección hoy?</h2>
+        <div class="sub">Marca qué tan cubierto te sientes en cada área. Verás tu radar al instante.</div>
+        <div class="swipetip">👇 Marca cada área y <b>desliza hacia abajo</b> para ver tu resultado <span class="dchev">⌄</span></div>
+      </div>
+      <div class="radar-box">
+        <svg id="radarSvg" viewBox="0 0 320 300" role="img" aria-label="Radar de protección"></svg>
+        <div class="rlegend">
+          <span><i style="background:var(--azul)"></i>Lo que ya tienes</span>
+          <span><i style="background:transparent;outline:1.5px dashed var(--naranja)"></i>Protección ideal</span>
+        </div>
+      </div>
+      <div class="axes">
+        <div class="prog-wrap">
+          <div class="prog-top"><span id="prog-txt">0 de 6 áreas</span><span id="prog-pct">0%</span></div>
+          <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+        </div>
+        ${RADAR.map(a=>`
+          <div class="axis" data-axis="${a.key}">
+            <div class="alab"><span class="chk" id="chk-${a.key}">○</span> ${a.full} ${a.term?helpHTML(a.term):""}</div>
+            <div class="seg3" data-key="${a.key}">
+              <button data-v="0" class="lo">No tengo</button>
+              <button data-v="50" class="mid">Algo</button>
+              <button data-v="100" class="hi">Bien cubierto</button>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="btnrow"><button class="btn btn-primary" id="rContinue">Ver mi resultado <span aria-hidden="true">→</span></button></div>
+      <div class="backrow"><button class="back" id="backBtn">← Pregunta anterior</button></div>
+    </section>`;
+  // restaurar selección previa
+  app.querySelectorAll('.seg3').forEach(seg=>{
+    const key=seg.dataset.key;
+    seg.querySelectorAll('button').forEach(b=>{
+      if(radarDone[key] && +b.dataset.v===radarVals[key]) b.classList.add('on');
+      b.addEventListener('click',()=>{
+        seg.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        radarVals[key]=+b.dataset.v;
+        radarDone[key]=true;
+        const ax=seg.closest('.axis'); if(ax) ax.classList.add('done');
+        const chk=document.getElementById('chk-'+key); if(chk) chk.textContent='✓';
+        drawRadar('radarSvg');
+        updateRadarProgress();
+      });
+    });
+    // estado inicial de casilla si ya estaba contestada
+    if(radarDone[key]){ const ax=seg.closest('.axis'); if(ax) ax.classList.add('done'); const chk=document.getElementById('chk-'+key); if(chk) chk.textContent='✓'; }
+  });
+  drawRadar('radarSvg');
+  updateRadarProgress();
+  showScrollHint();
+  document.getElementById('rContinue').addEventListener('click',showResult);
+  document.getElementById('backBtn').addEventListener('click',()=>{ chosen.pop(); stepId=lastFinderId; renderFinder(); });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function drawRadar(svgId){
+  const svg=document.getElementById(svgId); if(!svg)return;
+  const cx=160,cy=148,R=104,n=RADAR.length;
+  const ang=i=>(-90+i*(360/n))*Math.PI/180;
+  const pt=(i,r)=>[cx+r*Math.cos(ang(i)),cy+r*Math.sin(ang(i))];
+  let h="";
+  [0.25,0.5,0.75,1].forEach(f=>{h+=`<polygon points="${RADAR.map((_,i)=>pt(i,R*f).join(',')).join(' ')}" fill="none" stroke="var(--line)" stroke-width="1"/>`;});
+  RADAR.forEach((a,i)=>{
+    const[x,y]=pt(i,R);
+    h+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`;
+    const[lx,ly]=pt(i,R+20);
+    const anchor=Math.abs(lx-cx)<6?'middle':(lx>cx?'start':'end');
+    h+=`<text x="${lx}" y="${ly}" font-size="11" font-weight="600" fill="var(--ink-soft)" text-anchor="${anchor}" dominant-baseline="middle" font-family="Inter">${a.short}</text>`;
+  });
+  h+=`<polygon points="${RADAR.map((_,i)=>pt(i,R).join(',')).join(' ')}" fill="none" stroke="var(--naranja)" stroke-width="1.5" stroke-dasharray="4 4" opacity=".75"/>`;
+  const pa=RADAR.map((a,i)=>pt(i,R*Math.max(0,Math.min(100,radarVals[a.key]))/100).join(',')).join(' ');
+  h+=`<polygon points="${pa}" fill="rgba(31,111,139,.22)" stroke="var(--azul)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  RADAR.forEach((a,i)=>{const[x,y]=pt(i,R*radarVals[a.key]/100);h+=`<circle cx="${x}" cy="${y}" r="3.5" fill="var(--azul)"/>`;});
+  svg.innerHTML=h;
+}
+
+/* ---------- RESULT ---------- */
+function showResult(){
+  phase="result"; setProg(4);
+  const sh=document.getElementById('scrollhint'); if(sh) sh.classList.remove('show');
+  const p=PRODUCTS[productKey]; if(!p){renderHero();return;}
+
+  // mayor hueco
+  let minV=101,gap=null;
+  RADAR.forEach(a=>{ if(radarVals[a.key]<minV){minV=radarVals[a.key];gap=a;} });
+  const allHigh=RADAR.every(a=>radarVals[a.key]>=100);
+  const gapLabel=gap?gap.full:"";
+
+  const nom=[persona.nombre,persona.apellido].filter(Boolean).join(' ').trim();
+  let msg=`Hola ${AGENTE.nombre}, soy ${nom||'(prospecto)'}`;
+  if(persona.edad) msg+=` (${persona.edad} años)`;
+  msg+=`. Usé tu buscador y me interesa el ${p.nombre}.`;
+  if(persona.ingreso) msg+=` Mi ingreso mensual estimado es ${fmtPeso(persona.ingreso)}.`;
+  if(!allHigh && gapLabel) msg+=` Mi área menos protegida es: ${gapLabel}.`;
+  msg+=` ¿Me puedes dar más información?`;
+  const wa=AGENTE.whatsapp?`https://wa.me/${AGENTE.whatsapp}?text=${encodeURIComponent(msg)}`:"";
+  const mail=AGENTE.email?`mailto:${AGENTE.email}?subject=${encodeURIComponent('Interés: '+p.nombre)}&body=${encodeURIComponent(msg)}`:"";
+
+  // lead al CRM (Google Sheet vía /api/lead) — no bloquea la UI
+  sendLead({
+    fecha:new Date().toISOString(), nombre:persona.nombre, apellido:persona.apellido,
+    edad:persona.edad, ingreso:persona.ingreso, producto:p.nombre, linea:p.linea,
+    hueco:(!allHigh&&gapLabel)?gapLabel:"", origen:"buscador-seguro",
+    respuestas:chosen.join(" | ")
+  });
+
+  const greetName=persona.nombre?`Hola, ${persona.nombre}`:"Tu resultado";
+
+  app.innerHTML=`
+    <section class="result">
+      <h1 class="greet">${greetName}</h1>
+      <p class="greet-sub">Esto es lo que mejor encaja con lo que nos contaste.</p>
+
+      <span class="res-line">Te recomendamos · ${p.linea}</span>
+      <div class="res-card">
+        <div class="res-emoji" aria-hidden="true">${p.emoji}</div>
+        <h2>${p.nombre}</h2>
+        <p class="lead">${p.lead}</p>
+        <div class="why"><div class="t">Por qué encaja contigo</div>
+          <div class="chips">${chosen.map(c=>`<span class="chip">${c}</span>`).join('')}</div></div>
+        <ul class="feat">${p.feat.map(f=>`<li><span class="tick" aria-hidden="true">✓</span><span>${f}</span></li>`).join('')}</ul>
+        ${p.note?`<div class="res-note">${p.note}</div>`:""}
+        <div class="terms"><div class="t">Términos clave (toca el “?” para ver qué significan)</div>
+          <div class="term-chips">${p.terms.map(t=>GLOSARIO[t]?`<span class="term-chip">${GLOSARIO[t][0]} ${helpHTML(t)}</span>`:"").join('')}</div></div>
+      </div>
+
+      <h3 class="section-h">Tu radar de protección</h3>
+      <p class="section-p">Una foto de tus áreas protegidas y las que están descubiertas.</p>
+      <div class="radar-box">
+        <svg id="radarRes" viewBox="0 0 320 300" role="img" aria-label="Tu radar de protección"></svg>
+        <div class="rlegend">
+          <span><i style="background:var(--azul)"></i>Lo que ya tienes</span>
+          <span><i style="background:transparent;outline:1.5px dashed var(--naranja)"></i>Protección ideal</span>
+        </div>
+      </div>
+      <div class="gap-note">${allHigh
+        ? `¡Excelente! Tu protección se ve muy completa. Vale la pena una revisión anual para mantenerla al día.`
+        : `Tu área menos protegida es <b>${gapLabel}</b>. Además del producto que buscas, podríamos revisar este punto para cerrar tu mayor hueco de protección.`}</div>
+
+      <div class="cta" style="margin-top:22px">
+        ${mail?`<a class="btn btn-ghost" href="${mail}">Escribir un correo</a>`:""}
+      </div>
+      <div class="advice">
+        <span class="free">Sin costo · Sin compromiso</span>
+        <h3>Asesoría financiera gratuita</h3>
+        <p>Más allá del seguro: revisamos juntos tu protección, tu ahorro y tu plan a futuro en una sesión de 30 minutos, totalmente gratis. Sales con un plan claro, contrates o no.</p>
+        ${wa?`<a class="btn btn-wa" id="adviceBtn" href="${wa}" target="_blank" rel="noopener">Hablar con ${AGENTE.nombre} por WhatsApp</a>`:""}
+        <p class="cta-note" style="margin-top:10px">Te atenderá ${AGENTE.nombre}, ${AGENTE.rol}.</p>
+      </div>
+      <div class="restart"><button class="back" id="restartBtn">↺ Empezar de nuevo</button></div>
+    </section>`;
+  drawRadar('radarRes');
+  const adv=document.getElementById('adviceBtn');
+  if(adv) adv.addEventListener('click',()=>sendLead({tipo:"evento",evento:"click_whatsapp_agente",origen:"buscador-seguro",extra:p.nombre}));
+  document.getElementById('restartBtn').addEventListener('click',()=>{
+    persona={nombre:"",apellido:"",edad:"",ingreso:""};
+    radarVals={vida:0,gmm:0,auto:0,retiro:0,emerg:0,ingreso:0};
+    radarDone={vida:false,gmm:false,auto:false,retiro:false,emerg:false,ingreso:false};
+    finderHistory=[];chosen=[];productKey=null;stepId="start";
+    renderHero();
+  });
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ==== indicador de deslizar (paso del radar) ==== */
+function showScrollHint(){
+  const sh=document.getElementById('scrollhint');
+  const need=()=>document.documentElement.scrollHeight>window.innerHeight+60;
+  if(!need()){ sh.classList.remove('show'); return; }
+  sh.classList.add('show');
+  const off=()=>{ sh.classList.remove('show'); window.removeEventListener('scroll',off); };
+  setTimeout(()=>window.addEventListener('scroll',off,{passive:true}),200);
+  setTimeout(off,9000); /* se esconde solo tras 9 s */
+}
+
+/* ============================================================
+   TOOLTIPS
+============================================================ */
+const tip=document.getElementById('tip'); let pinned=null;
+const canHover=window.matchMedia('(hover:hover)').matches;
+function showTip(btn){
+  const g=GLOSARIO[btn.dataset.term]; if(!g)return;
+  tip.innerHTML=`<b>${g[0]}</b>${g[1]}`; tip.classList.add('show');
+  const r=btn.getBoundingClientRect(),tw=tip.offsetWidth,th=tip.offsetHeight;
+  let left=Math.max(10,Math.min(r.left+r.width/2-tw/2,window.innerWidth-tw-10));
+  let top=r.bottom+10; if(top+th>window.innerHeight-10) top=r.top-th-10;
+  tip.style.left=left+'px'; tip.style.top=top+'px';
+  tip.style.setProperty('--ax',(r.left+r.width/2-left-6)+'px');
+}
+function hideTip(){tip.classList.remove('show');pinned=null;}
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('.help');
+  if(btn){e.preventDefault(); if(pinned===btn)hideTip(); else{pinned=btn;showTip(btn);} return;}
+  if(pinned&&!e.target.closest('#tip'))hideTip();
+});
+document.addEventListener('mouseover',e=>{if(!canHover)return;const b=e.target.closest('.help');if(b&&!pinned)showTip(b);});
+document.addEventListener('mouseout',e=>{if(!canHover||pinned)return;if(e.target.closest('.help'))hideTip();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideTip();});
+window.addEventListener('scroll',()=>{if(pinned)hideTip();},{passive:true});
+
+/* ============================================================
+   INIT
+============================================================ */
+document.getElementById('foot').innerHTML=
+  `Herramienta orientativa de asesoría de ${AGENTE.nombre}, Agente Profesional en Seguros GNP. La información de productos es general y puede cambiar; la cobertura, condiciones y costo definitivos se confirman en una cotización formal de GNP.`;
+renderHero();
+</script>
+</body>
+</html>

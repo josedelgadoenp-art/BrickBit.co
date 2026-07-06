@@ -180,6 +180,59 @@ def frente_de_onda(v: np.ndarray, pares: tuple) -> np.ndarray:
     return (z < -0.05) & (lag > 0.15)
 
 
+RUTA_PRECIOS = os.path.join(_DIR, "data", "precios_zonas.csv")
+
+
+@st.cache_data
+def precios_reales() -> pd.DataFrame | None:
+    """
+    Anclajes de precio REALES muestreados de portales inmobiliarios
+    (scripts/ingerir_precios.py). None si aún no se han ingerido.
+    """
+    if not os.path.exists(RUTA_PRECIOS):
+        return None
+    df = pd.read_csv(RUTA_PRECIOS)
+    # mediana entre portales por zona (más robusta que un portal único)
+    agg = df.groupby(["zona", "lat", "lng"], as_index=False) \
+        .agg(precio_m2=("precio_m2_mediano", "median"),
+             n_muestras=("n_muestras", "sum"))
+    # control de calidad: un ancla necesita ≥8 muestras para usarse
+    agg = agg[agg["n_muestras"] >= 8]
+    return agg if not agg.empty else None
+
+
+def calibrar_con_precios(lng: np.ndarray, lat: np.ndarray,
+                         precio_sint: np.ndarray
+                         ) -> tuple[np.ndarray, int]:
+    """
+    Calibra el precio sintético contra los anclajes reales: ajusta el nivel
+    global (mediana de ratios reales/sintéticos en las zonas ancla) y aplica
+    una corrección local que decae con la distancia a cada ancla. Devuelve
+    (precio calibrado, n_zonas ancla usadas). Sin anclas, devuelve intacto.
+    """
+    anc = precios_reales()
+    if anc is None or anc.empty:
+        return precio_sint, 0
+    ax, ay = anc["lng"].to_numpy(), anc["lat"].to_numpy()
+    ap_ = anc["precio_m2"].to_numpy(dtype=float)
+    # ratio real/sintético en la celda más cercana a cada ancla
+    ratios = []
+    for x, y, pr in zip(ax, ay, ap_):
+        d = np.hypot(lng - x, lat - y)
+        j = int(np.argmin(d))
+        if d[j] < 0.03 and precio_sint[j] > 0:      # ancla dentro de ~3 km
+            ratios.append(pr / precio_sint[j])
+    if not ratios:
+        return precio_sint, 0
+    factor = float(np.median(ratios))
+    p = precio_sint * factor
+    # corrección local suave hacia cada ancla (kernel gaussiano ~1.2 km)
+    for x, y, pr in zip(ax, ay, ap_):
+        w = np.exp(-((lng - x) ** 2 + (lat - y) ** 2) / (2 * 0.011 ** 2))
+        p = p * (1 - 0.6 * w) + pr * 0.6 * w
+    return p.round(0), len(ratios)
+
+
 def score_brickbit(v_t: np.ndarray, v0: np.ndarray, potencial: np.ndarray,
                    tasa: np.ndarray) -> np.ndarray:
     """
@@ -482,6 +535,18 @@ def datos_municipales() -> pd.DataFrame:
         df.loc[tiene, "potencial_crecimiento"] = np.clip(
             0.45 * potencial + 0.30 * anillo + 0.25 * ind, 0.02, 1
         )[tiene].round(3)
+
+        # 🏚 estancamiento: municipios urbanos cuyo tejido NO se renueva
+        # (tasa de aperturas recientes por negocio en el percentil más bajo)
+        alta = pd.read_csv(ruta, dtype={"cvegeo": str})[
+            ["cvegeo", "altas_recientes"]]
+        df = df.merge(alta, on="cvegeo", how="left")
+        df["altas_recientes"] = df["altas_recientes"].fillna(0)
+        renovacion = df["altas_recientes"] / df["n_estab"].clip(lower=1)
+        urbano = df["n_estab"] >= 300
+        umbral = renovacion[urbano].quantile(0.15) if urbano.any() else 0
+        df["tasa_renovacion"] = renovacion.round(4)
+        df["estancado"] = urbano & (renovacion <= umbral)
     return df
 
 
@@ -1200,6 +1265,11 @@ def datos_cp() -> pd.DataFrame:
             0.55 * potencial + 0.25 * (1 - vital) + 0.20 * ind, 0.02, 1
         )[tiene].round(3)
 
+    # 💰 calibración contra anclajes de precio REALES (si fueron muestreados)
+    df["precio_actual"], df.attrs["anclas_precio"] = calibrar_con_precios(
+        df["lng"].to_numpy(), df["lat"].to_numpy(),
+        df["precio_actual"].to_numpy(dtype=float))
+
     # 🛰 Señal alternativa auto-detectada: presión Airbnb por CP
     # (generada por scripts/ingerir_senales.py con datos de InsideAirbnb)
     ruta_abnb = os.path.join(_DIR, "data", "senal_airbnb_cdmx.csv")
@@ -1506,6 +1576,19 @@ def expediente_calles(suffix: str = "azcapotzalco") -> pd.DataFrame:
     p = mix.div(mix.sum(axis=1), axis=0).clip(lower=1e-9)
     entropia = (-(p * np.log(p)).sum(axis=1) / math.log(len(SECTORES)))
     df["resiliencia"] = df["nombre"].map(entropia).fillna(0.0).round(3)
+
+    # 💰 calibración contra anclajes de precio REALES (si fueron muestreados)
+    df["valor_actual"], df.attrs["anclas_precio"] = calibrar_con_precios(
+        mids[:, 0], mids[:, 1], df["valor_actual"].to_numpy(dtype=float))
+
+    # 🏚 riesgo de estancamiento por calle: tejido antiguo sin aperturas
+    if "anio" in estab.columns:
+        rec = estab[estab["anio"] >= estab["anio"].quantile(0.6)] \
+            .groupby("calle").size()
+        df["altas_rec"] = df["nombre"].map(rec).fillna(0).astype(int)
+        df["estancada"] = ((df["altas_rec"] == 0) & (df["n_estab"] >= 10))
+    else:
+        df["altas_rec"], df["estancada"] = 0, False
     return df
 
 
@@ -1823,11 +1906,22 @@ def _tabla_ranking(tabla: pd.DataFrame, año: float) -> None:
 
 
 def tab_trayectorias(valores: np.ndarray, año: float,
-                     nombres: pd.Series, titulo: str) -> None:
-    """Evolución proyectada del precio: las 8 mutaciones más agresivas."""
+                     nombres: pd.Series, titulo: str,
+                     banda: np.ndarray = None) -> None:
+    """Evolución proyectada del precio: las 8 mutaciones más agresivas,
+    con banda de confianza P10–P90 (Monte Carlo) para la líder."""
     acum = valores[-1] / valores[0] - 1
     top = np.argsort(acum)[::-1][:8]
     fig = go.Figure()
+    if banda is not None:                       # banda de la unidad líder
+        i0 = int(top[0])
+        xs = list(range(AÑOS + 1))
+        fig.add_trace(go.Scatter(
+            x=xs + xs[::-1],
+            y=list(banda[2, :, i0]) + list(banda[0, :, i0])[::-1],
+            fill="toself", fillcolor="rgba(205,242,90,0.13)",
+            line=dict(width=0), hoverinfo="skip",
+            name=f"P10–P90 · {str(nombres.iloc[i0])[:22]}"))
     for c, i in zip(NEON, top):
         fig.add_trace(go.Scatter(
             x=list(range(AÑOS + 1)), y=valores[:, i],
@@ -1921,11 +2015,11 @@ def descomponer_crecimiento(idx: int, v0, potencial, g_propio,
 
 
 def tab_origen(nombres: pd.Series, args_sar: dict, idx_defecto: int,
-               unidad: str) -> None:
+               unidad: str, banda: np.ndarray = None) -> None:
     """
     Pestaña '¿De dónde viene el crecimiento?': elige una unidad y el motor
     desglosa su plusvalía en crecimiento propio vs contagio, identificando a
-    los vecinos exactos que lo bombean.
+    los vecinos exactos que lo bombean. Con rango de confianza P10–P90.
     """
     opciones = list(nombres)
     sel = st.selectbox(f"Elige {unidad} para auditar su crecimiento",
@@ -1938,13 +2032,19 @@ def tab_origen(nombres: pd.Series, args_sar: dict, idx_defecto: int,
     total = total_p + total_c + 1e-9
     v0 = float(np.asarray(args_sar["v0"])[idx])
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("📈 Crecimiento total a 10 años",
-              f"+${total:,.0f} /m²", f"+{total / v0 * 100:.0f}% sobre hoy")
-    c2.metric("🌱 Crecimiento propio", f"{total_p / total * 100:.0f}%",
-              "plusvalía/vitalidad intrínseca")
-    c3.metric("🧬 Contagio vecinal", f"{total_c / total * 100:.0f}%",
-              f"desde {len(vecinos)} vecinos directos")
+    cols = st.columns(4 if banda is not None else 3)
+    cols[0].metric("📈 Crecimiento total a 10 años",
+                   f"+${total:,.0f} /m²", f"+{total / v0 * 100:.0f}% sobre hoy")
+    cols[1].metric("🌱 Crecimiento propio", f"{total_p / total * 100:.0f}%",
+                   "plusvalía/vitalidad intrínseca")
+    cols[2].metric("🧬 Contagio vecinal", f"{total_c / total * 100:.0f}%",
+                   f"desde {len(vecinos)} vecinos directos")
+    if banda is not None:
+        p10 = (banda[0, -1, idx] / v0 - 1) * 100
+        p90 = (banda[2, -1, idx] / v0 - 1) * 100
+        cols[3].metric("🎲 Rango de confianza (10a)",
+                       f"+{p10:.0f}% a +{p90:.0f}%",
+                       "P10–P90 · Monte Carlo n=24")
 
     col_a, col_b = st.columns(2)
     with col_a:
@@ -2012,6 +2112,109 @@ célula aún barata) rinde más que comprar el núcleo ya consolidado.
 con datos {'reales DENUE' if hay_datos_denue() else 'simulados'} —
 no es asesoría de inversión.</span>
         """, unsafe_allow_html=True)
+
+    # ── 📄 Dossier descargable de la unidad (entregable de asesoría) ─────────
+    from datetime import date as _date
+    dossier = f"""# Dossier BrickBit — {sel}
+*Generado por el Motor de Morfogénesis Urbana · {_date.today().isoformat()}*
+
+## Resumen ejecutivo
+- **Valor hoy:** ${v0:,.0f}/m² → **proyección 10 años:** ${v0 + total:,.0f}/m² (+{total / v0 * 100:.0f}%)
+{"- **Rango de confianza (P10–P90):** +" + f"{(banda[0, -1, idx] / v0 - 1) * 100:.0f}% a +{(banda[2, -1, idx] / v0 - 1) * 100:.0f}%" if banda is not None else ""}
+- **Anatomía:** {total_p / total * 100:.0f}% crecimiento propio · {total_c / total * 100:.0f}% contagio de {len(vecinos)} vecinos
+- **Vector dominante:** {lider} ({pct_lider:.0f}% del contagio)
+
+## Desglose anual (MXN/m²)
+```
+{df_a.round(0).to_string(index=False)}
+```
+
+## Top vecinos que bombean el crecimiento
+```
+{pd.DataFrame({"Vecino": [str(nombres.iloc[v]) for v in vecinos[np.argsort(aporte_vec)[::-1][:8]]], "Aporte MXN/m²": np.sort(aporte_vec)[::-1][:8].round(0)}).to_string(index=False)}
+```
+
+---
+*Metodología: modelo espacial autorregresivo (SAR) sobre contigüidad
+geográfica real; vitalidad económica del DENUE/INEGI. Las proyecciones son
+simulaciones calibradas, no garantía de rendimiento. Este documento no
+constituye asesoría de inversión en términos de la regulación aplicable.*
+"""
+    st.download_button("⬇ Descargar dossier (Markdown)", dossier,
+                       file_name=f"dossier_brickbit_{sel[:30].replace(' ', '_')}.md",
+                       mime="text/markdown")
+
+
+def _banda(args: dict, n: int = 24) -> np.ndarray:
+    """
+    Bandas de confianza por Monte Carlo: re-corre el SAR n veces perturbando
+    ρ (±20%), el potencial (σ=0.05) y el crecimiento propio (±15%). Devuelve
+    percentiles [P10, P50, P90] × años × células. Sin esto no hay asesoría:
+    un número sin rango es una adivinanza con buena tipografía.
+    """
+    rng = np.random.default_rng(SEMILLA + 11)
+    sims = []
+    for _ in range(n):
+        a = dict(args)
+        a["rho"] = args["rho"] * rng.uniform(0.80, 1.20)
+        a["potencial"] = np.clip(np.asarray(args["potencial"], dtype=float)
+                                 + rng.normal(0, 0.05,
+                                              len(args["potencial"])), 0, 1.35)
+        a["g_propio"] = np.asarray(args["g_propio"],
+                                   dtype=float) * rng.uniform(0.85, 1.15)
+        sims.append(_sar(**a))
+    return np.percentile(np.stack(sims), [10, 50, 90], axis=0)
+
+
+@st.cache_data(show_spinner="🎲 Calculando bandas de confianza…")
+def banda_municipios(rho: float, det: str, clic: tuple = None) -> np.ndarray:
+    return _banda(_args_municipios(rho, det, clic))
+
+
+@st.cache_data(show_spinner="🎲 Calculando bandas de confianza…")
+def banda_calles(rho: float, det: str, clic: tuple = None,
+                 suffix: str = "azcapotzalco") -> np.ndarray:
+    return _banda(_args_calles(rho, det, clic, suffix))
+
+
+def tab_estancamiento(valores: np.ndarray, año: float) -> None:
+    """
+    🏚 El lado oscuro del crecimiento: municipios urbanos cuyo tejido
+    económico NO se renueva. El inverso del sismógrafo — alerta temprana de
+    declive para riesgo crediticio y para NO recomendar una zona.
+    """
+    df = datos_municipales()
+    if "estancado" not in df.columns or not df["estancado"].any():
+        st.info("Requiere la vitalidad real del DENUE (denue_municipal.csv).")
+        return
+    est = df[df["estancado"]].copy()
+    est = est.sort_values("tasa_renovacion")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("🏚 Municipios en estancamiento", f"{len(est)}",
+              "urbanos, renovación en percentil 15")
+    c2.metric("🧊 Renovación mediana (estancados)",
+              f"{est['tasa_renovacion'].median() * 100:.1f}%",
+              f"vs {df.loc[df['n_estab'] >= 300, 'tasa_renovacion'].median() * 100:.1f}% urbano nacional")
+    peor = est.iloc[0]
+    c3.metric("⚠ Caso más frío", f"{peor['municipio']}",
+              f"{peor['estado']} · {peor['tasa_renovacion'] * 100:.1f}% renovación")
+    st.dataframe(
+        est.head(25)[["municipio", "estado", "n_estab", "empleo",
+                      "altas_recientes", "tasa_renovacion", "resiliencia"]]
+        .rename(columns={"municipio": "Municipio", "estado": "Estado",
+                         "n_estab": "Negocios", "empleo": "Empleo",
+                         "altas_recientes": "Aperturas recientes",
+                         "tasa_renovacion": "Tasa de renovación",
+                         "resiliencia": "Resiliencia"}),
+        hide_index=True, width="stretch",
+        column_config={"Tasa de renovación": st.column_config.NumberColumn(
+            format="percent")})
+    st.markdown(
+        "<div class='leyenda'>🏦 Uso en asesoría: una zona estancada con "
+        "precio 'atractivo' es una trampa de valor — el motor la penaliza y "
+        "esta lista la expone. También es señal de riesgo para colaterales "
+        "hipotecarios. Datos: aperturas recientes del DENUE por negocio "
+        "existente.</div>", unsafe_allow_html=True)
 
 
 def tab_gemelos(nombres: pd.Series, X: np.ndarray, idx_defecto: int,
@@ -2162,11 +2365,176 @@ def _validacion_contagio(suffix: str = "azcapotzalco") -> None:
               f"corte temporal {v['corte']}")
 
 
+# Giros B2B detectables por palabra clave en el nombre real del negocio
+GIROS_B2B = {
+    "💊 Farmacia": ["FARMACIA"],
+    "☕ Cafetería": ["CAFE", "CAFETERIA"],
+    "🏋 Gimnasio": ["GIMNASIO", "GYM", "FITNESS", "CROSSFIT"],
+    "🐕 Veterinaria": ["VETERINAR"],
+    "🥖 Panadería": ["PANADERIA"],
+    "🔧 Ferretería": ["FERRETER"],
+    "🧺 Lavandería": ["LAVANDER"],
+    "🦷 Dental": ["DENTAL", "DENTISTA", "ODONT"],
+    "📄 Papelería": ["PAPELER"],
+    "🌮 Tortillería": ["TORTILLER"],
+}
+
+
+@st.cache_data(show_spinner="📍 Buscando la ubicación óptima…")
+def ubicacion_optima(suffix: str, giro: str) -> pd.DataFrame | None:
+    """
+    📍 MOTOR DE UBICACIÓN B2B: rejilla ~300 m sobre la ciudad; demanda =
+    empleo del entorno (clientela cautiva real del DENUE), oferta =
+    competidores del giro detectados por nombre. Score = demanda sin atender.
+    """
+    calles, estab, real = cargar_red_vial(suffix)
+    if not real:
+        return None
+    kws = GIROS_B2B[giro]
+    nom = estab["nombre"].fillna("").str.upper()
+    es_comp = nom.apply(lambda s: any(k in s for k in kws))
+
+    paso = 0.0028
+    gx = np.round(estab["lng"].to_numpy() / paso).astype(int)
+    gy = np.round(estab["lat"].to_numpy() / paso).astype(int)
+    celda = pd.DataFrame({"gx": gx, "gy": gy,
+                          "empleo": estab["empleo"].to_numpy(),
+                          "comp": es_comp.to_numpy()})
+    agg = celda.groupby(["gx", "gy"]).agg(
+        empleo=("empleo", "sum"), comp=("comp", "sum"),
+        n=("empleo", "size")).reset_index()
+    axv, ayv = agg["gx"].to_numpy(), agg["gy"].to_numpy()
+    emp, comp = agg["empleo"].to_numpy(float), agg["comp"].to_numpy(float)
+    dem_v, of_v = np.zeros(len(agg)), np.zeros(len(agg))
+    for i in range(len(agg)):          # vecindad reina en la rejilla
+        m = (np.abs(axv - axv[i]) <= 1) & (np.abs(ayv - ayv[i]) <= 1)
+        dem_v[i], of_v[i] = emp[m].sum(), comp[m].sum()
+    agg["demanda"], agg["competidores"] = dem_v.astype(int), of_v.astype(int)
+    agg = agg[agg["n"] >= 8]           # solo zonas con tejido comercial real
+    agg["score"] = norm01(np.log1p(agg["demanda"].to_numpy())
+                          / (1 + 1.2 * agg["competidores"].to_numpy()))
+    agg["lng"] = (agg["gx"] + 0.5) * paso
+    agg["lat"] = (agg["gy"] + 0.5) * paso
+
+    # nombra cada celda con su calle más cercana
+    mids = np.array([np.mean(c, axis=0) for c in calles["camino"]])
+    idx = [int(np.argmin(np.hypot(mids[:, 0] - x, mids[:, 1] - y)))
+           for x, y in zip(agg["lng"], agg["lat"])]
+    agg["calle"] = calles["nombre"].to_numpy()[idx]
+    return agg.nlargest(10, "score").reset_index(drop=True)
+
+
+@st.cache_data(show_spinner="🧪 Midiendo el impacto real de las anclas…")
+def impacto_anclas(suffix: str) -> pd.DataFrame | None:
+    """
+    🧪 EVENT STUDY con datos reales: para cada gran empleador que abrió entre
+    2022 y 2024, compara la tasa de aperturas a <400 m ANTES vs DESPUÉS de su
+    llegada, normalizada por la tendencia de toda la ciudad (diferencia en
+    diferencias simple). El 'multiplicador de atracción' deja de ser un
+    supuesto del simulador: se MIDE.
+    """
+    _, estab, real = cargar_red_vial(suffix)
+    if not real or "anio" not in estab.columns:
+        return None
+    e = estab.dropna(subset=["anio", "lng", "lat"]).copy()
+    e["anio"] = e["anio"].astype(int)
+    tot = e.groupby("anio").size()
+    anclas = e[(e["empleo"] >= 75) & e["anio"].between(2022, 2024)]
+    lng, lat, an = e["lng"].to_numpy(), e["lat"].to_numpy(), e["anio"].to_numpy()
+    filas = []
+    for _, a in anclas.iterrows():
+        d = np.hypot(lng - a["lng"], lat - a["lat"])
+        cerca = (d < 0.004) & (d > 1e-9)         # ~400 m, sin contar el ancla
+        y = int(a["anio"])
+        antes_l = int(((an >= y - 2) & (an <= y - 1) & cerca).sum())
+        desp_l = int(((an >= y + 1) & (an <= y + 2) & cerca).sum())
+        antes_c = int(tot.reindex(range(y - 2, y), fill_value=0).sum())
+        desp_c = int(tot.reindex(range(y + 1, y + 3), fill_value=0).sum())
+        if antes_l >= 3 and antes_c > 0 and desp_c > 0 and desp_l > 0:
+            mult = (desp_l / antes_l) / (desp_c / antes_c)
+            filas.append({"Ancla": str(a["nombre"]).title()[:34],
+                          "Año llegada": y,
+                          "Aperturas antes (2a)": antes_l,
+                          "Aperturas después (2a)": desp_l,
+                          "Multiplicador medido": round(mult, 2)})
+    if not filas:
+        return pd.DataFrame()
+    return pd.DataFrame(filas).sort_values("Multiplicador medido",
+                                           ascending=False)
+
+
+def tab_impacto(suffix: str) -> None:
+    """🧪 El detonante deja de ser hipótesis: impacto medido de anclas reales."""
+    df = impacto_anclas(suffix)
+    if df is None:
+        st.info("Requiere datos reales del DENUE con año de alta.")
+        return
+    if df.empty:
+        st.info("Esta ciudad no tiene suficientes anclas grandes (75+ "
+                "empleos) llegadas en 2022-2024 con tejido previo medible. "
+                "Prueba otra ciudad (las metrópolis grandes tienen más).")
+        return
+    med = float(df["Multiplicador medido"].median())
+    c1, c2, c3 = st.columns(3)
+    c1.metric("🧲 Multiplicador de atracción medido", f"{med:.2f}×",
+              "mediana de anclas reales")
+    c2.metric("⚓ Anclas analizadas", f"{len(df)}",
+              "grandes empleadores 2022-2024")
+    c3.metric("📐 Método", "Dif-en-dif",
+              "±2 años · <400 m · vs tendencia ciudad")
+    st.dataframe(df.head(15), hide_index=True, width="stretch",
+                 column_config={"Multiplicador medido":
+                                st.column_config.NumberColumn(format="%.2f×")})
+    lectura = ("las anclas ACELERAN la apertura de negocios a su alrededor"
+               if med > 1.05 else
+               "en esta ciudad las anclas no muestran efecto acelerador claro"
+               if med < 0.95 else
+               "el efecto de las anclas es neutro en esta ciudad")
+    st.markdown(
+        f"<div class='leyenda'>💡 Un multiplicador de {med:.2f}× significa "
+        f"que, tras llegar un gran empleador, la zona a 400 m abrió negocios "
+        f"a {med:.2f} veces el ritmo esperado por la tendencia de la ciudad: "
+        f"{lectura}. Este número MEDIDO es el que justifica la 'fuerza' del "
+        f"catalizador en el simulador. Nota: usa cohortes de registro del "
+        f"DENUE (2020+), no fechas de operación exactas.</div>",
+        unsafe_allow_html=True)
+
+
 def tab_huecos(suffix: str = "azcapotzalco") -> None:
     """🕳 Radar de huecos de mercado: dónde hay demanda (empleo/vitalidad)
     sin oferta de un giro — inteligencia B2B para retail y franquicias."""
     df = expediente_calles(suffix)
     _, estab, es_real = cargar_red_vial(suffix)
+
+    # ── 📍 Ubicación óptima por giro (con nombres reales del DENUE) ──────────
+    if es_real:
+        giro = st.selectbox("📍 ¿Qué giro quieres abrir?",
+                            list(GIROS_B2B.keys()), key=f"giro_{suffix}")
+        top = ubicacion_optima(suffix, giro)
+        if top is not None and not top.empty:
+            c1, c2 = st.columns([3, 2])
+            with c1:
+                st.dataframe(
+                    top[["calle", "demanda", "competidores", "score"]].rename(
+                        columns={"calle": "Zona (calle más cercana)",
+                                 "demanda": "Empleos en el entorno",
+                                 "competidores": f"Competidores {giro}",
+                                 "score": "Score de hueco"}),
+                    hide_index=True, width="stretch",
+                    column_config={"Score de hueco":
+                                   st.column_config.ProgressColumn(
+                                       min_value=0, max_value=1)})
+            with c2:
+                st.metric("🥇 Mejor ubicación", str(top["calle"].iloc[0])[:28],
+                          f"{int(top['demanda'].iloc[0]):,} empleos cerca · "
+                          f"{int(top['competidores'].iloc[0])} competidores")
+                st.markdown(
+                    "<div class='leyenda'>Demanda = empleo real del DENUE en "
+                    "un radio de ~450 m (clientela cautiva). Competidores = "
+                    "negocios del giro detectados por su nombre real. El "
+                    "score premia demanda alta sin oferta.</div>",
+                    unsafe_allow_html=True)
+        st.markdown("---")
     oferta = estab.groupby(["calle", "sector"]).size().unstack(fill_value=0)
     filas = []
     for _, c in df.iterrows():
@@ -2193,6 +2561,29 @@ def tab_huecos(suffix: str = "azcapotzalco") -> None:
                 + (" (demo etiquetada)" if not es_real else "")
                 + "</div>", unsafe_allow_html=True)
 
+
+TEXTO_METODOLOGIA = f"""
+---
+#### 📜 Metodología, fuentes y alcance (léase antes de decidir nada)
+
+| Capa | ¿Real o simulada? | Fuente |
+|---|---|---|
+| Establecimientos, empleo, giros, fechas de alta | **REAL** | DENUE/INEGI (corte vigente) |
+| Geometría de estados, municipios, CP y calles | **REAL** | INEGI · SEPOMEX · DENUE |
+| Contagio espacial (término ρ·W·v) | **VALIDADO** | r=0.41 out-of-sample vs DENUE |
+| Multiplicador de anclas | **MEDIDO** | dif-en-dif sobre cohortes DENUE |
+| Precio base | **SINTÉTICO*** | gradiente + densidad económica real |
+| Proyección a 10 años | **SIMULACIÓN** | SAR con bandas Monte Carlo P10–P90 |
+
+\\* Se calibra automáticamente contra anclajes de precio reales cuando
+existen (`scripts/ingerir_precios.py` o datos propios de BrickBit).
+
+**Aviso legal:** esta herramienta produce análisis estadístico exploratorio
+con fines informativos. No constituye asesoría, recomendación de inversión
+ni oferta de valores en términos de la LMV ni de la regulación CNBV
+aplicable. Rendimientos pasados o simulados no garantizan rendimientos
+futuros. Verifica cualquier decisión con un asesor certificado.
+"""
 
 TEXTO_MODELO = f"""
 **La República no es un mapa: es un organismo.** Cada unidad (estado,
@@ -2484,16 +2875,19 @@ def main() -> None:
                     float(vv.shape[0] - 1), clic_activo, "deck_mun")
 
         nombres_m = df_m["municipio"] + " · " + df_m["estado"]
-        t1, t2, t3, t4, t5, t6, t7 = st.tabs(
+        banda_m = banda_municipios(rho, detonante, clic)
+        t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs(
             ["🏆 Ranking municipal", "🔎 Origen del crecimiento",
-             "🧬 Gemelos de ADN", "💼 Carteras por tesis",
+             "🏚 Estancamiento", "🧬 Gemelos de ADN", "💼 Carteras por tesis",
              "📈 Trayectorias 10 años", "⚗️ Nube de fases", "🔬 El modelo"])
         with t1:
             tab_ranking_municipios(valores, año, score)
         with t2:
             tab_origen(nombres_m, _args_municipios(rho, detonante, clic),
-                       mutante, "el municipio")
+                       mutante, "el municipio", banda_m)
         with t3:
+            tab_estancamiento(valores, año)
+        with t4:
             acum10 = valores[-1] / valores[0] - 1
             X = np.column_stack([
                 norm01(df_m["precio_actual"]),
@@ -2501,16 +2895,18 @@ def main() -> None:
                 norm01(df_m["dist_zm_km"]), norm01(acum10),
                 score / 10])
             tab_gemelos(nombres_m, X, mutante, "el municipio")
-        with t4:
-            tab_carteras(valores)
         with t5:
+            tab_carteras(valores)
+        with t6:
             tab_trayectorias(valores, año,
                              df_m["municipio"] + " (" + df_m["estado"] + ")",
-                             "🧬 Trayectoria de precios — top 8 municipios en mutación")
-        with t6:
-            tab_fases_municipios(valores, año)
+                             "🧬 Trayectoria de precios — top 8 municipios en mutación",
+                             banda_m)
         with t7:
+            tab_fases_municipios(valores, año)
+        with t8:
             st.markdown(TEXTO_MODELO)
+            st.markdown(TEXTO_METODOLOGIA)
 
     # ══ REPÚBLICA · ESTADOS ═══════════════════════════════════════════════════
     elif escala.startswith("🇲🇽"):
@@ -2575,6 +2971,7 @@ def main() -> None:
             tab_fases_estados(valores, año)
         with t6:
             st.markdown(TEXTO_MODELO)
+            st.markdown(TEXTO_METODOLOGIA)
 
     # ══ CDMX · CÓDIGOS POSTALES (SEPOMEX real) ════════════════════════════════
     elif escala.startswith("🏘"):
@@ -2627,6 +3024,7 @@ def main() -> None:
                              "🧬 Trayectoria de precios — top 8 CP en mutación")
         with t4:
             st.markdown(TEXTO_MODELO)
+            st.markdown(TEXTO_METODOLOGIA)
             st.caption("Polígonos postales reales de SEPOMEX (vía "
                        "open-mexico/mexico-geojson); precio y potencial "
                        "sintetizados desde los núcleos premium y corredores "
@@ -2651,6 +3049,11 @@ def main() -> None:
                        f"{len(estab_df):,} establecimientos y {len(calles_df)} "
                        "calles reales, con anclas económicas derivadas del "
                        "empleo observado.")
+            anc_p = precios_reales()
+            if anc_p is not None:
+                st.info(f"💰 Precios calibrados con **{len(anc_p)} zonas "
+                        f"ancla reales** de portales inmobiliarios "
+                        f"({int(anc_p['n_muestras'].sum())} anuncios muestreados).")
         else:
             st.warning("🧪 **RED DE DEMOSTRACIÓN** — geometría sintética. "
                        "Ingiere un municipio real con "
@@ -2679,26 +3082,43 @@ def main() -> None:
         render_mapa(lienzo, fabricar, año_idx, reproducir, 60,
                     float(vv.shape[0] - 1), clic_activo, f"deck_calle_{suf}")
 
-        t1, t2, t3, t4, t5, t6, t7 = st.tabs(
+        banda_c = banda_calles(rho, detonante, clic, suf)
+        t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs(
             ["🔎 Origen del crecimiento", "🌡 Sismógrafo",
-             "🕳 Huecos de mercado", "🧬 Gemelos de ADN",
+             "🧪 Impacto medido", "📍 Ubicación B2B", "🧬 Gemelos de ADN",
              "🏆 Ranking de calles", "📈 Trayectorias", "🔬 El modelo"])
         with t1:
             tab_origen(calles_df["nombre"],
                        _args_calles(rho, detonante, clic, suf),
-                       mutante, "la calle")
+                       mutante, "la calle", banda_c)
         with t2:
             tab_sismografo(suf)
+            if es_real and "estancada" in calles_df.columns \
+                    and calles_df["estancada"].any():
+                st.markdown("#### 🏚 Calles en riesgo de estancamiento")
+                est_c = calles_df[calles_df["estancada"]] \
+                    .nlargest(12, "n_estab")
+                st.dataframe(
+                    est_c[["nombre", "n_estab", "empleo", "altas_rec"]]
+                    .rename(columns={"nombre": "Calle", "n_estab": "Negocios",
+                                     "empleo": "Empleos",
+                                     "altas_rec": "Aperturas recientes"}),
+                    hide_index=True, width="stretch")
+                st.caption("Tejido establecido (10+ negocios) sin UNA sola "
+                           "apertura reciente: el inverso del sismógrafo — "
+                           "alerta de declive.")
         with t3:
-            tab_huecos(suf)
+            tab_impacto(suf)
         with t4:
+            tab_huecos(suf)
+        with t5:
             mezcla = pd.get_dummies(calles_df["sector"]).to_numpy(dtype=float)
             X = np.column_stack([
                 calles_df["vitalidad"], calles_df["cercania_ancla"],
                 calles_df["resiliencia"], mezcla,
                 norm01(valores[-1] / valores[0] - 1), score / 10])
             tab_gemelos(calles_df["nombre"], X, mutante, "la calle")
-        with t5:
+        with t6:
             tabla = pd.DataFrame({
                 "Calle": calles_df["nombre"],
                 "Score BrickBit": score,
@@ -2712,12 +3132,14 @@ def main() -> None:
                 "Potencial": calles_df["potencial_crecimiento"],
             }).sort_values("Plusvalía acumulada", ascending=False)
             _tabla_ranking(tabla, año)
-        with t6:
-            tab_trayectorias(valores, año, calles_df["nombre"],
-                             "🧬 Trayectoria — top 8 calles en mutación")
         with t7:
+            tab_trayectorias(valores, año, calles_df["nombre"],
+                             "🧬 Trayectoria — top 8 calles en mutación",
+                             banda_c)
+        with t8:
             _validacion_contagio(suf)
             st.markdown(TEXTO_MODELO)
+            st.markdown(TEXTO_METODOLOGIA)
             st.caption("A esta escala, el crecimiento NACE de la actividad "
                        "económica observable: cada negocio suma vitalidad a "
                        "su calle, las anclas (los focos de empleo reales del "

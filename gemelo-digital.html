@@ -449,7 +449,7 @@
       <button class="btn btn-ghost" id="btnReport">📄 Reporte ejecutivo (PDF) <span class="help" tabindex="0" data-tip="Genera un documento imprimible con todo el análisis: geometría, materiales, fallas e inversión. Ideal para llevarlo al banco o a inversionistas. En el diálogo de impresión elige “Guardar como PDF”.">?</span></button>
       <button class="btn btn-ghost" id="btnRecord">🎬 Video órbita <span class="help" tabindex="0" data-tip="Graba 10 segundos del gemelo girando en 360° y descarga un video .webm listo para redes, presentaciones o inversionistas.">?</span></button>
       <button class="btn btn-ghost" id="btnShare">🔗 Compartir proyecto <span class="help" tabindex="0" data-tip="Crea un enlace para que tu arquitecto, socio o cliente vea este análisis completo sin instalar nada ni usar llaves.">?</span></button>
-      <a class="btn btn-ghost" href="comparar.html">Comparar proyectos →</a>
+      <a class="btn btn-ghost" href="comparar-proyectos.html">Comparar proyectos →</a>
       <a class="btn btn-ghost" id="btnZona3d" href="zona3d.html">🌍 Ver en zona 3D <span class="help" tabindex="0" data-tip="Abre la vista inmersiva fotorrealista de BrickBit y coloca este proyecto sobre el mapa real de la ciudad, con su simulador 4D integrado.">?</span></a>
     </div>
     <div class="share-box" id="shareBox">
@@ -583,7 +583,7 @@
     <p class="sub">Cada análisis terminado se guarda en este navegador. Compara dos versiones de un plano o proyectos distintos lado a lado: geometría, materiales, costo y predicción de fallas.</p>
     <div id="projList"></div>
     <div style="margin-top:18px">
-      <a class="btn btn-primary" href="comparar.html">Comparar proyectos →</a>
+      <a class="btn btn-primary" href="comparar-proyectos.html">Comparar proyectos →</a>
     </div>
   </section>
 
@@ -631,7 +631,7 @@ const ANTHROPIC_MODEL = 'claude-opus-4-8';
    Config de llaves
 ===================================================================== */
 $('anthropicKey').value = localStorage.getItem('bb_anthropic_key') || '';
-$('gmapsKey').value     = localStorage.getItem('bb_gmaps_key') || '';
+$('gmapsKey').value     = localStorage.getItem('bb_gmaps_key') || 'AIzaSyC15vodxaWS_VyFiqlRUwYlTtXyKUkSW5o';
 $('backendUrl').value   = localStorage.getItem('bb_backend_url') || '';
 
 $('btnSaveKeys').addEventListener('click', () => {

@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "fase": 3,
+    "generado": "2026-06-15T23:50:23+00:00",
+    "fuentes": [],
+    "n_listados": 0,
+    "aviso": "Sin listados reales conectados. El precio/m² proviene del valor mediano real de la SHF (anclado en estados.json). Conecta un feed real (convenio, inventario propio o API de Mercado Libre) con etl/build_listados.py para sobrescribir con precios de oferta del mercado."
+  },
+  "zonas": {}
+}
