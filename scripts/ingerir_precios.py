@@ -55,32 +55,89 @@ PAUSA_SEG = 4          # pausa entre peticiones — NO bajar
 PAGINAS_MAX = 2        # páginas por zona/portal — NO subir
 MUESTRAS_MAX = 40      # anuncios por zona/portal
 
-# Zonas de calibración (nombre, lat, lng, slug de búsqueda aproximado)
+# Zonas de calibración: nombre, lat, lng, ruta de Casas y Terrenos
+# (estado/municipio/tipo — verificada) y slug genérico para otros portales.
+# rutas canónicas del sitemap de Casas y Terrenos (CDMX = "df", con acentos)
 ZONAS = [
-    ("Polanco · CDMX", 19.433, -99.190, "polanco"),
-    ("Condesa · CDMX", 19.412, -99.172, "condesa"),
-    ("Del Valle · CDMX", 19.386, -99.170, "del-valle"),
-    ("Santa Fe · CDMX", 19.359, -99.259, "santa-fe"),
-    ("Coyoacán · CDMX", 19.350, -99.162, "coyoacan"),
-    ("Azcapotzalco · CDMX", 19.482, -99.186, "azcapotzalco"),
-    ("San Pedro GG · NL", 25.657, -100.402, "san-pedro-garza-garcia"),
-    ("Monterrey Centro · NL", 25.669, -100.310, "monterrey"),
-    ("Providencia · GDL", 20.699, -103.374, "guadalajara"),
-    ("Zapopan · JAL", 20.711, -103.411, "zapopan"),
-    ("Mérida Norte · YUC", 21.019, -89.618, "merida"),
-    ("Cancún · QR", 21.161, -86.851, "cancun"),
-    ("Querétaro · QRO", 20.588, -100.389, "queretaro"),
-    ("Puebla Angelópolis · PUE", 19.027, -98.230, "puebla"),
-    ("Tijuana · BC", 32.514, -117.038, "tijuana"),
+    ("Polanco · CDMX", 19.433, -99.190,
+     "df/miguel-hidalgo/departamentos", "polanco"),
+    ("Condesa-Roma · CDMX", 19.412, -99.172,
+     "df/cuauhtémoc/departamentos", "condesa"),
+    ("Del Valle · CDMX", 19.386, -99.170,
+     "df/benito-juárez/departamentos", "del-valle"),
+    ("Santa Fe · CDMX", 19.359, -99.259,
+     "df/álvaro-obregón/departamentos", "santa-fe"),
+    ("Coyoacán · CDMX", 19.350, -99.162,
+     "df/coyoacán/casas", "coyoacan"),
+    ("Azcapotzalco · CDMX", 19.482, -99.186,
+     "df/azcapotzalco/casas", "azcapotzalco"),
+    ("San Pedro GG · NL", 25.657, -100.402,
+     "nuevo-león/san-pedro-garza-garcía/departamentos",
+     "san-pedro-garza-garcia"),
+    ("Monterrey · NL", 25.669, -100.310,
+     "nuevo-león/monterrey/departamentos", "monterrey"),
+    ("Guadalajara · JAL", 20.699, -103.374,
+     "jalisco/guadalajara/departamentos", "guadalajara"),
+    ("Zapopan · JAL", 20.711, -103.411,
+     "jalisco/zapopan/casas", "zapopan"),
+    ("Mérida · YUC", 21.019, -89.618,
+     "yucatán/mérida/casas", "merida"),
+    ("Cancún · QR", 21.161, -86.851,
+     "quintana-roo/cancún/departamentos", "cancun"),
+    ("Querétaro · QRO", 20.588, -100.389,
+     "querétaro/querétaro/casas", "queretaro"),
+    ("Puebla · PUE", 19.027, -98.230,
+     "puebla/puebla/casas", "puebla"),
+    ("Tijuana · BC", 32.514, -117.038,
+     "baja-california/tijuana/casas", "tijuana"),
 ]
 
 PORTALES = {
-    # patrón de búsqueda de VENTA de departamentos/casas por zona
+    # patrón de búsqueda de VENTA por zona; {cyt} = ruta estado/municipio/tipo
+    "casasyterrenos": "https://www.casasyterrenos.com/{cyt}/venta?pagina={p}",
     "lamudi": "https://www.lamudi.com.mx/{slug}/for-sale/?page={p}",
     "propiedades": "https://propiedades.com/{slug}/venta?pagina={p}",
     "inmuebles24": "https://www.inmuebles24.com/inmuebles-en-venta-en-{slug}.html",
-    "casasyterrenos": "https://www.casasyterrenos.com/buscar?q={slug}&tipo=venta&pagina={p}",
 }
+
+
+def _dicts_con_precio(nodo) -> list[dict]:
+    """Camina recursivamente un JSON y junta los dicts con price+surface."""
+    hallados = []
+    if isinstance(nodo, dict):
+        if "price" in nodo and "surface" in nodo:
+            hallados.append(nodo)
+        for v in nodo.values():
+            hallados += _dicts_con_precio(v)
+    elif isinstance(nodo, list):
+        for v in nodo:
+            hallados += _dicts_con_precio(v)
+    return hallados
+
+
+def extraer_next_data(html: str) -> list[float]:
+    """Portales Next.js (Casas y Terrenos): precios exactos del JSON embebido."""
+    m = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', html, re.S)
+    if not m:
+        return []
+    try:
+        data = json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return []
+    precios = []
+    vistos = set()
+    for d in _dicts_con_precio(data):
+        try:
+            p, s = float(d["price"]), float(d["surface"])
+            llave = (p, s)
+            if llave in vistos or s < 15:
+                continue
+            vistos.add(llave)
+            if M2_MIN < p / s < M2_MAX:
+                precios.append(p / s)
+        except (TypeError, ValueError, ZeroDivisionError):
+            continue
+    return precios
 
 # precios plausibles MXN/m² para descartar basura de parseo
 M2_MIN, M2_MAX = 3000, 220000
@@ -100,6 +157,8 @@ def robots_permite(url: str) -> bool:
 
 
 def descargar(url: str) -> str:
+    from urllib.parse import quote
+    url = quote(url, safe=":/?=&%")        # slugs con acentos → percent-encoding
     req = urllib.request.Request(url, headers={"User-Agent": UA,
                                                "Accept": "text/html"})
     with urllib.request.urlopen(req, timeout=45) as r:
@@ -155,24 +214,30 @@ def extraer_precios_m2(html: str) -> list[float]:
 
 def muestrear(portales: list[str]) -> pd.DataFrame:
     filas = []
-    for nombre, lat, lng, slug in ZONAS:
+    portales_muertos = set()          # sitio bloqueado: no insistir por zona
+    for nombre, lat, lng, cyt, slug in ZONAS:
         for portal in portales:
+            if portal in portales_muertos:
+                continue
             plantilla = PORTALES[portal]
             muestras = []
             for p in range(1, PAGINAS_MAX + 1):
-                url = plantilla.format(slug=slug, p=p)
+                url = plantilla.format(cyt=cyt, slug=slug, p=p)
                 if p == 1 and not robots_permite(url):
-                    print(f"  🤖 {portal}: robots.txt no permite {slug}; "
-                          "respetado, salto")
+                    print(f"  🤖 {portal}: robots.txt no accesible o no "
+                          f"permite; respetado, salto portal")
+                    portales_muertos.add(portal)
                     break
                 try:
                     html = descargar(url)
                 except Exception as e:            # noqa: BLE001
-                    print(f"  ✗ {portal}/{slug} p{p}: {e}")
+                    print(f"  ✗ {portal}/{nombre}: {e}")
+                    if "403" in str(e) or "401" in str(e):
+                        portales_muertos.add(portal)
                     break
-                nuevos = extraer_precios_m2(html)
+                nuevos = extraer_next_data(html) or extraer_precios_m2(html)
                 muestras += nuevos
-                print(f"  · {portal}/{slug} p{p}: {len(nuevos)} precios")
+                print(f"  · {portal} · {nombre} p{p}: {len(nuevos)} precios")
                 time.sleep(PAUSA_SEG)
                 if len(muestras) >= MUESTRAS_MAX:
                     break

@@ -193,9 +193,12 @@ def precios_reales() -> pd.DataFrame | None:
         return None
     df = pd.read_csv(RUTA_PRECIOS)
     # mediana entre portales por zona (más robusta que un portal único)
-    return df.groupby(["zona", "lat", "lng"], as_index=False) \
+    agg = df.groupby(["zona", "lat", "lng"], as_index=False) \
         .agg(precio_m2=("precio_m2_mediano", "median"),
              n_muestras=("n_muestras", "sum"))
+    # control de calidad: un ancla necesita ≥8 muestras para usarse
+    agg = agg[agg["n_muestras"] >= 8]
+    return agg if not agg.empty else None
 
 
 def calibrar_con_precios(lng: np.ndarray, lat: np.ndarray,
