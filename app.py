@@ -1352,7 +1352,8 @@ def municipios_calle() -> list[dict]:
             pass
         salida.append({"suffix": suf, "municipio": muni, "estado": edo,
                        "label": f"{muni}" + (f" · {edo}" if edo else "")})
-    return salida
+    # ordena por estado y municipio para navegar decenas de ciudades
+    return sorted(salida, key=lambda m: (m["estado"], m["municipio"]))
 
 
 def hay_datos_denue(suffix: str = None) -> bool:
@@ -2354,7 +2355,7 @@ def main() -> None:
                           ["🏛 República · municipios",
                            "🇲🇽 República · estados",
                            "🏘 CDMX · códigos postales",
-                           "🛣 Calle · establecimiento (AZC)",
+                           "🛣 Calle · establecimiento",
                            "🧫 Microtejido (CDMX)"],
                           help="El mismo motor SAR a cinco escalas: de los 32 "
                                "estados hasta la banqueta, negocio a negocio.")
