@@ -208,11 +208,25 @@ def procesar(df: pd.DataFrame, municipio: str, salida_dir: str,
     print(f"✓ {ruta_e} ({len(d):,} filas)")
 
     # ── calles: polilínea por nombre vial ordenando los puntos sobre su eje ──
+    # En ciudades grandes un mismo nombre vial se repite en colonias lejanas;
+    # para no trazar líneas que cruzan la ciudad, nos quedamos con el SEGMENTO
+    # MÁS DENSO de cada calle (bloque 3×3 de la rejilla ~500 m con más puntos).
+    def segmento_denso(pts: np.ndarray) -> np.ndarray:
+        gx = np.round(pts[:, 0] / 0.005).astype(int)
+        gy = np.round(pts[:, 1] / 0.005).astype(int)
+        celdas, cuenta = np.unique(np.stack([gx, gy], 1), axis=0,
+                                   return_counts=True)
+        cx, cy = celdas[cuenta.argmax()]
+        m = (np.abs(gx - cx) <= 1) & (np.abs(gy - cy) <= 1)
+        return pts[m]
+
     calles = []
     for nombre, g in d.groupby("calle"):
         if len(g) < 4:                    # muy pocos puntos para trazar eje
             continue
-        pts = g[["lng", "lat"]].to_numpy()
+        pts = segmento_denso(g[["lng", "lat"]].to_numpy())
+        if len(pts) < 4:
+            continue
         centro = pts.mean(axis=0)
         u, s, vt = np.linalg.svd(pts - centro)   # eje principal (PCA)
         proy = (pts - centro) @ vt[0]
@@ -222,9 +236,12 @@ def procesar(df: pd.DataFrame, municipio: str, salida_dir: str,
         camino = [[round(float(pts[orden[i], 0]), 5),
                    round(float(pts[orden[i], 1]), 5)] for i in idx]
         calles.append({"nombre": nombre, "camino": camino})
+    estado_nom = str(d[col("entidad", "nom_ent")].iloc[0]) \
+        if ("entidad" in cols or "nom_ent" in cols) else ""
     ruta_c = os.path.join(salida_dir, f"calles_{sufijo}.json")
     with open(ruta_c, "w", encoding="utf-8") as f:
-        json.dump({"calles": calles}, f, ensure_ascii=False)
+        json.dump({"municipio": municipio, "estado": estado_nom,
+                   "calles": calles}, f, ensure_ascii=False)
     print(f"✓ {ruta_c} ({len(calles)} calles)")
 
     # 🌡 sismógrafo real desde fecha_alta (un solo corte del DENUE)

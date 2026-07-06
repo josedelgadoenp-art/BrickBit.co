@@ -1305,17 +1305,10 @@ def construir_deck_cp(valores: np.ndarray, año: float, fase: float,
 #      demostración claramente etiquetada.
 # ══════════════════════════════════════════════════════════════════════════════
 
-RUTA_CALLES = os.path.join(_DIR, "data", "calles_azcapotzalco.json")
-RUTA_ESTAB = os.path.join(_DIR, "data", "establecimientos_azcapotzalco.csv.gz")
-
-# Anclas económicas reales de Azcapotzalco: de aquí "nace" el crecimiento
-ANCLAS_AZC = [
-    ("🏬 Parque Vía Vallejo", -99.1757, 19.4887, 0.95),
-    ("🚇 Metro El Rosario", -99.2003, 19.5048, 0.80),
-    ("🚇 Metro Camarones", -99.1745, 19.4790, 0.65),
-    ("🎓 UAM Azcapotzalco", -99.2052, 19.5043, 0.60),
-    ("🏥 Hospital La Raza", -99.1690, 19.4700, 0.70),
-]
+RUTA_ESTAB_TPL = os.path.join(_DIR, "data", "establecimientos_{s}.csv.gz")
+RUTA_CALLES_TPL = os.path.join(_DIR, "data", "calles_{s}.json")
+RUTA_SISMO_TPL = os.path.join(_DIR, "data", "sismografo_{s}.json")
+RUTA_VALID_TPL = os.path.join(_DIR, "data", "validacion_{s}.json")
 
 SECTORES = {
     "Comercio": [205, 242, 90],       # lima
@@ -1324,113 +1317,167 @@ SECTORES = {
     "Alimentos": [124, 224, 168],     # verde medio
 }
 
-_AZC_W, _AZC_E = -99.215, -99.155    # bounding box Azcapotzalco aprox
-_AZC_S, _AZC_N = 19.462, 19.508
-
-# Nombres viales reales de Azcapotzalco para la red (demo o etiquetas)
-_VIAS_NS = ["Av. Aquiles Serdán", "Av. Tezozómoc", "Av. de las Granjas",
-            "Calz. Vallejo", "Av. Ceylán", "Poniente 116", "Poniente 128",
-            "Poniente 134", "Poniente 140", "Poniente 146", "Poniente 152",
-    "Av. Jardín", "Calle 22 de Febrero", "Av. Granjas Norte"]
-_VIAS_EO = ["Av. Azcapotzalco", "Av. Cuitláhuac", "Eje 5 Norte",
-            "Eje 4 Norte", "Calz. Camarones", "Av. El Rosario", "Norte 45",
-            "Norte 59", "Norte 77", "Norte 87", "Av. San Pablo Xalpa",
-            "Av. Renacimiento"]
-
-_GIROS = {
-    "Comercio": ["Abarrotes", "Ferretería", "Papelería", "Refaccionaria",
-                 "Tienda de ropa", "Miscelánea"],
-    "Servicios": ["Taller mecánico", "Estética", "Consultorio", "Lavandería",
-                  "Despacho contable", "Ciber"],
-    "Industria": ["Taller metalmecánico", "Bodega logística", "Imprenta",
-                  "Fábrica de alimentos", "Maquiladora textil"],
-    "Alimentos": ["Taquería", "Fonda", "Panadería", "Juguería", "Cocina económica"],
-}
-_NOMBRES = ["La Esperanza", "El Fénix", "San José", "Doña Mary", "El Águila",
-            "Vallejo", "La Central", "Don Beto", "La Norteña", "El Porvenir",
-            "Santa Cruz", "El Trébol", "La Guadalupana", "Azcapotzalco"]
+# Anclas de reserva (demo Azcapotzalco) si un municipio no trae datos reales
+ANCLAS_AZC = [
+    ("🏬 Parque Vía Vallejo", -99.1757, 19.4887, 0.95),
+    ("🚇 Metro El Rosario", -99.2003, 19.5048, 0.80),
+    ("🚇 Metro Camarones", -99.1745, 19.4790, 0.65),
+    ("🎓 UAM Azcapotzalco", -99.2052, 19.5043, 0.60),
+    ("🏥 Hospital La Raza", -99.1690, 19.4700, 0.70),
+]
+EMOJI_SECTOR = {"Comercio": "🏬", "Servicios": "🏢",
+                "Industria": "🏭", "Alimentos": "🍽"}
 
 
-def hay_datos_denue() -> bool:
-    """¿Existen los archivos reales generados por scripts/ingerir_denue.py?"""
-    return os.path.exists(RUTA_CALLES) and os.path.exists(RUTA_ESTAB)
+@st.cache_data
+def municipios_calle() -> list[dict]:
+    """
+    Descubre los municipios con datos de calle ingeridos (data/calles_*.json
+    + su CSV de establecimientos). Lee el nombre real del municipio/estado
+    del propio JSON. Es lo que puebla el selector de la escala calle.
+    """
+    import glob
+    salida = []
+    for ruta in sorted(glob.glob(os.path.join(_DIR, "data", "calles_*.json"))):
+        suf = os.path.basename(ruta)[len("calles_"):-len(".json")]
+        if not os.path.exists(RUTA_ESTAB_TPL.format(s=suf)):
+            continue
+        muni, edo = suf.replace("_", " ").title(), ""
+        try:
+            with open(ruta, encoding="utf-8") as f:
+                meta = json.load(f)
+            muni = meta.get("municipio", muni)
+            edo = meta.get("estado", "")
+        except (OSError, json.JSONDecodeError):
+            pass
+        salida.append({"suffix": suf, "municipio": muni, "estado": edo,
+                       "label": f"{muni}" + (f" · {edo}" if edo else "")})
+    return salida
+
+
+def hay_datos_denue(suffix: str = None) -> bool:
+    """¿Existen datos reales de calle? (para un municipio, o para cualquiera)."""
+    if suffix is None:
+        return len(municipios_calle()) > 0
+    return (os.path.exists(RUTA_CALLES_TPL.format(s=suffix))
+            and os.path.exists(RUTA_ESTAB_TPL.format(s=suffix)))
 
 
 @st.cache_data(show_spinner="🛣 Construyendo la red vial…")
-def cargar_red_vial() -> tuple[pd.DataFrame, pd.DataFrame, bool]:
+def cargar_red_vial(suffix: str = "azcapotzalco"
+                    ) -> tuple[pd.DataFrame, pd.DataFrame, bool]:
     """
-    Devuelve (calles, establecimientos, es_real).
-
-    · REAL: calles del DENUE/vialidades (scripts/ingerir_denue.py) con
-      establecimientos INEGI georreferenciados.
-    · DEMO: retícula sintética con nombres viales y anclas reales de
-      Azcapotzalco, claramente etiquetada en la interfaz.
+    Devuelve (calles, establecimientos, es_real) para el municipio `suffix`.
+    REAL: DENUE/INEGI ingerido con scripts/ingerir_denue.py. DEMO: retícula
+    sintética etiquetada (solo si no hay ningún dato real).
     """
-    if hay_datos_denue():
-        with open(RUTA_CALLES, encoding="utf-8") as f:
+    rc, re_ = RUTA_CALLES_TPL.format(s=suffix), RUTA_ESTAB_TPL.format(s=suffix)
+    if os.path.exists(rc) and os.path.exists(re_):
+        with open(rc, encoding="utf-8") as f:
             calles = pd.DataFrame(json.load(f)["calles"])
-        estab = pd.read_csv(RUTA_ESTAB)
-        return calles, estab, True
+        return calles, pd.read_csv(re_), True
+    return _red_demo()
 
-    # ── DEMO sintético ─────────────────────────────────────────────────────────
+
+# Red sintética de reserva (nombres/anclas reales de Azcapotzalco)
+_VIAS_NS = ["Av. Aquiles Serdán", "Av. Tezozómoc", "Av. de las Granjas",
+            "Calz. Vallejo", "Av. Ceylán", "Poniente 116", "Poniente 128",
+            "Poniente 134", "Poniente 140", "Poniente 146", "Poniente 152",
+            "Av. Jardín", "Calle 22 de Febrero", "Av. Granjas Norte"]
+_VIAS_EO = ["Av. Azcapotzalco", "Av. Cuitláhuac", "Eje 5 Norte", "Eje 4 Norte",
+            "Calz. Camarones", "Av. El Rosario", "Norte 45", "Norte 59",
+            "Norte 77", "Norte 87", "Av. San Pablo Xalpa", "Av. Renacimiento"]
+_GIROS = {"Comercio": ["Abarrotes", "Ferretería", "Papelería", "Miscelánea"],
+          "Servicios": ["Taller mecánico", "Estética", "Consultorio", "Ciber"],
+          "Industria": ["Taller metalmecánico", "Bodega", "Imprenta"],
+          "Alimentos": ["Taquería", "Fonda", "Panadería", "Cocina económica"]}
+_NOMBRES = ["La Esperanza", "El Fénix", "San José", "Doña Mary", "El Águila",
+            "Vallejo", "La Central", "Don Beto", "La Norteña", "El Porvenir"]
+
+
+@st.cache_data
+def _red_demo() -> tuple[pd.DataFrame, pd.DataFrame, bool]:
+    """Retícula vial sintética con nombres y anclas reales de Azcapotzalco."""
+    w, e, s, n = -99.215, -99.155, 19.462, 19.508
     rng = np.random.default_rng(SEMILLA)
-    xs = np.linspace(_AZC_W, _AZC_E, len(_VIAS_NS))
-    ys = np.linspace(_AZC_S, _AZC_N, len(_VIAS_EO))
     filas = []
-    for x, nombre in zip(xs, _VIAS_NS):
+    for x, nombre in zip(np.linspace(w, e, len(_VIAS_NS)), _VIAS_NS):
         pts = [[float(x + rng.normal(0, 3e-4)), float(y)]
-               for y in np.linspace(_AZC_S, _AZC_N, 6)]
-        filas.append({"nombre": nombre, "camino": pts, "eje": "NS"})
-    for y, nombre in zip(ys, _VIAS_EO):
+               for y in np.linspace(s, n, 6)]
+        filas.append({"nombre": nombre, "camino": pts})
+    for y, nombre in zip(np.linspace(s, n, len(_VIAS_EO)), _VIAS_EO):
         pts = [[float(x), float(y + rng.normal(0, 3e-4))]
-               for x in np.linspace(_AZC_W, _AZC_E, 6)]
-        filas.append({"nombre": nombre, "camino": pts, "eje": "EO"})
+               for x in np.linspace(w, e, 6)]
+        filas.append({"nombre": nombre, "camino": pts})
     calles = pd.DataFrame(filas)
-
-    # establecimientos: densidad alta cerca de anclas y del corredor Vallejo
     ax = np.array([a[1] for a in ANCLAS_AZC])
     ay = np.array([a[2] for a in ANCLAS_AZC])
     aw = np.array([a[3] for a in ANCLAS_AZC])
     registros = []
-    for i, c in calles.iterrows():
+    for _, c in calles.iterrows():
         pts = np.array(c["camino"])
         mid = pts.mean(axis=0)
         cerca = (aw * np.exp(-((ax - mid[0]) ** 2 + (ay - mid[1]) ** 2)
                              / (2 * 0.012 ** 2))).sum()
-        es_avenida = not c["nombre"].startswith(("Poniente", "Norte", "Calle"))
-        n = rng.poisson(14 + 46 * min(cerca, 1.2) + (22 if es_avenida else 0))
-        for _ in range(n):
+        num = rng.poisson(16 + 46 * min(cerca, 1.2))
+        for _ in range(num):
             u = rng.uniform()
             k = min(int(u * (len(pts) - 1)), len(pts) - 2)
             frac = u * (len(pts) - 1) - k
-            lng = pts[k, 0] + (pts[k + 1, 0] - pts[k, 0]) * frac \
-                + rng.normal(0, 1.2e-4)
-            lat = pts[k, 1] + (pts[k + 1, 1] - pts[k, 1]) * frac \
-                + rng.normal(0, 1.2e-4)
-            industrial = lng > -99.19 and lat > 19.478    # Vallejo Industrial
-            pesos = [0.38, 0.27, 0.22 if industrial else 0.07,
-                     0.13 if not industrial else 0.08]
-            sector = rng.choice(list(SECTORES.keys()),
-                                p=np.array(pesos) / np.sum(pesos))
+            lng = pts[k, 0] + (pts[k + 1, 0] - pts[k, 0]) * frac + rng.normal(0, 1.2e-4)
+            lat = pts[k, 1] + (pts[k + 1, 1] - pts[k, 1]) * frac + rng.normal(0, 1.2e-4)
+            sector = rng.choice(list(SECTORES), p=[0.40, 0.30, 0.15, 0.15])
             registros.append({
                 "nombre": f"{rng.choice(_GIROS[sector])} {rng.choice(_NOMBRES)}",
                 "sector": sector, "calle": c["nombre"],
                 "lat": float(lat), "lng": float(lng),
                 "empleo": int(rng.choice([2, 4, 8, 18, 45],
-                                         p=[.45, .28, .16, .08, .03])),
-            })
+                                         p=[.45, .28, .16, .08, .03]))})
     return calles, pd.DataFrame(registros), False
 
 
+@st.cache_data(show_spinner="⚓ Detectando anclas económicas…")
+def anclas_municipio(suffix: str = "azcapotzalco") -> pd.DataFrame:
+    """
+    Anclas económicas DERIVADAS del DENUE real: los focos de empleo del
+    municipio (rejilla ~250 m, top por empleo), cada uno nombrado por su
+    mayor establecimiento. De aquí nace el crecimiento — sin hardcodear nada.
+    """
+    _, estab, real = cargar_red_vial(suffix)
+    if not real or estab.empty or "lng" not in estab.columns:
+        return pd.DataFrame({"nombre": [a[0] for a in ANCLAS_AZC],
+                             "lng": [a[1] for a in ANCLAS_AZC],
+                             "lat": [a[2] for a in ANCLAS_AZC],
+                             "peso": [a[3] for a in ANCLAS_AZC]})
+    lng, lat = estab["lng"].to_numpy(), estab["lat"].to_numpy()
+    paso = 0.0025
+    gx = np.round((lng - lng.min()) / paso).astype(int)
+    gy = np.round((lat - lat.min()) / paso).astype(int)
+    est = estab.assign(celda=gx * 100000 + gy)
+    agg = est.groupby("celda").agg(emp=("empleo", "sum"),
+                                   lng=("lng", "mean"),
+                                   lat=("lat", "mean")).reset_index()
+    filas = []
+    for _, c in agg.nlargest(6, "emp").iterrows():
+        cerca = est[est["celda"] == c["celda"]]
+        big = cerca.loc[cerca["empleo"].idxmax()]
+        emo = EMOJI_SECTOR.get(big.get("sector", ""), "📍")
+        nom = str(big["nombre"]).title()[:26]
+        filas.append({"nombre": f"{emo} {nom}", "lng": float(c["lng"]),
+                      "lat": float(c["lat"]), "peso": float(c["emp"])})
+    d = pd.DataFrame(filas)
+    d["peso"] = (0.45 + 0.55 * norm01(d["peso"].to_numpy())).round(3)
+    return d
+
+
 @st.cache_data
-def expediente_calles() -> pd.DataFrame:
+def expediente_calles(suffix: str = "azcapotzalco") -> pd.DataFrame:
     """
     Expediente por calle: vitalidad económica (establecimientos + empleo del
-    DENUE o demo), cercanía a anclas y valor sintetizado. AQUÍ nace el
-    crecimiento: cada peso proyectado es rastreable a la actividad económica
-    observada sobre la vialidad.
+    DENUE), cercanía a anclas y valor sintetizado. AQUÍ nace el crecimiento:
+    cada peso proyectado es rastreable a la actividad económica observada.
     """
-    calles, estab, _ = cargar_red_vial()
+    calles, estab, _ = cargar_red_vial(suffix)
     agg = estab.groupby("calle").agg(
         n_estab=("nombre", "size"), empleo=("empleo", "sum"),
         sector=("sector", lambda s: s.mode().iat[0])).reset_index()
@@ -1438,9 +1485,9 @@ def expediente_calles() -> pd.DataFrame:
         .fillna({"n_estab": 0, "empleo": 0, "sector": "Servicios"})
 
     mids = np.array([np.mean(c, axis=0) for c in df["camino"]])
-    ax = np.array([a[1] for a in ANCLAS_AZC])
-    ay = np.array([a[2] for a in ANCLAS_AZC])
-    aw = np.array([a[3] for a in ANCLAS_AZC])
+    anc = anclas_municipio(suffix)
+    ax, ay = anc["lng"].to_numpy(), anc["lat"].to_numpy()
+    aw = anc["peso"].to_numpy()
     ancla = np.stack([w * np.exp(-((mids[:, 0] - x) ** 2 + (mids[:, 1] - y) ** 2)
                                  / (2 * 0.012 ** 2))
                       for x, y, w in zip(ax, ay, aw)]).sum(axis=0)
@@ -1450,13 +1497,10 @@ def expediente_calles() -> pd.DataFrame:
     df["cercania_ancla"] = np.clip(ancla, 0, 1.3).round(3)
     df["valor_actual"] = (9000 + 9500 * vital + 6500 * np.clip(ancla, 0, 1)
                           ).round(0)
-    # potencial: anclas cerca + margen de crecimiento (calles aún baratas)
     df["potencial_crecimiento"] = np.clip(
         0.50 * np.clip(ancla, 0, 1) + 0.35 * (1 - vital)
         + 0.15 * norm01(df["n_estab"]), 0.02, 1).round(3)
 
-    # resiliencia: entropía de Shannon del mix sectorial — una calle
-    # monocultivo (todo talleres) es frágil; una diversificada aguanta shocks
     mix = estab.groupby(["calle", "sector"]).size().unstack(fill_value=0)
     p = mix.div(mix.sum(axis=1), axis=0).clip(lower=1e-9)
     entropia = (-(p * np.log(p)).sum(axis=1) / math.log(len(SECTORES)))
@@ -1464,28 +1508,22 @@ def expediente_calles() -> pd.DataFrame:
     return df
 
 
-# ── Sismógrafo de gentrificación: especies indicadoras del DENUE ─────────────
-RUTA_SISMO = os.path.join(_DIR, "data", "sismografo_azcapotzalco.json")
-
-# Giros cuya APARICIÓN precede a la plusvalía 2-3 años (literatura de
-# gentrificación). scripts/ingerir_denue.py --csv-anterior los detecta
-# comparando dos cortes reales del DENUE.
 ESPECIES_INDICADORAS = ["Café de especialidad", "Coworking", "Galería",
                         "Barbería premium", "Estudio de yoga",
                         "Panadería artesanal", "Veterinaria", "Gym boutique"]
 
 
 @st.cache_data
-def sismografo_calles() -> tuple[pd.DataFrame, bool]:
+def sismografo_calles(suffix: str = "azcapotzalco") -> tuple[pd.DataFrame, bool]:
     """
-    Metabolismo de cada calle entre dos cortes del DENUE: altas y bajas de
-    establecimientos, con foco en las ESPECIES INDICADORAS que anticipan la
-    mutación. Real si existe data/sismografo_*.json (ingesta INEGI);
-    demo etiquetada si no.
+    Metabolismo de cada calle: aperturas recientes y ESPECIES INDICADORAS de
+    gentrificación. Real desde data/sismografo_<suffix>.json (fecha_alta del
+    DENUE); demo etiquetada si no existe.
     """
-    df = expediente_calles()
-    if os.path.exists(RUTA_SISMO):
-        with open(RUTA_SISMO, encoding="utf-8") as f:
+    df = expediente_calles(suffix)
+    ruta = RUTA_SISMO_TPL.format(s=suffix)
+    if os.path.exists(ruta):
+        with open(ruta, encoding="utf-8") as f:
             sismo = pd.DataFrame(json.load(f)["calles"])
         sismo = df[["nombre"]].merge(sismo, on="nombre", how="left")
         sismo[["altas", "bajas", "indicadoras"]] = sismo[
@@ -1512,17 +1550,46 @@ def sismografo_calles() -> tuple[pd.DataFrame, bool]:
 
 
 @st.cache_data(show_spinner="🧠 Detectando cruces entre calles…")
-def vecindad_calles() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Dos calles son vecinas si se cruzan (o pasan a <60 m). El contagio
-    viaja por las intersecciones, como el tráfico."""
+def vecindad_calles(suffix: str = "azcapotzalco"
+                    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Dos calles son vecinas si se cruzan (<60 m): el contagio viaja por
+    las intersecciones, como el tráfico."""
     from shapely.geometry import LineString
-    geoms = [LineString(c) for c in expediente_calles()["camino"]]
+    geoms = [LineString(c) for c in expediente_calles(suffix)["camino"]]
     return _vecindad(geoms, 0.0006)
 
 
-def _args_calles(rho: float, catalizador: str, clic: tuple = None) -> dict:
-    df = expediente_calles()
-    pi, pj, g = vecindad_calles()
+def _vista_calles(calles: pd.DataFrame) -> pdk.ViewState:
+    """
+    Centro y zoom automáticos, ROBUSTOS a outliers: centra en la mediana y
+    encuadra el núcleo denso (percentiles 5–95), para que un municipio grande
+    no se vea diminuto por unas pocas calles en el borde.
+    """
+    pts = np.array([p for c in calles["camino"] for p in c])
+    # centra en el corazón denso (mediana ponderada por densidad de puntos)
+    gx = np.round(pts[:, 0] / 0.01).astype(int)
+    gy = np.round(pts[:, 1] / 0.01).astype(int)
+    celdas, cuenta = np.unique(np.stack([gx, gy], 1), axis=0,
+                               return_counts=True)
+    cx, cy = celdas[cuenta.argmax()]
+    nucleo = pts[(np.abs(gx - cx) <= 3) & (np.abs(gy - cy) <= 3)]
+    clng, clat = float(np.median(nucleo[:, 0])), float(np.median(nucleo[:, 1]))
+    # encuadra un distrito legible: núcleo denso, acotado a ~7 km
+    span = max(float(np.percentile(pts[:, 0], 92) - np.percentile(pts[:, 0], 8)),
+               float(np.percentile(pts[:, 1], 92) - np.percentile(pts[:, 1], 8)),
+               1e-3)
+    # cuanto más densa la red, más se enfoca el corazón (retícula legible)
+    n_pts = len(calles)
+    tope = 0.085 if n_pts < 900 else (0.055 if n_pts < 1600 else 0.042)
+    span = min(span, tope)
+    zoom = float(np.clip(13.2 - math.log2(span / 0.05), 11.0, 14.4))
+    return _vista(clng, clat, zoom, pitch=42, bearing=-12)
+
+
+def _args_calles(rho: float, catalizador: str, clic: tuple = None,
+                 suffix: str = "azcapotzalco") -> dict:
+    df = expediente_calles(suffix)
+    pi, pj, g = vecindad_calles(suffix)
     mids = np.array([np.mean(c, axis=0) for c in df["camino"]])
     cat = CATALIZADORES.get(catalizador)
     mask = None
@@ -1544,30 +1611,37 @@ def _args_calles(rho: float, catalizador: str, clic: tuple = None) -> dict:
 
 
 @st.cache_data(show_spinner="🧬 Simulando morfogénesis vial…")
-def simular_calles(rho: float, catalizador: str,
-                   clic: tuple = None) -> np.ndarray:
-    return _sar(**_args_calles(rho, catalizador, clic))
+def simular_calles(rho: float, catalizador: str, clic: tuple = None,
+                   suffix: str = "azcapotzalco") -> np.ndarray:
+    return _sar(**_args_calles(rho, catalizador, clic, suffix))
 
 
 def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
                           mostrar_estab: bool, mostrar_flujos: bool,
-                          estilo: str) -> pdk.Deck:
+                          estilo: str,
+                          suffix: str = "azcapotzalco") -> pdk.Deck:
     """La zona vista desde la banqueta: calles que laten, negocios que
     alimentan el crecimiento y anclas que lo detonan."""
-    df = expediente_calles()
-    _, estab, _ = cargar_red_vial()
+    df = expediente_calles(suffix)
+    _, estab, _ = cargar_red_vial(suffix)
+    anc = anclas_municipio(suffix)
     v_t, tasa = estado_en(valores, año)
     acum = v_t / valores[0] - 1
     t = 0.45 * norm01(v_t) + 0.55 * norm01(acum)
     rgb = paleta_marca(t ** 0.85)
-    alfa = np.clip((110 + 130 * t) * _respiracion(t, fase), 60, 255)
+    # densidad adaptativa: en municipios con muchas calles, líneas más finas y
+    # translúcidas para que se lea la retícula y no se sature (Azcapotzalco
+    # intacto). Sólo las calles en mutación brillan; el resto queda tenue.
+    vis = float(np.clip(650 / max(len(df), 250), 0.32, 1.0))
+    alfa = np.clip((32 + 125 * t ** 1.3) * _respiracion(t, fase)
+                   * (0.5 + 0.5 * vis), 26, 200)
 
     mids_c = np.array([np.mean(c, axis=0) for c in df["camino"]])
     calles_render = pd.DataFrame({
         "camino": df["camino"],
         "lng": mids_c[:, 0], "lat": mids_c[:, 1],
         "color": np.column_stack([rgb, alfa]).astype(int).tolist(),
-        "ancho": (2.5 + 9 * df["vitalidad"].to_numpy()).tolist(),
+        "ancho": (0.8 + (0.6 + 6.0 * df["vitalidad"].to_numpy()) * vis).tolist(),
         "nombre": df["nombre"],
         "estado_bio": clasificar_bio(tasa),
         "precio_txt": [f"${p:,.0f} índice/m²" for p in v_t],
@@ -1586,32 +1660,36 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
     )]
 
     if mostrar_estab:
+        # en municipios grandes se muestran los de mayor empleo para que los
+        # puntos no tapen el tejido vial (en los chicos, todos). El tooltip
+        # conserva el detalle de cada negocio.
+        tope_e = 2500 if len(estab) > 2500 else len(estab)
+        est_v = estab.nlargest(tope_e, "empleo")
         er = pd.DataFrame({
-            "pos": [[float(a), float(b)] for a, b in zip(estab["lng"],
-                                                         estab["lat"])],
-            "color": [SECTORES.get(s, RGB_CREMA) + [190]
-                      for s in estab["sector"]],
-            "radio": (14 + np.sqrt(estab["empleo"].to_numpy()) * 7).tolist(),
-            "nombre": estab["nombre"],
+            "pos": [[float(a), float(b)] for a, b in zip(est_v["lng"],
+                                                         est_v["lat"])],
+            "color": [SECTORES.get(s, RGB_CREMA) + [120]
+                      for s in est_v["sector"]],
+            "radio": (8 + np.sqrt(est_v["empleo"].to_numpy()) * 5).tolist(),
+            "nombre": est_v["nombre"],
             "estado_bio": "",
-            "precio_txt": estab["sector"],
-            "crec_txt": estab["calle"],
-            "plusvalia_txt": estab["empleo"].astype(str) + " empleos",
+            "precio_txt": est_v["sector"],
+            "crec_txt": est_v["calle"],
+            "plusvalia_txt": est_v["empleo"].astype(str) + " empleos",
             "extra_txt": "",
         })
         capas.append(pdk.Layer(
             "ScatterplotLayer", data=er, get_position="pos",
             get_fill_color="color", get_radius="radio",
-            radius_min_pixels=1.5, radius_max_pixels=9,
-            pickable=True, opacity=0.75,
+            radius_min_pixels=0.8, radius_max_pixels=5,
+            pickable=True, opacity=0.4,
         ))
 
     # anclas económicas: los corazones que bombean el crecimiento
     pulso = 0.5 + 0.5 * math.sin(2 * math.pi * fase)
     anclas = pd.DataFrame({
-        "pos": [[a[1], a[2]] for a in ANCLAS_AZC],
-        "nombre": [a[0] for a in ANCLAS_AZC],
-        "peso": [a[3] for a in ANCLAS_AZC],
+        "pos": [[float(x), float(y)] for x, y in zip(anc["lng"], anc["lat"])],
+        "nombre": anc["nombre"], "peso": anc["peso"],
     })
     capas.append(pdk.Layer(
         "ScatterplotLayer", data=anclas, get_position="pos",
@@ -1627,23 +1705,26 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
 
     if mostrar_flujos:
         mids = np.array([np.mean(c, axis=0) for c in df["camino"]])
-        dest = np.argsort(tasa)[::-1][:14]
-        ax = np.array([a[1] for a in ANCLAS_AZC])
-        ay = np.array([a[2] for a in ANCLAS_AZC])
-        aw = np.array([a[3] for a in ANCLAS_AZC])
-        filas = []
-        for k, d in enumerate(dest):
-            dist = np.hypot(ax - mids[d, 0], ay - mids[d, 1])
-            f = int(np.argmax(aw / (dist + 1e-3)))
-            filas.append({"origen": [float(ax[f]), float(ay[f])],
-                          "destino": [float(mids[d, 0]), float(mids[d, 1])],
-                          "intensidad": float(tasa[d] / (tasa.max() + 1e-9)),
-                          "desfase": (k * 0.13) % 1.0})
-        capas += _capas_circulatorias(pd.DataFrame(filas), fase, escala=0.006)
+        ax, ay = anc["lng"].to_numpy(), anc["lat"].to_numpy()
+        # cada ancla bombea capital a sus calles emergentes CERCANAS (<~2.5 km),
+        # para que los arcos sean locales y legibles en municipios grandes
+        filas, k = [], 0
+        for fa in range(len(ax)):
+            dist = np.hypot(mids[:, 0] - ax[fa], mids[:, 1] - ay[fa])
+            cerca = np.where(dist < 0.024)[0]
+            if len(cerca) == 0:
+                cerca = np.argsort(dist)[:8]
+            top = cerca[np.argsort(tasa[cerca])[::-1][:3]]
+            for d in top:
+                filas.append({"origen": [float(ax[fa]), float(ay[fa])],
+                              "destino": [float(mids[d, 0]), float(mids[d, 1])],
+                              "intensidad": float(tasa[d] / (tasa.max() + 1e-9)),
+                              "desfase": (k * 0.13) % 1.0})
+                k += 1
+        if filas:
+            capas += _capas_circulatorias(pd.DataFrame(filas), fase, escala=0.006)
 
-    return pdk.Deck(layers=capas,
-                    initial_view_state=_vista(-99.185, 19.485, 13.4,
-                                              pitch=48, bearing=-12),
+    return pdk.Deck(layers=capas, initial_view_state=_vista_calles(df),
                     map_style=ESTILOS_MAPA[estilo], tooltip=_tooltip())
 
 
@@ -2011,10 +2092,10 @@ def tab_carteras(valores: np.ndarray) -> None:
                "natural hacia carteras tokenizadas BrickBit por tesis.")
 
 
-def tab_sismografo() -> None:
+def tab_sismografo(suffix: str = "azcapotzalco") -> None:
     """🌡 Sismógrafo de gentrificación: metabolismo de establecimientos y
     especies indicadoras que anticipan la mutación 2-3 años."""
-    sismo, es_real = sismografo_calles()
+    sismo, es_real = sismografo_calles(suffix)
     if not es_real:
         st.info("🧪 Churn de demostración. Con dos cortes reales del DENUE "
                 "(`ingerir_denue.py --csv-anterior denue_2023.csv`) el "
@@ -2053,12 +2134,12 @@ def tab_sismografo() -> None:
                 "anuncian el oro.</div>", unsafe_allow_html=True)
 
 
-def _validacion_contagio() -> None:
+def _validacion_contagio(suffix: str = "azcapotzalco") -> None:
     """
     Muestra la validación empírica del término espacial del SAR con datos
     reales del DENUE (generada por scripts/backtesting.py denue).
     """
-    ruta = os.path.join(_DIR, "data", "validacion_azcapotzalco.json")
+    ruta = RUTA_VALID_TPL.format(s=suffix)
     if not os.path.exists(ruta):
         return
     with open(ruta, encoding="utf-8") as f:
@@ -2080,11 +2161,11 @@ def _validacion_contagio() -> None:
               f"corte temporal {v['corte']}")
 
 
-def tab_huecos() -> None:
+def tab_huecos(suffix: str = "azcapotzalco") -> None:
     """🕳 Radar de huecos de mercado: dónde hay demanda (empleo/vitalidad)
     sin oferta de un giro — inteligencia B2B para retail y franquicias."""
-    df = expediente_calles()
-    _, estab, es_real = cargar_red_vial()
+    df = expediente_calles(suffix)
+    _, estab, es_real = cargar_red_vial(suffix)
     oferta = estab.groupby(["calle", "sector"]).size().unstack(fill_value=0)
     filas = []
     for _, c in df.iterrows():
@@ -2213,7 +2294,7 @@ def encabezado() -> None:
         '<div class="brand-title">Motor de Morfogénesis Urbana</div>'
         '<div class="brand-sub">la República como organismo vivo — '
         '2,436 municipios · 1,182 códigos postales · calle y establecimiento '
-        '· proyección simulada a 10 años</div>'
+        'en cualquier municipio · proyección simulada a 10 años</div>'
         '</div></div>',
         unsafe_allow_html=True)
 
@@ -2302,6 +2383,19 @@ def main() -> None:
                                      list(MEGAPROYECTOS.keys()),
                                      help="Célula madre a escala nación: eleva "
                                           "el potencial de toda una región.")
+
+        if escala.startswith("🛣"):
+            munis = municipios_calle()
+            if munis:
+                labels = [m["label"] for m in munis]
+                sel = st.selectbox("🏙 Municipio (DENUE real)", labels,
+                                   help="Cualquier municipio ingerido con "
+                                        "scripts/ingerir_denue.py aparece aquí.")
+                m = munis[labels.index(sel)]
+                st.session_state["municipio_suffix"] = m["suffix"]
+                st.session_state["municipio_nombre"] = m["municipio"]
+            st.caption(f"{len(munis)} municipio(s) con datos reales. Agrega "
+                       "más con `ingerir_denue.py --estado EE --municipio X`.")
 
         st.markdown("### 👁 Capas y estilo")
         estilo = st.selectbox("Estilo de mapa", list(ESTILOS_MAPA.keys()))
@@ -2537,11 +2631,13 @@ def main() -> None:
                        "sintetizados desde los núcleos premium y corredores "
                        "emergentes reales de CDMX.")
 
-    # ══ CALLE · ESTABLECIMIENTO (DENUE real o demo) ═══════════════════════════
+    # ══ CALLE · ESTABLECIMIENTO (DENUE real de CUALQUIER municipio) ═══════════
     elif escala.startswith("🛣"):
-        calles_df = expediente_calles()
-        _, estab_df, es_real = cargar_red_vial()
-        valores = simular_calles(rho, detonante, clic)
+        suf = st.session_state.get("municipio_suffix", "azcapotzalco")
+        calles_df = expediente_calles(suf)
+        _, estab_df, es_real = cargar_red_vial(suf)
+        muni_nom = st.session_state.get("municipio_nombre", "Azcapotzalco")
+        valores = simular_calles(rho, detonante, clic, suf)
         vv = extender_pasado(valores) if retro else valores
         año_idx = año + (RETRO if retro else 0)
         v_t, tasa = estado_en(vv, año_idx)
@@ -2550,20 +2646,20 @@ def main() -> None:
                                calles_df["potencial_crecimiento"], tasa)
 
         if es_real:
-            st.success("✅ **DATOS REALES DENUE/INEGI** — establecimientos y "
-                       "calles ingeridos con `scripts/ingerir_denue.py`.")
+            st.success(f"✅ **DATOS REALES DENUE/INEGI · {muni_nom}** — "
+                       f"{len(estab_df):,} establecimientos y {len(calles_df)} "
+                       "calles reales, con anclas económicas derivadas del "
+                       "empleo observado.")
         else:
-            st.warning("🧪 **RED DE DEMOSTRACIÓN** — nombres viales y anclas "
-                       "reales de Azcapotzalco sobre geometría sintética. "
-                       "Para datos reales del DENUE (INEGI), ejecuta "
-                       "`python scripts/ingerir_denue.py` en una red con "
-                       "acceso a inegi.org.mx: la app los detecta sola. "
-                       "(La política de red de este entorno bloquea INEGI.)")
+            st.warning("🧪 **RED DE DEMOSTRACIÓN** — geometría sintética. "
+                       "Ingiere un municipio real con "
+                       "`python scripts/ingerir_denue.py --estado EE "
+                       "--municipio NOMBRE` y aparecerá en el selector.")
 
         with lienzo_kpi:
             c1, c2, c3, c4, c5 = st.columns(5)
             c1.metric("🛣 Calles vivas", f"{len(calles_df)}",
-                      "red vial Azcapotzalco")
+                      f"red vial · {muni_nom}")
             c2.metric("🏪 Establecimientos", f"{len(estab_df):,}",
                       "DENUE real" if es_real else "demo etiquetada")
             c3.metric("💰 Índice de valor medio", f"${v_t.mean():,.0f} /m²",
@@ -2577,10 +2673,10 @@ def main() -> None:
 
         def fabricar(a, f):
             return construir_deck_calles(vv, a, f, mostrar_estab,
-                                         mostrar_flujos, estilo)
+                                         mostrar_flujos, estilo, suf)
 
         render_mapa(lienzo, fabricar, año_idx, reproducir, 60,
-                    float(vv.shape[0] - 1), clic_activo, "deck_calle")
+                    float(vv.shape[0] - 1), clic_activo, f"deck_calle_{suf}")
 
         t1, t2, t3, t4, t5, t6, t7 = st.tabs(
             ["🔎 Origen del crecimiento", "🌡 Sismógrafo",
@@ -2588,12 +2684,12 @@ def main() -> None:
              "🏆 Ranking de calles", "📈 Trayectorias", "🔬 El modelo"])
         with t1:
             tab_origen(calles_df["nombre"],
-                       _args_calles(rho, detonante, clic),
+                       _args_calles(rho, detonante, clic, suf),
                        mutante, "la calle")
         with t2:
-            tab_sismografo()
+            tab_sismografo(suf)
         with t3:
-            tab_huecos()
+            tab_huecos(suf)
         with t4:
             mezcla = pd.get_dummies(calles_df["sector"]).to_numpy(dtype=float)
             X = np.column_stack([
@@ -2619,13 +2715,13 @@ def main() -> None:
             tab_trayectorias(valores, año, calles_df["nombre"],
                              "🧬 Trayectoria — top 8 calles en mutación")
         with t7:
-            _validacion_contagio()
+            _validacion_contagio(suf)
             st.markdown(TEXTO_MODELO)
             st.caption("A esta escala, el crecimiento NACE de la actividad "
                        "económica observable: cada negocio suma vitalidad a "
-                       "su calle, las anclas (mall, metro, universidad, "
-                       "hospital) bombean potencial, y el contagio viaja por "
-                       "los cruces viales.")
+                       "su calle, las anclas (los focos de empleo reales del "
+                       "DENUE) bombean potencial, y el contagio viaja por los "
+                       "cruces viales.")
 
     # ══ MICROTEJIDO (motor original) ══════════════════════════════════════════
     else:
