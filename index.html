@@ -381,7 +381,9 @@
   .wait-fine{margin-top:10px;font-size:.78rem;color:var(--muted-txt)}
   .liquid-glass{background:rgba(0,0,0,.4);background-blend-mode:luminosity;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border:none;box-shadow:inset 0 1px 1px rgba(255,255,255,.1);position:relative;overflow:hidden}
   .liquid-glass::before{content:'';position:absolute;inset:0;border-radius:inherit;padding:1.4px;background:linear-gradient(180deg,rgba(255,255,255,.3) 0%,rgba(255,255,255,.1) 20%,rgba(255,255,255,0) 40%,rgba(255,255,255,0) 60%,rgba(255,255,255,.1) 80%,rgba(255,255,255,.3) 100%);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
-  #hdr nav.glass-nav{padding:.7rem 1.25rem;border-radius:999px;margin-top:8px}
+  /* overflow:visible sobreescribe el overflow:hidden de .liquid-glass: sin él,
+     la píldora de vidrio recorta los menús desplegables que abren hacia abajo */
+  #hdr nav.glass-nav{padding:.7rem 1.25rem;border-radius:999px;margin-top:8px;overflow:visible}
   /* ---- hero VEX ---- */
   .hero-vex{position:relative;min-height:100vh;display:flex;overflow:hidden}
   .hero-vex .hero-video2{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none}
