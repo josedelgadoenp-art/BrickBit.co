@@ -93,6 +93,30 @@
   .disclaimer{margin:30px 0 60px;border:1px solid var(--line);border-radius:var(--r);padding:20px 24px;color:var(--muted-txt);font-size:.82rem;background:var(--bg-2)}
   .disclaimer b{color:var(--warn)}
   .hidden{display:none !important}
+
+  /* ---- editor manual del plano ---- */
+  .ed-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  .ed-tool{background:var(--bg-2);border:1px solid var(--line-strong);color:var(--muted-txt);border-radius:10px;padding:8px 13px;font-family:'Space Mono',monospace;font-size:.74rem;cursor:pointer;transition:all .15s}
+  .ed-tool:hover{color:var(--cream);border-color:var(--clay-soft)}
+  .ed-tool.active{background:var(--clay);border-color:var(--clay);color:#fff}
+  .ed-tool.warn:hover{border-color:var(--danger);color:var(--danger)}
+  .ed-sep{width:1px;height:24px;background:var(--line-strong);margin:0 4px}
+  .ed-layout{display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start}
+  @media(max-width:900px){.ed-layout{grid-template-columns:1fr}}
+  .ed-canvas{background:#f4efe4;border-radius:14px;border:1px solid var(--line-strong);overflow:hidden}
+  .ed-canvas svg{display:block;width:100%;height:auto;touch-action:none}
+  .ed-canvas .ed-hit{cursor:grab}
+  .ed-canvas .ed-hit:active{cursor:grabbing}
+  .ed-panel{background:var(--bg-2);border:1px solid var(--line);border-radius:14px;padding:18px;position:sticky;top:84px}
+  .ed-panel h4{font-family:'Fraunces',serif;font-size:1rem;margin-bottom:12px;color:var(--cream)}
+  .ed-panel .ed-empty{color:var(--muted-txt);font-size:.85rem;text-align:center;padding:26px 8px;line-height:1.7}
+  .ed-panel .ed-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .ed-panel .ed-row.solo{grid-template-columns:1fr}
+  .ed-panel label{font-size:.7rem}
+  .ed-panel input[type=text],.ed-panel input[type=number]{padding:8px 10px;font-size:.8rem}
+  .ed-panel .ed-check{display:flex;align-items:center;gap:8px;color:var(--cream);font-size:.85rem;margin:6px 0 10px}
+  .ed-panel .ed-check input{accent-color:var(--lime);width:16px;height:16px}
+  .ed-hint{font-size:.72rem;color:var(--muted-txt);margin-top:10px;line-height:1.6}
 </style>
 </head>
 <body>
@@ -170,7 +194,32 @@
     <canvas id="preview3d"></canvas>
     <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-primary" id="btnToTwin">Enviar al Gemelo Digital → <span class="help" tabindex="0" data-tip="Abre el Gemelo Digital con este plano ya cargado: ahí calculas materiales, varillas, costos, predicción de fallas, simulador 4D e inversión.">?</span></button>
+      <button class="btn btn-ghost" id="btnEditPlan">✏️ Editar plano <span class="help" tabindex="0" data-tip="Ajusta el plano a mano: mueve muros, puertas, ventanas y espacios; cambia nombres y medidas; agrega o elimina elementos. Los cambios se reflejan en el 3D, el SVG y el Gemelo Digital.">?</span></button>
       <button class="btn btn-ghost" id="btnSvg">⬇ Descargar plano (SVG)</button>
+    </div>
+  </section>
+
+  <!-- 04: editor manual -->
+  <section class="card hidden" id="secEditor">
+    <div class="card-head"><span class="knum">04 /</span><h2>Editor del plano — <span id="edTitle"></span></h2></div>
+    <p class="sub">Haz clic en un elemento para seleccionarlo y <b>arrástralo</b> para moverlo (los extremos de muros y ventanas se arrastran por separado). Edita sus medidas exactas en el panel. Imán de 5&nbsp;cm activado.</p>
+    <div class="ed-toolbar" id="edToolbar">
+      <button class="ed-tool active" data-tool="sel">⬚ Seleccionar</button>
+      <button class="ed-tool" data-tool="muro">─ Muro</button>
+      <button class="ed-tool" data-tool="ventana">▭ Ventana</button>
+      <button class="ed-tool" data-tool="puerta">◠ Puerta</button>
+      <button class="ed-tool" data-tool="columna">▪ Columna</button>
+      <button class="ed-tool" data-tool="espacio">✎ Espacio</button>
+      <span class="ed-sep"></span>
+      <button class="ed-tool warn" id="edDelete">🗑 Eliminar selección</button>
+      <button class="ed-tool" id="edUndo">↩ Deshacer</button>
+      <span class="ed-sep"></span>
+      <button class="btn btn-primary" id="edDone" style="padding:8px 18px">✓ Aplicar cambios</button>
+      <button class="ed-tool" id="edCancel">Descartar</button>
+    </div>
+    <div class="ed-layout">
+      <div class="ed-canvas" id="edCanvas"></div>
+      <aside class="ed-panel" id="edPanel"><div class="ed-empty">Selecciona un elemento del plano<br>o elige una herramienta para añadir.</div></aside>
     </div>
   </section>
 
@@ -346,7 +395,7 @@ function renderVariants() {
     return `<div class="variant ${i === state.sel ? 'sel' : ''}" data-i="${i}">
       ${state.veredicto && state.veredicto.ganadorIndex === i ? '<span class="win">★ GANADORA</span>' : ''}
       <h4>${escapeHtml(v.concepto)}</h4>
-      <div class="score">${escapeHtml(v.enfoque)} · optimización ${Math.round(v.puntuacionOptimizacion)}/100</div>
+      <div class="score">${escapeHtml(v.enfoque)} · optimización ${Math.round(v.puntuacionOptimizacion)}/100${v.editado ? ' · ✏️ editado a mano' : ''}</div>
       <div class="plan-wrap">${planSVG(g)}</div>
       <div class="meta">${g.niveles} niv. · ${fmt(g.areaTotalM2)} m² totales · huella ${fmt(footprintArea(g))} m²<br>${rooms}${g.espacios.length > 5 ? '…' : ''}</div>
     </div>`;
@@ -375,8 +424,9 @@ function footprintArea(g) {
   return Math.abs(a / 2);
 }
 
-/* --- dibujo del plano 2D (SVG estilo lámina arquitectónica) --- */
-function planSVG(g) {
+/* --- dibujo del plano 2D (SVG estilo lámina arquitectónica) ---
+   overlay: contenido SVG extra (tiradores del editor) antes de </svg> */
+function planSVG(g, overlay) {
   const PAD = 44, W = 560;
   const sc = (W - PAD * 2) / Math.max(g.anchoM, g.fondoM);
   const w = g.anchoM * sc, h = g.fondoM * sc;
@@ -430,7 +480,7 @@ function planSVG(g) {
   // título
   s += `<text x="${PAD}" y="${H + 14}" font-family="Georgia,serif" font-size="10" fill="#5b5344">Planta baja · ${escapeHtml(g.nombreProyecto)} · esc. gráfica · BrickBit IA</text>`;
 
-  return `<svg viewBox="0 0 ${W} ${H + 26}" xmlns="http://www.w3.org/2000/svg" style="background:#f4efe4">${s}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H + 26}" xmlns="http://www.w3.org/2000/svg" style="background:#f4efe4">${s}${overlay || ''}</svg>`;
 }
 
 /* =====================================================================
@@ -541,6 +591,257 @@ function buildPreview(g) {
 /* =====================================================================
    Acciones: enviar al gemelo, descargar SVG
 ===================================================================== */
+/* =====================================================================
+   Editor manual del plano — mover, editar, añadir y eliminar elementos
+   Trabaja sobre una COPIA de la geometría; "Aplicar" la escribe de vuelta.
+===================================================================== */
+const ed = { g: null, tool: 'sel', sel: null, drag: null, undo: [], draw: null };
+
+function edMetrics() {
+  const PAD = 44, W = 560;
+  const sc = (W - PAD * 2) / Math.max(ed.g.anchoM, ed.g.fondoM);
+  return { PAD, W, sc };
+}
+function edSnap(v) { return Math.round(v * 20) / 20; }          // imán de 5 cm
+function edToModel(px, py) {                                     // viewBox → metros
+  const { PAD, sc } = edMetrics();
+  return { x: edSnap((px - PAD) / sc), y: edSnap(ed.g.fondoM - (py - PAD) / sc) };
+}
+function edPush() { ed.undo.push(JSON.stringify(ed.g)); if (ed.undo.length > 60) ed.undo.shift(); }
+
+$('btnEditPlan').addEventListener('click', () => {
+  ed.g = JSON.parse(JSON.stringify(state.variantes[state.sel].geometria));
+  ed.sel = null; ed.tool = 'sel'; ed.undo = [];
+  $('edTitle').textContent = state.variantes[state.sel].concepto;
+  document.querySelectorAll('.ed-tool[data-tool]').forEach(b =>
+    b.classList.toggle('active', b.dataset.tool === 'sel'));
+  $('secEditor').classList.remove('hidden');
+  edRender(); edPanel();
+  $('secEditor').scrollIntoView({ behavior: 'smooth' });
+});
+
+/* --- render del SVG con capa de edición --- */
+function edRender() {
+  const { PAD, sc } = edMetrics();
+  const X = x => PAD + x * sc, Y = y => PAD + (ed.g.fondoM - y) * sc;
+  let o = '';
+  const selMark = (k, i) => ed.sel && ed.sel.kind === k && ed.sel.idx === i;
+  // zonas de clic generosas (invisibles) + resaltado de selección
+  (ed.g.muros || []).forEach((m, i) => {
+    if (selMark('muro', i)) o += `<line x1="${X(m.x1)}" y1="${Y(m.y1)}" x2="${X(m.x2)}" y2="${Y(m.y2)}" stroke="#cdf25a" stroke-width="7" opacity=".65"/>`;
+    o += `<line class="ed-hit" data-kind="muro" data-idx="${i}" x1="${X(m.x1)}" y1="${Y(m.y1)}" x2="${X(m.x2)}" y2="${Y(m.y2)}" stroke="rgba(0,0,0,0)" stroke-width="13"/>`;
+    if (selMark('muro', i)) o += edHandles([[m.x1, m.y1, '1'], [m.x2, m.y2, '2']], 'muro', i, X, Y);
+  });
+  (ed.g.ventanas || []).forEach((v, i) => {
+    if (selMark('ventana', i)) o += `<line x1="${X(v.x1)}" y1="${Y(v.y1)}" x2="${X(v.x2)}" y2="${Y(v.y2)}" stroke="#cdf25a" stroke-width="7" opacity=".65"/>`;
+    o += `<line class="ed-hit" data-kind="ventana" data-idx="${i}" x1="${X(v.x1)}" y1="${Y(v.y1)}" x2="${X(v.x2)}" y2="${Y(v.y2)}" stroke="rgba(0,0,0,0)" stroke-width="13"/>`;
+    if (selMark('ventana', i)) o += edHandles([[v.x1, v.y1, '1'], [v.x2, v.y2, '2']], 'ventana', i, X, Y);
+  });
+  (ed.g.puertas || []).forEach((p, i) => {
+    if (selMark('puerta', i)) o += `<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="11" fill="rgba(205,242,90,.4)" stroke="#a9d23f"/>`;
+    o += `<circle class="ed-hit" data-kind="puerta" data-idx="${i}" cx="${X(p.x)}" cy="${Y(p.y)}" r="12" fill="rgba(0,0,0,0)"/>`;
+  });
+  (ed.g.columnas || []).forEach((c, i) => {
+    if (selMark('columna', i)) o += `<rect x="${X(c.x) - 8}" y="${Y(c.y) - 8}" width="16" height="16" fill="rgba(205,242,90,.4)" stroke="#a9d23f"/>`;
+    o += `<rect class="ed-hit" data-kind="columna" data-idx="${i}" x="${X(c.x) - 9}" y="${Y(c.y) - 9}" width="18" height="18" fill="rgba(0,0,0,0)"/>`;
+  });
+  (ed.g.espacios || []).forEach((e, i) => {
+    if (selMark('espacio', i)) o += `<rect x="${X(e.x) - 34}" y="${Y(e.y) - 15}" width="68" height="26" rx="6" fill="rgba(205,242,90,.28)" stroke="#a9d23f"/>`;
+    o += `<rect class="ed-hit" data-kind="espacio" data-idx="${i}" x="${X(e.x) - 34}" y="${Y(e.y) - 15}" width="68" height="26" fill="rgba(0,0,0,0)"/>`;
+  });
+  // trazo en curso (muro/ventana nuevos)
+  if (ed.draw) {
+    o += `<line x1="${X(ed.draw.x1)}" y1="${Y(ed.draw.y1)}" x2="${X(ed.draw.x2)}" y2="${Y(ed.draw.y2)}" stroke="#1a7d50" stroke-width="3" stroke-dasharray="6 4"/>`;
+  }
+  $('edCanvas').innerHTML = planSVG(ed.g, o);
+}
+function edHandles(pts, kind, idx, X, Y) {
+  return pts.map(([x, y, pt]) =>
+    `<circle class="ed-hit" data-kind="${kind}" data-idx="${idx}" data-pt="${pt}" cx="${X(x)}" cy="${Y(y)}" r="8" fill="#cdf25a" stroke="#26201a" stroke-width="1.5"/>`).join('');
+}
+
+/* --- interacción con puntero (delegada en el contenedor) --- */
+function edEventPoint(ev) {
+  const svg = $('edCanvas').querySelector('svg');
+  const pt = svg.createSVGPoint();
+  pt.x = ev.clientX; pt.y = ev.clientY;
+  const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+  return edToModel(p.x, p.y);
+}
+$('edCanvas').addEventListener('pointerdown', (ev) => {
+  if (!ed.g) return;
+  const t = ev.target.closest('.ed-hit');
+  const m = edEventPoint(ev);
+  if (ed.tool === 'muro' || ed.tool === 'ventana') {
+    ed.draw = { x1: m.x, y1: m.y, x2: m.x, y2: m.y };
+    ev.preventDefault(); return;
+  }
+  if (ed.tool === 'puerta') {
+    edPush(); (ed.g.puertas = ed.g.puertas || []).push({ x: m.x, y: m.y, anchoM: 0.9, orientacionDeg: 0 });
+    ed.sel = { kind: 'puerta', idx: ed.g.puertas.length - 1 }; edSetTool('sel'); edRender(); edPanel(); return;
+  }
+  if (ed.tool === 'columna') {
+    edPush(); (ed.g.columnas = ed.g.columnas || []).push({ x: m.x, y: m.y });
+    ed.sel = { kind: 'columna', idx: ed.g.columnas.length - 1 }; edSetTool('sel'); edRender(); edPanel(); return;
+  }
+  if (ed.tool === 'espacio') {
+    edPush(); (ed.g.espacios = ed.g.espacios || []).push({ nombre: 'Espacio', x: m.x, y: m.y, areaM2: 9 });
+    ed.sel = { kind: 'espacio', idx: ed.g.espacios.length - 1 }; edSetTool('sel'); edRender(); edPanel(); return;
+  }
+  if (t) {
+    ed.sel = { kind: t.dataset.kind, idx: Number(t.dataset.idx) };
+    edPush();
+    ed.drag = { pt: t.dataset.pt || null, last: m };
+    ev.preventDefault();
+  } else {
+    ed.sel = null; ed.drag = null;
+  }
+  edRender(); edPanel();
+});
+$('edCanvas').addEventListener('pointermove', (ev) => {
+  if (!ed.g) return;
+  const m = edEventPoint(ev);
+  if (ed.draw) { ed.draw.x2 = m.x; ed.draw.y2 = m.y; edRender(); return; }
+  if (!ed.drag || !ed.sel) return;
+  const { kind, idx } = ed.sel;
+  const dx = m.x - ed.drag.last.x, dy = m.y - ed.drag.last.y;
+  if (!dx && !dy) return;
+  if (kind === 'muro' || kind === 'ventana') {
+    const el = ed.g[kind === 'muro' ? 'muros' : 'ventanas'][idx];
+    if (ed.drag.pt === '1')      { el.x1 = m.x; el.y1 = m.y; }
+    else if (ed.drag.pt === '2') { el.x2 = m.x; el.y2 = m.y; }
+    else { el.x1 = edSnap(el.x1 + dx); el.y1 = edSnap(el.y1 + dy); el.x2 = edSnap(el.x2 + dx); el.y2 = edSnap(el.y2 + dy); }
+  } else {
+    const col = { puerta: 'puertas', columna: 'columnas', espacio: 'espacios' }[kind];
+    const el = ed.g[col][idx];
+    el.x = edSnap(el.x + dx); el.y = edSnap(el.y + dy);
+  }
+  ed.drag.last = m;
+  edRender(); edPanel(true);
+});
+window.addEventListener('pointerup', () => {
+  if (ed.draw) {
+    const d = ed.draw; ed.draw = null;
+    const largo = Math.hypot(d.x2 - d.x1, d.y2 - d.y1);
+    if (largo >= 0.3) {
+      edPush();
+      if (ed.tool === 'muro') { (ed.g.muros = ed.g.muros || []).push({ x1: d.x1, y1: d.y1, x2: d.x2, y2: d.y2, carga: false }); ed.sel = { kind: 'muro', idx: ed.g.muros.length - 1 }; }
+      else { (ed.g.ventanas = ed.g.ventanas || []).push({ x1: d.x1, y1: d.y1, x2: d.x2, y2: d.y2 }); ed.sel = { kind: 'ventana', idx: ed.g.ventanas.length - 1 }; }
+      edSetTool('sel');
+    }
+    edRender(); edPanel();
+  }
+  ed.drag = null;
+});
+
+/* --- panel de propiedades --- */
+function edPanel(soloValores) {
+  const P = $('edPanel');
+  if (!ed.sel) { P.innerHTML = '<div class="ed-empty">Selecciona un elemento del plano<br>o elige una herramienta para añadir.</div>'; return; }
+  const { kind, idx } = ed.sel;
+  const num = (id, lbl, val, step) => `<div><label>${lbl}</label><input type="number" id="${id}" value="${val}" step="${step || 0.05}"></div>`;
+  let h = '';
+  if (kind === 'muro') {
+    const m = ed.g.muros[idx];
+    h = `<h4>─ Muro ${idx + 1}</h4>
+      <div class="ed-row">${num('edX1', 'x1 (m)', m.x1)}${num('edY1', 'y1 (m)', m.y1)}</div>
+      <div class="ed-row">${num('edX2', 'x2 (m)', m.x2)}${num('edY2', 'y2 (m)', m.y2)}</div>
+      <label class="ed-check"><input type="checkbox" id="edCarga" ${m.carga ? 'checked' : ''}> Muro de carga</label>`;
+  } else if (kind === 'ventana') {
+    const v = ed.g.ventanas[idx];
+    h = `<h4>▭ Ventana ${idx + 1}</h4>
+      <div class="ed-row">${num('edX1', 'x1 (m)', v.x1)}${num('edY1', 'y1 (m)', v.y1)}</div>
+      <div class="ed-row">${num('edX2', 'x2 (m)', v.x2)}${num('edY2', 'y2 (m)', v.y2)}</div>`;
+  } else if (kind === 'puerta') {
+    const p = ed.g.puertas[idx];
+    h = `<h4>◠ Puerta ${idx + 1}</h4>
+      <div class="ed-row">${num('edX', 'x (m)', p.x)}${num('edY', 'y (m)', p.y)}</div>
+      <div class="ed-row">${num('edAncho', 'ancho (m)', p.anchoM || 0.9, 0.05)}${num('edOri', 'orientación (°)', p.orientacionDeg || 0, 15)}</div>`;
+  } else if (kind === 'columna') {
+    const c = ed.g.columnas[idx];
+    h = `<h4>▪ Columna ${idx + 1}</h4>
+      <div class="ed-row">${num('edX', 'x (m)', c.x)}${num('edY', 'y (m)', c.y)}</div>`;
+  } else if (kind === 'espacio') {
+    const e = ed.g.espacios[idx];
+    h = `<h4>✎ ${escapeHtml(e.nombre)}</h4>
+      <div class="ed-row solo"><div><label>nombre</label><input type="text" id="edNombre" value="${escapeHtml(e.nombre)}"></div></div>
+      <div class="ed-row">${num('edX', 'x (m)', e.x)}${num('edY', 'y (m)', e.y)}</div>
+      <div class="ed-row solo">${num('edArea', 'área (m²)', e.areaM2, 0.5)}</div>`;
+  }
+  h += `<div class="ed-hint">Arrastra el elemento en el plano para moverlo. Los círculos lima son los extremos. <b>Supr</b> elimina.</div>`;
+  P.innerHTML = h;
+  // conectar inputs → modelo (en vivo)
+  const bind = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('input', () => { fn(parseFloat(el.value)); edRender(); }); };
+  if (kind === 'muro') {
+    const m = ed.g.muros[idx];
+    bind('edX1', v => m.x1 = v); bind('edY1', v => m.y1 = v);
+    bind('edX2', v => m.x2 = v); bind('edY2', v => m.y2 = v);
+    const c = document.getElementById('edCarga');
+    if (c) c.addEventListener('change', () => { m.carga = c.checked; edRender(); });
+  } else if (kind === 'ventana') {
+    const v = ed.g.ventanas[idx];
+    bind('edX1', n => v.x1 = n); bind('edY1', n => v.y1 = n);
+    bind('edX2', n => v.x2 = n); bind('edY2', n => v.y2 = n);
+  } else if (kind === 'puerta') {
+    const p = ed.g.puertas[idx];
+    bind('edX', v => p.x = v); bind('edY', v => p.y = v);
+    bind('edAncho', v => p.anchoM = v); bind('edOri', v => p.orientacionDeg = v);
+  } else if (kind === 'columna') {
+    const c = ed.g.columnas[idx];
+    bind('edX', v => c.x = v); bind('edY', v => c.y = v);
+  } else if (kind === 'espacio') {
+    const e = ed.g.espacios[idx];
+    const n = document.getElementById('edNombre');
+    if (n) n.addEventListener('input', () => { e.nombre = n.value; edRender(); });
+    bind('edX', v => e.x = v); bind('edY', v => e.y = v);
+    bind('edArea', v => e.areaM2 = v);
+  }
+}
+
+/* --- barra de herramientas --- */
+function edSetTool(t) {
+  ed.tool = t;
+  document.querySelectorAll('.ed-tool[data-tool]').forEach(b =>
+    b.classList.toggle('active', b.dataset.tool === t));
+}
+document.querySelectorAll('.ed-tool[data-tool]').forEach(b =>
+  b.addEventListener('click', () => edSetTool(b.dataset.tool)));
+
+$('edDelete').addEventListener('click', edEliminar);
+function edEliminar() {
+  if (!ed.sel) return;
+  edPush();
+  const col = { muro: 'muros', ventana: 'ventanas', puerta: 'puertas', columna: 'columnas', espacio: 'espacios' }[ed.sel.kind];
+  ed.g[col].splice(ed.sel.idx, 1);
+  ed.sel = null;
+  edRender(); edPanel();
+}
+document.addEventListener('keydown', (ev) => {
+  if ($('secEditor').classList.contains('hidden')) return;
+  if ((ev.key === 'Delete' || ev.key === 'Backspace') && ed.sel &&
+      !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { ev.preventDefault(); edEliminar(); }
+});
+
+$('edUndo').addEventListener('click', () => {
+  if (!ed.undo.length) return;
+  ed.g = JSON.parse(ed.undo.pop());
+  ed.sel = null;
+  edRender(); edPanel();
+});
+
+$('edDone').addEventListener('click', () => {
+  const v = state.variantes[state.sel];
+  v.geometria = ed.g;
+  v.editado = true;
+  $('secEditor').classList.add('hidden');
+  renderVariants();                       // re-dibuja tarjetas + 3D con lo editado
+  $('secPreview').scrollIntoView({ behavior: 'smooth' });
+});
+$('edCancel').addEventListener('click', () => {
+  $('secEditor').classList.add('hidden');
+  ed.g = null;
+});
+
 $('btnToTwin').addEventListener('click', () => {
   const v = state.variantes[state.sel];
   if (!v) return;
