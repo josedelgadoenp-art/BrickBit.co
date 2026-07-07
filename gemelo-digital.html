@@ -466,7 +466,7 @@
   <!-- ===== 4. MAP ===== -->
   <section class="card hidden" id="secMap">
     <div class="card-head"><span class="knum">04 /</span><h2>Colócalo en el mapa 3D de Google</h2></div>
-    <p class="sub">Busca la dirección del terreno o haz clic en el mapa: el volumen del proyecto se extruye sobre el mapa 3D fotorrealista para evaluar contexto urbano, orientación y escala.</p>
+    <p class="sub">El mapa 3D se carga solo y extruye tu proyecto sobre CDMX. Para colocarlo en el terreno real, escribe la <b>dirección</b> y pulsa <b>Buscar</b> (más preciso que hacer clic). El volumen se reubica sobre el mapa fotorrealista para evaluar contexto urbano, orientación y escala.</p>
     <div class="toolbar">
       <div class="field">
         <label for="addressInput">Dirección o lugar</label>
@@ -476,7 +476,7 @@
       <button class="btn btn-ghost" id="btnLoadMap">Cargar mapa 3D</button>
     </div>
     <div id="map3dContainer">
-      <div class="placeholder-msg" id="mapPlaceholder">Ingresa tu llave de Google Maps en la configuración<br>y presiona “Cargar mapa 3D”.</div>
+      <div class="placeholder-msg" id="mapPlaceholder">Cargando el mapa 3D…<br>Si no aparece en unos segundos, presiona “Cargar mapa 3D”.</div>
     </div>
   </section>
 
@@ -1064,11 +1064,18 @@ const DEMO_ENGINEERING = {
    Paso 2/3 — resumen + render 3D (Three.js)
 ===================================================================== */
 let three = null; // { renderer, scene, camera, controls }
+let mapAutoTried = false; // el mapa 3D se autocarga una sola vez
 
 function renderModelSection() {
   const g = state.geometry;
   $('secModel').classList.remove('hidden');
   $('secMap').classList.remove('hidden');
+  // Carga el mapa 3D y extruye el edificio automáticamente (si hay llave de Google).
+  // Evita que el usuario tenga que pulsar "Cargar mapa" y colocar el volumen a mano.
+  if (($('gmapsKey').value || '').trim() && !state.map3d && !mapAutoTried) {
+    mapAutoTried = true;
+    setTimeout(() => { try { initMap3D(); } catch (e) { /* el placeholder muestra el error */ } }, 300);
+  }
   $('modelSummary').textContent =
     `${g.nombreProyecto} — ${g.niveles} nivel(es), ${g.anchoM}×${g.fondoM} m, sistema: ${g.sistemaEstructural}. ${g.notas || ''}`;
   $('geoStats').innerHTML = [
@@ -2201,12 +2208,20 @@ $('btnRecord').addEventListener('click', () => {
     state.geometry = draft.geometry;
     $('sharedBanner').innerHTML = '🧠 Plano generado con el <b>Creador IA</b>: <b>' +
       escapeHtml(draft.geometry.nombreProyecto) +
-      '</b>. Revisa el gemelo 3D y presiona <b>“Analizar ingeniería del plano IA”</b> para materiales, fallas e inversión. <a href="crear-plano.html">← Volver al creador</a>';
+      '</b>. <button class="btn btn-primary" id="btnEngCreator" style="margin:6px 10px 0 0">Analizar ingeniería del plano IA →</button>' +
+      '<a href="crear-plano.html">← Volver al creador</a>';
     $('sharedBanner').classList.remove('hidden');
     renderModelSection();
     $('btnAnalyze').disabled = false;
     $('btnAnalyze').textContent = 'Analizar ingeniería del plano IA →';
     setStep(3, 'done');
+    // El botón de la sección 01 queda arriba, lejos del 3D; damos uno visible aquí.
+    $('btnEngCreator').addEventListener('click', () => $('btnAnalyze').click());
+    // Si ya hay llave o backend configurados, arranca el análisis de ingeniería solo
+    // (materiales, fallas, simulador e inversión) para no dejar al usuario atascado.
+    if (($('anthropicKey').value || '').trim() || ($('backendUrl').value || '').trim()) {
+      $('btnAnalyze').click();
+    }
   } catch (err) { console.warn('Borrador del creador inválido:', err); }
 })();
 
