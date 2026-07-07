@@ -213,7 +213,7 @@ const GEO_PROPS = {
   fondoM: { type: "number", description: "Fondo del EDIFICIO en metros (eje Y). Debe caber en el terreno." },
   areaTotalM2: { type: "number" },
   sistemaEstructural: { type: "string" },
-  footprint: { type: "array", minItems: 3,
+  footprint: { type: "array", description: "Polígono de la huella del edificio: al menos 3 vértices, en orden",
     items: { type: "object", additionalProperties: false, required: ["x","y"],
       properties: { x: { type: "number" }, y: { type: "number" } } } },
   muros: { type: "array",
@@ -238,7 +238,7 @@ const GEO_REQ = Object.keys(GEO_PROPS);
 const VARIANTS_SCHEMA = {
   type: "object", additionalProperties: false, required: ["variantes","veredicto"],
   properties: {
-    variantes: { type: "array", minItems: 1, maxItems: 3,
+    variantes: { type: "array", description: "Entre 1 y 3 propuestas de plano, según la cantidad solicitada",
       items: { type: "object", additionalProperties: false,
         required: ["concepto","enfoque","puntuacionOptimizacion","geometria"],
         properties: {
