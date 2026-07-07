@@ -716,8 +716,8 @@ const GEOMETRY_SCHEMA = {
     areaTotalM2: { type: "number" },
     sistemaEstructural: { type: "string", description: "Ej: marcos de concreto, muros de carga de mampostería confinada, acero, etc." },
     footprint: {
-      type: "array", minItems: 3,
-      description: "Polígono del contorno del edificio en metros, origen en esquina inferior izquierda, sentido antihorario",
+      type: "array",
+      description: "Polígono del contorno del edificio en metros (al menos 3 vértices), origen en esquina inferior izquierda, sentido antihorario",
       items: { type: "object", additionalProperties: false, required: ["x","y"],
         properties: { x: { type: "number" }, y: { type: "number" } } }
     },
