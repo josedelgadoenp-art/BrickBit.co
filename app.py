@@ -183,7 +183,7 @@ def frente_de_onda(v: np.ndarray, pares: tuple) -> np.ndarray:
 RUTA_PRECIOS = os.path.join(_DIR, "data", "precios_zonas.csv")
 
 
-@st.cache_data
+@st.cache_data(max_entries=1)
 def precios_reales() -> pd.DataFrame | None:
     """
     Anclajes de precio REALES muestreados de portales inmobiliarios
@@ -354,7 +354,7 @@ def _cargar_geojson(ruta: str, url: str) -> dict:
     return geo
 
 
-@st.cache_data(show_spinner="🗺 Cargando delimitación estatal…")
+@st.cache_data(show_spinner="🗺 Cargando delimitación estatal…", max_entries=1)
 def cargar_estados() -> gpd.GeoDataFrame:
     """Los 32 polígonos estatales → GeoDataFrame(estado, geometry)."""
     geo = _cargar_geojson(RUTA_ESTADOS, URL_ESTADOS)
@@ -363,7 +363,7 @@ def cargar_estados() -> gpd.GeoDataFrame:
     return gdf.sort_values("estado").reset_index(drop=True)
 
 
-@st.cache_data(show_spinner="🏛 Cargando los 2,436 municipios…")
+@st.cache_data(show_spinner="🏛 Cargando los 2,436 municipios…", max_entries=1)
 def cargar_municipios() -> gpd.GeoDataFrame:
     """
     Las 2,436 células administrativas reales del país (GeoJSON simplificado a
@@ -398,17 +398,17 @@ def _vecindad(geoms: list, tolerancia: float) -> tuple[np.ndarray, np.ndarray, n
     return pi, pj, grados
 
 
-@st.cache_data(show_spinner="🧠 Tejiendo contigüidad estatal…")
+@st.cache_data(show_spinner="🧠 Tejiendo contigüidad estatal…", max_entries=1)
 def vecindad_estados() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return _vecindad(cargar_estados().geometry.tolist(), 0.03)
 
 
-@st.cache_data(show_spinner="🧠 Tejiendo las ~15,000 fronteras municipales…")
+@st.cache_data(show_spinner="🧠 Tejiendo las ~15,000 fronteras municipales…", max_entries=1)
 def vecindad_municipios() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return _vecindad(cargar_municipios().geometry.tolist(), 0.015)
 
 
-@st.cache_data
+@st.cache_data(max_entries=1)
 def contornos_estatales() -> pd.DataFrame:
     """MultiPolygons estatales explotados a anillos exteriores para PyDeck."""
     filas = []
@@ -421,7 +421,7 @@ def contornos_estatales() -> pd.DataFrame:
     return pd.DataFrame(filas)
 
 
-@st.cache_data
+@st.cache_data(max_entries=1)
 def contornos_municipales() -> pd.DataFrame:
     """Anillos municipales (coordenadas a 4 decimales ≈ 11 m para aligerar)."""
     filas = []
@@ -438,7 +438,7 @@ def contornos_municipales() -> pd.DataFrame:
 # 4 · EXPEDIENTES — ATRIBUTOS ESTATALES Y MUNICIPALES
 # ══════════════════════════════════════════════════════════════════════════════
 
-@st.cache_data
+@st.cache_data(max_entries=1)
 def datos_estatales() -> pd.DataFrame:
     """Expediente de cada estado alineado al GeoDataFrame estatal."""
     gdf = cargar_estados()
@@ -458,7 +458,7 @@ def datos_estatales() -> pd.DataFrame:
     return df
 
 
-@st.cache_data(show_spinner="🧫 Sintetizando el expediente municipal…")
+@st.cache_data(show_spinner="🧫 Sintetizando el expediente municipal…", max_entries=1)
 def datos_municipales() -> pd.DataFrame:
     """
     Expediente de los 2,436 municipios. Sin microdatos públicos por municipio,
@@ -611,7 +611,7 @@ def _args_nacion(rho: float, megaproyecto: str, clic: tuple = None) -> dict:
                 shock_fuerza=mega["fuerza"] if mega else 0)
 
 
-@st.cache_data(show_spinner="🧬 Simulando morfogénesis estatal (SAR)…")
+@st.cache_data(show_spinner="🧬 Simulando morfogénesis estatal (SAR, max_entries=8)…")
 def simular_nacion(rho: float, megaproyecto: str,
                    clic: tuple = None) -> np.ndarray:
     """SAR sobre la contigüidad real de los 32 estados."""
@@ -637,7 +637,7 @@ def _args_municipios(rho: float, megaproyecto: str, clic: tuple = None) -> dict:
                 shock_fuerza=(mega["fuerza"] * 0.9) if mega else 0)
 
 
-@st.cache_data(show_spinner="🧬 Simulando morfogénesis municipal (2,436 células)…")
+@st.cache_data(show_spinner="🧬 Simulando morfogénesis municipal (2,436 células, max_entries=8)…")
 def simular_municipios(rho: float, megaproyecto: str,
                        clic: tuple = None) -> np.ndarray:
     """
@@ -995,7 +995,7 @@ CATALIZADORES = {
 }
 
 
-@st.cache_data(show_spinner="🧫 Cultivando tejido urbano…")
+@st.cache_data(show_spinner="🧫 Cultivando tejido urbano…", max_entries=1)
 def generar_tejido_urbano() -> gpd.GeoDataFrame:
     """GeoDataFrame de 676 manzanas simuladas con precio, potencial y flujo."""
     rng = np.random.default_rng(SEMILLA)
@@ -1033,7 +1033,7 @@ def generar_tejido_urbano() -> gpd.GeoDataFrame:
     return gdf
 
 
-@st.cache_data
+@st.cache_data(max_entries=1)
 def vecindad_reina() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Contigüidad reina de la retícula micro: la W del SAR celular."""
     pares_i, pares_j = [], []
@@ -1053,7 +1053,7 @@ def vecindad_reina() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return pares_i, pares_j, grados
 
 
-@st.cache_data(show_spinner="🧬 Simulando morfogénesis celular…")
+@st.cache_data(show_spinner="🧬 Simulando morfogénesis celular…", max_entries=8)
 def simular_micro(rho: float, catalizador: str) -> np.ndarray:
     """SAR celular con catalizador gaussiano (célula madre puntual)."""
     gdf = generar_tejido_urbano()
@@ -1180,7 +1180,7 @@ URL_CP = ("https://raw.githubusercontent.com/open-mexico/mexico-geojson/"
           "master/09-Cdmx.geojson")
 
 
-@st.cache_data(show_spinner="🏘 Cargando 1,182 códigos postales SEPOMEX…")
+@st.cache_data(show_spinner="🏘 Cargando 1,182 códigos postales SEPOMEX…", max_entries=1)
 def cargar_cp() -> gpd.GeoDataFrame:
     """Polígonos postales reales de CDMX (SEPOMEX vía open-mexico/mexico-geojson)."""
     geo = _cargar_geojson(RUTA_CP, URL_CP)
@@ -1193,12 +1193,12 @@ def cargar_cp() -> gpd.GeoDataFrame:
     return gdf[["cp", "alcaldia", "lng", "lat", "geometry"]].reset_index(drop=True)
 
 
-@st.cache_data(show_spinner="🧠 Tejiendo contigüidad postal…")
+@st.cache_data(show_spinner="🧠 Tejiendo contigüidad postal…", max_entries=1)
 def vecindad_cp() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     return _vecindad(cargar_cp().geometry.tolist(), 0.0025)
 
 
-@st.cache_data
+@st.cache_data(max_entries=1)
 def contornos_cp() -> pd.DataFrame:
     filas = []
     for idx, geom in enumerate(cargar_cp().geometry):
@@ -1210,7 +1210,7 @@ def contornos_cp() -> pd.DataFrame:
     return pd.DataFrame(filas)
 
 
-@st.cache_data
+@st.cache_data(max_entries=1)
 def datos_cp() -> pd.DataFrame:
     """
     Expediente por código postal: el precio se sintetiza con el gradiente de
@@ -1310,7 +1310,7 @@ def _args_cp(rho: float, detonante: str, clic: tuple = None) -> dict:
                 shock_fuerza=det["fuerza"] if det else 0)
 
 
-@st.cache_data(show_spinner="🧬 Simulando morfogénesis postal (SEPOMEX)…")
+@st.cache_data(show_spinner="🧬 Simulando morfogénesis postal (SEPOMEX, max_entries=8)…")
 def simular_cp(rho: float, detonante: str, clic: tuple = None) -> np.ndarray:
     return _sar(**_args_cp(rho, detonante, clic))
 
@@ -1399,7 +1399,7 @@ EMOJI_SECTOR = {"Comercio": "🏬", "Servicios": "🏢",
                 "Industria": "🏭", "Alimentos": "🍽"}
 
 
-@st.cache_data
+@st.cache_data(max_entries=1)
 def municipios_calle() -> list[dict]:
     """
     Descubre los municipios con datos de calle ingeridos (data/calles_*.json
@@ -1434,7 +1434,7 @@ def hay_datos_denue(suffix: str = None) -> bool:
             and os.path.exists(RUTA_ESTAB_TPL.format(s=suffix)))
 
 
-@st.cache_data(show_spinner="🛣 Construyendo la red vial…")
+@st.cache_data(show_spinner="🛣 Construyendo la red vial…", max_entries=4)
 def cargar_red_vial(suffix: str = "azcapotzalco"
                     ) -> tuple[pd.DataFrame, pd.DataFrame, bool]:
     """
@@ -1466,7 +1466,7 @@ _NOMBRES = ["La Esperanza", "El Fénix", "San José", "Doña Mary", "El Águila"
             "Vallejo", "La Central", "Don Beto", "La Norteña", "El Porvenir"]
 
 
-@st.cache_data
+@st.cache_data(max_entries=1)
 def _red_demo() -> tuple[pd.DataFrame, pd.DataFrame, bool]:
     """Retícula vial sintética con nombres y anclas reales de Azcapotzalco."""
     w, e, s, n = -99.215, -99.155, 19.462, 19.508
@@ -1507,7 +1507,7 @@ def _red_demo() -> tuple[pd.DataFrame, pd.DataFrame, bool]:
     return calles, pd.DataFrame(registros), False
 
 
-@st.cache_data(show_spinner="⚓ Detectando anclas económicas…")
+@st.cache_data(show_spinner="⚓ Detectando anclas económicas…", max_entries=4)
 def anclas_municipio(suffix: str = "azcapotzalco") -> pd.DataFrame:
     """
     Anclas económicas DERIVADAS del DENUE real: los focos de empleo del
@@ -1541,7 +1541,7 @@ def anclas_municipio(suffix: str = "azcapotzalco") -> pd.DataFrame:
     return d
 
 
-@st.cache_data
+@st.cache_data(max_entries=4)
 def expediente_calles(suffix: str = "azcapotzalco") -> pd.DataFrame:
     """
     Expediente por calle: vitalidad económica (establecimientos + empleo del
@@ -1597,7 +1597,7 @@ ESPECIES_INDICADORAS = ["Café de especialidad", "Coworking", "Galería",
                         "Panadería artesanal", "Veterinaria", "Gym boutique"]
 
 
-@st.cache_data
+@st.cache_data(max_entries=4)
 def sismografo_calles(suffix: str = "azcapotzalco") -> tuple[pd.DataFrame, bool]:
     """
     Metabolismo de cada calle: aperturas recientes y ESPECIES INDICADORAS de
@@ -1633,7 +1633,7 @@ def sismografo_calles(suffix: str = "azcapotzalco") -> tuple[pd.DataFrame, bool]
     return sismo, es_real
 
 
-@st.cache_data(show_spinner="🧠 Detectando cruces entre calles…")
+@st.cache_data(show_spinner="🧠 Detectando cruces entre calles…", max_entries=4)
 def vecindad_calles(suffix: str = "azcapotzalco"
                     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Dos calles son vecinas si se cruzan (<60 m): el contagio viaja por
@@ -1694,7 +1694,7 @@ def _args_calles(rho: float, catalizador: str, clic: tuple = None,
                 shock_fuerza=cat["fuerza"] if cat else 0)
 
 
-@st.cache_data(show_spinner="🧬 Simulando morfogénesis vial…")
+@st.cache_data(show_spinner="🧬 Simulando morfogénesis vial…", max_entries=8)
 def simular_calles(rho: float, catalizador: str, clic: tuple = None,
                    suffix: str = "azcapotzalco") -> np.ndarray:
     return _sar(**_args_calles(rho, catalizador, clic, suffix))
@@ -2166,12 +2166,12 @@ def _banda(args: dict, n: int = 24) -> np.ndarray:
     return np.percentile(np.stack(sims), [10, 50, 90], axis=0)
 
 
-@st.cache_data(show_spinner="🎲 Calculando bandas de confianza…")
+@st.cache_data(show_spinner="🎲 Calculando bandas de confianza…", max_entries=4)
 def banda_municipios(rho: float, det: str, clic: tuple = None) -> np.ndarray:
     return _banda(_args_municipios(rho, det, clic))
 
 
-@st.cache_data(show_spinner="🎲 Calculando bandas de confianza…")
+@st.cache_data(show_spinner="🎲 Calculando bandas de confianza…", max_entries=4)
 def banda_calles(rho: float, det: str, clic: tuple = None,
                  suffix: str = "azcapotzalco") -> np.ndarray:
     return _banda(_args_calles(rho, det, clic, suffix))
@@ -2380,7 +2380,7 @@ GIROS_B2B = {
 }
 
 
-@st.cache_data(show_spinner="📍 Buscando la ubicación óptima…")
+@st.cache_data(show_spinner="📍 Buscando la ubicación óptima…", max_entries=8)
 def ubicacion_optima(suffix: str, giro: str) -> pd.DataFrame | None:
     """
     📍 MOTOR DE UBICACIÓN B2B: rejilla ~300 m sobre la ciudad; demanda =
@@ -3187,4 +3187,23 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # Red de seguridad: en Streamlit Cloud (1 GB de RAM, CPU compartida) un pico
+    # de memoria o un dato inesperado no debe dejar la app muerta en gris.
+    # Convertimos cualquier explosión en un mensaje accionable + recuperación.
+    try:
+        main()
+    except Exception as _exc:                              # noqa: BLE001
+        import gc
+        import traceback
+
+        st.error(
+            "🧬 El organismo tuvo un espasmo (posible falta de memoria del "
+            "servidor gratuito de Streamlit, o un dato inesperado). "
+            "Pulsa **Liberar memoria y reintentar** — la app se recupera sola."
+        )
+        if st.button("🔄 Liberar memoria y reintentar", type="primary"):
+            st.cache_data.clear()
+            gc.collect()
+            st.rerun()
+        with st.expander("Detalle técnico (para soporte)"):
+            st.code("".join(traceback.format_exception(_exc)), language="text")
