@@ -1446,6 +1446,19 @@ def cargar_red_vial(suffix: str = "azcapotzalco"
     if os.path.exists(rc) and os.path.exists(re_):
         with open(rc, encoding="utf-8") as f:
             calles = pd.DataFrame(json.load(f)["calles"])
+        # Saneo geométrico CRÍTICO: las polilíneas PCA traen vértices
+        # consecutivos duplicados (calles cortas pueden tener los 12 puntos
+        # idénticos). Un segmento de longitud cero con uniones redondeadas
+        # produce normales NaN en el PathLayer y, según el GPU, se dibuja
+        # como triángulos gigantes o deja el mapa EN BLANCO.
+        def _sanear(camino):
+            limpio = [camino[0]]
+            for p in camino[1:]:
+                if p[0] != limpio[-1][0] or p[1] != limpio[-1][1]:
+                    limpio.append(p)
+            return limpio
+        calles["camino"] = calles["camino"].map(_sanear)
+        calles = calles[calles["camino"].map(len) >= 2].reset_index(drop=True)
         return calles, pd.read_csv(re_), True
     return _red_demo()
 
@@ -1700,6 +1713,34 @@ def simular_calles(rho: float, catalizador: str, clic: tuple = None,
     return _sar(**_args_calles(rho, catalizador, clic, suffix))
 
 
+def _liston(camino: list, medio_m: float) -> list | None:
+    """
+    Polilínea → polígono "listón" de ancho 2*medio_m metros (cerrado).
+    Motivo: el PathLayer/LineLayer de la build de deck.gl que empaca
+    Streamlit está roto (según el GPU inunda la pantalla o la deja EN
+    BLANCO), mientras que el PolygonLayer —el que usan las demás escalas—
+    renderiza perfecto. Así que las calles se dibujan como polígonos.
+    """
+    P = np.asarray(camino, dtype=float)
+    keep = np.ones(len(P), bool)
+    keep[1:] = (np.abs(np.diff(P, axis=0)).sum(axis=1) > 0)
+    P = P[keep]
+    if len(P) < 2:
+        return None
+    kx = 111320 * math.cos(math.radians(float(P[:, 1].mean())))
+    ky = 111320.0
+    X = np.column_stack([(P[:, 0] - P[0, 0]) * kx, (P[:, 1] - P[0, 1]) * ky])
+    dif = np.diff(X, axis=0)
+    seg = dif / (np.linalg.norm(dif, axis=1, keepdims=True) + 1e-9)
+    nrm = np.column_stack([-seg[:, 1], seg[:, 0]])
+    vn = np.vstack([nrm[:1], (nrm[:-1] + nrm[1:]) / 2, nrm[-1:]])
+    vn = vn / (np.linalg.norm(vn, axis=1, keepdims=True) + 1e-9)
+    izq, der = X + vn * medio_m, X - vn * medio_m
+    anillo = np.vstack([izq, der[::-1], izq[:1]])          # anillo cerrado
+    return np.column_stack([anillo[:, 0] / kx + P[0, 0],
+                            anillo[:, 1] / ky + P[0, 1]]).tolist()
+
+
 def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
                           mostrar_estab: bool, mostrar_flujos: bool,
                           estilo: str,
@@ -1721,11 +1762,15 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
                    * (0.5 + 0.5 * vis), 26, 200)
 
     mids_c = np.array([np.mean(c, axis=0) for c in df["camino"]])
+    anchos = 0.8 + (0.6 + 6.0 * df["vitalidad"].to_numpy()) * vis
+    # calles como LISTONES PolygonLayer (ver _liston): medio ancho en metros,
+    # proporcional a la vitalidad — las calles vivas se ven más gruesas
+    contornos_c = [_liston(c, m) for c, m in
+                   zip(df["camino"], (4.5 + 3.2 * anchos))]
     calles_render = pd.DataFrame({
-        "camino": df["camino"],
+        "contorno": contornos_c,
         "lng": mids_c[:, 0], "lat": mids_c[:, 1],
         "color": np.column_stack([rgb, alfa]).astype(int).tolist(),
-        "ancho": (0.8 + (0.6 + 6.0 * df["vitalidad"].to_numpy()) * vis).tolist(),
         "nombre": df["nombre"].fillna(""),
         "estado_bio": clasificar_bio(tasa),
         "precio_txt": [f"${p:,.0f} índice/m²" for p in v_t],
@@ -1734,13 +1779,13 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
         "extra_txt": [f"{int(n)} negocios · {int(e)} empleos · {s}"
                       for n, e, s in zip(df["n_estab"], df["empleo"],
                                          df["sector"])],
-    })
+    }).dropna(subset=["contorno"])
     capas = [pdk.Layer(
-        "PathLayer", id="celulas", data=calles_render, get_path="camino",
-        get_color="color", get_width="ancho", width_units="pixels",
-        width_min_pixels=2, pickable=True, auto_highlight=True,
-        highlight_color=RGB_CREMA + [160], cap_rounded=True,
-        joint_rounded=True,
+        "PolygonLayer", id="celulas", data=calles_render,
+        get_polygon="contorno", get_fill_color="color",
+        stroked=False, extruded=False,
+        pickable=True, auto_highlight=True,
+        highlight_color=RGB_CREMA + [160],
     )]
 
     if mostrar_estab:
