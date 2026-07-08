@@ -83,10 +83,11 @@
     <h2>Despertando al organismo…</h2>
     <p>Cargando los 2,436 municipios y el tejido de calles. La primera visita
        puede tardar unos segundos mientras el motor despierta.</p>
-    <p class="nota"><strong>¿No carga?</strong> El motor vive en Streamlit Community Cloud.
-       Si aún no está desplegado: entra a <code>share.streamlit.io</code>, elige este repo
-       (<code>app.py</code>, rama <code>main</code>) y actualiza <code>MOTOR_URL</code>
-       en <code>morfogenesis.html</code> con la URL que te asigne.</p>
+    <p class="nota"><strong>¿Tarda mucho?</strong> El motor vive en Streamlit Community Cloud
+       y en el plan gratis se duerme tras un rato de inactividad; la primera visita puede
+       tardar hasta un minuto en despertarlo.<br>
+       <a id="abrirDirecto2" href="#" target="_blank" rel="noopener"
+          style="color:var(--lime);font-weight:600">Abrir el motor en pantalla completa ↗</a></p>
   </div>
   <iframe id="motor" title="Motor de Morfogénesis Urbana BrickBit"
           allow="fullscreen" loading="eager"></iframe>
@@ -102,17 +103,27 @@
   const iframe = document.getElementById("motor");
   const velo = document.getElementById("velo");
   document.getElementById("abrirDirecto").href = MOTOR_URL;
+  document.getElementById("abrirDirecto2").href = MOTOR_URL;
 
-  /* sondea que el motor exista antes de cargar el iframe: si el dominio aún
-     no está desplegado, se muestra la nota de despliegue en vez del error */
-  fetch(MOTOR_URL, { mode: "no-cors" })
-    .then(() => {
-      iframe.src = MOTOR_URL + "/?embed=true&embed_options=dark_theme";
-      iframe.addEventListener("load",
-        () => setTimeout(() => velo.classList.add("oculto"), 900));
-      setTimeout(() => velo.classList.add("oculto"), 20000);  // respaldo
-    })
-    .catch(() => velo.classList.add("fallo"));
+  /* Carga el motor directamente en el iframe: esto también DESPIERTA la app si
+     está dormida (plan gratis de Streamlit). No sondeamos antes con fetch()
+     porque un fetch no-cors a una app dormida se rechaza en falso y disparaba
+     el mensaje de error aunque el motor estuviera bien desplegado. */
+  iframe.src = MOTOR_URL + "/?embed=true&embed_options=dark_theme";
+
+  /* Cuando el iframe carga (motor listo, o pantalla "despertar" de Streamlit),
+     retiramos el velo para que se vea lo que haya dentro. */
+  iframe.addEventListener("load",
+    () => setTimeout(() => velo.classList.add("oculto"), 1200));
+
+  /* Respaldo: aun sin evento load, a los 25 s mostramos el iframe igual. */
+  setTimeout(() => velo.classList.add("oculto"), 25000);
+
+  /* Si tras 45 s el velo sigue puesto (el iframe nunca cargó: URL equivocada o
+     app caída), ofrecemos la ayuda + el botón de pantalla completa. */
+  setTimeout(() => {
+    if (!velo.classList.contains("oculto")) velo.classList.add("fallo");
+  }, 45000);
 </script>
 </body>
 </html>
