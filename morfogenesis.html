@@ -28,13 +28,19 @@
   .topbar .izq{display:flex;align-items:center;gap:14px;min-width:0}
   .topbar a.volver{color:var(--muted-txt);text-decoration:none;font-size:.9rem;white-space:nowrap;transition:color .2s}
   .topbar a.volver:hover{color:var(--cream)}
-  .titulo{font-family:'Fraunces',serif;font-weight:600;font-size:1.05rem;white-space:nowrap;
-    overflow:hidden;text-overflow:ellipsis;
-    background:linear-gradient(90deg,var(--cream) 15%,var(--lime) 85%);
-    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .chips{display:flex;gap:8px;align-items:center}
-  .chip{font-family:'Space Mono',monospace;font-size:.68rem;color:var(--lime);
-    border:1px solid var(--clay);border-radius:99px;padding:3px 10px;white-space:nowrap}
+  /* título en crema sólido (el degradado transparente distorsionaba el emoji
+     y aplastaba el texto en oliva). El isotipo 🧬 se muestra en lima aparte. */
+  .titulo{font-family:'Fraunces',serif;font-weight:600;font-size:1.06rem;letter-spacing:-.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--cream);
+    display:inline-flex;align-items:center;gap:9px}
+  .titulo .mark{color:var(--lime-deep);font-size:1.05em;-webkit-text-fill-color:initial}
+  .chips{display:flex;gap:9px;align-items:center}
+  .chip{font-family:'Space Mono',monospace;font-size:.64rem;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--muted-txt);
+    background:rgba(245,237,227,.03);border:1px solid rgba(245,237,227,.14);
+    border-radius:99px;padding:5px 12px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px}
+  .chip::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--lime-deep);flex:none}
+  .chip b{color:var(--cream);font-weight:700}
   .abrir{font-size:.85rem;color:var(--bg);background:var(--lime);border-radius:8px;
     padding:7px 14px;text-decoration:none;font-weight:600;white-space:nowrap;transition:filter .2s}
   .abrir:hover{filter:brightness(1.08)}
@@ -67,12 +73,12 @@
 <header class="topbar">
   <div class="izq">
     <a class="volver" href="index.html">← BrickBit</a>
-    <span class="titulo">🧬 Motor de Morfogénesis Urbana</span>
+    <span class="titulo"><span class="mark">🧬</span> Motor de Morfogénesis Urbana</span>
   </div>
   <div class="chips">
-    <span class="chip">2,436 municipios</span>
-    <span class="chip">83 ciudades a nivel calle</span>
-    <span class="chip">6.1M negocios · DENUE real</span>
+    <span class="chip"><b>2,436</b> municipios</span>
+    <span class="chip"><b>83</b> ciudades a nivel calle</span>
+    <span class="chip"><b>6.1M</b> negocios · DENUE real</span>
   </div>
   <a class="abrir" id="abrirDirecto" href="#" target="_blank" rel="noopener">Pantalla completa ↗</a>
 </header>
