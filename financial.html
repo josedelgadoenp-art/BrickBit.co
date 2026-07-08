@@ -96,6 +96,10 @@
   .seg3 button.on.lo{background:#c2593f}
   .seg3 button.on.mid{background:#b0872e}
   .seg3 button.on.hi{background:var(--verde)}
+  .segN{display:flex;flex-wrap:wrap;gap:8px}
+  .segN button{flex:1 1 30%;min-width:120px;border:1.5px solid rgba(16,12,10,0.12);border-radius:999px;background:#fff;cursor:pointer;font-family:var(--sans);font-weight:600;font-size:13px;color:var(--muted);padding:11px 12px;transition:.12s}
+  .segN button:hover{background:var(--paper);color:var(--ink-soft)}
+  .segN button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
   .chk{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:2px solid var(--line);
     color:transparent;font-size:12px;font-weight:800;vertical-align:middle;margin-right:6px;transition:.18s}
   .axis.done .chk{background:var(--verde);border-color:var(--verde);color:#fff}
@@ -206,6 +210,7 @@ const AGENTE = {
   whatsapp: "5215584681927",   // 52 + 1 + 10 dígitos
   email:    ""                 // agrega tu correo si quieres botón de email
 };
+const CALENDLY = "https://calendly.com/jose-delgado-enp/asesoria-financiera-personalizada";
 
 const pesos = new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
 const fmtPeso = v => pesos.format(Math.round(v||0));
@@ -339,6 +344,12 @@ const FLOW = {
 };
 
 /* radar */
+/* Rangos de ingreso mensual (no se pide el monto exacto; menos intrusivo) */
+const INGRESOS=[
+  "Menos de $15,000","$15,000 – $30,000","$30,000 – $60,000",
+  "$60,000 – $100,000","Más de $100,000","Prefiero no decir"
+];
+
 const RADAR=[
   {key:"vida",  short:"Vida",        full:"Seguro de vida"},
   {key:"gmm",   short:"Médicos",     full:"Gastos médicos (GMM)"},
@@ -352,7 +363,7 @@ const RADAR=[
    ESTADO
 ============================================================ */
 let phase="hero";
-let persona={nombre:"",apellido:"",edad:"",ingreso:""};
+let persona={nombre:"",apellido:"",edad:"",telefono:"",ingreso:""};
 let finderHistory=[], chosen=[], stepId="start", lastFinderId="start", productKey=null;
 let radarVals={vida:0,gmm:0,auto:0,retiro:0,emerg:0,ingreso:0};
 let radarDone={vida:false,gmm:false,auto:false,retiro:false,emerg:false,ingreso:false};
@@ -411,9 +422,9 @@ function renderPersona(){
         </div>
         <div class="row2">
           <div class="fld"><label for="pe">Edad</label><input id="pe" type="number" min="18" max="90" inputmode="numeric" value="${persona.edad}"></div>
-          <div class="fld"><label for="pi">Ingreso mensual estimado</label><div class="inp"><span class="pre">$</span><input id="pi" class="peso" type="number" min="0" step="1000" inputmode="numeric" value="${persona.ingreso}"></div></div>
+          <div class="fld"><label for="pt">Número telefónico</label><input id="pt" type="tel" autocomplete="tel" inputmode="tel" placeholder="10 dígitos" value="${persona.telefono}"></div>
         </div>
-        <div class="priv"><span aria-hidden="true">🔒</span><span>Tus datos solo se usan para personalizar tu resultado. No se guardan ni se envían a nadie hasta que tú decidas contactar a tu asesor.</span></div>
+        <div class="priv"><span aria-hidden="true">🔒</span><span>Tus datos solo se usan para personalizar tu resultado. No se envían a nadie hasta que tú decidas agendar o contactar a tu asesor.</span></div>
       </div>
       <div class="btnrow"><button class="btn btn-primary" id="pContinue">Continuar <span aria-hidden="true">→</span></button></div>
       <div class="backrow"><button class="back" id="backBtn">← Volver al inicio</button></div>
@@ -422,7 +433,7 @@ function renderPersona(){
     persona.nombre=document.getElementById('pn').value.trim();
     persona.apellido=document.getElementById('pa').value.trim();
     persona.edad=document.getElementById('pe').value.trim();
-    persona.ingreso=document.getElementById('pi').value.trim();
+    persona.telefono=document.getElementById('pt').value.trim();
     finderHistory=[]; chosen=[]; goFinder('start',true);
   });
   document.getElementById('backBtn').addEventListener('click',renderHero);
@@ -501,6 +512,12 @@ function renderRadar(){
               <button data-v="100" class="hi">Bien cubierto</button>
             </div>
           </div>`).join('')}
+          <div class="axis" data-axis="ingreso-rango" style="margin-top:20px;border-top:1px solid var(--line);padding-top:18px">
+            <div class="alab"><span class="chk" id="chk-ing">○</span> Ingreso mensual aproximado <small style="font-weight:400;color:var(--muted)">(opcional, por rango)</small></div>
+            <div class="segN" id="ingsel">
+              ${INGRESOS.map((r,i)=>`<button data-r="${i}">${r}</button>`).join('')}
+            </div>
+          </div>
       </div>
       <div class="btnrow"><button class="btn btn-primary" id="rContinue">Ver mi resultado <span aria-hidden="true">→</span></button></div>
       <div class="backrow"><button class="back" id="backBtn">← Pregunta anterior</button></div>
@@ -524,6 +541,20 @@ function renderRadar(){
     // estado inicial de casilla si ya estaba contestada
     if(radarDone[key]){ const ax=seg.closest('.axis'); if(ax) ax.classList.add('done'); const chk=document.getElementById('chk-'+key); if(chk) chk.textContent='✓'; }
   });
+  // selector de ingreso por rango (opcional): guarda la etiqueta del rango
+  const ingsel=document.getElementById('ingsel');
+  if(ingsel){
+    ingsel.querySelectorAll('button').forEach(b=>{
+      if(persona.ingreso===INGRESOS[+b.dataset.r]) b.classList.add('on');
+      b.addEventListener('click',()=>{
+        ingsel.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        persona.ingreso=INGRESOS[+b.dataset.r];
+        const chk=document.getElementById('chk-ing'); if(chk) chk.textContent='✓';
+      });
+    });
+    if(persona.ingreso){ const chk=document.getElementById('chk-ing'); if(chk) chk.textContent='✓'; }
+  }
   drawRadar('radarSvg');
   updateRadarProgress();
   showScrollHint();
@@ -569,19 +600,22 @@ function showResult(){
   let msg=`Hola ${AGENTE.nombre}, soy ${nom||'(prospecto)'}`;
   if(persona.edad) msg+=` (${persona.edad} años)`;
   msg+=`. Usé tu buscador y me interesa el ${p.nombre}.`;
-  if(persona.ingreso) msg+=` Mi ingreso mensual estimado es ${fmtPeso(persona.ingreso)}.`;
+  if(persona.ingreso && persona.ingreso!=="Prefiero no decir")
+    msg+=` Mi ingreso mensual aproximado: ${persona.ingreso}.`;
   if(!allHigh && gapLabel) msg+=` Mi área menos protegida es: ${gapLabel}.`;
   msg+=` ¿Me puedes dar más información?`;
   const wa=AGENTE.whatsapp?`https://wa.me/${AGENTE.whatsapp}?text=${encodeURIComponent(msg)}`:"";
   const mail=AGENTE.email?`mailto:${AGENTE.email}?subject=${encodeURIComponent('Interés: '+p.nombre)}&body=${encodeURIComponent(msg)}`:"";
 
-  // lead al CRM (Google Sheet vía /api/lead) — no bloquea la UI
-  sendLead({
-    fecha:new Date().toISOString(), nombre:persona.nombre, apellido:persona.apellido,
-    edad:persona.edad, ingreso:persona.ingreso, producto:p.nombre, linea:p.linea,
-    hueco:(!allHigh&&gapLabel)?gapLabel:"", origen:"buscador-seguro",
+  // Registro que se enviará al Google Sheet (vía /api/lead) cuando el usuario
+  // agende o contacte — NO automáticamente, según el aviso de privacidad.
+  const leadBase = {
+    nombre:persona.nombre, apellido:persona.apellido, edad:persona.edad,
+    telefono:persona.telefono, ingreso:persona.ingreso,
+    producto:p.nombre, linea:p.linea,
+    hueco:(!allHigh&&gapLabel)?gapLabel:"",
     respuestas:chosen.join(" | ")
-  });
+  };
 
   const greetName=persona.nombre?`Hola, ${persona.nombre}`:"Tu resultado";
 
@@ -623,16 +657,27 @@ function showResult(){
         <span class="free">Sin costo · Sin compromiso</span>
         <h3>Asesoría financiera gratuita</h3>
         <p>Más allá del seguro: revisamos juntos tu protección, tu ahorro y tu plan a futuro en una sesión de 30 minutos, totalmente gratis. Sales con un plan claro, contrates o no.</p>
+        <a class="btn btn-primary" id="calBtn" href="${CALENDLY}" target="_blank" rel="noopener">📅 Quiero agendar la reunión ahora</a>
         ${wa?`<a class="btn btn-wa" id="adviceBtn" href="${wa}" target="_blank" rel="noopener">Hablar con ${AGENTE.nombre} por WhatsApp</a>`:""}
         <p class="cta-note" style="margin-top:10px">Te atenderá ${AGENTE.nombre}, ${AGENTE.rol}.</p>
       </div>
       <div class="restart"><button class="back" id="restartBtn">↺ Empezar de nuevo</button></div>
     </section>`;
   drawRadar('radarRes');
+  // Al agendar por Calendly → registra el lead (acción explícita del usuario)
+  const cal=document.getElementById('calBtn');
+  if(cal) cal.addEventListener('click',()=>sendLead({
+    ...leadBase, fecha:new Date().toISOString(),
+    origen:"agendar-calendly", accion:"Agendó reunión (Calendly)"
+  }));
+  // Al contactar por WhatsApp → también registra el lead
   const adv=document.getElementById('adviceBtn');
-  if(adv) adv.addEventListener('click',()=>sendLead({tipo:"evento",evento:"click_whatsapp_agente",origen:"buscador-seguro",extra:p.nombre}));
+  if(adv) adv.addEventListener('click',()=>sendLead({
+    ...leadBase, fecha:new Date().toISOString(),
+    origen:"whatsapp-agente", accion:"Contactó por WhatsApp"
+  }));
   document.getElementById('restartBtn').addEventListener('click',()=>{
-    persona={nombre:"",apellido:"",edad:"",ingreso:""};
+    persona={nombre:"",apellido:"",edad:"",telefono:"",ingreso:""};
     radarVals={vida:0,gmm:0,auto:0,retiro:0,emerg:0,ingreso:0};
     radarDone={vida:false,gmm:false,auto:false,retiro:false,emerg:false,ingreso:false};
     finderHistory=[];chosen=[];productKey=null;stepId="start";
