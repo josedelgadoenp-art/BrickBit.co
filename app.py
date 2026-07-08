@@ -992,38 +992,104 @@ CATALIZADORES = {
     "🚇 Nueva línea de Metro (norte)": dict(lng=-99.192, lat=19.497, año=2, fuerza=0.85, radio=0.011),
     "🏬 Centro comercial (poniente)": dict(lng=-99.203, lat=19.478, año=3, fuerza=0.70, radio=0.009),
     "🌳 Parque lineal Vallejo (centro)": dict(lng=-99.184, lat=19.486, año=1, fuerza=0.55, radio=0.013),
+    # catalizadores a escala ZMVM (alcance metropolitano del microtejido)
+    "✈️ AIFA + Tren Suburbano (norte ZMVM)": dict(lng=-99.02, lat=19.69, año=1, fuerza=0.90, radio=0.055),
+    "🚌 Mexibús Ecatepec (oriente ZMVM)": dict(lng=-99.05, lat=19.60, año=2, fuerza=0.65, radio=0.040),
+    "🏙 Corredor Interlomas (poniente ZMVM)": dict(lng=-99.28, lat=19.40, año=2, fuerza=0.70, radio=0.035),
 }
 
+# ── semillas del tejido ZMVM: (nombre, lng, lat, peso_precio $/m², sigma) ──
+_SEMILLAS_ZMVM = [
+    ("Polanco · M. Hidalgo",   -99.19, 19.435, 27000, 0.030),
+    ("Centro · Cuauhtémoc",    -99.14, 19.432, 17000, 0.028),
+    ("Santa Fe · A. Obregón",  -99.26, 19.36,  20000, 0.026),
+    ("Coyoacán",               -99.16, 19.35,  13000, 0.028),
+    ("GAM · Basílica",         -99.11, 19.49,   6500, 0.026),
+    ("Iztapalapa",             -99.06, 19.355,  3800, 0.030),
+    ("Naucalpan",              -99.24, 19.475,  8000, 0.026),
+    ("Tlalnepantla",           -99.195, 19.54,  6800, 0.026),
+    ("Atizapán",               -99.26, 19.56,   6600, 0.024),
+    ("Cuautitlán Izcalli",     -99.245, 19.645, 5800, 0.026),
+    ("Ecatepec",               -99.06, 19.60,   3600, 0.032),
+    ("Nezahualcóyotl",         -99.03, 19.40,   4200, 0.028),
+    ("Chimalhuacán",           -98.955, 19.42,  2800, 0.024),
+    ("Coacalco",               -99.11, 19.63,   4600, 0.022),
+    ("Huixquilucan · Interlomas", -99.29, 19.395, 18000, 0.022),
+    ("Tecámac · AIFA",         -98.99, 19.66,   4200, 0.030),
+]
+# focos de POTENCIAL en la ZMVM: corredores donde el crecimiento despierta
+_EMERGENTES_ZMVM = [(-99.00, 19.69, 0.85, 0.045),   # AIFA / Suburbano
+                    (-99.06, 19.60, 0.55, 0.035),   # Ecatepec
+                    (-99.245, 19.645, 0.55, 0.030), # C. Izcalli
+                    (-99.03, 19.40, 0.50, 0.030),   # Neza
+                    (-98.955, 19.42, 0.45, 0.026),  # Chimalhuacán
+                    (-99.26, 19.36, 0.35, 0.024),   # Santa Fe
+                    (-99.11, 19.49, 0.35, 0.024)]   # GAM
 
-@st.cache_data(show_spinner="🧫 Cultivando tejido urbano…", max_entries=1)
-def generar_tejido_urbano() -> gpd.GeoDataFrame:
-    """GeoDataFrame de 676 manzanas simuladas con precio, potencial y flujo."""
+
+def _dims_micro(alcance: str) -> tuple[int, int, float, float, float, float]:
+    """(NX, NY, centro_lng, centro_lat, paso_lng, paso_lat) por alcance."""
+    if alcance == "zmvm":
+        # ZMVM: CDMX + municipios clave del Edomex (Ecatepec, Naucalpan,
+        # Tlalnepantla, Neza, C. Izcalli, Huixquilucan, Tecámac/AIFA…)
+        nx, ny = 48, 48
+        lng_min, lng_max = -99.38, -98.92
+        lat_min, lat_max = 19.22, 19.74
+        return (nx, ny, (lng_min + lng_max) / 2, (lat_min + lat_max) / 2,
+                (lng_max - lng_min) / nx, (lat_max - lat_min) / ny)
+    return NX, NY, CENTRO_LNG, CENTRO_LAT, PASO_LNG, PASO_LAT
+
+
+@st.cache_data(show_spinner="🧫 Cultivando tejido urbano…", max_entries=2)
+def generar_tejido_urbano(alcance: str = "azcapotzalco") -> gpd.GeoDataFrame:
+    """GeoDataFrame de manzanas simuladas con precio, potencial y flujo.
+    alcance='azcapotzalco' (676 manzanas finas) o 'zmvm' (2,304 células
+    metropolitanas: CDMX + Edomex)."""
     rng = np.random.default_rng(SEMILLA)
-    ix, iy = np.meshgrid(np.arange(NX), np.arange(NY))
+    nx, ny, c_lng, c_lat, p_lng, p_lat = _dims_micro(alcance)
+    ix, iy = np.meshgrid(np.arange(nx), np.arange(ny))
     ix, iy = ix.ravel(), iy.ravel()
-    lng0 = CENTRO_LNG + (ix - NX / 2) * PASO_LNG
-    lat0 = CENTRO_LAT + (iy - NY / 2) * PASO_LAT
-    m_lng = PASO_LNG * (1 - FACTOR_MANZANA) / 2
-    m_lat = PASO_LAT * (1 - FACTOR_MANZANA) / 2
+    lng0 = c_lng + (ix - nx / 2) * p_lng
+    lat0 = c_lat + (iy - ny / 2) * p_lat
+    m_lng = p_lng * (1 - FACTOR_MANZANA) / 2
+    m_lat = p_lat * (1 - FACTOR_MANZANA) / 2
     geometrias = [box(x + m_lng, y + m_lat,
-                      x + PASO_LNG - m_lng, y + PASO_LAT - m_lat)
+                      x + p_lng - m_lng, y + p_lat - m_lat)
                   for x, y in zip(lng0, lat0)]
-    cx, cy = lng0 + PASO_LNG / 2, lat0 + PASO_LAT / 2
+    cx, cy = lng0 + p_lng / 2, lat0 + p_lat / 2
 
     def nucleo(lng, lat, sigma):
         return np.exp(-((cx - lng) ** 2 + (cy - lat) ** 2) / (2 * sigma ** 2))
 
-    precio = (13500 + 14000 * nucleo(-99.176, 19.470, 0.010)
-              + 9000 * nucleo(-99.170, 19.492, 0.008)
-              + 5500 * nucleo(-99.200, 19.472, 0.007))
-    precio *= rng.lognormal(0.0, 0.10, precio.size)
-    potencial = np.clip(0.90 * nucleo(-99.186, 19.489, 0.011)
-                        + 0.65 * nucleo(-99.199, 19.494, 0.009)
-                        + 0.40 * nucleo(-99.174, 19.478, 0.010)
-                        + rng.uniform(0.05, 0.22, precio.size), 0, 1)
-    qx, qy = np.minimum(ix * 3 // NX, 2), np.minimum(iy * 3 // NY, 2)
+    if alcance == "zmvm":
+        precio = np.full(cx.size, 5200.0)
+        for _, sl, st_, peso, sig in _SEMILLAS_ZMVM:
+            precio += peso * nucleo(sl, st_, sig)
+        precio *= rng.lognormal(0.0, 0.12, precio.size)
+        potencial = rng.uniform(0.04, 0.18, precio.size)
+        for el, et, peso, sig in _EMERGENTES_ZMVM:
+            potencial += peso * nucleo(el, et, sig)
+        potencial = np.clip(potencial, 0, 1)
+        # cada célula toma el nombre de su semilla municipal más cercana
+        sx = np.array([s[1] for s in _SEMILLAS_ZMVM])
+        sy = np.array([s[2] for s in _SEMILLAS_ZMVM])
+        cerca = np.argmin((cx[:, None] - sx) ** 2 + (cy[:, None] - sy) ** 2,
+                          axis=1)
+        barrios = [_SEMILLAS_ZMVM[int(i)][0] for i in cerca]
+    else:
+        precio = (13500 + 14000 * nucleo(-99.176, 19.470, 0.010)
+                  + 9000 * nucleo(-99.170, 19.492, 0.008)
+                  + 5500 * nucleo(-99.200, 19.472, 0.007))
+        precio *= rng.lognormal(0.0, 0.10, precio.size)
+        potencial = np.clip(0.90 * nucleo(-99.186, 19.489, 0.011)
+                            + 0.65 * nucleo(-99.199, 19.494, 0.009)
+                            + 0.40 * nucleo(-99.174, 19.478, 0.010)
+                            + rng.uniform(0.05, 0.22, precio.size), 0, 1)
+        qx, qy = np.minimum(ix * 3 // nx, 2), np.minimum(iy * 3 // ny, 2)
+        barrios = [BARRIOS[int(b)] for b in (qy * 3 + qx)]
+
     gdf = gpd.GeoDataFrame({
-        "barrio": [BARRIOS[int(b)] for b in (qy * 3 + qx)],
+        "barrio": barrios,
         "precio_actual": precio.round(0),
         "potencial_crecimiento": potencial.round(3),
         "lng": cx, "lat": cy,
@@ -1033,31 +1099,34 @@ def generar_tejido_urbano() -> gpd.GeoDataFrame:
     return gdf
 
 
-@st.cache_data(max_entries=1)
-def vecindad_reina() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+@st.cache_data(max_entries=2)
+def vecindad_reina(alcance: str = "azcapotzalco"
+                   ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Contigüidad reina de la retícula micro: la W del SAR celular."""
+    gx, gy = _dims_micro(alcance)[:2]
     pares_i, pares_j = [], []
-    for y in range(NY):
-        for x in range(NX):
-            i = y * NX + x
+    for y in range(gy):
+        for x in range(gx):
+            i = y * gx + x
             for dx in (-1, 0, 1):
                 for dy in (-1, 0, 1):
                     if dx == 0 and dy == 0:
                         continue
                     nx_, ny_ = x + dx, y + dy
-                    if 0 <= nx_ < NX and 0 <= ny_ < NY:
+                    if 0 <= nx_ < gx and 0 <= ny_ < gy:
                         pares_i.append(i)
-                        pares_j.append(ny_ * NX + nx_)
+                        pares_j.append(ny_ * gx + nx_)
     pares_i, pares_j = np.asarray(pares_i), np.asarray(pares_j)
-    grados = np.bincount(pares_i, minlength=NX * NY).astype(float)
+    grados = np.bincount(pares_i, minlength=gx * gy).astype(float)
     return pares_i, pares_j, grados
 
 
 @st.cache_data(show_spinner="🧬 Simulando morfogénesis celular…", max_entries=8)
-def simular_micro(rho: float, catalizador: str) -> np.ndarray:
+def simular_micro(rho: float, catalizador: str,
+                  alcance: str = "azcapotzalco") -> np.ndarray:
     """SAR celular con catalizador gaussiano (célula madre puntual)."""
-    gdf = generar_tejido_urbano()
-    pi, pj, g = vecindad_reina()
+    gdf = generar_tejido_urbano(alcance)
+    pi, pj, g = vecindad_reina(alcance)
     cx, cy = gdf["lng"].to_numpy(), gdf["lat"].to_numpy()
     cat = CATALIZADORES.get(catalizador)
     mask = None
@@ -1130,9 +1199,14 @@ def construir_deck_micro(gdf: gpd.GeoDataFrame, valores: np.ndarray,
     if mostrar_flujos:
         capas += _capas_circulatorias(flujos_micro(gdf, valores, año),
                                       fase, escala=0.006)
-    return pdk.Deck(layers=capas,
-                    initial_view_state=_vista(CENTRO_LNG, CENTRO_LAT, 13.1,
-                                              pitch=52, bearing=-16),
+    # vista según el tamaño del tejido: fino (Azcapotzalco) o ZMVM completa
+    es_zmvm = (gdf["lng"].max() - gdf["lng"].min()) > 0.1
+    if es_zmvm:
+        vista = _vista(float(gdf["lng"].mean()), float(gdf["lat"].mean()),
+                       10.2, pitch=48, bearing=-10)
+    else:
+        vista = _vista(CENTRO_LNG, CENTRO_LAT, 13.1, pitch=52, bearing=-16)
+    return pdk.Deck(layers=capas, initial_view_state=vista,
                     map_style=ESTILOS_MAPA[estilo], tooltip=_tooltip())
 
 
@@ -1347,6 +1421,17 @@ def construir_deck_cp(valores: np.ndarray, año: float, fase: float,
     if mostrar_lisa:
         capas.append(capa_frente_onda(contornos_cp(), "idx_cp",
                                       frente_de_onda(v_t, vecindad_cp())))
+    # nombres de las 16 alcaldías sobre el tejido postal (centroides)
+    alc = df.groupby("alcaldia")[["lng", "lat"]].mean().reset_index()
+    capas.append(pdk.Layer(
+        "TextLayer",
+        data=pd.DataFrame({
+            "pos": [[float(a), float(b)] for a, b in zip(alc["lng"],
+                                                         alc["lat"])],
+            "nombre": alc["alcaldia"]}),
+        get_position="pos", get_text="nombre", get_size=13,
+        get_color=RGB_CREMA + [210],
+    ))
     if mostrar_flujos:
         # corazones = CP más caros; emergentes = mayor contagio
         fuentes = np.argsort(v_t)[-5:]
@@ -2783,6 +2868,47 @@ def render_mapa(lienzo, fabricar, año_idx: float, reproducir: bool,
             st.rerun()
 
 
+def tab_alcaldias(df_cp: pd.DataFrame, valores: np.ndarray,
+                  año: float) -> None:
+    """Crecimiento agregado por alcaldía: las 16 células mayores de CDMX."""
+    v_t, tasa = estado_en(valores, año)
+    acum = (v_t / valores[0] - 1) * 100
+    d = pd.DataFrame({"alcaldia": df_cp["alcaldia"], "cp": df_cp["cp"],
+                      "precio": v_t, "acum": acum, "tasa": tasa * 100,
+                      "potencial": df_cp["potencial_crecimiento"]})
+    g = d.groupby("alcaldia").agg(
+        cps=("cp", "size"), precio_medio=("precio", "mean"),
+        crecimiento=("acum", "mean"), tasa_anual=("tasa", "mean"),
+        potencial=("potencial", "mean")).reset_index() \
+        .sort_values("crecimiento", ascending=False)
+    # CP líder de cada alcaldía (el más mutante)
+    lider = d.loc[d.groupby("alcaldia")["acum"].idxmax()] \
+        .set_index("alcaldia")["cp"]
+    g["cp_lider"] = g["alcaldia"].map(lider)
+    st.markdown(f"**Las 16 alcaldías ordenadas por crecimiento simulado al "
+                f"año {año:.1f}** — promedio de sus códigos postales "
+                f"(1,182 polígonos SEPOMEX reales; proyección simulada).")
+    st.dataframe(
+        g.rename(columns={
+            "alcaldia": "Alcaldía", "cps": "CPs",
+            "precio_medio": "Índice medio $/m²",
+            "crecimiento": "Crecimiento",
+            "tasa_anual": "Tasa anual %",
+            "potencial": "Potencial",
+            "cp_lider": "CP más mutante"}),
+        hide_index=True, width="stretch",
+        column_config={
+            "Índice medio $/m²": st.column_config.NumberColumn(format="$%,.0f"),
+            "Tasa anual %": st.column_config.NumberColumn(format="%.1f%%"),
+            "Potencial": st.column_config.NumberColumn(format="%.2f"),
+            "Crecimiento": st.column_config.ProgressColumn(
+                format="+%.1f%%", min_value=0.0,
+                max_value=max(0.01, float(g["crecimiento"].max()))),
+        })
+    st.caption("💡 Mueve el deslizador de años: el ranking de alcaldías se "
+               "reordena en vivo conforme el contagio avanza por el tejido.")
+
+
 def main() -> None:
     st.set_page_config(page_title="BrickBit · Morfogénesis Urbana MX",
                        page_icon="🧬", layout="wide",
@@ -2832,19 +2958,34 @@ def main() -> None:
             munis = municipios_calle()
             if munis:
                 labels = [m["label"] for m in munis]
-                sel = st.selectbox("🏙 Municipio (DENUE real)", labels,
-                                   help="Cualquier municipio ingerido con "
-                                        "scripts/ingerir_denue.py aparece aquí.")
+                # arranca en el corazón de CDMX, no en el primer alfabético
+                idx0 = next((i for i, mm in enumerate(munis)
+                             if mm["suffix"] == "cuauhtemoc"), 0)
+                sel = st.selectbox(
+                    f"🏙 Elige tu ciudad — {len(munis)} disponibles",
+                    labels, index=idx0,
+                    help="Todas con DENUE/INEGI real a nivel calle: las 9 "
+                         "alcaldías centrales de CDMX, Guadalajara, Monterrey "
+                         "y su zona metro, Cancún, Playa del Carmen, Tulum, "
+                         "La Paz, Los Cabos y las 32 capitales estatales.")
                 m = munis[labels.index(sel)]
                 st.session_state["municipio_suffix"] = m["suffix"]
                 st.session_state["municipio_nombre"] = m["municipio"]
-            st.caption(f"{len(munis)} municipio(s) con datos reales. Agrega "
-                       "más con `ingerir_denue.py --estado EE --municipio X`.")
+            st.caption(f"🇲🇽 {len(munis)} ciudades reales precargadas — CDMX, "
+                       "Guadalajara, Monterrey, Q. Roo, B.C.S. y más. "
+                       "¿Falta la tuya? Se agrega con `ingerir_denue.py`.")
 
         st.markdown("### 👁 Capas y estilo")
         estilo = st.selectbox("Estilo de mapa", list(ESTILOS_MAPA.keys()))
         mostrar_flujos = st.checkbox("🫀 Sistema circulatorio de capital", True)
         if escala.startswith("🧫"):
+            alcance_micro = "zmvm" if st.radio(
+                "🗺 Alcance del tejido",
+                ["Azcapotzalco · CDMX (fino)", "ZMVM · CDMX + Edomex"],
+                help="ZMVM cultiva 2,304 células metropolitanas: las 16 "
+                     "alcaldías + Ecatepec, Naucalpan, Tlalnepantla, Neza, "
+                     "Cuautitlán Izcalli, Huixquilucan, Tecámac/AIFA y más."
+            ).startswith("ZMVM") else "azcapotzalco"
             extrusion = st.checkbox("⛰ Relieve 3D del tejido", True)
         elif escala.startswith("🛣"):
             mostrar_estab = st.checkbox("🏪 Establecimientos (puntos)", True)
@@ -3059,9 +3200,13 @@ def main() -> None:
                     float(vv.shape[0] - 1), clic_activo, "deck_cp")
 
         nombres_cp = "CP " + df_cp["cp"] + " · " + df_cp["alcaldia"]
-        t1, t2, t3, t4 = st.tabs(["🔎 Origen del crecimiento",
-                                  "🧬 Gemelos de ADN",
-                                  "📈 Trayectorias 10 años", "🔬 El modelo"])
+        t0, t1, t2, t3, t4 = st.tabs(["🏛 Por alcaldía",
+                                      "🔎 Origen del crecimiento",
+                                      "🧬 Gemelos de ADN",
+                                      "📈 Trayectorias 10 años",
+                                      "🔬 El modelo"])
+        with t0:
+            tab_alcaldias(df_cp, vv, año_idx)
         with t1:
             tab_origen(nombres_cp, _args_cp(rho, detonante, clic), mutante,
                        "el código postal")
@@ -3200,8 +3345,8 @@ def main() -> None:
 
     # ══ MICROTEJIDO (motor original) ══════════════════════════════════════════
     else:
-        gdf = generar_tejido_urbano()
-        valores = simular_micro(rho, detonante)
+        gdf = generar_tejido_urbano(alcance_micro)
+        valores = simular_micro(rho, detonante, alcance_micro)
         precio_t, tasa = estado_en(valores, año)
         with lienzo_kpi:
             c1, c2, c3, c4 = st.columns(4)
@@ -3209,7 +3354,8 @@ def main() -> None:
                       f"+{(precio_t.mean() / valores[0].mean() - 1) * 100:.1f}% vs hoy")
             c2.metric("🧬 Células en mutación",
                       f"{int((tasa >= np.quantile(tasa, 0.90)).sum())}",
-                      "top 10% de contagio")
+                      f"top 10% de {len(gdf):,} células"
+                      + (" · ZMVM" if alcance_micro == "zmvm" else ""))
             c3.metric("🫀 Pulso de capital", "22 flujos activos", f"ρ = {rho:.2f}")
             c4.metric("📅 Horizonte", f"Año {año:.1f} / {AÑOS}",
                       detonante if CATALIZADORES[detonante] else "sin catalizador")
