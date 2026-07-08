@@ -419,6 +419,79 @@
 </script>
 </head>
 <body>
+<!-- ══ Bienvenida BrickBit: velo de marca de ~2 s con isotipo, pulso y acorde ══ -->
+<style>
+  #bb-splash{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(900px 620px at 50% 42%, #1a1410 0%, #100c0a 62%);
+    transition:opacity .55s ease;cursor:pointer}
+  #bb-splash.fuera{opacity:0;pointer-events:none}
+  .bb-sp-core{display:flex;flex-direction:column;align-items:center;gap:18px;position:relative}
+  .bb-sp-mark{width:92px;height:92px;border-radius:24px;position:relative;z-index:2;
+    box-shadow:0 18px 50px rgba(0,0,0,.5);
+    animation:bbSpIn 1.1s cubic-bezier(.2,.9,.25,1.2) both}
+  .bb-sp-ring{position:absolute;top:46px;left:50%;width:92px;height:92px;border-radius:26px;
+    transform:translate(-50%,-50%);border:2px solid rgba(205,242,90,.85);
+    animation:bbSpRing 1.5s ease-out .45s both;pointer-events:none}
+  .bb-sp-nombre{font-family:'Fraunces',serif;font-weight:600;font-size:1.7rem;letter-spacing:.02em;
+    color:#f5ede3;animation:bbSpTxt .8s ease .55s both}
+  .bb-sp-tag{font-family:'Space Mono',monospace;font-size:.66rem;letter-spacing:.22em;
+    text-transform:uppercase;color:#a89a8c;animation:bbSpTxt .8s ease .8s both}
+  @keyframes bbSpIn{from{opacity:0;transform:scale(.6) rotate(-6deg)}to{opacity:1;transform:scale(1) rotate(0)}}
+  @keyframes bbSpRing{from{opacity:.9;transform:translate(-50%,-50%) scale(1)}
+    to{opacity:0;transform:translate(-50%,-50%) scale(2.6)}}
+  @keyframes bbSpTxt{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion: reduce){#bb-splash{display:none}}
+</style>
+<div id="bb-splash" role="presentation" aria-hidden="true">
+  <div class="bb-sp-core">
+    <span class="bb-sp-ring"></span>
+    <img class="bb-sp-mark" src="/favicon.png" alt="">
+    <div class="bb-sp-nombre">BrickBit</div>
+    <div class="bb-sp-tag">Predicting the future</div>
+  </div>
+</div>
+<script>
+(function(){
+  var v = document.getElementById('bb-splash');
+  if (!v) return;
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var visto = false;
+  try { visto = sessionStorage.getItem('bb_splash') === '1'; } catch(e){}
+  if (visto || reduce) { v.remove(); return; }
+  try { sessionStorage.setItem('bb_splash','1'); } catch(e){}
+
+  /* acorde de marca: dos notas suaves (La4 -> Mi5), síntesis WebAudio, sin archivos.
+     Los navegadores bloquean audio sin gesto del usuario: se intenta al arrancar
+     y, si no se permite, suena en la primera interacción. */
+  function acorde(){
+    try {
+      var ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (ctx.state === 'suspended') { ctx.close(); return false; }
+      var t0 = ctx.currentTime;
+      [[440, 0.00], [659.25, 0.14]].forEach(function(nf){
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'triangle'; o.frequency.value = nf[0];
+        g.gain.setValueAtTime(0.0001, t0 + nf[1]);
+        g.gain.exponentialRampToValueAtTime(0.07, t0 + nf[1] + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + nf[1] + 0.85);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t0 + nf[1]); o.stop(t0 + nf[1] + 0.95);
+      });
+      setTimeout(function(){ try{ ctx.close(); }catch(e){} }, 1600);
+      return true;
+    } catch(e){ return false; }
+  }
+  if (!acorde()) {
+    var una = function(){ acorde(); removeEventListener('pointerdown', una); removeEventListener('keydown', una); };
+    addEventListener('pointerdown', una); addEventListener('keydown', una);
+  }
+
+  function cerrar(){ v.classList.add('fuera'); setTimeout(function(){ v.remove(); }, 650); }
+  v.addEventListener('click', cerrar);          /* clic = saltar */
+  setTimeout(cerrar, 2100);                      /* ~2 s y se va solo */
+})();
+</script>
+
 <!-- BrickBit landing v1.1 — datos reales (SHF/ENVI) + explorador interactivo. Base congelada: index_v1.0.html -->
 <svg class="grain"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#n)"/></svg>
 
