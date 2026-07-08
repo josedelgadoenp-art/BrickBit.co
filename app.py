@@ -1726,7 +1726,7 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
         "lng": mids_c[:, 0], "lat": mids_c[:, 1],
         "color": np.column_stack([rgb, alfa]).astype(int).tolist(),
         "ancho": (0.8 + (0.6 + 6.0 * df["vitalidad"].to_numpy()) * vis).tolist(),
-        "nombre": df["nombre"],
+        "nombre": df["nombre"].fillna(""),
         "estado_bio": clasificar_bio(tasa),
         "precio_txt": [f"${p:,.0f} índice/m²" for p in v_t],
         "crec_txt": [f"+{r * 100:.1f}% anual" for r in tasa],
@@ -1748,7 +1748,14 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
         # puntos no tapen el tejido vial (en los chicos, todos). El tooltip
         # conserva el detalle de cada negocio.
         tope_e = 2500 if len(estab) > 2500 else len(estab)
-        est_v = estab.nlargest(tope_e, "empleo")
+        est_v = estab.nlargest(tope_e, "empleo").copy()
+        # DENUE trae negocios con nombre/calle/sector faltantes: un NaN en un
+        # campo del deck se serializa como token JSON inválido y deja el mapa
+        # ENTERO en blanco. Saneamos texto (y coordenadas por si acaso).
+        for _c in ("nombre", "sector", "calle"):
+            if _c in est_v:
+                est_v[_c] = est_v[_c].fillna("")
+        est_v = est_v.dropna(subset=["lng", "lat", "empleo"])
         er = pd.DataFrame({
             "pos": [[float(a), float(b)] for a, b in zip(est_v["lng"],
                                                          est_v["lat"])],
