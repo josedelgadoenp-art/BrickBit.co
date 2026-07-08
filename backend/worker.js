@@ -62,6 +62,14 @@ export default {
       return handleAlertSubscribe(request, env, headers);
     }
 
+    /* ---- Iris: asistente virtual de BrickBit (chat + búsqueda web) ---- */
+    if (url.pathname === '/api/iris' && request.method === 'POST') {
+      if (headers['access-control-allow-origin'] === '') {
+        return json({ error: { message: 'Origen no permitido.' } }, 403, headers);
+      }
+      return handleIris(request, env, headers);
+    }
+
     if (url.pathname !== '/api/claude' || request.method !== 'POST') {
       return json({ error: { message: 'No encontrado. Usa POST /api/claude, POST /api/share o GET /api/share/{id}' } }, 404, headers);
     }
@@ -141,6 +149,92 @@ export default {
     ctx.waitUntil(runMonthlyAlerts(env));
   },
 };
+
+
+/* =====================================================================
+   Iris — asistente virtual de BrickBit
+   Chat en texto libre con conocimiento del producto + búsqueda web
+   acotada (max_uses por consulta = tope de costo). La llave de Anthropic
+   vive en el Worker; el navegador solo manda { messages }.
+===================================================================== */
+const IRIS_SYSTEM =
+`Eres **Iris**, la asistente virtual de BrickBit — una proptech mexicana de inteligencia inmobiliaria. Hablas en español de México, con calidez, claridad y brevedad (respuestas para leer o escuchar en voz alta: ve al grano, 2–5 frases salvo que pidan detalle).
+
+QUÉ ES BRICKBIT y sus herramientas (guía al usuario a la correcta):
+- Mapa interactivo: precio, plusvalía y ciclo de las 32 zonas.
+- Analizador de inversión: pro-forma completa (TIR, ROI, cap rate), escenarios, comparador de zonas y "Economía de la zona" con datos reales del DENUE.
+- Simulador 3D de desarrollo (zona3d): dibuja el volumen COS/CUS sobre la ciudad y ve inversión/ventas/utilidad.
+- Pulso de México: las 32 ciudades como torres 3D con serie SHF 2005–2026 y proyección.
+- Cinema y Versus: recorrido y duelo de ciudades.
+- Arquitectos con IA: Creador de Planos (texto→plano), Gemelo Digital 3D (materiales, fallas, simulador 4D, inversión) y Comparador.
+- Motor de Morfogénesis Urbana: México como organismo vivo; 6.1M negocios del DENUE/INEGI; contagio de plusvalía a 5 escalas (estados, 2,436 municipios, códigos postales de CDMX, calle/establecimiento en 83 ciudades, y microtejido/ZMVM).
+- BrickBit Financial: seguros GNP y asesoría financiera con José Delgado (NO es parte de tu alcance; si preguntan de seguros o finanzas personales, remítelos amablemente al módulo Financial).
+
+PRINCIPIO DE HONESTIDAD DE DATOS: los conteos de negocios, empleo, geometrías y la serie SHF son reales (DENUE/INEGI, SHF, SEPOMEX). Las proyecciones a futuro son SIMULACIONES para visualización, no asesoría de inversión. Dilo cuando aplique. Nunca presentes una estimación como hecho.
+
+REGLAS:
+- Si te preguntan datos actuales o externos (noticias, tasas, precios de mercado, un desarrollo específico), USA la búsqueda web y cita brevemente la fuente.
+- No des asesoría financiera, legal ni fiscal definitiva; orienta y sugiere confirmar con un profesional o con el equipo de BrickBit.
+- Si no sabes algo, dilo con honestidad. No inventes cifras.
+- Ayuda a la gente a entender qué está viendo y a llegar a la herramienta correcta.`;
+
+async function handleIris(request, env, headers) {
+  if (!env.ANTHROPIC_API_KEY) {
+    return json({ error: { message: 'Falta configurar ANTHROPIC_API_KEY en el Worker.' } }, 500, headers);
+  }
+  let payload;
+  try { payload = await request.json(); }
+  catch { return json({ error: { message: 'Cuerpo JSON inválido.' } }, 400, headers); }
+
+  const raw = Array.isArray(payload && payload.messages) ? payload.messages : null;
+  if (!raw || !raw.length) {
+    return json({ error: { message: 'Se esperan { messages: [{role, content}] }.' } }, 400, headers);
+  }
+  // Sanea: solo texto de user/assistant, últimos 12 turnos, cada uno acotado.
+  const messages = raw
+    .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content.trim())
+    .slice(-12)
+    .map(m => ({ role: m.role, content: m.content.slice(0, 4000) }));
+  if (!messages.length || messages[messages.length - 1].role !== 'user') {
+    return json({ error: { message: 'La última entrada debe ser del usuario.' } }, 400, headers);
+  }
+
+  const base = {
+    model: ANTHROPIC_MODEL,
+    max_tokens: 1200,
+    system: IRIS_SYSTEM,
+    // Búsqueda web acotada: máx. 3 búsquedas por consulta = tope de costo.
+    tools: [{ type: 'web_search_20260209', name: 'web_search', max_uses: 3 }],
+  };
+
+  let convo = messages, bodyText = '', status = 500, data = null;
+  for (let i = 0; i < 4; i++) {
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({ ...base, messages: convo }),
+    });
+    status = upstream.status;
+    bodyText = await upstream.text();
+    if (!upstream.ok) {
+      return json({ error: { message: 'Iris no está disponible en este momento.' } }, status, headers);
+    }
+    try { data = JSON.parse(bodyText); } catch { break; }
+    if (data.stop_reason === 'pause_turn') {
+      convo = [...convo, { role: 'assistant', content: data.content }];
+      continue;
+    }
+    break;
+  }
+
+  const text = (data && Array.isArray(data.content) ? data.content : [])
+    .filter(b => b && b.type === 'text').map(b => b.text).join('').trim();
+  return json({ text: text || 'Perdona, no pude generar una respuesta. ¿Puedes reformular tu pregunta?' }, 200, headers);
+}
 
 
 /* =====================================================================

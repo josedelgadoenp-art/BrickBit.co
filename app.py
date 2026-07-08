@@ -2828,6 +2828,68 @@ def encabezado() -> None:
         unsafe_allow_html=True)
 
 
+_EXPLICA_COMUN = (
+    "**BrickBit trata la ciudad como un organismo vivo.** El desarrollo y la "
+    "plusvalía se *contagian* de una zona a sus vecinas, como un tejido que "
+    "crece. Esto es lo que ves en el mapa:\n\n"
+    "- 🎨 **El color = la “temperatura” de valor y crecimiento** de cada zona. "
+    "De más frío a más caliente:  \n"
+    "&nbsp;&nbsp;🟫 <span style='color:#0c4a30'>**latente**</span> → "
+    "🟩 <span style='color:#1a7d50'>**despertando**</span> → "
+    "🟢 <span style='color:#57c389'>**en expansión**</span> → "
+    "🟡 <span style='color:#cdf25a'>**en plena mutación**</span> → "
+    "⬜ <span style='color:#f5ede3'>**núcleo consolidado**</span> (lo más caro).\n"
+    "- 🫀 **Los arcos verde→lima** son el *sistema circulatorio del capital*: "
+    "dinero que fluye de las zonas ya caras (corazones) hacia las emergentes.\n"
+    "- ⏳ **El deslizador “Predicción (años)”** te lleva al futuro: mira cómo se "
+    "expande el crecimiento año con año. *Esa proyección es una simulación.*\n"
+    "- 🧫 **“Virulencia del contagio (ρ)”** regula qué tan fuerte una zona "
+    "contagia a sus vecinas. Súbela y verás el crecimiento saltar más lejos.\n"
+    "- 🎯 **Catalizador / detonante**: inyecta un megaproyecto (Metro, AIFA…) y "
+    "observa la onda expansiva que provoca.\n"
+)
+_EXPLICA_ESCALA = {
+    "🏛": "**Escala municipios:** cada polígono es **uno de los 2,436 municipios** "
+         "del país. Su valor y potencial están anclados en la **actividad "
+         "económica REAL del DENUE/INEGI** (negocios y empleos observados). Las "
+         "torres 3D marcan las grandes metrópolis.",
+    "🇲🇽": "**Escala estados:** cada polígono es **uno de los 32 estados**. Las "
+         "torres 3D representan el peso de cada entidad; el color, su ritmo de "
+         "crecimiento proyectado.",
+    "🏘": "**Escala códigos postales (CDMX):** cada polígono es **un CP real de "
+         "SEPOMEX** (1,182 en total). Las etiquetas son las **alcaldías**. La "
+         "pestaña «🏛 Por alcaldía» resume el crecimiento de cada una.",
+    "🛣": "**Escala calle · establecimiento:** aquí ves la ciudad **desde la "
+         "banqueta**.  \n"
+         "- Cada **línea es una calle real** (del DENUE). Entre **más gruesa y "
+         "brillante**, más *vitalidad económica* tiene (más negocios y empleo).\n"
+         "- Los **puntos de colores** son establecimientos, coloreados por giro "
+         "(comercio, servicios, industria).\n"
+         "- Los **círculos lima con nombre** son las **anclas**: los grandes "
+         "empleadores que bombean crecimiento a su alrededor.",
+    "🧫": "**Escala microtejido:** cada **cuadro es una manzana**. En modo 3D, la "
+         "**altura = el precio** por m². Aquí ves el contagio calle-a-calle en "
+         "su máximo detalle (Azcapotzalco fino, o toda la ZMVM).",
+}
+
+
+def explicador(escala: str) -> None:
+    """Recuadro plegable “¿Qué estoy viendo?” con la lectura del mapa en
+    lenguaje simple, adaptado a la escala activa. Para que cualquiera —aunque
+    sea su primera vez— entienda de inmediato qué representa cada elemento."""
+    inicial = escala[0]
+    extra = next((v for k, v in _EXPLICA_ESCALA.items() if escala.startswith(k)),
+                 "")
+    with st.expander("❓ ¿Qué estoy viendo? — cómo leer este mapa", expanded=False):
+        st.markdown(_EXPLICA_COMUN, unsafe_allow_html=True)
+        if extra:
+            st.markdown("---")
+            st.markdown(extra, unsafe_allow_html=True)
+        st.caption("Los conteos de negocios, empleos, calles y geometrías son "
+                   "reales (DENUE/INEGI, SEPOMEX). Las proyecciones a futuro son "
+                   "una simulación con fines de visualización, no asesoría.")
+
+
 def animar(lienzo, fabricar_deck, cuadros: int = 90,
            años_span: float = float(AÑOS)) -> None:
     """Reproduce la línea de tiempo completa: el año avanza y todo late."""
@@ -3019,6 +3081,7 @@ def main() -> None:
                    "hacia las zonas emergentes. Datos simulados.")
 
     lienzo_kpi = st.container()
+    explicador(escala)
     lienzo = st.empty()
 
     # ══ REPÚBLICA · MUNICIPIOS ════════════════════════════════════════════════
