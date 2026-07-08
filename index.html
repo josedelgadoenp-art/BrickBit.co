@@ -216,6 +216,15 @@
   .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
   .card-link{display:inline-block;margin-top:14px;font-family:'Space Mono',monospace;font-size:.78rem;letter-spacing:.05em;color:var(--clay-soft);transition:color .2s}
   .card-link:hover{color:var(--cream)}
+  /* chip "?" con explicación en lenguaje simple (hover o toque) */
+  .qmark{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;margin-left:8px;border-radius:50%;
+    border:1px solid var(--line-strong);color:var(--muted-txt);font-size:.72rem;font-weight:700;cursor:help;position:relative;vertical-align:middle;user-select:none;font-family:'Hanken Grotesk',sans-serif;transition:.18s;flex:none}
+  .qmark:hover,.qmark:focus{background:var(--clay);border-color:var(--clay);color:#fff;outline:none}
+  .qmark::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%) translateY(6px);
+    background:#241c17;color:var(--cream);border:1px solid var(--line-strong);border-radius:12px;padding:11px 13px;font-size:.82rem;font-weight:400;
+    line-height:1.5;width:240px;text-align:left;white-space:normal;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s;z-index:80;box-shadow:0 18px 40px rgba(0,0,0,.45)}
+  .qmark:hover::after,.qmark:focus::after{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media(max-width:520px){.qmark::after{width:200px}}
   .card{
     background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
     padding:30px;transition:transform .35s cubic-bezier(.2,.8,.2,1),border-color .35s,background .35s;
@@ -787,43 +796,43 @@
     <div class="cards">
       <div class="card reveal" data-stagger style="--d:0s">
         <div class="ic"><svg fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M6 21V8l6-4 6 4v13"/><path d="M10 21v-6h4v6"/></svg></div>
-        <h3>Simulador 3D de desarrollo</h3>
+        <h3>Simulador 3D de desarrollo<span class="qmark" tabindex="0" role="button" aria-label="Qué es esta herramienta" data-tip="¿Cuánto puedo construir en un terreno y cuánto ganaría? Dibujas el edificio sobre un mapa 3D real de la ciudad y ves al instante la inversión, las ventas y la utilidad estimadas.">?</span></h3>
         <p>Dibuja el volumen edificable (COS/CUS) sobre la ciudad fotorrealista y ve la pro-forma en vivo: inversión, ventas y utilidad al mover un slider.</p>
         <a href="zona3d.html" class="card-link">Abrir simulador →</a>
       </div>
       <div class="card reveal" data-stagger style="--d:.05s">
         <div class="ic"><svg fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 2v20"/><path d="M2 12h20"/><circle cx="12" cy="12" r="9"/></svg></div>
-        <h3>Pulso de México</h3>
+        <h3>Pulso de México<span class="qmark" tabindex="0" role="button" aria-label="Qué es esta herramienta" data-tip="Un vistazo vivo al valor de la vivienda en las 32 ciudades del país: cada ciudad es una torre cuya altura es su plusvalía, y puedes viajar en el tiempo de 2005 a 2036.">?</span></h3>
         <p>Las 32 ciudades como torres de datos en 3D, con un viaje en el tiempo del valor: índice SHF real 2005–2026 y proyección a 2036.</p>
         <a href="pulso.html" class="card-link">Ver el pulso →</a>
       </div>
       <div class="card reveal" data-stagger style="--d:.1s">
         <div class="ic"><svg fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg></div>
-        <h3>Cinema &amp; Versus</h3>
+        <h3>Cinema &amp; Versus<span class="qmark" tabindex="0" role="button" aria-label="Qué es esta herramienta" data-tip="Cinema: un recorrido tipo película por las 32 ciudades con sus números. Versus: pones dos ciudades lado a lado para compararlas en segundos.">?</span></h3>
         <p>Un tour cinematográfico por las 32 ciudades con sus métricas, y un duelo en pantalla dividida para comparar dos mercados en segundos.</p>
         <a href="cine.html" class="card-link">Cinema →</a> &nbsp; <a href="versus.html" class="card-link">Versus →</a>
       </div>
       <div class="card reveal" data-stagger style="--d:.15s">
         <div class="ic"><svg fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg></div>
-        <h3>Arquitectos con IA</h3>
+        <h3>Arquitectos con IA<span class="qmark" tabindex="0" role="button" aria-label="Qué es esta herramienta" data-tip="Describe tu terreno en palabras y la IA te dibuja el plano; luego lo vuelve un modelo 3D con áreas, materiales y análisis. También puedes comparar dos proyectos.">?</span></h3>
         <p>Describe tu terreno y la IA genera el plano; súbelo y obtén un gemelo digital 3D con áreas y análisis, o compara dos proyectos.</p>
         <a href="crear-plano.html" class="card-link">Crear plano →</a> &nbsp; <a href="gemelo-digital.html" class="card-link">Gemelo →</a>
       </div>
       <div class="card reveal" data-stagger style="--d:.2s">
         <div class="ic"><svg fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></div>
-        <h3>Mapa + Analizador</h3>
+        <h3>Mapa + Analizador<span class="qmark" tabindex="0" role="button" aria-label="Qué es esta herramienta" data-tip="Mapa: ves precio, plusvalía y momento del ciclo de cada zona. Analizador: metes los números de tu inversión y te calcula rendimiento, con PDF y guardado en tu cuenta.">?</span></h3>
         <p>Explora precio, plusvalía y ciclo de cada zona en el mapa, y corre el análisis completo de tu inversión con PDF y guardado en la nube.</p>
         <a href="mapa.html" class="card-link">Mapa →</a> &nbsp; <a href="analizador.html" class="card-link">Analizador →</a>
       </div>
       <div class="card reveal" data-stagger style="--d:.25s">
         <div class="ic"><svg fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
-        <h3>Financial &amp; Strategy</h3>
+        <h3>Financial &amp; Strategy<span class="qmark" tabindex="0" role="button" aria-label="Qué es esta herramienta" data-tip="Un diagnóstico guiado que dibuja tu 'radar de protección': descubres qué áreas de tu patrimonio (vida, salud, retiro…) están cubiertas y cuáles no.">?</span></h3>
         <p>El módulo de protección y estrategia financiera: diagnóstico guiado con radar de cobertura para complementar tu patrimonio inmobiliario.</p>
         <a href="/financial" class="card-link">Abrir Financial →</a>
       </div>
       <div class="card reveal" data-stagger style="--d:.3s">
         <div class="ic"><svg fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="5" r="2.2"/><circle cx="12" cy="12" r="2.6"/><circle cx="5" cy="19" r="2.2"/><circle cx="19" cy="18" r="2.2"/><path d="M6.8 7.3 10 10.2M14.2 10 17 6.6M6.9 17.4l3.2-3.1M14.3 13.9l3 2.7"/></svg></div>
-        <h3>Morfogénesis urbana</h3>
+        <h3>Morfogénesis urbana<span class="qmark" tabindex="0" role="button" aria-label="Qué es esta herramienta" data-tip="Trata a México como un organismo vivo: con 6.1M de negocios reales del INEGI, muestra cómo la plusvalía se 'contagia' calle por calle y predice dónde crecerá el valor.">?</span></h3>
         <p>México como organismo vivo: 6.1M de negocios reales del INEGI, contagio de plusvalía calle por calle en 83 ciudades, sismógrafo de gentrificación y proyecciones con bandas de confianza.</p>
         <a href="morfogenesis.html" class="card-link">Abrir el motor →</a>
       </div>
