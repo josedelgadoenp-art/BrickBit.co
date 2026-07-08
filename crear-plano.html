@@ -312,7 +312,7 @@ const VARIANTS_SCHEMA = {
    Llamada a Claude (backend o directa, misma configuración del gemelo)
 ===================================================================== */
 async function callClaude({ system, content, schema }) {
-  const backend = (localStorage.getItem('bb_backend_url') || '').trim();
+  const backend = (localStorage.getItem('bb_backend_url') || 'https://brickbit-api.jose-delgado-enp.workers.dev').trim();
   const apiKey = (localStorage.getItem('bb_anthropic_key') || '').trim();
   let res;
   if (backend) {

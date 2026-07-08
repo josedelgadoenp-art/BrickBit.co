@@ -397,7 +397,7 @@
       </div>
       <div>
         <label for="backendUrl">URL del backend BrickBit (recomendado) <span class="help" tabindex="0" data-tip="Un pequeño servidor tuyo (gratis en Cloudflare) que guarda la llave de la IA, para que nunca viaje en el navegador de tus usuarios. Las instrucciones están en backend/README.md del repositorio.">?</span></label>
-        <input type="text" id="backendUrl" placeholder="https://brickbit-api.tu-cuenta.workers.dev" autocomplete="off">
+        <input type="text" id="backendUrl" placeholder="https://brickbit-api.jose-delgado-enp.workers.dev" autocomplete="off">
         <div class="hint">Si la defines, las llamadas a Claude pasan por tu backend y <b>no necesitas</b> capturar aquí la llave de Anthropic. Instrucciones de despliegue en <code>backend/README.md</code>.</div>
       </div>
     </div>
@@ -634,7 +634,7 @@ const ANTHROPIC_MODEL = 'claude-opus-4-8';
 ===================================================================== */
 $('anthropicKey').value = localStorage.getItem('bb_anthropic_key') || '';
 $('gmapsKey').value     = localStorage.getItem('bb_gmaps_key') || 'AIzaSyC15vodxaWS_VyFiqlRUwYlTtXyKUkSW5o';
-$('backendUrl').value   = localStorage.getItem('bb_backend_url') || '';
+$('backendUrl').value   = localStorage.getItem('bb_backend_url') || 'https://brickbit-api.jose-delgado-enp.workers.dev';
 
 $('btnSaveKeys').addEventListener('click', () => {
   localStorage.setItem('bb_anthropic_key', $('anthropicKey').value.trim());
