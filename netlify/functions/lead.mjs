@@ -16,6 +16,7 @@
 const CAMPOS_LEAD = [
   "fecha", "nombre", "apellido", "edad", "ingreso", "telefono", "correo",
   "producto", "linea", "hueco", "score", "origen", "respuestas", "ref",
+  "accion",
 ];
 const CAMPOS_EVENTO = ["evento", "score", "arquetipo", "percentil", "ref", "origen", "extra"];
 

@@ -97,7 +97,7 @@
   .seg3 button.on.mid{background:#b0872e}
   .seg3 button.on.hi{background:var(--verde)}
   .segN{display:flex;flex-wrap:wrap;gap:8px}
-  .segN button{flex:1 1 30%;min-width:120px;border:1.5px solid rgba(16,12,10,0.12);border-radius:999px;background:#fff;cursor:pointer;font-family:var(--sans);font-weight:600;font-size:13px;color:var(--muted);padding:11px 12px;transition:.12s}
+  .segN button{flex:1 1 30%;min-width:132px;white-space:nowrap;border:1.5px solid rgba(16,12,10,0.12);border-radius:999px;background:#fff;cursor:pointer;font-family:var(--sans);font-weight:600;font-size:13px;color:var(--ink-soft);padding:11px 12px;transition:.12s}
   .segN button:hover{background:var(--paper);color:var(--ink-soft)}
   .segN button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
   .chk{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:2px solid var(--line);
@@ -181,6 +181,7 @@
   @keyframes swipe{0%,100%{transform:translateY(5px)}50%{transform:translateY(-5px)}}
   @keyframes bob{0%,100%{transform:translateY(-2px)}50%{transform:translateY(4px)}}
   footer{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;line-height:1.55}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 </style>
 </head>
 <body>
@@ -514,8 +515,8 @@ function renderRadar(){
           </div>`).join('')}
           <div class="axis" data-axis="ingreso-rango" style="margin-top:20px;border-top:1px solid var(--line);padding-top:18px">
             <div class="alab"><span class="chk" id="chk-ing">○</span> Ingreso mensual aproximado <small style="font-weight:400;color:var(--muted)">(opcional, por rango)</small></div>
-            <div class="segN" id="ingsel">
-              ${INGRESOS.map((r,i)=>`<button data-r="${i}">${r}</button>`).join('')}
+            <div class="segN" id="ingsel" role="group" aria-label="Ingreso mensual aproximado por rango">
+              ${INGRESOS.map((r,i)=>`<button type="button" data-r="${i}" aria-pressed="false">${r}</button>`).join('')}
             </div>
           </div>
       </div>
@@ -545,15 +546,16 @@ function renderRadar(){
   const ingsel=document.getElementById('ingsel');
   if(ingsel){
     ingsel.querySelectorAll('button').forEach(b=>{
-      if(persona.ingreso===INGRESOS[+b.dataset.r]) b.classList.add('on');
+      if(persona.ingreso===INGRESOS[+b.dataset.r]){ b.classList.add('on'); b.setAttribute('aria-pressed','true'); }
       b.addEventListener('click',()=>{
-        ingsel.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
-        b.classList.add('on');
+        ingsel.querySelectorAll('button').forEach(x=>{x.classList.remove('on');x.setAttribute('aria-pressed','false');});
+        b.classList.add('on'); b.setAttribute('aria-pressed','true');
         persona.ingreso=INGRESOS[+b.dataset.r];
         const chk=document.getElementById('chk-ing'); if(chk) chk.textContent='✓';
+        const ax=b.closest('.axis'); if(ax) ax.classList.add('done');
       });
     });
-    if(persona.ingreso){ const chk=document.getElementById('chk-ing'); if(chk) chk.textContent='✓'; }
+    if(persona.ingreso){ const chk=document.getElementById('chk-ing'); if(chk) chk.textContent='✓'; const ax=ingsel.closest('.axis'); if(ax) ax.classList.add('done'); }
   }
   drawRadar('radarSvg');
   updateRadarProgress();
@@ -657,7 +659,7 @@ function showResult(){
         <span class="free">Sin costo · Sin compromiso</span>
         <h3>Asesoría financiera gratuita</h3>
         <p>Más allá del seguro: revisamos juntos tu protección, tu ahorro y tu plan a futuro en una sesión de 30 minutos, totalmente gratis. Sales con un plan claro, contrates o no.</p>
-        <a class="btn btn-primary" id="calBtn" href="${CALENDLY}" target="_blank" rel="noopener">📅 Quiero agendar la reunión ahora</a>
+        <a class="btn btn-primary" id="calBtn" href="${CALENDLY}" target="_blank" rel="noopener"><span aria-hidden="true">📅</span> Quiero agendar la reunión ahora <span class="sr-only">(se abre en una pestaña nueva)</span></a>
         ${wa?`<a class="btn btn-wa" id="adviceBtn" href="${wa}" target="_blank" rel="noopener">Hablar con ${AGENTE.nombre} por WhatsApp</a>`:""}
         <p class="cta-note" style="margin-top:10px">Te atenderá ${AGENTE.nombre}, ${AGENTE.rol}.</p>
       </div>
