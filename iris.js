@@ -11,6 +11,7 @@
   window.__irisCargada = true;
 
   var API = "https://brickbit-api.jose-delgado-enp.workers.dev/api/iris";
+  var AVATAR = "/assets/iris-avatar.png";          // sube esta imagen a assets/
   var MAX_TURNOS = 40;                             // tope suave por sesión (costo)
   var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -31,6 +32,7 @@
   .iris-orb{width:100%;height:100%}
   .iris-eye{transform-origin:center;animation:iris-blink 5s infinite}
   @keyframes iris-blink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+  .iris-av-img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
 
   #iris-panel{position:fixed;right:20px;bottom:20px;z-index:2147483001;width:370px;max-width:calc(100vw - 24px);
     height:560px;max-height:calc(100vh - 24px);background:#14100c;border:1px solid rgba(245,237,227,.14);
@@ -75,7 +77,9 @@
   `;
   var st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
 
-  /* ---------- avatar SVG ---------- */
+  /* ---------- avatar ----------
+     Usa la imagen de Iris (/assets/iris-avatar.png). Si aún no existe,
+     onerror cambia al orbe SVG animado como respaldo. */
   function orb(cls) {
     return '<svg class="' + cls + '" viewBox="0 0 48 48" aria-hidden="true">' +
       '<defs><radialGradient id="ig" cx="35%" cy="30%"><stop offset="0" stop-color="#cdf25a"/>' +
@@ -85,12 +89,17 @@
       '<ellipse class="iris-eye" cx="30" cy="22" rx="2.4" ry="3.2"/></g>' +
       '<path d="M17 30 Q24 35 31 30" fill="none" stroke="#0f130a" stroke-width="2" stroke-linecap="round"/></svg>';
   }
+  function avatar(cls) {
+    return '<img class="' + cls + ' iris-av-img" src="' + AVATAR + '" alt="Iris" ' +
+      'onerror="this.outerHTML=window.__irisOrb(\'' + cls + '\')">';
+  }
+  window.__irisOrb = orb;   // accesible desde el onerror del <img>
 
   /* ---------- FAB ---------- */
   var fab = document.createElement("button");
   fab.id = "iris-fab";
   fab.setAttribute("aria-label", "Abrir a Iris, asistente de BrickBit");
-  fab.innerHTML = (reduce ? "" : '<span class="ring"></span>') + orb("iris-orb") +
+  fab.innerHTML = (reduce ? "" : '<span class="ring"></span>') + avatar("iris-orb") +
     '<span class="lbl">Pregúntale a Iris</span>';
   document.body.appendChild(fab);
 
@@ -100,7 +109,7 @@
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-label", "Iris, asistente de BrickBit");
   panel.innerHTML =
-    '<div class="iris-head">' + orb("av") +
+    '<div class="iris-head">' + avatar("av") +
       '<div><h4>Iris</h4><div class="st">Asistente de BrickBit</div></div><div class="sp"></div>' +
       '<button class="iris-icon" id="iris-mute" title="Activar/silenciar voz" aria-label="Voz">🔊</button>' +
       '<button class="iris-icon" id="iris-close" title="Cerrar" aria-label="Cerrar">✕</button>' +
@@ -177,15 +186,51 @@
     } else if (!on && ex) { ex.remove(); }
   }
 
+  // Limpia el texto para leerlo en voz alta: quita emojis, emoticonos y
+  // símbolos que los motores TTS verbalizan feo (asterisco, almohadilla…).
+  function limpiarParaVoz(t) {
+    return t
+      .replace(/\bhttps?:\/\/\S+/gi, " el enlace ")               // no deletrear URLs
+      .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{1F1E6}-\u{1F1FF}]/gu, "") // emojis/símbolos pictográficos
+      .replace(/[:;=8x][-~^']?[)\](d p o 3 < > | \\ /]/gi, " ")   // emoticonos ASCII :) ;) :D :P
+      .replace(/<3/g, " ")
+      .replace(/[*_#`~|•·▪◦→←⟶⟵»«▸●■◆✓✕↗↘⌄–—]+/g, " ")           // markdown/símbolos
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
+  var vozIris = null;
+  function elegirVoz() {
+    if (!("speechSynthesis" in window)) return null;
+    var vs = speechSynthesis.getVoices() || [];
+    if (!vs.length) return null;
+    var fem = /paulina|m[oó]nica|female|mujer|helena|laura|elena|sabina|marisol|luciana|camila|valentina|catalina|isabel|ang[eé]lica|google espa/i;
+    var masc = /jorge|diego|carlos|juan|miguel|male|hombre|pablo|enrique|roberto/i;
+    function puntua(v) {
+      var s = 0, L = (v.lang || "").toLowerCase(), N = (v.name || "").toLowerCase();
+      if (L.indexOf("es-mx") === 0 || L.indexOf("es_mx") === 0) s += 4;
+      else if (L.indexOf("es-us") === 0) s += 3;
+      else if (L.indexOf("es") === 0) s += 2;
+      if (fem.test(N)) s += 3;
+      if (masc.test(N)) s -= 6;                    // evita voces masculinas
+      return s;
+    }
+    var cands = vs.filter(function (v) { return /^es/i.test(v.lang); });
+    if (!cands.length) cands = vs;
+    cands.sort(function (a, b) { return puntua(b) - puntua(a); });
+    return cands[0] || null;
+  }
+
   function hablar(texto) {
     if (!vozActiva || !("speechSynthesis" in window)) return;
+    var limpio = limpiarParaVoz(texto);
+    if (!limpio) return;
     try {
       speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(texto.slice(0, 600));
-      u.lang = "es-MX"; u.rate = 1.02; u.pitch = 1.05;
-      var v = speechSynthesis.getVoices().find(function (x) { return /es(-|_)MX/i.test(x.lang); })
-        || speechSynthesis.getVoices().find(function (x) { return /^es/i.test(x.lang); });
-      if (v) u.voice = v;
+      var u = new SpeechSynthesisUtterance(limpio.slice(0, 600));
+      u.lang = "es-MX"; u.rate = 1.0; u.pitch = 1.15;     // pitch alto = timbre más femenino
+      if (!vozIris) vozIris = elegirVoz();
+      if (vozIris) u.voice = vozIris;
       speechSynthesis.speak(u);
     } catch (e) { /* silencioso */ }
   }
@@ -262,6 +307,11 @@
     vozActiva = !vozActiva; muteBtn.textContent = vozActiva ? "🔊" : "🔇";
     if (!vozActiva && "speechSynthesis" in window) speechSynthesis.cancel();
   });
-  // precargar voces (algunos navegadores las cargan async)
-  if ("speechSynthesis" in window) { try { speechSynthesis.getVoices(); } catch (e) {} }
+  // precargar voces y refrescar la elección cuando el navegador las tenga
+  if ("speechSynthesis" in window) {
+    try {
+      vozIris = elegirVoz();
+      speechSynthesis.onvoiceschanged = function () { vozIris = elegirVoz(); };
+    } catch (e) {}
+  }
 })();
