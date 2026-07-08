@@ -368,6 +368,7 @@ let persona={nombre:"",apellido:"",edad:"",telefono:"",ingreso:""};
 let finderHistory=[], chosen=[], stepId="start", lastFinderId="start", productKey=null;
 let radarVals={vida:0,gmm:0,auto:0,retiro:0,emerg:0,ingreso:0};
 let radarDone={vida:false,gmm:false,auto:false,retiro:false,emerg:false,ingreso:false};
+let resultadoEnviado=false;  // captura pasiva: un solo envío por diagnóstico
 function updateRadarProgress(){
   const total=RADAR.length;
   const done=RADAR.filter(a=>radarDone[a.key]).length;
@@ -425,7 +426,7 @@ function renderPersona(){
           <div class="fld"><label for="pe">Edad</label><input id="pe" type="number" min="18" max="90" inputmode="numeric" value="${persona.edad}"></div>
           <div class="fld"><label for="pt">Número telefónico</label><input id="pt" type="tel" autocomplete="tel" inputmode="tel" placeholder="10 dígitos" value="${persona.telefono}"></div>
         </div>
-        <div class="priv"><span aria-hidden="true">🔒</span><span>Tus datos solo se usan para personalizar tu resultado. No se envían a nadie hasta que tú decidas agendar o contactar a tu asesor.</span></div>
+        <div class="priv"><span aria-hidden="true">🔒</span><span>Usamos tus datos para personalizar tu resultado y para que tu asesor, ${AGENTE.nombre}, pueda contactarte con la mejor opción. Nunca se comparten con terceros.</span></div>
       </div>
       <div class="btnrow"><button class="btn btn-primary" id="pContinue">Continuar <span aria-hidden="true">→</span></button></div>
       <div class="backrow"><button class="back" id="backBtn">← Volver al inicio</button></div>
@@ -609,8 +610,7 @@ function showResult(){
   const wa=AGENTE.whatsapp?`https://wa.me/${AGENTE.whatsapp}?text=${encodeURIComponent(msg)}`:"";
   const mail=AGENTE.email?`mailto:${AGENTE.email}?subject=${encodeURIComponent('Interés: '+p.nombre)}&body=${encodeURIComponent(msg)}`:"";
 
-  // Registro que se enviará al Google Sheet (vía /api/lead) cuando el usuario
-  // agende o contacte — NO automáticamente, según el aviso de privacidad.
+  // Datos base del prospecto para el Google Sheet (vía /api/lead).
   const leadBase = {
     nombre:persona.nombre, apellido:persona.apellido, edad:persona.edad,
     telefono:persona.telefono, ingreso:persona.ingreso,
@@ -618,6 +618,14 @@ function showResult(){
     hueco:(!allHigh&&gapLabel)?gapLabel:"",
     respuestas:chosen.join(" | ")
   };
+
+  // Captura pasiva: todo diagnóstico completado se registra como prospecto.
+  // Los clics en agendar/WhatsApp mandan un registro extra con la acción.
+  if(!resultadoEnviado){
+    resultadoEnviado=true;
+    sendLead({...leadBase, fecha:new Date().toISOString(),
+              origen:"diagnostico-completado", accion:"Completó el diagnóstico"});
+  }
 
   const greetName=persona.nombre?`Hola, ${persona.nombre}`:"Tu resultado";
 
@@ -682,7 +690,7 @@ function showResult(){
     persona={nombre:"",apellido:"",edad:"",telefono:"",ingreso:""};
     radarVals={vida:0,gmm:0,auto:0,retiro:0,emerg:0,ingreso:0};
     radarDone={vida:false,gmm:false,auto:false,retiro:false,emerg:false,ingreso:false};
-    finderHistory=[];chosen=[];productKey=null;stepId="start";
+    finderHistory=[];chosen=[];productKey=null;stepId="start";resultadoEnviado=false;
     renderHero();
   });
   window.scrollTo({top:0,behavior:'smooth'});
