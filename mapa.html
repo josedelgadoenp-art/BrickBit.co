@@ -1136,10 +1136,11 @@ async function scanVibrancia(lat,lng,name){
     const n=buenos.length;
     const rated=buenos.filter(p=>p.rating!=null);
     const avg=rated.length?rated.reduce((s,p)=>s+p.rating,0)/rated.length:0;
-    const dens=Math.min(1,n/12), qual=avg?Math.max(0,Math.min(1,avg-4)):0;
-    const score=Math.round(Math.min(100, dens*80 + qual*20));
-    const col=score>=66?'#57c389':score>=40?'#F5C277':'#8FA3A0';
-    const nivel=score>=66?'Hotspot emergente':score>=40?'Ecosistema en formación':'Aún tranquila';
+    // Estricto: densidad exige ~20 locales para saturar y el máximo realista ≈ 88.
+    const dens=Math.min(1,n/20), qual=avg?Math.max(0,Math.min(1,avg-4)):0;
+    const score=Math.round(Math.min(100, dens*70 + qual*18));
+    const col=score>=60?'#57c389':score>=35?'#F5C277':'#8FA3A0';
+    const nivel=score>=60?'Hotspot emergente':score>=35?'Ecosistema en formación':'Aún tranquila';
     const top=buenos.slice(0,6).map(p=>{
       const dt=p.d<1000?Math.round(p.d)+' m':(p.d/1000).toFixed(1)+' km';
       const st=p.rating!=null?` · ★${p.rating.toFixed(1)}`:'';
@@ -1173,7 +1174,8 @@ const EV_CATS=[
   {key:'salud',  emoji:'🏥', label:'Salud',        types:['hospital','pharmacy']},
 ];
 let _evBusy=false;
-function scoreDistM(d){ if(d==null)return 8; if(d<=400)return 100; if(d<=800)return 82; if(d<=1200)return 62; if(d<=2000)return 38; if(d<=3000)return 20; return 10; }
+// Curva estricta: 100 casi imposible; un buen lugar ronda 55–75, excelente ~85.
+function scoreDistM(d){ if(d==null)return 4; if(d<=120)return 94; if(d<=250)return 80; if(d<=450)return 66; if(d<=700)return 52; if(d<=1000)return 40; if(d<=1500)return 27; if(d<=2500)return 15; return 7; }
 async function scanEstilo(lat,lng,name){
   if(_evBusy) return; _evBusy=true;
   const out=document.getElementById('ev-out2'), btn=document.getElementById('ev-btn2');
@@ -1191,11 +1193,11 @@ async function scanEstilo(lat,lng,name){
     }));
     if(res.every(r=>r.err)){ out.innerHTML='<div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">No se pudo consultar Google Places. Activa la <b>Places API (New)</b> y la facturación en Google Cloud.</div>'; return; }
     const overall=Math.round(res.reduce((s,r)=>s+r.score,0)/res.length);
-    const col=overall>=75?'#57c389':overall>=50?'#F5C277':'#8FA3A0';
+    const col=overall>=68?'#57c389':overall>=42?'#F5C277':'#8FA3A0';
     const filas=res.map(r=>{
       const dt=r.nearest==null?'sin datos':(r.nearest<1000?Math.round(r.nearest)+' m':(r.nearest/1000).toFixed(1)+' km');
       const min=r.nearest==null?'':' · '+Math.max(1,Math.round(r.nearest/80))+' min';
-      const c=r.score>=75?'#57c389':r.score>=50?'#F5C277':'#8FA3A0';
+      const c=r.score>=60?'#57c389':r.score>=38?'#F5C277':'#8FA3A0';
       return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.06)"><span>${r.emoji} ${r.label}</span><span style="color:${c}">${dt}${min}</span></div>`;
     }).join('');
     out.innerHTML=`

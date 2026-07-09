@@ -18,9 +18,10 @@
   /* ---------- estilos ---------- */
   var css = `
   #iris-fab{position:fixed;right:20px;bottom:20px;z-index:2147483000;width:62px;height:62px;border:none;
-    border-radius:50%;cursor:pointer;background:radial-gradient(circle at 35% 30%,#57c389,#1a7d50 70%);
+    border-radius:50%;cursor:grab;background:radial-gradient(circle at 35% 30%,#57c389,#1a7d50 70%);
     box-shadow:0 12px 30px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;padding:0;
-    transition:transform .2s}
+    transition:transform .2s;touch-action:none}
+  #iris-fab.iris-dragging{cursor:grabbing;transition:none}
   #iris-fab:hover{transform:scale(1.06)}
   #iris-fab .ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(205,242,90,.7);
     animation:iris-pulse 2.4s ease-out infinite}
@@ -299,7 +300,47 @@
   function cerrar() { abierto = false; panel.classList.remove("on"); fab.style.display = "flex";
     if ("speechSynthesis" in window) speechSynthesis.cancel(); }
 
-  fab.addEventListener("click", abrir);
+  /* ---- Iris arrastrable (para que no estorbe la navegación) ---- */
+  (function () {
+    var dragging = false, moved = false, sx = 0, sy = 0, ox = 0, oy = 0;
+    try {
+      var saved = JSON.parse(localStorage.getItem("iris_fab_pos") || "null");
+      if (saved && typeof saved.left === "number") {
+        fab.style.left = saved.left + "px"; fab.style.top = saved.top + "px";
+        fab.style.right = "auto"; fab.style.bottom = "auto";
+      }
+    } catch (e) {}
+    function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+    fab.addEventListener("pointerdown", function (e) {
+      dragging = true; moved = false;
+      var r = fab.getBoundingClientRect(); ox = r.left; oy = r.top; sx = e.clientX; sy = e.clientY;
+      try { fab.setPointerCapture(e.pointerId); } catch (er) {}
+    });
+    fab.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      var dx = e.clientX - sx, dy = e.clientY - sy;
+      if (!moved && Math.abs(dx) + Math.abs(dy) < 5) return;
+      moved = true; fab.classList.add("iris-dragging");
+      var w = fab.offsetWidth, h = fab.offsetHeight;
+      fab.style.left = clamp(ox + dx, 4, window.innerWidth - w - 4) + "px";
+      fab.style.top = clamp(oy + dy, 4, window.innerHeight - h - 4) + "px";
+      fab.style.right = "auto"; fab.style.bottom = "auto";
+    });
+    function end() {
+      if (!dragging) return; dragging = false; fab.classList.remove("iris-dragging");
+      if (moved) {
+        var r = fab.getBoundingClientRect();
+        try { localStorage.setItem("iris_fab_pos", JSON.stringify({ left: Math.round(r.left), top: Math.round(r.top) })); } catch (e) {}
+      }
+    }
+    fab.addEventListener("pointerup", end);
+    fab.addEventListener("pointercancel", end);
+    // abrir SÓLO si fue clic (no arrastre)
+    fab.addEventListener("click", function (e) {
+      if (moved) { e.preventDefault(); e.stopPropagation(); return; }
+      abrir();
+    });
+  })();
   panel.querySelector("#iris-close").addEventListener("click", cerrar);
   panel.querySelector("#iris-send").addEventListener("click", function () { enviar(); });
   input.addEventListener("keydown", function (e) { if (e.key === "Enter") enviar(); });
