@@ -421,6 +421,11 @@
       <img id="previewImg" alt="Vista previa del plano">
       <div class="file-meta" id="fileMeta"></div>
     </div>
+    <div style="margin-top:18px">
+      <label for="projZona">📍 Ubicación del proyecto <span class="help" tabindex="0" data-tip="La ciudad donde se construirá. La IA ajusta la predicción de fallas a la zona sísmica (CFE), el tipo de suelo y el clima reales de ese lugar.">?</span></label>
+      <select id="projZona"><option value="">— Elige la ciudad —</option></select>
+      <div class="hint" id="projCtx">Elige la ubicación para aterrizar la predicción de fallas al sitio real (zona sísmica, suelo y clima).</div>
+    </div>
     <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-primary" id="btnAnalyze" disabled>Generar gemelo digital →</button>
       <button class="btn btn-ghost" id="btnDemo">✨ Probar con proyecto de ejemplo</button>
@@ -899,7 +904,49 @@ async function extractGeometry() {
   });
 }
 
+/* Contexto sísmico/suelo/clima por ciudad (aprox. regionalización CFE) para
+   aterrizar la predicción de fallas al lugar real del proyecto. */
+const SISMO_CTX = {
+  "Ciudad de México":{sismo:"B, con microzonas de muy alto riesgo",suelo:"lacustre/blando en gran parte (zona de lago): amplifica el sismo y causa asentamientos diferenciales",clima:"templado seco"},
+  "Guadalajara":{sismo:"C (alta)",suelo:"firme con tobas volcánicas",clima:"templado"},
+  "Monterrey":{sismo:"A–B (baja)",suelo:"firme",clima:"cálido semiárido"},
+  "Cancún":{sismo:"A (baja)",suelo:"kárstico/roca caliza (posibles cavidades)",clima:"cálido húmedo, salino costero → corrosión"},
+  "Mérida":{sismo:"A (baja)",suelo:"kárstico/roca caliza",clima:"cálido húmedo"},
+  "Querétaro":{sismo:"B (media)",suelo:"firme, arcillas expansivas en zonas",clima:"templado semiseco"},
+  "Tijuana":{sismo:"C–D (alta, falla de San Andrés)",suelo:"laderas y rellenos: riesgo de deslizamiento",clima:"templado seco"},
+  "Puebla":{sismo:"C (alta)",suelo:"firme a transición",clima:"templado"},
+  "León":{sismo:"B (media)",suelo:"firme, arcillas expansivas en zonas",clima:"templado semiseco"},
+  "San Luis Potosí":{sismo:"B (media)",suelo:"firme",clima:"semiseco"},
+  "Aguascalientes":{sismo:"B (media)",suelo:"firme, con grietas/fallas geológicas en zonas",clima:"semiseco"},
+  "La Paz":{sismo:"B–C",suelo:"firme costero",clima:"seco costero → corrosión"},
+  "Saltillo":{sismo:"A–B (baja)",suelo:"firme",clima:"semiseco"},
+  "Chihuahua":{sismo:"A–B (baja)",suelo:"firme",clima:"seco extremo"},
+  "Culiacán":{sismo:"B (media)",suelo:"aluvial, freático alto cerca de ríos",clima:"cálido, húmedo en verano"},
+  "Hermosillo":{sismo:"B (media)",suelo:"firme",clima:"muy caluroso y seco"},
+  "Durango":{sismo:"B (media)",suelo:"firme",clima:"templado seco"},
+  "Tepic":{sismo:"C (alta)",suelo:"volcánico/transición",clima:"cálido húmedo"},
+  "Colima":{sismo:"D (muy alta, cercanía al volcán)",suelo:"volcánico",clima:"cálido húmedo"},
+  "Toluca":{sismo:"C (alta)",suelo:"transición, valle alto",clima:"frío templado"},
+  "Morelia":{sismo:"C (alta)",suelo:"firme a transición, hundimientos/grietas en zonas",clima:"templado"},
+  "Cuernavaca":{sismo:"C (alta)",suelo:"firme, barrancas",clima:"cálido templado"},
+  "Pachuca":{sismo:"B (media)",suelo:"firme",clima:"frío seco"},
+  "Oaxaca":{sismo:"C–D (muy alta)",suelo:"transición a blando en el valle",clima:"templado"},
+  "Tuxtla Gutiérrez":{sismo:"D (muy alta)",suelo:"transición",clima:"cálido húmedo"},
+  "Villahermosa":{sismo:"B–C",suelo:"aluvial blando, freático muy alto (inundable)",clima:"cálido muy húmedo → humedad/corrosión"},
+  "Campeche":{sismo:"A (baja)",suelo:"kárstico costero",clima:"cálido húmedo salino"},
+  "Veracruz":{sismo:"B–C",suelo:"arenoso costero, freático alto",clima:"cálido húmedo salino → corrosión"},
+  "Zacatecas":{sismo:"B (media)",suelo:"firme, roca",clima:"frío seco"},
+  "Tlaxcala":{sismo:"B–C",suelo:"transición",clima:"frío templado"},
+  "Reynosa":{sismo:"A (baja)",suelo:"aluvial, arcillas expansivas",clima:"cálido húmedo"},
+  "Chilpancingo":{sismo:"D (muy alta, Guerrero)",suelo:"transición, laderas",clima:"cálido templado"},
+};
+function sismoContext(nombre){ return SISMO_CTX[nombre] || {sismo:"B (media, supuesta)",suelo:"firme (supuesto)",clima:"templado (supuesto)"}; }
 async function analyzeEngineering(geometry) {
+  const _pz = ($('projZona') && $('projZona').value) || '';
+  const _zc = _pz ? sismoContext(_pz) : null;
+  const locCtxLine = _zc
+    ? `UBICACIÓN DEL PROYECTO: ${_pz}. Zona sísmica (CFE): ${_zc.sismo}. Suelo probable: ${_zc.suelo}. Clima: ${_zc.clima}. Ajusta CADA falla (probabilidad, severidad, años) a este contexto real del sitio.`
+    : `UBICACIÓN: no especificada; asume zona sísmica B y suelo firme, y decláralo en la primera falla.`;
   return callClaude({
     system: 'Eres un ingeniero estructurista y residente de obra con 25 años de experiencia en México. Cuantificas materiales conforme a prácticas comunes (NTC/CFE/ONNCCE), recomiendas calidades y acero de refuerzo por elemento, y evalúas riesgos de falla de diseño y construcción con horizontes de tiempo realistas. Sé específico y conservador; incluye desperdicio típico en cantidades.',
     content: [
@@ -913,7 +960,8 @@ async function analyzeEngineering(geometry) {
 5) Predicción de fallas arquitectónicas/estructurales/de diseño: nombre, tipo, probabilidad (%), severidad, años estimados hasta manifestarse, la zona aproximada donde aparecería (coordenadas x, y en metros dentro del plano y nivel; 1 = planta baja), el costo en MXN de repararla ya manifestada vs. prevenirla en obra, descripción y prevención.
 6) La PRIMERA falla esperada: cuál será, en cuántos años, con qué confianza y por qué.
 
-CONTEXTO PARA LAS FALLAS (México): considera la regionalización sísmica de la CFE (zonas A–D), el tipo de suelo probable (firme, transición o blando/lacustre — p. ej. la zona de lago de CDMX amplifica el sismo y causa asentamientos diferenciales) y el clima (humedad, lluvia, salinidad costera → corrosión/humedad). Ajusta la probabilidad, severidad y horizonte de cada falla a ese contexto. Si no se indica la ubicación exacta, asume zona sísmica B y suelo firme y decláralo en la descripción de la primera falla. Recuerda que es una estimación de IA, no un cálculo estructural formal.
+${locCtxLine}
+CONTEXTO PARA LAS FALLAS (México): la zona sísmica de la CFE, el tipo de suelo y el clima definen los modos de falla dominantes (suelo lacustre → amplificación sísmica y asentamientos diferenciales; costa salina/húmeda → corrosión y humedad; planta baja comercial abierta → piso suave/"soft-story", la falla #1 en sismos). Ajusta la probabilidad, severidad y horizonte de CADA falla a la ubicación indicada arriba. Es una estimación de IA, no un cálculo estructural formal.
 
 GEOMETRÍA DEL PROYECTO:
 ${JSON.stringify(geometry, null, 2)}` },
@@ -1657,7 +1705,28 @@ $('invZona').innerHTML = '<option value="">— Sin zona (solo IA) —</option>' 
   BB_ZONES.map(z => `<option value="${escapeHtml(z.nombre)}">${escapeHtml(z.nombre)} · $${fmt(z.precio_m2)}/m² · +${z.plusvalia}%/año</option>`).join('');
 $('invZona').addEventListener('change', () => {
   if ($('invZona').value && !$('invLocation').value.trim()) $('invLocation').value = $('invZona').value;
+  if ($('projZona') && $('projZona').value !== $('invZona').value) { $('projZona').value = $('invZona').value; renderProjCtx(); }
 });
+/* Selector de ubicación del PASO 1 (para la predicción de fallas) — comparte
+   dataset con la zona de inversión (paso 8) y se sincroniza con ella. */
+if ($('projZona')) {
+  $('projZona').innerHTML = '<option value="">— Elige la ciudad —</option>' +
+    BB_ZONES.map(z => `<option value="${escapeHtml(z.nombre)}">${escapeHtml(z.nombre)}</option>`).join('');
+  $('projZona').addEventListener('change', () => {
+    renderProjCtx();
+    if ($('invZona') && $('invZona').value !== $('projZona').value) {
+      $('invZona').value = $('projZona').value;
+      if ($('projZona').value && !$('invLocation').value.trim()) $('invLocation').value = $('projZona').value;
+    }
+  });
+}
+function renderProjCtx() {
+  const el = $('projCtx'); if (!el) return;
+  const v = $('projZona') ? $('projZona').value : '';
+  if (!v) { el.innerHTML = 'Elige la ubicación para aterrizar la predicción de fallas al sitio real (zona sísmica, suelo y clima).'; return; }
+  const c = sismoContext(v);
+  el.innerHTML = '🌎 <b>' + escapeHtml(v) + '</b> · Zona sísmica <b>' + escapeHtml(c.sismo) + '</b> · Suelo: ' + escapeHtml(c.suelo) + ' · Clima: ' + escapeHtml(c.clima);
+}
 function selectedZone() {
   return BB_ZONES.find(z => z.nombre === $('invZona').value) || null;
 }
