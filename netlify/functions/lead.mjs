@@ -1,7 +1,7 @@
 /**
  * BrickBit · Función Netlify: /api/lead
  * -------------------------------------
- * Recibe los leads de /financial y los eventos de /destino, los valida
+ * Recibe los leads de /financial, los valida
  * (honeypot anti-bots, tamaños, campos permitidos) y los reenvía firmados
  * con tu secreto al Google Apps Script que escribe en tu hoja de cálculo
  * y te avisa por correo.
