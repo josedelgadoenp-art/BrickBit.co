@@ -913,6 +913,8 @@ async function analyzeEngineering(geometry) {
 5) Predicción de fallas arquitectónicas/estructurales/de diseño: nombre, tipo, probabilidad (%), severidad, años estimados hasta manifestarse, la zona aproximada donde aparecería (coordenadas x, y en metros dentro del plano y nivel; 1 = planta baja), el costo en MXN de repararla ya manifestada vs. prevenirla en obra, descripción y prevención.
 6) La PRIMERA falla esperada: cuál será, en cuántos años, con qué confianza y por qué.
 
+CONTEXTO PARA LAS FALLAS (México): considera la regionalización sísmica de la CFE (zonas A–D), el tipo de suelo probable (firme, transición o blando/lacustre — p. ej. la zona de lago de CDMX amplifica el sismo y causa asentamientos diferenciales) y el clima (humedad, lluvia, salinidad costera → corrosión/humedad). Ajusta la probabilidad, severidad y horizonte de cada falla a ese contexto. Si no se indica la ubicación exacta, asume zona sísmica B y suelo firme y decláralo en la descripción de la primera falla. Recuerda que es una estimación de IA, no un cálculo estructural formal.
+
 GEOMETRÍA DEL PROYECTO:
 ${JSON.stringify(geometry, null, 2)}` },
     ],
