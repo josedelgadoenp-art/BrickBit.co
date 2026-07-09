@@ -214,6 +214,7 @@ body{font-family:'Hanken Grotesk',system-ui,-apple-system,sans-serif;background:
       <button id="mt-asesor" onclick="pickMode('asesor')">💡 Asesor</button>
       <button id="mt-heat" onclick="toggleHeat();closeVista()">🔥 Calor</button>
       <div style="height:1px;background:rgba(245,237,227,.1);margin:4px 6px"></div>
+      <button onclick="openPortafolio();closeVista()">📁 Portafolio</button>
       <button onclick="openCompare()">⚖️ Comparar zonas</button>
     </div>
   </span>
@@ -965,6 +966,201 @@ function note(txt){const el=document.getElementById('mode-note');el.textContent=
 
 function vc(v,good,warn,inv){if(inv){if(v<=good)return"good";if(v<=warn)return"warn";return"bad"}if(v>=good)return"good";if(v>=warn)return"warn";return"bad"}
 
+/* ===== BrickBit Score — calificación de inversión 0–100 de la zona =====
+   Índice compuesto normalizado entre las 32 zonas: Valor Futuro (forecast a 3a),
+   rendimiento (yield), riesgo (volatilidad, invertido), liquidez (días en mercado,
+   invertido) y oportunidad. Informativo, no asesoría. */
+function _scoreInputs(name,d){
+  const fc=(typeof FORECAST!=='undefined'&&FORECAST[name])?FORECAST[name]['3']:null;
+  const appr=fc?(fc.f-1)*100:(Math.pow(1+(d.g||0)/100,3)-1)*100;
+  return { appr, yld:(+d.yield||0), vol:(d._vol!=null?d._vol:4.0), dom:(+d.dom||60), opp:(d.opp==='Alta'?3:d.opp==='Media'?2:1) };
+}
+let _scoreRng=null;
+function _scoreRanges(){
+  if(_scoreRng) return _scoreRng;
+  const arr=Object.entries(CITIES).map(([n,d])=>_scoreInputs(n,d));
+  const rng=k=>{const v=arr.map(x=>x[k]);return [Math.min(...v),Math.max(...v)];};
+  _scoreRng={appr:rng('appr'),yld:rng('yld'),vol:rng('vol'),dom:rng('dom'),opp:rng('opp')};
+  return _scoreRng;
+}
+function _nrm(v,r,inv){ const mn=r[0],mx=r[1]; if(mx===mn)return 50; let t=(v-mn)/(mx-mn); if(inv)t=1-t; return Math.max(0,Math.min(1,t))*100; }
+function bbScore(name,d){
+  const R=_scoreRanges(), x=_scoreInputs(name,d);
+  const parts=[
+    {k:'Valor Futuro (3a)',   s:_nrm(x.appr,R.appr,false), w:.35},
+    {k:'Rendimiento (yield)', s:_nrm(x.yld ,R.yld ,false), w:.20},
+    {k:'Riesgo bajo',         s:_nrm(x.vol ,R.vol ,true ), w:.20},
+    {k:'Liquidez',            s:_nrm(x.dom ,R.dom ,true ), w:.10},
+    {k:'Oportunidad',         s:_nrm(x.opp ,R.opp ,false), w:.15},
+  ];
+  const total=Math.round(parts.reduce((a,p)=>a+p.s*p.w,0));
+  const grade=total>=80?'A':total>=65?'B':total>=50?'C':'D';
+  return {total,grade,parts};
+}
+function scoreCol(v){ return v>=80?'#57c389':v>=65?'#cdf25a':v>=50?'#F5C277':'#F08886'; }
+function scoreHTML(name,d){
+  const sc=bbScore(name,d), col=scoreCol(sc.total);
+  const bars=sc.parts.map(p=>{
+    const c=p.s>=66?'#57c389':p.s>=45?'#cdf25a':p.s>=30?'#F5C277':'#F08886';
+    return `<div style="display:flex;align-items:center;gap:8px;font-size:11px;margin:5px 0"><span style="flex:0 0 120px;color:#a89a8c">${p.k}</span><span style="flex:1;height:7px;background:rgba(255,255,255,.07);border-radius:5px;overflow:hidden"><span style="display:block;height:100%;width:${Math.round(p.s)}%;background:${c};border-radius:5px"></span></span><span style="flex:0 0 24px;text-align:right;color:#e6ddd0">${Math.round(p.s)}</span></div>`;
+  }).join('');
+  return `<div style="background:#0e1116;border:1px solid rgba(245,237,227,.12);border-radius:14px;padding:14px;margin:12px 0">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="width:66px;height:66px;flex:none;border-radius:50%;display:grid;place-items:center;background:conic-gradient(${col} ${sc.total*3.6}deg,rgba(255,255,255,.08) 0)">
+        <div style="width:52px;height:52px;border-radius:50%;background:#0e1116;display:grid;place-items:center"><div style="font-family:'Fraunces',serif;font-weight:700;font-size:22px;color:${col};line-height:1">${sc.total}</div></div>
+      </div>
+      <div><div style="font-weight:800;font-size:15px;color:#f5ede3">BrickBit Score <span style="color:${col}">${sc.grade}</span></div>
+      <div style="font-size:11px;color:#8FA3A0">Calificación de inversión de la zona · 0–100</div></div>
+    </div>
+    <div style="margin-top:10px">${bars}</div>
+    <div style="font-size:10.5px;color:#8FA3A0;margin-top:6px">Índice compuesto normalizado entre las 32 zonas. Informativo, no asesoría.</div>
+  </div>`;
+}
+
+/* Estilo compartido para las vistas imprimibles (reporte de zona y análisis IA). */
+function ensurePdfStyle(){
+  if(document.getElementById('pdf-style')) return;
+  const st=document.createElement('style'); st.id='pdf-style';
+  st.textContent=`
+    #pdf-overlay{position:fixed;inset:0;z-index:99999;background:rgba(6,10,14,.92);display:flex;flex-direction:column;align-items:center;overflow:auto;padding:14px}
+    .pdf-toolbar{position:sticky;top:0;display:flex;gap:8px;align-items:center;width:100%;max-width:820px;margin-bottom:12px;flex-wrap:wrap}
+    .pdf-toolbar .t{font-size:13px;font-weight:700;color:#EAF2EE;margin-right:auto}
+    .pdf-btn{padding:9px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none}
+    .pdf-btn.p{background:#1D9E75;color:#021}
+    .pdf-btn.s{background:transparent;border:0.5px solid rgba(255,255,255,.22);color:#EAF2EE}
+    #pdfdoc{width:100%;max-width:820px;background:#fff;color:#21292f;border-radius:8px;padding:46px 52px;font-family:system-ui,-apple-system,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+    #pdfdoc .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1D9E75;padding-bottom:12px}
+    #pdfdoc .brand{font-size:26px;font-weight:800;letter-spacing:-1px;color:#0F6E56}
+    #pdfdoc .brand span{color:#1D9E75}
+    #pdfdoc .subt{font-size:11px;color:#7a878c;margin-top:3px}
+    #pdfdoc .date{font-size:11px;color:#7a878c}
+    #pdfdoc h1{font-size:21px;margin:16px 0 2px}
+    #pdfdoc .meta{font-size:12px;color:#6c787d;margin-bottom:4px}
+    #pdfdoc h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:#0F6E56;border-bottom:1px solid #d8e0dd;padding-bottom:4px;margin:22px 0 10px}
+    #pdfdoc .tipo{font-size:15px;font-weight:700;color:#0F6E56;margin-bottom:4px}
+    #pdfdoc p{font-size:13px;line-height:1.55;margin:0 0 8px}
+    #pdfdoc table{width:100%;border-collapse:collapse;font-size:12.5px}
+    #pdfdoc td{padding:6px 4px;border-bottom:1px solid #e7ecea}
+    #pdfdoc td.r{text-align:right}#pdfdoc td.b{font-weight:700;color:#0F6E56}
+    #pdfdoc ol{font-size:13px;line-height:1.55;padding-left:20px;margin:0}
+    #pdfdoc ol li{margin-bottom:5px}
+    #pdfdoc .method p{font-size:12px;color:#3a464c;margin-bottom:6px}
+    #pdfdoc .foot{margin-top:24px;border-top:1px solid #d8e0dd;padding-top:10px;font-size:10.5px;color:#7a878c;line-height:1.5}
+    #pdfdoc .foot b{color:#0F6E56}
+    @media print{
+      body>*:not(#pdf-overlay){display:none !important}
+      #pdf-overlay{position:static !important;display:block !important;background:#fff !important;padding:0 !important;overflow:visible !important}
+      .pdf-toolbar{display:none !important}
+      #pdfdoc{max-width:none !important;box-shadow:none !important;border-radius:0 !important;padding:0 !important}
+      @page{margin:18mm}
+    }`;
+  document.head.appendChild(st);
+}
+/* Reporte de zona en PDF: BrickBit Score + pronóstico + indicadores. */
+function zonaPDF(){
+  const d=curData; if(!d){ note('Selecciona una zona primero'); return; }
+  const name=((document.querySelector('.sel-name')||{}).textContent||'Zona').trim();
+  const sc=bbScore(name,d);
+  const fdate=new Date().toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'});
+  const m=d._fcm, f=d._fc;
+  const fcRows=[1,3,5,10].map(h=>{
+    if(m&&m[h]) return `<tr><td>${h} año${h>1?'s':''}</td><td class="r b">$${Math.round(m[h].v).toLocaleString('es-MX')}/m²</td><td class="r">$${Math.round(m[h].lo).toLocaleString('es-MX')}–$${Math.round(m[h].hi).toLocaleString('es-MX')}</td></tr>`;
+    return f?`<tr><td>${h} año${h>1?'s':''}</td><td class="r b">$${Math.round(f[h]).toLocaleString('es-MX')}/m²</td><td class="r">—</td></tr>`:'';
+  }).join('');
+  const scoreRows=sc.parts.map(p=>`<tr><td>${p.k}</td><td class="r b">${Math.round(p.s)}/100</td></tr>`).join('');
+  ensurePdfStyle();
+  const old=document.getElementById('pdf-overlay'); if(old)old.remove();
+  const ov=document.createElement('div'); ov.id='pdf-overlay';
+  ov.innerHTML=`
+    <div class="pdf-toolbar">
+      <span class="t">📄 Reporte de zona</span>
+      <button class="pdf-btn p" onclick="window.print()">Imprimir / Guardar como PDF</button>
+      <button class="pdf-btn s" onclick="document.getElementById('pdf-overlay').remove()">Cerrar ✕</button>
+    </div>
+    <div id="pdfdoc">
+      <div class="head"><div><div class="brand">brick<span>bit</span></div><div class="subt">Reporte de zona · Valor Futuro</div></div><div class="date">${fdate}</div></div>
+      <h1>${name}</h1>
+      <div class="meta">Precio ${fmt(d.price||0)}/m² &nbsp;·&nbsp; Plusvalía +${(+d.g||0).toFixed(1)}% &nbsp;·&nbsp; Yield ${(+d.yield||0).toFixed(1)}% &nbsp;·&nbsp; Ciclo ${d.ciclo||'—'}</div>
+      <h2>BrickBit Score</h2>
+      <div class="tipo">${sc.total}/100 · Calificación ${sc.grade}</div>
+      <table>${scoreRows}</table>
+      <h2>Pronóstico de precio/m² (IC 90%)</h2>
+      <table><tr><td><b>Horizonte</b></td><td class="r b">Precio</td><td class="r b">Rango</td></tr>${fcRows}</table>
+      <h2>Indicadores</h2>
+      <table>
+        <tr><td>Plusvalía anual (SHF)</td><td class="r b">+${(+d.g||0).toFixed(1)}%</td></tr>
+        <tr><td>Yield de renta</td><td class="r b">${(+d.yield||0).toFixed(1)}%</td></tr>
+        <tr><td>Días en mercado</td><td class="r b">${Math.round(d.dom||0)}</td></tr>
+        <tr><td>Volatilidad anual</td><td class="r b">${(d._vol!=null?d._vol.toFixed(1):'—')}%</td></tr>
+        <tr><td>Ciclo económico</td><td class="r b">${d.ciclo||'—'}</td></tr>
+      </table>
+      <div class="foot"><b>BrickBit</b> · El BrickBit Score es un índice compuesto informativo (Valor Futuro, rendimiento, riesgo, liquidez y oportunidad) normalizado entre las 32 zonas. La plusvalía y la volatilidad son datos reales de la SHF; el pronóstico está validado a 1–3 años. No es asesoría de inversión.</div>
+    </div>`;
+  document.body.appendChild(ov);
+}
+
+/* ===== Simulador de portafolio — retorno esperado, riesgo y diversificación =====
+   Arma una cartera de zonas y ve el Valor Futuro ponderado, la volatilidad y el
+   BrickBit Score promedio. Se guarda en el navegador. */
+let bbPortfolio=(function(){ try{ return JSON.parse(localStorage.getItem('bb_portfolio')||'[]'); }catch(e){ return []; } })();
+function _savePort(){ try{ localStorage.setItem('bb_portfolio', JSON.stringify(bbPortfolio)); }catch(e){} }
+function inPortfolio(name){ return bbPortfolio.some(x=>x.n===name); }
+function addToPortfolio(name){
+  if(inPortfolio(name)) bbPortfolio=bbPortfolio.filter(x=>x.n!==name);
+  else bbPortfolio.push({n:name,w:0});
+  _savePort();
+  const b=document.getElementById('port-add-btn'); if(b) b.textContent=inPortfolio(name)?'✓ En tu portafolio':'➕ Añadir al portafolio';
+}
+function _portWeights(){
+  const anyW=bbPortfolio.some(x=>x.w>0);
+  if(!anyW){ const w=bbPortfolio.length?1/bbPortfolio.length:0; return bbPortfolio.map(()=>w); }
+  const tot=bbPortfolio.reduce((s,x)=>s+(x.w>0?x.w:0),0)||1;
+  return bbPortfolio.map(x=>(x.w>0?x.w:0)/tot);
+}
+function setPortWeight(name,v){
+  const ws=_portWeights();
+  bbPortfolio.forEach((x,i)=>{ x.w=Math.round(ws[i]*100); });
+  const x=bbPortfolio.find(x=>x.n===name); if(x) x.w=Math.max(0,parseFloat(v)||0);
+  _savePort(); renderPortafolio();
+}
+function removeFromPortfolio(name){ bbPortfolio=bbPortfolio.filter(x=>x.n!==name); _savePort(); renderPortafolio(); }
+function openPortafolio(){
+  if(propMode||shfMode||asesorMode||(typeof HEAT_ON!=='undefined'&&HEAT_ON)) setMode('zonas');
+  renderPortafolio();
+}
+function _vf3z(name,d){ const fc=(FORECAST[name]||{})['3']; return fc?(fc.f-1)*100:(Math.pow(1+(d.g||0)/100,3)-1)*100; }
+function renderPortafolio(){
+  document.getElementById('panel-cap').textContent='📁 Portafolio';
+  const cont=document.getElementById('panel-content');
+  const valid=bbPortfolio.filter(x=>CITIES[x.n]);
+  if(!valid.length){ cont.innerHTML='<div class="sel-name">Tu portafolio está vacío</div><div class="hint" style="margin-top:8px">Abre una zona y toca <b>➕ Añadir al portafolio</b>. Aquí verás el retorno esperado, el riesgo y la diversificación combinados de tu cartera.</div>'; document.getElementById('list-sec').style.display='none'; return; }
+  const ws=_portWeights();
+  let vfSum=0,volSum=0,scSum=0; const ciclos={}; const rows=[];
+  bbPortfolio.forEach((x,i)=>{ const d=CITIES[x.n]; if(!d)return; const w=ws[i];
+    const vf=_vf3z(x.n,d), vol=(d._vol!=null?d._vol:4.0), sc=bbScore(x.n,d).total;
+    vfSum+=w*vf; volSum+=w*vol; scSum+=w*sc; ciclos[d.ciclo]=(ciclos[d.ciclo]||0)+1;
+    rows.push({n:x.n,w,vf,sc}); });
+  const scCol=scoreCol(Math.round(scSum));
+  const filas=rows.map(r=>{const nm=escapeHtml(r.n).replace(/'/g,"\\'");
+    return `<div class="zl-item" style="cursor:default">
+      <div style="flex:1"><div class="zl-name">${escapeHtml(r.n)} <span style="color:${scoreCol(r.sc)};font-weight:700">${Math.round(r.sc)}</span></div>
+      <div class="zl-meta">VF 3a +${Math.round(r.vf)}% · <input type="number" min="0" step="1" value="${Math.round(r.w*100)}" onchange="setPortWeight('${nm}',this.value)" style="width:50px;padding:3px 5px;border-radius:6px;border:0.5px solid rgba(245,237,227,.18);background:#0e0a07;color:#f5ede3;font-size:11px">% peso</div></div>
+      <button onclick="removeFromPortfolio('${nm}')" style="background:none;border:none;color:#8FA3A0;cursor:pointer;font-size:15px" title="Quitar">✕</button></div>`;}).join('');
+  const nCiclos=Object.keys(ciclos).length;
+  const kpi=(v,l,c)=>`<div style="flex:1;text-align:center;background:#0e1116;border:1px solid rgba(245,237,227,.12);border-radius:12px;padding:10px 6px"><div style="font-family:'Fraunces',serif;font-weight:600;font-size:23px;color:${c}">${v}</div><div style="font-size:10px;color:#8FA3A0">${l}</div></div>`;
+  cont.innerHTML=`
+    <div style="display:flex;gap:8px;margin:6px 0 12px">
+      ${kpi('+'+Math.round(vfSum)+'%','Retorno esperado 3a','#57c389')}
+      ${kpi(volSum.toFixed(1)+'%','Riesgo (volatilidad)','#F5C277')}
+      ${kpi(Math.round(scSum),'Score promedio',scCol)}
+    </div>
+    <div class="notice" style="margin:0 0 10px">Diversificación: <b>${valid.length} zonas</b> en <b>${nCiclos} etapa(s)</b> del ciclo. ${nCiclos>=3?'Buena diversificación entre ciclos.':'Añade zonas en distintas etapas del ciclo para bajar el riesgo.'}</div>
+    <div class="ptitle">Composición (ajusta los pesos %)</div>
+    <div class="zone-list">${filas}</div>
+    <div class="notice" style="margin-top:8px">El riesgo mostrado es el promedio ponderado de la volatilidad (conservador; diversificar lo reduce más). Informativo, no asesoría.</div>`;
+  document.getElementById('list-sec').style.display='none';
+}
+
 /* panel de ZONA (intacto) */
 function panel(name,d,tipo){
   curData=d;curTipo=tipo;const f=fcCalc(d.price,d.g);d._fc=f;d._fcm=fcModel(name,d.price);
@@ -974,6 +1170,7 @@ function panel(name,d,tipo){
     <div class="sel-price">${fmt(d.price)}<span style="font-size:13px;color:#8FA3A0"> /m²</span></div>
     <div class="sel-sub">Precio promedio estimado</div>
     <span class="badge b-${d.opp.toLowerCase()}">${d.opp} oportunidad</span>
+    ${CITIES[name]?scoreHTML(name,d):''}
     <div class="model-tag">⚙ Pronóstico: <b>${d._fcm?'ensamble VECM + espacial + XGBoost':'compuesto (sin modelo)'}</b></div>
     <div class="model-tag">📊 Datos: <b>${d._src||'estimado (modelo)'}</b></div>
     ${d._valm?`<div class="model-tag">🏠 Valor mediano vivienda (SHF): <b>${fmtM(d._valm)}</b></div>`:''}
@@ -995,6 +1192,8 @@ function panel(name,d,tipo){
     ${(CITIES[name]&&window.bbConfigured)?`<button class="ia-btn" id="fav-btn" data-zona="${escapeHtml(name)}" onclick="toggleFav(this)" style="background:#0C1218;border:0.5px solid rgba(245,237,227,.18);color:#f5ede3;margin-top:8px">☆ Guardar zona en favoritos</button>`:''}
     ${CITIES[name]?`<a href="analizador.html?zona=${encodeURIComponent(name)}" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(45,212,155,.35);color:#2DD49B;text-decoration:none;margin-top:8px">📊 Analizar esta zona como inversión →</a>`:''}
     ${CITIES[name]?`<a href="zona3d.html?zona=${encodeURIComponent(name)}" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(245,194,119,.4);color:#F5C277;text-decoration:none;margin-top:8px">🌆 Ver en 3D →</a>`:''}
+    ${CITIES[name]?`<button class="ia-btn" onclick="zonaPDF()" style="background:#0C1218;border:0.5px solid rgba(245,237,227,.18);color:#f5ede3;margin-top:8px">🖨 Reporte de zona (PDF)</button>`:''}
+    ${CITIES[name]?`<button class="ia-btn" id="port-add-btn" onclick="addToPortfolio('${escapeHtml(name).replace(/'/g,"\\'")}')" style="background:#0C1218;border:0.5px solid rgba(205,242,90,.3);color:#cdf25a;margin-top:8px">${inPortfolio(name)?'✓ En tu portafolio':'➕ Añadir al portafolio'}</button>`:''}
     <div id="ia-out"></div>
     ${(d.lat&&d.lng)?`<div class="ptitle" style="margin-top:18px">🔬 Radar de plusvalía silenciosa</div>
     <div class="notice" style="margin:6px 0;line-height:1.55">
@@ -1162,7 +1361,21 @@ async function scanVibrancia(lat,lng,name){
         <div style="font-size:11px;color:#8FA3A0">${n} locales del ecosistema en crecimiento en ${R} m${avg?` · ★${avg.toFixed(1)} promedio`:''}</div></div>
       </div>
       ${top?`<div style="margin-top:8px">${top}</div>`:''}
-      <div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">Señal de <b>densidad y calidad</b> del ecosistema hoy — Google Places no expone la fecha de apertura, así que es un <b>proxy</b> de gentrificación, no un hecho.</div>`;
+      <div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">Señal de <b>densidad y calidad</b> del ecosistema hoy — Google Places no expone la fecha de apertura, así que es un <b>proxy</b> de gentrificación, no un hecho.</div>
+      <div id="vib-trend"></div>`;
+    // Radar de gentrificación EN EL TIEMPO: registra la lectura y muestra la tendencia si hay historial.
+    try{
+      const base=BB_BACKEND.replace(/\/+$/,'');
+      fetch(base+'/api/vibra-log',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({zona:name,score:score}),keepalive:true}).catch(()=>{});
+      const hr=await fetch(base+'/api/vibra?zona='+encodeURIComponent(name));
+      if(hr.ok){ const h=((await hr.json()).historial)||[];
+        if(h.length>=2){ const first=h[0].s,last=h[h.length-1].s,delta=last-first;
+          const dc=delta>0?'#57c389':delta<0?'#F08886':'#8FA3A0';
+          const tr=document.getElementById('vib-trend');
+          if(tr) tr.innerHTML='<div class="notice" style="margin-top:8px">📈 <b>Tendencia</b> ('+h.length+' lecturas): índice '+first+' → <b style="color:'+dc+'">'+last+'</b> ('+(delta>=0?'+':'')+delta+' pts). Se actualiza con cada escaneo.</div>';
+        }
+      }
+    }catch(e){}
   }catch(e){
     console.error('[vibrancia]',e);
     if(out) out.innerHTML='<div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">No se pudo consultar Google Places. Activa la <b>Places API (New)</b> y la facturación en Google Cloud, y permite Places en el key de brickbit.co.</div>';
@@ -1271,43 +1484,7 @@ function genPDF(){
   const just=(ia.just||[]).map(s=>`<li>${s}</li>`).join("");
   const src=fb?"Fuente del análisis: motor de cálculo Brickbit (modelo determinístico).":"Fuente del análisis: IA generativa (Claude) sobre el motor Brickbit.";
 
-  if(!document.getElementById("pdf-style")){
-    const st=document.createElement("style");st.id="pdf-style";
-    st.textContent=`
-      #pdf-overlay{position:fixed;inset:0;z-index:99999;background:rgba(6,10,14,.92);display:flex;flex-direction:column;align-items:center;overflow:auto;padding:14px}
-      .pdf-toolbar{position:sticky;top:0;display:flex;gap:8px;align-items:center;width:100%;max-width:820px;margin-bottom:12px;flex-wrap:wrap}
-      .pdf-toolbar .t{font-size:13px;font-weight:700;color:#EAF2EE;margin-right:auto}
-      .pdf-btn{padding:9px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none}
-      .pdf-btn.p{background:#1D9E75;color:#021}
-      .pdf-btn.s{background:transparent;border:0.5px solid rgba(255,255,255,.22);color:#EAF2EE}
-      #pdfdoc{width:100%;max-width:820px;background:#fff;color:#21292f;border-radius:8px;padding:46px 52px;font-family:system-ui,-apple-system,sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.5)}
-      #pdfdoc .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1D9E75;padding-bottom:12px}
-      #pdfdoc .brand{font-size:26px;font-weight:800;letter-spacing:-1px;color:#0F6E56}
-      #pdfdoc .brand span{color:#1D9E75}
-      #pdfdoc .subt{font-size:11px;color:#7a878c;margin-top:3px}
-      #pdfdoc .date{font-size:11px;color:#7a878c}
-      #pdfdoc h1{font-size:21px;margin:16px 0 2px}
-      #pdfdoc .meta{font-size:12px;color:#6c787d;margin-bottom:4px}
-      #pdfdoc h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:#0F6E56;border-bottom:1px solid #d8e0dd;padding-bottom:4px;margin:22px 0 10px}
-      #pdfdoc .tipo{font-size:15px;font-weight:700;color:#0F6E56;margin-bottom:4px}
-      #pdfdoc p{font-size:13px;line-height:1.55;margin:0 0 8px}
-      #pdfdoc table{width:100%;border-collapse:collapse;font-size:12.5px}
-      #pdfdoc td{padding:6px 4px;border-bottom:1px solid #e7ecea}
-      #pdfdoc td.r{text-align:right}#pdfdoc td.b{font-weight:700;color:#0F6E56}
-      #pdfdoc ol{font-size:13px;line-height:1.55;padding-left:20px;margin:0}
-      #pdfdoc ol li{margin-bottom:5px}
-      #pdfdoc .method p{font-size:12px;color:#3a464c;margin-bottom:6px}
-      #pdfdoc .foot{margin-top:24px;border-top:1px solid #d8e0dd;padding-top:10px;font-size:10.5px;color:#7a878c;line-height:1.5}
-      #pdfdoc .foot b{color:#0F6E56}
-      @media print{
-        body>*:not(#pdf-overlay){display:none !important}
-        #pdf-overlay{position:static !important;display:block !important;background:#fff !important;padding:0 !important;overflow:visible !important}
-        .pdf-toolbar{display:none !important}
-        #pdfdoc{max-width:none !important;box-shadow:none !important;border-radius:0 !important;padding:0 !important}
-        @page{margin:18mm}
-      }`;
-    document.head.appendChild(st);
-  }
+  ensurePdfStyle();
   const old=document.getElementById("pdf-overlay");if(old)old.remove();
   const ov=document.createElement("div");ov.id="pdf-overlay";
   ov.innerHTML=`

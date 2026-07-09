@@ -6,7 +6,7 @@
 <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BrickBit · Versus</title>
+<title>BrickBit · Versus (municipios)</title>
 <meta name="description" content="Compara dos ciudades de México lado a lado en 3D: precio, plusvalía, yield y pronóstico BrickBit.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -92,8 +92,21 @@ function toggleOrbit(){
   });
 }
 
-function opt(){ return DATA.map(z=>'<option value="'+z.n+'">'+z.n+'</option>').join(''); }
-function Z(n){ return DATA.find(z=>z.n===n); }
+/* Duelo por MUNICIPIOS (menos ambiguo que ciudad/ZM). Datos SHF municipales. */
+let MUNI=[];
+async function loadMuni(){
+  try{
+    const r=await fetch('data/municipios_shf.json'); const j=await r.json();
+    MUNI=(j.municipios_shf||[]).map(m=>({ n:m.municipio+', '+m.estado, muni:m.municipio, edo:m.estado, lat:m.lat, lng:m.lng, pl:m.plusvalia, ci:m.ciclo, op:m.oportunidad }));
+    MUNI.sort((a,b)=>b.pl-a.pl);
+    if(MUNI.length>=2){ cur.A=MUNI[0].n; cur.B=MUNI[1].n; }
+  }catch(e){ MUNI=[]; }
+}
+function opt(){ return MUNI.map(z=>'<option value="'+z.n+'">'+z.n+'</option>').join(''); }
+function Z(n){ return MUNI.find(z=>z.n===n); }
+function _oppScore(op){ return op==='Alta'?100:op==='Media'?60:30; }
+function _muniScore(z){ return (z.pl||0)*4 + _oppScore(z.op); }
+function _vf3(z){ return (Math.pow(1+(z.pl||0)/100,3)-1)*100; }
 function g10(z){ /* crecimiento índice SHF 2016→2026 */
   const s=z.s||{}; if(!s[2016]||!s[2026]) return null;
   return (s[2026]/s[2016]-1)*100;
@@ -108,6 +121,7 @@ async function init(){
       s.onload=res;s.onerror=rej;document.head.appendChild(s);
     });
     lib=await google.maps.importLibrary('maps3d');
+    await loadMuni();
     $('selA').innerHTML=opt(); $('selB').innerHTML=opt();
     $('selA').value=cur.A; $('selB').value=cur.B;
     makeMap('A'); makeMap('B');
@@ -118,7 +132,7 @@ async function init(){
   }
 }
 function makeMap(side){
-  const z=Z(cur[side]);
+  const z=Z(cur[side]); if(!z) return;
   const m=new lib.Map3DElement({center:{lat:z.lat,lng:z.lng,altitude:0},range:VIEW.range,tilt:VIEW.tilt,heading:25,mode:(lib.MapMode&&lib.MapMode.HYBRID)||'HYBRID'});
   m.style.width='100%';m.style.height='100%';
   $('map'+side).appendChild(m);
@@ -143,18 +157,45 @@ function row(lab,va,vb,fmt,higherWins){
   return '<div class="trow"><span class="va '+ca+'">'+fa+'</span><span class="lab">'+lab+'</span><span class="vb '+cb+'">'+fb+'</span></div>';
 }
 function renderTable(){
-  const a=Z(cur.A), b=Z(cur.B);
-  const money=v=>'$'+Math.round(v).toLocaleString('es-MX');
-  const pct=v=>v.toFixed(1)+'%';
+  const a=Z(cur.A), b=Z(cur.B); if(!a||!b) return;
+  const pct=v=>'+'+v.toFixed(1)+'%';
+  const sa=_muniScore(a), sb=_muniScore(b), winner=sa===sb?null:(sa>sb?a:b);
+  const verdict=winner?'<div class="trow" style="background:rgba(87,195,137,.10)"><span class="va '+(winner===a?'win':'lose')+'">🏆</span><span class="lab" style="color:var(--grn);font-weight:700">Gana '+winner.muni+'</span><span class="vb '+(winner===b?'win':'lose')+'">'+(winner===b?'🏆':'')+'</span></div>':'';
   $('tbl').innerHTML=
-    '<div class="trow"><span class="va" style="font-size:15px">'+a.n+'</span><span class="lab">ciudad</span><span class="vb" style="font-size:15px">'+b.n+'</span></div>'+
-    row('Precio /m²',a.p,b.p,money,false)+
-    row('Plusvalía /año',a.pl,b.pl,pct,true)+
-    row('Yield renta',a.y,b.y,pct,true)+
-    row('SHF 2016→2026',g10(a),g10(b),pct,true)+
-    row('Pronóstico 5 años',f5(a),f5(b),pct,true)+
+    '<div class="trow"><span class="va" style="font-size:15px">'+a.muni+'</span><span class="lab">municipio</span><span class="vb" style="font-size:15px">'+b.muni+'</span></div>'+
+    row('Plusvalía /año (SHF)',a.pl,b.pl,pct,true)+
+    row('Valor Futuro 3a (est.)',_vf3(a),_vf3(b),pct,true)+
+    '<div class="trow"><span class="va">'+(a.op||'—')+'</span><span class="lab">oportunidad</span><span class="vb">'+(b.op||'—')+'</span></div>'+
     '<div class="trow"><span class="va">'+(a.ci||'—')+'</span><span class="lab">ciclo</span><span class="vb">'+(b.ci||'—')+'</span></div>'+
-    '<div class="note">Verde = mejor en ese renglón (precio: gana el más accesible) · <span class="amb">pronóstico BrickBit = estimado</span> · fuente SHF</div>';
+    '<div class="trow"><span class="va" style="font-size:11px;color:var(--mut)">'+a.edo+'</span><span class="lab">estado</span><span class="vb" style="font-size:11px;color:var(--mut)">'+b.edo+'</span></div>'+
+    verdict+
+    '<div class="note">Verde = mejor en ese renglón · <span class="amb">Valor Futuro = estimado (plusvalía compuesta)</span> · plusvalía real SHF 1T 2026 (municipio). <button onclick="versusPDF()" style="margin-top:8px;background:none;border:1px solid var(--line-strong);color:var(--tx);border-radius:8px;padding:6px 11px;cursor:pointer;font-size:11px">🖨 Comparar en PDF</button></div>';
+}
+function versusPDF(){
+  const a=Z(cur.A), b=Z(cur.B); if(!a||!b) return;
+  const sa=_muniScore(a), sb=_muniScore(b), winner=sa===sb?null:(sa>sb?a:b);
+  const fdate=new Date().toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'});
+  const tr=(l,x,y)=>'<tr><td>'+l+'</td><td class="r b">'+x+'</td><td class="r b">'+y+'</td></tr>';
+  const w=window.open('','_blank'); if(!w){ alert('Permite las ventanas emergentes para el PDF.'); return; }
+  w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Versus · '+a.muni+' vs '+b.muni+'</title>'+
+   '<style>body{font-family:system-ui,-apple-system,sans-serif;color:#21292f;max-width:760px;margin:24px auto;padding:0 20px}'+
+   '.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1a7d50;padding-bottom:12px}'+
+   '.brand{font-size:26px;font-weight:800;letter-spacing:-1px;color:#0F6E56}.brand span{color:#1a7d50}.meta{font-size:12px;color:#6c787d}'+
+   'h1{font-size:20px;margin:16px 0 2px}p{font-size:13px}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}td{padding:7px 5px;border-bottom:1px solid #e7ecea}td.r{text-align:right}td.b{font-weight:700;color:#0F6E56}'+
+   '.foot{margin-top:20px;border-top:1px solid #d8e0dd;padding-top:10px;font-size:10.5px;color:#7a878c}@media print{@page{margin:16mm}}</style></head><body>'+
+   '<div class="head"><div><div class="brand">brick<span>bit</span></div><div class="meta">Versus · duelo de municipios</div></div><div class="meta">'+fdate+'</div></div>'+
+   '<h1>'+a.muni+'  vs  '+b.muni+'</h1>'+
+   (winner?'<p style="color:#0F6E56;font-weight:700">🏆 Gana '+winner.n+'</p>':'<p>Empate técnico.</p>')+
+   '<table><tr><td></td><td class="r b">'+a.muni+'</td><td class="r b">'+b.muni+'</td></tr>'+
+   tr('Plusvalía /año (SHF)','+'+a.pl.toFixed(1)+'%','+'+b.pl.toFixed(1)+'%')+
+   tr('Valor Futuro 3a (est.)','+'+_vf3(a).toFixed(1)+'%','+'+_vf3(b).toFixed(1)+'%')+
+   tr('Oportunidad',a.op||'—',b.op||'—')+
+   tr('Ciclo',a.ci||'—',b.ci||'—')+
+   tr('Estado',a.edo,b.edo)+
+   '</table>'+
+   '<div class="foot"><b>BrickBit</b> · Plusvalía: variación anual real SHF 1T 2026 (municipio). Valor Futuro es estimado (plusvalía compuesta). No es asesoría de inversión.</div>'+
+   '<script>setTimeout(function(){window.print();},350);<\/script></body></html>');
+  w.document.close();
 }
 init();
 </script>

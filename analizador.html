@@ -219,6 +219,23 @@ a.back:hover{color:var(--tx)}
   </div>
 
   <div class="card" style="margin-top:22px">
+    <h2>🏗️ Modo Desarrollador<span class="hint" tabindex="0" data-tip="Viabilidad de CONSTRUIR y vender en la zona: usos de suelo estimados (COS/CUS), programa óptimo, pro-forma (ROI/TIR/VPN) y una tesis de inversión con IA.">?</span></h2>
+    <p style="font-size:12px;color:var(--mut);margin:-6px 0 14px">Para <b>desarrolladores</b>: evalúa construir y vender en la zona. Ajusta el terreno y los parámetros; el uso de suelo (COS/CUS) viene con valores típicos <span class="amber">estimados</span>.</p>
+    <div class="cgrid">
+      <div class="fld"><label>Terreno (m²)</label><input id="dv-lote" type="number" min="60" step="10" value="1000" oninput="renderDev()"></div>
+      <div class="fld"><label>COS <span class="tag ex">est.</span></label><input id="dv-cos" type="number" step="0.05" min="0.1" max="1" value="0.5" oninput="renderDev()"></div>
+      <div class="fld"><label>CUS <span class="tag ex">est.</span></label><input id="dv-cus" type="number" step="0.1" min="0.5" value="3" oninput="renderDev()"></div>
+      <div class="fld"><label>Costo obra ($/m²) <span class="tag ex">est.</span></label><input id="dv-costo" type="number" step="500" min="1000" value="15000" oninput="renderDev()"></div>
+    </div>
+    <div id="dev-out"></div>
+    <div class="cta-row" style="gap:10px;margin:14px 0 0">
+      <button class="pdf-btn" onclick="devTesisIA()">✨ Generar tesis con IA</button>
+      <button class="pdf-btn" onclick="devPDF()">🖨 Tesis en PDF</button>
+    </div>
+    <div id="dev-tesis"></div>
+  </div>
+
+  <div class="card" style="margin-top:22px">
     <h2>📊 Escenarios · riesgo–retorno<span class="hint" tabindex="0" data-tip="Tres versiones del resultado con el rango real (intervalo de confianza 90%) del pronóstico: pesimista, base y optimista.">?</span></h2>
     <p style="font-size:12px;color:var(--mut);margin:-6px 0 14px">Tres escenarios usando el intervalo de confianza real del pronóstico para el horizonte seleccionado. Los demás supuestos se mantienen constantes.</p>
     <div id="scen-out"></div>
@@ -568,6 +585,119 @@ async function scanDesiertos(){
   }catch(err){ console.error('[desiertos]',err); if(out) out.innerHTML=enableMsg; }
   finally{ _desBusy=false; if(btn)btn.disabled=false; }
 }
+/* ===== Modo Desarrollador — viabilidad de CONSTRUIR y vender en la zona =====
+   Pro-forma de desarrollo (programa + inversión + ROI/TIR/VPN) sobre el precio de
+   venta de la zona, con usos de suelo (COS/CUS) estimados y una tesis con IA. */
+function _dvn(id,def){ const el=$(id); if(!el)return def; const v=parseFloat(String(el.value).replace(/[^\d.\-]/g,'')); return isNaN(v)||v<=0?def:v; }
+function _dm(n){ return '$'+Math.round(n||0).toLocaleString('es-MX'); }
+function _dmM(n){ return Math.abs(n)>=1e6?'$'+(n/1e6).toFixed(1)+'M':_dm(n); }
+function devDefaults(z){
+  const sale=z.pm2, premium=sale>=30000, mid=sale>=18000;
+  return { cos:premium?0.40:mid?0.45:0.55, cus:premium?5.0:mid?4.0:3.2, constM2:premium?22000:mid?17000:14000 };
+}
+let _devLast=null;
+function calcDev(z){
+  const sale=z.pm2, premium=sale>=30000, mid=sale>=18000;
+  const lot=_dvn('dv-lote',1000), cos=Math.min(_dvn('dv-cos',0.5),1), cus=_dvn('dv-cus',3), constM2=_dvn('dv-costo',15000);
+  const supVend=Math.round(lot*cus), supNeta=Math.round(supVend*0.82), landM2=Math.round(sale*0.45);
+  let tipoP,mix;
+  if(premium){tipoP="Torre de departamentos premium";const n=Math.floor(supNeta/110);mix=[{t:"1 rec",c:Math.round(n*0.3),m:75},{t:"2 rec",c:Math.round(n*0.5),m:110},{t:"PH",c:Math.round(n*0.2),m:160,mk:1.15}];}
+  else if(mid){tipoP="Edificio de departamentos";const n=Math.floor(supNeta/89);mix=[{t:"1 rec",c:Math.round(n*0.35),m:62},{t:"2 rec",c:Math.round(n*0.65),m:89}];}
+  else{tipoP="Conjunto residencial horizontal";const n=Math.floor(supNeta/120);mix=[{t:"Casa 2 rec",c:Math.round(n*0.5),m:105},{t:"Casa 3 rec",c:Math.round(n*0.5),m:140}];}
+  mix=mix.filter(x=>x.c>0).map(x=>({...x,pu:Math.round(x.m*sale*(x.mk||1))}));
+  const units=mix.reduce((s,x)=>s+x.c,0), niveles=Math.max(1,Math.ceil(supVend/Math.max(lot*cos,1)));
+  const cT=lot*landM2, cC=supVend*constM2, cI=Math.round(cC*0.22), cTot=cT+cC+cI;
+  const ing=mix.reduce((s,x)=>s+x.c*x.pu,0), util=ing-cTot, roi=cTot>0?util/cTot*100:0;
+  const plazo=niveles<=4?18:niveles<=10?28:40, tir=roi>0?(Math.pow(1+roi/100,12/plazo)-1)*100:0;
+  const vpn=Math.round(util/Math.pow(1+0.12/12,plazo)), peq=Math.ceil(cTot/Math.max(ing/Math.max(units,1),1));
+  return {tipoP,lot,cos,cus,constM2,supVend,units,niveles,mix,cT,cC,cI,cTot,ing,util,roi,tir,plazo,vpn,peq,sale};
+}
+function devInit(z){
+  const dd=devDefaults(z);
+  if($('dv-cos')) $('dv-cos').value=dd.cos;
+  if($('dv-cus')) $('dv-cus').value=dd.cus;
+  if($('dv-costo')) $('dv-costo').value=dd.constM2;
+  renderDev();
+}
+function renderDev(){
+  const z=zona(), out=$('dev-out'); if(!z||!out) return;
+  const p=calcDev(z); _devLast={z,p,tesis:(_devLast&&_devLast.z&&_devLast.z.n===z.n?_devLast.tesis:null)};
+  const roi=p.roi, col=roi>=25?'var(--pos)':roi>=15?'var(--amb)':'var(--neg)';
+  const verdict=roi>=25?'Muy viable':roi>=15?'Viable':roi>0?'Ajustado':'No viable';
+  const mixRows=p.mix.map(x=>`<div style="display:flex;justify-content:space-between;gap:12px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--bd)"><span>${x.t}</span><span style="color:var(--mut)">${x.c} uds · ${x.m} m²</span><span style="color:var(--pos)">${_dm(x.pu)}</span></div>`).join('');
+  out.innerHTML=`
+    <div style="display:flex;align-items:center;gap:16px;margin:8px 0 12px">
+      <div style="font-family:'Fraunces',serif;font-weight:600;font-size:36px;color:${col};line-height:1">${Math.round(roi)}%</div>
+      <div><div style="font-weight:700;color:${col}">${verdict} · ROI del proyecto</div><div style="font-size:11.5px;color:var(--mut)">TIR ${Math.round(p.tir)}% anual · ${p.plazo} meses · VPN ${_dmM(p.vpn)}</div></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Tipología</div><div class="v" style="font-size:.98rem;line-height:1.15">${p.tipoP}</div><div class="s">${p.units} uds · ${p.niveles} niveles</div></div>
+      <div class="kpi"><div class="k">Inversión total</div><div class="v">${_dmM(p.cTot)}</div><div class="s">terreno+obra+indirectos</div></div>
+      <div class="kpi"><div class="k">Utilidad</div><div class="v" style="color:${col}">${_dmM(p.util)}</div><div class="s">ingresos ${_dmM(p.ing)}</div></div>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:var(--tx)">Mezcla de producto (a ${_dm(p.sale)}/m²)</div>
+    <div style="margin-top:4px">${mixRows}</div>
+    <div class="note" style="margin-top:12px">Superficie vendible <b>${p.supVend.toLocaleString('es-MX')} m²</b> · <span class="amber">COS/CUS y costos son estimados</span> — confirma el <b>uso de suelo</b> con el plan de desarrollo urbano municipal. Pro-forma ilustrativa, no asesoría.</div>`;
+}
+async function callClaudeA(system,prompt,schema){
+  const backend=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').replace(/\/+$/,'');
+  const r=await fetch(backend+'/api/claude',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({system,content:[{type:'text',text:prompt}],schema})});
+  if(!r.ok) throw new Error('ia_'+r.status);
+  const data=await r.json();
+  const texts=(data.content||[]).filter(b=>b.type==='text');
+  if(!texts.length) throw new Error('empty');
+  return JSON.parse(texts[texts.length-1].text);
+}
+async function devTesisIA(){
+  const z=zona(), out=$('dev-tesis'); if(!z||!out) return;
+  if(!_devLast||_devLast.z.n!==z.n) renderDev();
+  const p=_devLast.p;
+  out.innerHTML='<div class="note" style="margin-top:12px">✨ Generando la tesis de inversión con IA…</div>';
+  const e=(typeof ECON!=='undefined'&&ECON[z.n])?ECON[z.n]:null;
+  const system='Eres un analista senior de desarrollo inmobiliario en México. Escribe una tesis de inversión BREVE, concreta y honesta para un desarrollador. Sin relleno.';
+  const prompt=`Zona: ${z.n}. Precio de venta ${_dm(z.pm2)}/m². Plusvalía ${z.g}% anual. Proyecto: ${p.tipoP}, ${p.units} unidades en ${p.niveles} niveles, ${p.supVend} m² vendibles. Inversión ${_dmM(p.cTot)}, ingresos ${_dmM(p.ing)}, utilidad ${_dmM(p.util)}, ROI ${Math.round(p.roi)}%, TIR ${Math.round(p.tir)}% en ${p.plazo} meses.${e?` Economía DENUE: ${_mmex(e.neg)} negocios, ${_mmex(e.emp)} empleos, ${e.altas} aperturas recientes.`:''} Devuelve: tesis (2-3 frases), viabilidad (1 frase), 3 riesgos y una recomendación (1 frase).`;
+  const schema={type:'object',additionalProperties:false,properties:{tesis:{type:'string'},viabilidad:{type:'string'},riesgos:{type:'array',items:{type:'string'}},recomendacion:{type:'string'}},required:['tesis','viabilidad','riesgos','recomendacion']};
+  try{
+    const t=await callClaudeA(system,prompt,schema);
+    _devLast.tesis=t;
+    const riesgos=(t.riesgos||[]).map(r=>`<li>${escA(r)}</li>`).join('');
+    out.innerHTML=`<div class="card" style="background:var(--p2);margin-top:12px">
+      <div style="font-weight:700;color:var(--lim);margin-bottom:6px">✨ Tesis de inversión</div>
+      <p style="font-size:13px;margin:0 0 8px">${escA(t.tesis)}</p>
+      <p style="font-size:12.5px;margin:0 0 8px"><b>Viabilidad:</b> ${escA(t.viabilidad)}</p>
+      <div style="font-size:12.5px"><b>Riesgos:</b><ul style="margin:4px 0 8px;padding-left:18px">${riesgos}</ul></div>
+      <p style="font-size:12.5px;margin:0"><b>Recomendación:</b> ${escA(t.recomendacion)}</p>
+      <div style="font-size:10.5px;color:var(--mut);margin-top:8px">Generado con IA sobre el motor BrickBit. No es asesoría de inversión.</div></div>`;
+  }catch(err){ console.error('[tesis]',err);
+    out.innerHTML='<div class="note" style="margin-top:12px;border-left-color:var(--amb)">No se pudo generar la tesis con IA (requiere el backend desplegado). El análisis numérico de arriba es válido igualmente.</div>'; }
+}
+function devPDF(){
+  const z=zona(); if(!z){ return; }
+  if(!_devLast||_devLast.z.n!==z.n) renderDev();
+  const p=_devLast.p, t=_devLast.tesis;
+  const fdate=new Date().toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'});
+  const mixRows=p.mix.map(x=>`<tr><td>${x.t}</td><td>${x.c} uds · ${x.m} m²</td><td class="r b">${_dm(x.pu)}</td></tr>`).join('');
+  const finRows=[['Terreno',_dm(p.cT)],['Obra',_dm(p.cC)],['Indirectos',_dm(p.cI)],['Inversión total',_dm(p.cTot)],['Ingresos por venta',_dm(p.ing)],['Utilidad neta',_dm(p.util)],['ROI',Math.round(p.roi)+'%'],['TIR anual',Math.round(p.tir)+'%'],['Plazo',p.plazo+' meses'],['VPN',_dm(p.vpn)],['Punto de equilibrio',p.peq+' uds']].map(r=>`<tr><td>${r[0]}</td><td class="r b">${r[1]}</td></tr>`).join('');
+  const tesisHtml=t?`<h2>Tesis de inversión (IA)</h2><p>${escA(t.tesis)}</p><p><b>Viabilidad:</b> ${escA(t.viabilidad)}</p><p><b>Riesgos:</b></p><ul>${(t.riesgos||[]).map(r=>`<li>${escA(r)}</li>`).join('')}</ul><p><b>Recomendación:</b> ${escA(t.recomendacion)}</p>`:'';
+  const w=window.open('','_blank'); if(!w){ alert('Permite las ventanas emergentes para descargar el PDF.'); return; }
+  w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Modo Desarrollador · '+escA(z.n)+'</title>'+
+  '<style>body{font-family:system-ui,-apple-system,sans-serif;color:#21292f;max-width:800px;margin:24px auto;padding:0 20px}'+
+  '.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1a7d50;padding-bottom:12px}'+
+  '.brand{font-size:26px;font-weight:800;letter-spacing:-1px;color:#0F6E56}.brand span{color:#1a7d50}'+
+  'h1{font-size:21px;margin:16px 0 2px}h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:#0F6E56;border-bottom:1px solid #d8e0dd;padding-bottom:4px;margin:22px 0 10px}'+
+  '.meta{font-size:12px;color:#6c787d}table{width:100%;border-collapse:collapse;font-size:12.5px}td{padding:6px 4px;border-bottom:1px solid #e7ecea}td.r{text-align:right}td.b{font-weight:700;color:#0F6E56}'+
+  'ul{font-size:13px}p{font-size:13px;line-height:1.55}.foot{margin-top:22px;border-top:1px solid #d8e0dd;padding-top:10px;font-size:10.5px;color:#7a878c}@media print{@page{margin:16mm}}</style></head><body>'+
+  '<div class="head"><div><div class="brand">brick<span>bit</span></div><div class="meta">Modo Desarrollador · viabilidad de proyecto</div></div><div class="meta">'+fdate+'</div></div>'+
+  '<h1>'+escA(z.n)+'</h1>'+
+  '<div class="meta">Precio de venta '+_dm(z.pm2)+'/m² · Plusvalía +'+(+z.g||0).toFixed(1)+'% · '+escA(p.tipoP)+'</div>'+
+  '<h2>Programa</h2><p>'+p.units+' unidades · '+p.niveles+' niveles · '+p.supVend.toLocaleString('es-MX')+' m² vendibles · terreno '+p.lot+' m² (COS '+p.cos+', CUS '+p.cus+')</p>'+
+  '<table>'+mixRows+'</table>'+
+  '<h2>Pro-forma financiera</h2><table>'+finRows+'</table>'+
+  tesisHtml+
+  '<div class="foot"><b>BrickBit</b> · COS/CUS y costos son estimados; confirma el uso de suelo con el plan de desarrollo urbano municipal. Pro-forma ilustrativa, no es asesoría de inversión.</div>'+
+  '<script>setTimeout(function(){window.print();},350);<\/script></body></html>');
+  w.document.close();
+}
 function onZona(){const z=zona();if(!z)return;
   renderEconomia(z);
   const precio=Math.round(z.pm2*z.sup);
@@ -576,6 +706,7 @@ function onZona(){const z=zona();if(!z)return;
   // Estos dos valores son estimaciones de la zona: marca "est." hasta que el usuario los ajuste.
   ['precio','renta'].forEach(id=>{const t=$('tag-'+id);if(t)t.style.display='';});
   const h=$('estHint');if(h)h.style.display='block';
+  devInit(z);
   calc();
 }
 // Cuando el usuario edita un valor autocompletado, deja de ser estimación de zona.
