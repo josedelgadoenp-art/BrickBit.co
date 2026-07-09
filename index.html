@@ -788,14 +788,53 @@
 
 <!-- ============ PARA QUIÉN ============ -->
 <!-- ============ LA PLATAFORMA HOY ============ -->
+<style>
+  .flow{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:12px}
+  @media(max-width:900px){.flow{grid-template-columns:1fr}}
+  .flow-stage{background:rgba(245,237,227,.02);border:1px solid rgba(245,237,227,.10);border-radius:18px;padding:20px 16px}
+  .flow-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .flow-num{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-family:'Space Mono',monospace;font-weight:700;font-size:15px;color:#0e0a07;background:#cdf25a}
+  .flow-t{font-family:'Fraunces',serif;font-weight:600;font-size:1.14rem;color:#f5ede3;line-height:1.05}
+  .flow-s{font-size:.78rem;color:#a89a8c;letter-spacing:.01em;margin-top:2px}
+  .flow-tool,.flow-soon{display:flex;gap:12px;align-items:flex-start;text-decoration:none;padding:11px;border-radius:12px;border:1px solid transparent;transition:background .18s,border-color .18s,transform .18s}
+  .flow-tool:hover{background:rgba(205,242,90,.06);border-color:rgba(205,242,90,.26);transform:translateX(2px)}
+  .flow-soon{opacity:.72}
+  .ft-ic{flex:none;width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-size:19px;background:rgba(245,237,227,.05);border:1px solid rgba(245,237,227,.10)}
+  .ft-n{font-weight:600;color:#f5ede3;font-size:.95rem;display:flex;align-items:center;gap:6px;line-height:1.2}
+  .ft-d{font-size:.8rem;color:#a89a8c;line-height:1.4;margin-top:3px}
+  .ft-n .arrow{color:#a9d23f;opacity:0;transition:opacity .18s,transform .18s;transform:translateX(-3px);font-weight:700}
+  .flow-tool:hover .ft-n .arrow{opacity:1;transform:translateX(0)}
+</style>
 <section id="suite" style="background:var(--bg-2);border-top:1px solid var(--line)">
   <div class="wrap">
     <div class="sec-head reveal">
-      <span class="kicker">La plataforma hoy</span>
-      <h2>Todo lo que BrickBit <em>ya hace por ti</em>.</h2>
-      <p>De la predicción al proyecto: diez herramientas vivas, construidas sobre datos reales de la SHF, INEGI y el modelo de pronóstico BrickBit.</p>
+      <span class="kicker">Cómo se usa BrickBit</span>
+      <h2>Un flujo claro: <em>explora, analiza, decide</em>.</h2>
+      <p>Todas las herramientas de BrickBit ordenadas por el camino natural de una decisión inmobiliaria — de entender el mercado a actuar con datos.</p>
     </div>
-    <div class="cards">
+    <div class="flow reveal">
+      <div class="flow-stage" data-stagger style="--d:0s">
+        <div class="flow-head"><span class="flow-num">1</span><div><div class="flow-t">Explora</div><div class="flow-s">Entiende el mercado</div></div></div>
+        <a class="flow-tool" href="mapa.html" data-mapa><div class="ft-ic">🗺️</div><div><div class="ft-n">Mapa interactivo <span class="arrow">→</span></div><div class="ft-d">Precio, plusvalía y ciclo de las 32 zonas, con búsqueda por perfil.</div></div></a>
+        <a class="flow-tool" href="pulso.html"><div class="ft-ic">🌆</div><div><div class="ft-n">Pulso de México <span class="arrow">→</span></div><div class="ft-d">Las 32 ciudades como torres 3D y viaje en el tiempo (SHF 2005–2036).</div></div></a>
+        <a class="flow-tool" href="morfogenesis.html"><div class="ft-ic">🧬</div><div><div class="ft-n">Morfogénesis urbana <span class="arrow">→</span></div><div class="ft-d">6.1M negocios del INEGI y contagio de plusvalía calle por calle.</div></div></a>
+        <a class="flow-tool" href="cine.html"><div class="ft-ic">🎬</div><div><div class="ft-n">Cinema &amp; Versus <span class="arrow">→</span></div><div class="ft-d">Recorrido cinematográfico y duelo de dos ciudades lado a lado.</div></div></a>
+      </div>
+      <div class="flow-stage" data-stagger style="--d:.08s">
+        <div class="flow-head"><span class="flow-num">2</span><div><div class="flow-t">Analiza &amp; diseña</div><div class="flow-s">Evalúa tu inversión o proyecto</div></div></div>
+        <a class="flow-tool" href="analizador.html"><div class="ft-ic">📊</div><div><div class="ft-n">Analizador de inversión <span class="arrow">→</span></div><div class="ft-d">Pro-forma completa (TIR, ROI, cap rate), escenarios y PDF.</div></div></a>
+        <a class="flow-tool" href="zona3d.html"><div class="ft-ic">🏗️</div><div><div class="ft-n">Simulador 3D de desarrollo <span class="arrow">→</span></div><div class="ft-d">Dibuja el volumen COS/CUS sobre la ciudad y ve la utilidad en vivo.</div></div></a>
+        <a class="flow-tool" href="crear-plano.html"><div class="ft-ic">✏️</div><div><div class="ft-n">Crear plano con IA <span class="arrow">→</span></div><div class="ft-d">Describe tu terreno y la IA genera el plano óptimo.</div></div></a>
+        <a class="flow-tool" href="gemelo-digital.html"><div class="ft-ic">🏙️</div><div><div class="ft-n">Gemelo digital &amp; Comparador <span class="arrow">→</span></div><div class="ft-d">Convierte un plano en modelo 3D analizado y compara proyectos.</div></div></a>
+      </div>
+      <div class="flow-stage" data-stagger style="--d:.16s">
+        <div class="flow-head"><span class="flow-num">3</span><div><div class="flow-t">Decide &amp; protege</div><div class="flow-s">Actúa con respaldo</div></div></div>
+        <a class="flow-tool" href="panel.html"><div class="ft-ic">👤</div><div><div class="ft-n">Mi BrickBit <span class="arrow">→</span></div><div class="ft-d">Guarda análisis, zonas favoritas y alertas en tu cuenta.</div></div></a>
+        <a class="flow-tool" href="/financial"><div class="ft-ic">💼</div><div><div class="ft-n">Financial &amp; Strategy <span class="arrow">→</span></div><div class="ft-d">Diagnóstico de protección patrimonial y asesoría personalizada.</div></div></a>
+        <div class="flow-soon"><div class="ft-ic" style="opacity:.6">⏳</div><div><div class="ft-n" style="color:#a89a8c">Compra-venta e inversión fraccionada</div><div class="ft-d">Próximamente: cierra y coinvierte desde la plataforma.</div></div></div>
+      </div>
+    </div>
+    <div class="cards" style="display:none">
       <div class="card reveal" data-stagger style="--d:0s">
         <div class="ic"><svg fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M6 21V8l6-4 6 4v13"/><path d="M10 21v-6h4v6"/></svg></div>
         <h3>Simulador 3D de desarrollo<span class="qmark" tabindex="0" role="button" aria-label="Qué es esta herramienta" data-tip="¿Cuánto puedo construir en un terreno y cuánto ganaría? Dibujas el edificio sobre un mapa 3D real de la ciudad y ves al instante la inversión, las ventas y la utilidad estimadas.">?</span></h3>
@@ -940,29 +979,6 @@
       </div>
     </div>
   </div>
-</section>
-
-<section style="text-align:center;padding:34px 20px 6px">
-  <p style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#F5C277;font-weight:700;margin:0 0 14px">Experiencias 3D</p>
-  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-    <a href="zona3d.html" class="btn btn-ghost">🏗️ Simulador 3D</a>
-    <a href="pulso.html" class="btn btn-ghost">🌆 Pulso de México</a>
-    <a href="cine.html" class="btn btn-ghost">🎬 Cinema</a>
-    <a href="versus.html" class="btn btn-ghost">⚔️ Versus</a>
-  </div>
-</section>
-
-<section style="text-align:center;padding:18px 20px 6px">
-  <p style="font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#F5C277;font-weight:700;margin:0 0 14px">BrickBit para Arquitectos</p>
-  <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-    <a href="crear-plano.html" class="btn btn-ghost">✏️ Crear plano con IA</a>
-    <a href="gemelo-digital.html" class="btn btn-ghost">🏙️ Gemelo digital 3D</a>
-    <a href="comparar-proyectos.html" class="btn btn-ghost">⚖️ Comparar proyectos</a>
-  </div>
-</section>
-
-<section style="text-align:center;padding:26px 20px 52px">
-  <a href="/financial" rel="noopener" class="btn btn-ghost btn-lg">BrickBit Financial &amp; Strategy <span class="arrow">→</span></a>
 </section>
 
 <!-- ============ FOOTER ============ -->

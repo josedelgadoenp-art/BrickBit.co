@@ -155,7 +155,12 @@ a.back:hover{color:var(--tx)}
 <div class="grid">
   <div class="card">
     <h2>📋 Tu operación</h2>
-    <div class="fld"><label>Zona</label><select id="zona" onchange="onZona()"></select></div>
+    <div class="fld"><label>Buscar por lugar específico (calle, colonia o ciudad)</label>
+      <input id="lugar-q" type="text" placeholder="Ej. Polanco, CDMX · o Av. Chapultepec 100, Guadalajara" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarLugar();}">
+      <button class="pdf-btn" onclick="buscarLugar()" style="width:100%;margin-top:6px">🔎 Buscar lugar</button>
+      <div id="lugar-msg" style="font-size:11.5px;color:var(--mut);margin-top:6px;line-height:1.45"></div>
+    </div>
+    <div class="fld"><label>Zona <span style="font-size:10.5px;color:var(--mut)">(o elígela a mano)</span></label><select id="zona" onchange="onZona()"></select></div>
     <div class="fld"><label>Precio de compra (MXN) <span class="tag ex" id="tag-precio" style="display:none">est.</span></label><input id="precio" type="text" inputmode="numeric" oninput="marcarReal('precio')"></div>
     <div class="fld"><label>Renta mensual estimada (MXN) <span class="tag ex" id="tag-renta" style="display:none">est.</span></label><input id="renta" type="text" inputmode="numeric" oninput="marcarReal('renta')"></div>
     <div class="note" id="estHint" style="display:none;border-left-color:var(--amb)">💡 <b style="color:var(--amb)">Estimado:</b> al elegir zona autocompletamos el precio (precio/m² típico × superficie media) y la renta (yield de la zona). Son <b>estimaciones</b>, no listados reales. <b>Ajústalos con tu operación</b> y la etiqueta "est." desaparecerá.</div>
@@ -443,6 +448,13 @@ function _havA(a,b){const R=6371000,tR=x=>x*Math.PI/180;const dLat=tR(b.lat-a.la
   const s=Math.sin(dLat/2)**2+Math.cos(tR(a.lat))*Math.cos(tR(b.lat))*Math.sin(dLng/2)**2;
   return 2*R*Math.asin(Math.sqrt(s));}
 function escA(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+/* Tope diario de consultas de Places por navegador (red de seguridad de costo).
+   El tope real y global se configura como cuota diaria en Google Cloud. */
+const BB_PLACES_MAX=100;
+function _bbKey(){ return 'bb_places_'+new Date().toISOString().slice(0,10); }
+function bbPlacesLeft(){ try{ return BB_PLACES_MAX-(parseInt(localStorage.getItem(_bbKey())||'0',10)||0); }catch(e){ return BB_PLACES_MAX; } }
+function bbPlacesBump(n){ try{ localStorage.setItem(_bbKey(), String((parseInt(localStorage.getItem(_bbKey())||'0',10)||0)+(n||1))); }catch(e){} }
+const BB_CAP_MSG_A='<div class="note" style="border-left-color:var(--amb)">Alcanzaste el <b>límite diario</b> de consultas de ubicación en este navegador (protección de costo). Se reinicia mañana.</div>';
 async function scanNear(center,types,radius,fields){
   const lib=await loadPlacesA();
   const {Place,SearchNearbyRankPreference}=lib;
@@ -450,6 +462,7 @@ async function scanNear(center,types,radius,fields){
   const r=await Place.searchNearby({ fields:fields||['location','displayName'],
     locationRestriction:{ center:{lat:center.lat,lng:center.lng}, radius:radius||2500 },
     includedPrimaryTypes:types, maxResultCount:20, rankPreference:rank });
+  bbPlacesBump(1);
   const places=(r&&r.places)||[];
   return places.map(pl=>{ const loc=pl.location, lat=(typeof loc.lat==='function')?loc.lat():loc.lat, lng=(typeof loc.lng==='function')?loc.lng():loc.lng;
     return { nombre:pl.displayName||'', lat, lng, d:_havA(center,{lat,lng}) }; })
@@ -460,12 +473,37 @@ async function scanNear(center,types,radius,fields){
 async function resolvePunto(q, center){
   const lib=await loadPlacesA();
   const {Place}=lib;
-  const r=await Place.searchByText({ textQuery:q, fields:['location','formattedAddress','displayName'],
-    locationBias:{ center:{lat:center.lat,lng:center.lng}, radius:22000 }, maxResultCount:1, language:'es', region:'mx' });
+  const req={ textQuery:q, fields:['location','formattedAddress','displayName'], maxResultCount:1, language:'es', region:'mx' };
+  if(center) req.locationBias={ center:{lat:center.lat,lng:center.lng}, radius:22000 }; // sesgo local (búsqueda dentro de la zona)
+  const r=await Place.searchByText(req);
+  bbPlacesBump(1);
   const p=(r&&r.places&&r.places[0])||null;
   if(!p||!p.location) return null;
   const loc=p.location, lat=(typeof loc.lat==='function')?loc.lat():loc.lat, lng=(typeof loc.lng==='function')?loc.lng():loc.lng;
   return { lat, lng, formatted:(p.formattedAddress||p.displayName||q) };
+}
+/* Buscar por lugar específico: resuelve el texto a un punto, elige la zona (de las
+   32) más cercana para el modelo de pronóstico y deja el punto exacto para los
+   Desiertos. Más cómodo que elegir el estado en la lista. */
+let _lugarBusy=false;
+async function buscarLugar(){
+  if(_lugarBusy) return;
+  const q=(($('lugar-q')||{}).value||'').trim(), msg=$('lugar-msg');
+  if(!q){ if(msg)msg.textContent='Escribe una calle, colonia o ciudad.'; return; }
+  if(bbPlacesLeft()<1){ if(msg)msg.innerHTML='Alcanzaste el <b>límite diario</b> de consultas de ubicación. Vuelve mañana o elige la zona en la lista.'; return; }
+  _lugarBusy=true; if(msg)msg.textContent='📍 Localizando "'+q+'"…';
+  try{
+    const punto=await resolvePunto(q+', México', null);
+    if(!punto){ if(msg)msg.textContent='No encontré ese lugar. Prueba con más detalle (colonia y ciudad).'; return; }
+    let best=null,bd=Infinity;
+    for(const z of ZONAS){ const d=_havA({lat:punto.lat,lng:punto.lng},{lat:z.lat,lng:z.lng}); if(d<bd){bd=d;best=z;} }
+    if(!best){ if(msg)msg.textContent='No pude ubicar una zona cercana.'; return; }
+    $('zona').value=best.n; onZona();
+    const da=$('des-addr'); if(da) da.value=q;                       // el punto exacto para Desiertos
+    const km=bd/1000;
+    if(msg) msg.innerHTML='📍 <b>'+escA(punto.formatted)+'</b> → modelo de la zona <b>'+escA(best.n)+'</b>'+(km>25?' (la más cercana, ~'+Math.round(km)+' km)':'')+'.<br><span style="color:var(--mut)">El pronóstico usa esa zona; los servicios (Desiertos) analizan tu punto exacto.</span>';
+  }catch(e){ console.error('[lugar]',e); if(msg)msg.textContent='No se pudo buscar el lugar. Revisa que Places API esté activa.'; }
+  finally{ _lugarBusy=false; }
 }
 /* ===== Idea 3 · Desiertos de oportunidad ===== */
 const DESIERTOS=[
@@ -481,9 +519,11 @@ async function scanDesiertos(){
   if(_desBusy) return;
   const z=zona(), out=document.getElementById('deserts-out'), btn=document.getElementById('des-btn');
   if(!z){ if(out)out.innerHTML='<p style="font-size:12px;color:var(--mut)">Elige una zona primero.</p>'; return; }
+  const q0=(document.getElementById('des-addr')||{}).value ? document.getElementById('des-addr').value.trim() : '';
+  if(bbPlacesLeft() < DESIERTOS.length + (q0?1:0)){ if(out)out.innerHTML=BB_CAP_MSG_A; return; }
   _desBusy=true; if(btn)btn.disabled=true;
   const enableMsg='<div class="note" style="border-left-color:var(--amb)">No se pudo consultar Google Places. Activa la <b>Places API (New)</b> y la facturación en Google Cloud, y permite Places en el key de brickbit.co.</div>';
-  const q=(document.getElementById('des-addr')||{}).value ? document.getElementById('des-addr').value.trim() : '';
+  const q=q0;
   const zc={lat:z.lat,lng:z.lng};
   try{
     // Punto de análisis: la calle/colonia escrita (nivel calle) o, si no, el centro de la zona.
