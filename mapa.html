@@ -214,7 +214,6 @@ body{font-family:'Hanken Grotesk',system-ui,-apple-system,sans-serif;background:
       <button id="mt-asesor" onclick="pickMode('asesor')">💡 Asesor</button>
       <button id="mt-heat" onclick="toggleHeat();closeVista()">🔥 Calor</button>
       <div style="height:1px;background:rgba(245,237,227,.1);margin:4px 6px"></div>
-      <button onclick="openEstiloVida();closeVista()">🧭 Estilo de vida</button>
       <button onclick="openCompare()">⚖️ Comparar zonas</button>
     </div>
   </span>
@@ -990,9 +989,15 @@ function panel(name,d,tipo){
     ${CITIES[name]?`<a href="zona3d.html?zona=${encodeURIComponent(name)}" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(245,194,119,.4);color:#F5C277;text-decoration:none;margin-top:8px">🌆 Ver en 3D →</a>`:''}
     <div id="ia-out"></div>
     ${(d.lat&&d.lng)?`<div class="ptitle" style="margin-top:18px">🔬 Radar de plusvalía silenciosa</div>
-    <div class="notice" style="margin:6px 0">Detecta el <b>ecosistema "canario"</b> (cafés de especialidad, galerías, bares, gimnasios, librerías) que suele anticipar la gentrificación de una zona.</div>
+    <div class="notice" style="margin:6px 0;line-height:1.55">
+      <b>¿Qué es esto?</b> Antes de que suban los precios, en una colonia aparecen primero ciertos negocios: cafés de especialidad, galerías, bares, gimnasios y librerías. Son el <b>ecosistema en crecimiento</b> de la zona. Este radar los cuenta y califica alrededor del punto para darte una <b>señal temprana</b> de plusvalía: mientras más denso y mejor calificado, más probable es que la zona se esté revalorizando.
+    </div>
     <button class="ia-btn" id="vib-btn" onclick="scanVibrancia(${d.lat},${d.lng},'${escapeHtml(name).replace(/'/g,"\\'")}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="9"/></svg>Escanear vibrancia de la zona</button>
-    <div id="vib-out"></div>`:''}`;
+    <div id="vib-out"></div>
+    <div class="ptitle" style="margin-top:18px">🧭 Estilo de vida de la zona</div>
+    <div class="notice" style="margin:6px 0">Qué tan cerca tienes lo esencial —parque, súper, restaurante, transporte, gimnasio, escuela y salud— del centro de esta zona.</div>
+    <button class="ia-btn" id="ev-btn2" onclick="scanEstilo(${d.lat},${d.lng},'${escapeHtml(name).replace(/'/g,"\\'")}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg>Calcular estilo de vida</button>
+    <div id="ev-out2"></div>`:''}`;
   renderFC();drawFC();
   if(window.bbConfigured) initFavBtn(name);
 }
@@ -1144,7 +1149,7 @@ async function scanVibrancia(lat,lng,name){
       <div style="display:flex;align-items:center;gap:14px;margin-top:6px">
         <div style="font-family:'Fraunces',serif;font-weight:600;font-size:38px;line-height:1;color:${col}">${score}</div>
         <div><div style="font-weight:700;color:${col}">${nivel}</div>
-        <div style="font-size:11px;color:#8FA3A0">${n} locales "canario" en ${R} m${avg?` · ★${avg.toFixed(1)} promedio`:''}</div></div>
+        <div style="font-size:11px;color:#8FA3A0">${n} locales del ecosistema en crecimiento en ${R} m${avg?` · ★${avg.toFixed(1)} promedio`:''}</div></div>
       </div>
       ${top?`<div style="margin-top:8px">${top}</div>`:''}
       <div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">Señal de <b>densidad y calidad</b> del ecosistema hoy — Google Places no expone la fecha de apertura, así que es un <b>proxy</b> de gentrificación, no un hecho.</div>`;
@@ -1154,94 +1159,57 @@ async function scanVibrancia(lat,lng,name){
   }finally{ _vibBusy=false; if(btn)btn.disabled=false; }
 }
 
-/* ===== Idea 2 · Búsqueda inversa por "ecosistema de vida" =====
-   El usuario define sus reglas (parque, súper, transporte, restaurantes bien
-   calificados…) y BrickBit rankea las 32 zonas donde MEJOR se cumplen. Evalúa a
-   nivel de CENTRO de ciudad (aún no colonia) con Google Places. */
+/* ===== Idea 2 · Índice de estilo de vida DE LA ZONA seleccionada =====
+   Al elegir una zona, mide qué tan cerca tienes lo esencial (parque, súper,
+   restaurante, transporte, gimnasio, escuela, salud) con Google Places y da un
+   índice 0–100. Una búsqueda por categoría alrededor del punto (a demanda). */
 const EV_CATS=[
-  {key:'parque', emoji:'🌳', label:'Parque',             types:['park']},
-  {key:'super',  emoji:'🛒', label:'Supermercado',       types:['supermarket','grocery_store']},
-  {key:'rest',   emoji:'🍽️', label:'Restaurantes 4.3★+', types:['restaurant'], minRating:4.3},
-  {key:'transp', emoji:'🚇', label:'Transporte',         types:['transit_station','bus_station','subway_station']},
-  {key:'gym',    emoji:'🏋️', label:'Gimnasio',           types:['gym']},
-  {key:'escuela',emoji:'🎓', label:'Escuela',            types:['school']},
-  {key:'salud',  emoji:'🏥', label:'Salud',              types:['hospital','pharmacy']},
+  {key:'parque', emoji:'🌳', label:'Parque',       types:['park']},
+  {key:'super',  emoji:'🛒', label:'Supermercado', types:['supermarket','grocery_store']},
+  {key:'rest',   emoji:'🍽️', label:'Restaurante',  types:['restaurant'], minRating:3},
+  {key:'transp', emoji:'🚇', label:'Transporte',   types:['transit_station','bus_station','subway_station']},
+  {key:'gym',    emoji:'🏋️', label:'Gimnasio',     types:['gym']},
+  {key:'escuela',emoji:'🎓', label:'Escuela',      types:['school']},
+  {key:'salud',  emoji:'🏥', label:'Salud',        types:['hospital','pharmacy']},
 ];
-let evSel={parque:true,super:true,rest:true}, evMin=10, evBusy=false;
-function openEstiloVida(){
-  if(propMode||shfMode||asesorMode||(typeof HEAT_ON!=='undefined'&&HEAT_ON)) setMode('zonas');
-  renderEstiloVida();
-}
-function evToggle(k){ evSel[k]=!evSel[k]; renderEstiloVida(true); }
-function setEvMin(v){ evMin=+v; const l=document.getElementById('ev-min-l'); if(l)l.textContent=evMin+' min'; }
-function renderEstiloVida(keepOut){
-  const prevOut = keepOut ? ((document.getElementById('ev-out')||{}).innerHTML||'') : '';
-  document.getElementById('panel-cap').textContent='🧭 Estilo de vida';
-  const chips = EV_CATS.map(c=>`<button onclick="evToggle('${c.key}')" class="hz-btn ${evSel[c.key]?'active':''}" style="flex:0 0 auto;padding:6px 10px;margin:3px">${c.emoji} ${c.label}</button>`).join('');
-  document.getElementById('panel-content').innerHTML=`
-    <div class="sel-name">Tu ecosistema a la medida</div>
-    <div class="sel-tipo">Elige lo que quieres cerca y te digo qué zonas lo cumplen mejor.</div>
-    <div style="display:flex;flex-wrap:wrap;margin:10px 0 4px">${chips}</div>
-    <div class="asesor-f" style="margin-top:8px"><div class="af-l">Cercanía máxima (<span id="ev-min-l">${evMin} min</span> a pie)</div>
-      <input type="range" min="5" max="20" step="5" value="${evMin}" oninput="setEvMin(this.value)" style="width:100%;accent-color:#cdf25a"></div>
-    <button onclick="buscarEstiloVida()" class="ia-btn" id="ev-run" style="margin-top:6px">🔎 Buscar mis zonas ideales</button>
-    <div class="notice" style="margin:10px 0;border-color:rgba(224,161,58,.35)">Evalúa las 32 zonas a nivel de <b>centro de ciudad</b> con Google Places (consume cuota). El detalle por colonia llegará con listados reales.</div>
-    <div id="ev-out">${prevOut}</div>`;
-}
-async function _chunkRun(items, size, fn){
-  const out=[];
-  for(let i=0;i<items.length;i+=size){ const part=await Promise.all(items.slice(i,i+size).map(fn)); out.push(...part); }
-  return out;
-}
-function _matchCat(places, cat, maxM){
-  const cand=places.filter(p=>{
-    const inType=(p.primaryType&&cat.types.includes(p.primaryType)) || cat.types.some(t=>(p.types||[]).includes(t));
-    if(!inType) return false;
-    if(cat.minRating && !(p.rating!=null && p.rating>=cat.minRating)) return false;
-    return true;
-  });
-  const nearest=cand.length?cand[0]:null; // scanPlaces ya ordena por distancia
-  return { pass: !!(nearest && nearest.d<=maxM), nearest };
-}
-async function buscarEstiloVida(){
-  if(evBusy) return;
-  const sel=EV_CATS.filter(c=>evSel[c.key]);
-  const out=document.getElementById('ev-out'), btn=document.getElementById('ev-run');
-  if(!sel.length){ if(out)out.innerHTML='<div class="hint">Elige al menos una cosa que quieras cerca.</div>'; return; }
-  evBusy=true; if(btn)btn.disabled=true;
-  const maxM=evMin*80;                          // ~80 m por minuto a pie
-  const unionTypes=[...new Set(sel.flatMap(c=>c.types))];
-  const zonas=Object.entries(CITIES);
-  if(out) out.innerHTML='<div class="notice" style="margin-top:8px"><span class="spin" style="vertical-align:middle"></span> Evaluando las '+zonas.length+' zonas contra tu estilo de vida…</div>';
+let _evBusy=false;
+function scoreDistM(d){ if(d==null)return 8; if(d<=400)return 100; if(d<=800)return 82; if(d<=1200)return 62; if(d<=2000)return 38; if(d<=3000)return 20; return 10; }
+async function scanEstilo(lat,lng,name){
+  if(_evBusy) return; _evBusy=true;
+  const out=document.getElementById('ev-out2'), btn=document.getElementById('ev-btn2');
+  if(btn)btn.disabled=true;
+  if(out) out.innerHTML='<div class="notice" style="margin-top:8px"><span class="spin" style="vertical-align:middle"></span> Midiendo qué tienes cerca en '+name+'…</div>';
   try{
-    const evaluadas=await _chunkRun(zonas, 6, async ([nom,d])=>{
+    const res=await Promise.all(EV_CATS.map(async c=>{
       try{
-        const places=await scanPlaces({lat:d.lat,lng:d.lng}, unionTypes, Math.max(2600,maxM+400), ['location','displayName','primaryType','types','rating']);
-        const cats=sel.map(c=>({ c, m:_matchCat(places,c,maxM) }));
-        const passes=cats.filter(x=>x.m.pass).length;
-        const sumD=cats.reduce((s,x)=>s+(x.m.nearest?x.m.nearest.d:9999),0);
-        return { nom, d, passes, total:sel.length, sumD, cats };
-      }catch(e){ return { nom, d, passes:-1, total:sel.length, sumD:9e9, cats:[] }; }
-    });
-    const ok=evaluadas.filter(z=>z.passes>=0);
-    if(!ok.length){ out.innerHTML='<div class="notice" style="border-color:rgba(224,161,58,.35)">No se pudo consultar Google Places. Activa la <b>Places API (New)</b> y la facturación en Google Cloud.</div>'; return; }
-    ok.sort((a,b)=> b.passes-a.passes || a.sumD-b.sumD);
-    const top=ok.slice(0,8);
-    const filas=top.map((z,i)=>{
-      const ticks=sel.map(c=>{ const m=z.cats.find(x=>x.c.key===c.key); const p=m&&m.m.pass; return `<span title="${c.label}" style="opacity:${p?1:.28}">${c.emoji}</span>`; }).join(' ');
-      const col=z.passes===z.total?'#57c389':z.passes>=z.total*0.6?'#cdf25a':'#F5C277';
-      return `<div class="zl-item" onclick="topGoto('${escapeHtml(z.nom).replace(/'/g,"\\'")}')">
-        <div><div class="zl-name"><span style="display:inline-block;width:18px;color:#6b7d79">${i+1}</span>${escapeHtml(z.nom)}</div>
-        <div class="zl-meta">${ticks} · cumple <b>${z.passes}/${z.total}</b></div></div>
-        <div class="zl-price" style="color:${col}">${Math.round(z.passes/z.total*100)}%</div></div>`;
+        const fields = c.minRating ? ['location','displayName','rating'] : ['location','displayName'];
+        const places = await scanPlaces({lat,lng}, c.types, 2500, fields);
+        const cand = c.minRating ? places.filter(p=>p.rating!=null && p.rating>c.minRating) : places;
+        const nearest = cand.length?cand[0].d:null;
+        return {...c, nearest, score:scoreDistM(nearest)};
+      }catch(e){ return {...c, nearest:null, score:0, err:true}; }
+    }));
+    if(res.every(r=>r.err)){ out.innerHTML='<div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">No se pudo consultar Google Places. Activa la <b>Places API (New)</b> y la facturación en Google Cloud.</div>'; return; }
+    const overall=Math.round(res.reduce((s,r)=>s+r.score,0)/res.length);
+    const col=overall>=75?'#57c389':overall>=50?'#F5C277':'#8FA3A0';
+    const filas=res.map(r=>{
+      const dt=r.nearest==null?'sin datos':(r.nearest<1000?Math.round(r.nearest)+' m':(r.nearest/1000).toFixed(1)+' km');
+      const min=r.nearest==null?'':' · '+Math.max(1,Math.round(r.nearest/80))+' min';
+      const c=r.score>=75?'#57c389':r.score>=50?'#F5C277':'#8FA3A0';
+      return `<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,.06)"><span>${r.emoji} ${r.label}</span><span style="color:${c}">${dt}${min}</span></div>`;
     }).join('');
-    out.innerHTML=`<div class="ptitle" style="margin-top:6px">Zonas que mejor encajan (${ok.length} evaluadas)</div>
-      <div class="zone-list">${filas}</div>
-      <div class="notice" style="margin-top:8px">Emoji encendido = ese servicio está a ≤ ${evMin} min a pie del centro de la zona. Toca una zona para verla.</div>`;
+    out.innerHTML=`
+      <div style="display:flex;align-items:center;gap:14px;margin-top:6px">
+        <div style="font-family:'Fraunces',serif;font-weight:600;font-size:38px;line-height:1;color:${col}">${overall}</div>
+        <div><div style="font-weight:700;color:${col}">Índice de estilo de vida</div>
+        <div style="font-size:11px;color:#8FA3A0">qué tan caminable y servida es la zona</div></div>
+      </div>
+      <div style="margin-top:8px">${filas}</div>
+      <div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">A vuelo de pájaro desde el centro de la zona. Con listados reales bajará al nivel de la propiedad.</div>`;
   }catch(e){
     console.error('[estilo]',e);
-    if(out) out.innerHTML='<div class="notice" style="border-color:rgba(224,161,58,.35)">No se pudo completar la búsqueda con Google Places.</div>';
-  }finally{ evBusy=false; if(btn)btn.disabled=false; }
+    if(out) out.innerHTML='<div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">No se pudo consultar Google Places.</div>';
+  }finally{ _evBusy=false; if(btn)btn.disabled=false; }
 }
 
 async function runIA(){
