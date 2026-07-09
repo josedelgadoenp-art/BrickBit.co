@@ -6,7 +6,7 @@ a{color:inherit}
 header.nav{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid var(--line)}
 .brand{font-family:'Fraunces',serif;font-size:20px;font-weight:600;text-decoration:none;color:var(--cream);display:inline-flex;align-items:center}
 .brand b{color:var(--lime)}
-.brand img{height:26px;width:auto;display:block}
+.brand img{height:24px;width:auto;display:block}
 .nav-links a{margin-left:18px;font-size:14px;color:var(--muted);text-decoration:none}
 .nav-links a:hover{color:var(--lime)}
 h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(1.9rem,5vw,3rem);line-height:1.05;letter-spacing:-.02em;margin:38px 0 10px}
