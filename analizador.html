@@ -713,12 +713,12 @@ function devPDF(){
    Precio/m² de la zona ajustado por la calidad de ubicación real del punto
    (servicios/caminabilidad, Google Places) + proyección con el forecast. */
 const EST_CATS=[
-  {key:'escuela',emoji:'🎓',label:'Escuelas',   types:['school'],                                  ideal:1000},
-  {key:'salud',  emoji:'🏥',label:'Salud',      types:['hospital','pharmacy'],                     ideal:1200},
-  {key:'transp', emoji:'🚇',label:'Transporte', types:['transit_station','bus_station','subway_station'], ideal:800},
-  {key:'abasto', emoji:'🛒',label:'Abasto',     types:['supermarket','shopping_mall'],             ideal:1000},
-  {key:'parque', emoji:'🌳',label:'Parques',    types:['park'],                                    ideal:800},
-  {key:'ocio',   emoji:'🍽️',label:'Restaurantes',types:['restaurant'],                             ideal:800},
+  {key:'escuela',emoji:'🎓',label:'Escuelas',   types:['school','primary_school','secondary_school','university'], ideal:1000},
+  {key:'salud',  emoji:'🏥',label:'Salud',      types:['hospital','pharmacy','doctor'],            ideal:1200},
+  {key:'transp', emoji:'🚇',label:'Transporte', types:['transit_station','bus_station','subway_station','light_rail_station','train_station'], ideal:900},
+  {key:'abasto', emoji:'🛒',label:'Abasto',     types:['supermarket','grocery_store','shopping_mall','convenience_store','market'], ideal:1000},
+  {key:'parque', emoji:'🌳',label:'Parques',    types:['park','national_park','plaza'],            ideal:900},
+  {key:'ocio',   emoji:'🍽️',label:'Restaurantes',types:['restaurant','cafe','bar'],                ideal:800},
 ];
 function _locScore(d,ideal){ if(d==null)return 8; const r=d/ideal; if(r<=0.4)return 100; if(r<=0.8)return 82; if(r<=1)return 66; if(r<=1.6)return 46; if(r<=2.5)return 26; return 12; }
 let _estBusy=false;
@@ -735,7 +735,7 @@ async function brickbitEstimate(){
     if(!punto){ out.innerHTML='<div class="note" style="border-left-color:var(--amb)">No encontré esa dirección en '+z.n+'. Prueba con más detalle.</div>'; _estBusy=false; return; }
     const center={lat:punto.lat,lng:punto.lng};
     const res=await Promise.all(EST_CATS.map(async c=>{
-      try{ const places=await scanNear(center,c.types,2600,['location','displayName']);
+      try{ const places=await scanNear(center,c.types,6000,['location','displayName']);   // radio amplio: menos "sin datos"
         const nearest=places.length?places[0].d:null;
         return {...c, nearest, score:_locScore(nearest,c.ideal), within:places.filter(p=>p.d<=c.ideal).length}; }
       catch(e){ return {...c, nearest:null, score:0, within:0, err:true}; }

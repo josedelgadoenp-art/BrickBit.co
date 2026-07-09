@@ -361,7 +361,7 @@
         <span><span class="qn">2</span> La IA lo convierte en un edificio 3D</span>
         <span><span class="qn">3</span> Recibes materiales, costos, fallas futuras e inversión</span>
       </div>
-      ¿No tienes un plano a la mano? Usa el botón <b>“Probar con proyecto de ejemplo”</b> de la sección 00 — no necesita llaves ni configuración.
+      ¿No tienes un plano a la mano? Usa el botón <b>“Probar con proyecto de ejemplo”</b> del paso 1 — no necesita configuración.
     </div>
     <div class="steps" id="stepsRail">
       <div class="step-chip" data-step="1"><span class="n">1</span> Plano</div>
@@ -380,8 +380,9 @@
     <a href="gemelo-digital.html">Analizar mi propio plano →</a>
   </div>
 
-  <!-- ===== 0. CONFIG ===== -->
-  <section class="card" id="secConfig">
+  <!-- ===== 0. CONFIG (oculta: el backend y el mapa ya vienen configurados;
+       los inputs quedan como campos ocultos para que el código lea sus valores por defecto) ===== -->
+  <section class="card" id="secConfig" style="display:none">
     <div class="card-head"><span class="knum">00 /</span><h2>Configuración de APIs (demo)</h2></div>
     <p class="sub">Esta demo corre 100% en tu navegador. Las llaves se guardan solo en <code>localStorage</code> de tu equipo y se envían directamente a cada API. Para producción, BrickBit moverá estas llamadas a un backend.</p>
     <div class="grid-2">
@@ -403,7 +404,6 @@
     </div>
     <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-ghost" id="btnSaveKeys">Guardar llaves</button>
-      <button class="btn btn-ghost" id="btnDemo">Probar con proyecto de ejemplo (sin llaves)</button>
     </div>
   </section>
 
@@ -421,8 +421,9 @@
       <img id="previewImg" alt="Vista previa del plano">
       <div class="file-meta" id="fileMeta"></div>
     </div>
-    <div style="margin-top:22px">
+    <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-primary" id="btnAnalyze" disabled>Generar gemelo digital →</button>
+      <button class="btn btn-ghost" id="btnDemo">✨ Probar con proyecto de ejemplo</button>
     </div>
     <div class="status" id="statusAnalyze"><span class="spinner"></span><span id="statusAnalyzeTxt">Claude está interpretando el plano…</span></div>
     <div class="error-box" id="errAnalyze"></div>
@@ -2013,7 +2014,6 @@ ${v ? `<section>
 <div class="footer">Generado con BrickBit · Gemelo Digital — brickbit.co</div>
 
 <script>setTimeout(() => { try { window.print(); } catch (e) {} }, 600);<\/script>
-  <script defer src="/iris.js"></script>
 </body></html>`;
 }
 
@@ -2251,6 +2251,7 @@ function escapeHtml(s) {
 function showError(id, msg) { const el = $(id); el.textContent = msg; el.classList.add('show'); }
 function hideError(id) { $(id).classList.remove('show'); }
 </script>
+<script defer src="/iris.js"></script>
 
 </body>
 </html>
