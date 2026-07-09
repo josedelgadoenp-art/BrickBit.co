@@ -466,6 +466,13 @@ function removeVolume(){
    del lote. Se ejecuta a demanda (control de costo) y cachea por punto. Cada
    pilar hace un searchNearby; el más cercano define el puntaje (400 m ≈ 5 min
    a pie, 1200 m ≈ 15 min). Además resalta en el mapa 3D los servicios hallados. */
+/* Tope diario de consultas de Places por navegador (red de seguridad de costo).
+   El tope real y global se pone como cuota diaria en Google Cloud. */
+const BB_PLACES_MAX = 200;
+function _bbKey(){ return 'bb_places_'+new Date().toISOString().slice(0,10); }
+function bbPlacesLeft(){ try{ return BB_PLACES_MAX-(parseInt(localStorage.getItem(_bbKey())||'0',10)||0); }catch(e){ return BB_PLACES_MAX; } }
+function bbPlacesBump(n){ try{ localStorage.setItem(_bbKey(), String((parseInt(localStorage.getItem(_bbKey())||'0',10)||0)+(n||1))); }catch(e){} }
+const BB_CAP_MSG='<div style="color:var(--amb);font-size:12.5px;line-height:1.55;margin-top:10px">Alcanzaste el <b>límite diario</b> de consultas de ubicación en este navegador (protección de costo). Se reinicia mañana.</div>';
 const WELL_PILARES = [
   { key:'salud',  emoji:'🏥', label:'Salud',      types:['hospital','pharmacy'] },
   { key:'educ',   emoji:'🎓', label:'Educación',  types:['school','university'] },
@@ -505,6 +512,7 @@ async function analyzeWellbeing(){
   const out=$('well-out'); if(!center){ return; }
   const ck = center.lat.toFixed(4)+','+center.lng.toFixed(4);
   if(ck===wellCacheKey && out.innerHTML.indexOf('wscore')>-1) return; // ya calculado para este punto
+  if(bbPlacesLeft()<WELL_PILARES.length){ out.innerHTML=BB_CAP_MSG; return; }
   wellBusy=true; $('well-run').disabled=true;
   out.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--sec)"><span class="spin" style="width:15px;height:15px"></span> Consultando servicios alrededor…</div>';
   try{
@@ -525,7 +533,7 @@ async function analyzeWellbeing(){
           maxResultCount: 10,
           rankPreference: rank
         });
-        places = (r && r.places) || []; callsOk++;
+        places = (r && r.places) || []; callsOk++; bbPlacesBump(1);
       }catch(e){ /* un pilar puede fallar aislado; se sigue */ }
       const conDist = places.map(pl=>{
         const loc=pl.location, lat=(typeof loc.lat==='function')?loc.lat():loc.lat, lng=(typeof loc.lng==='function')?loc.lng():loc.lng;

@@ -317,6 +317,13 @@ const PROYECTO_SCHEMA={type:'object',additionalProperties:false,
    referrer a brickbit.co). Requiere "Places API (New)" + facturación en el
    proyecto de Google Cloud de esa key. */
 const GMAPS_KEY = 'AIzaSyC15vodxaWS_VyFiqlRUwYlTtXyKUkSW5o';
+/* Tope diario de consultas de Places POR NAVEGADOR (red de seguridad de costo).
+   El tope REAL y global se configura como cuota diaria en Google Cloud. */
+const BB_PLACES_MAX = 200;
+function _bbKey(){ return 'bb_places_'+new Date().toISOString().slice(0,10); }
+function bbPlacesLeft(){ try{ return BB_PLACES_MAX-(parseInt(localStorage.getItem(_bbKey())||'0',10)||0); }catch(e){ return BB_PLACES_MAX; } }
+function bbPlacesBump(n){ try{ localStorage.setItem(_bbKey(), String((parseInt(localStorage.getItem(_bbKey())||'0',10)||0)+(n||1))); }catch(e){} }
+const BB_CAP_MSG='<div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">Alcanzaste el <b>límite diario</b> de consultas de ubicación en este navegador (protección de costo). Se reinicia mañana.</div>';
 let _placesLib=null,_placesLoading=null;
 function loadPlaces(){
   if(_placesLib) return Promise.resolve(_placesLib);
@@ -348,6 +355,7 @@ async function scanPlaces(center,types,radius,fields){
     locationRestriction:{ center:{lat:center.lat,lng:center.lng}, radius: radius||2000 },
     includedPrimaryTypes: types, maxResultCount: 20, rankPreference: rank
   });
+  bbPlacesBump(1);
   const places=(r&&r.places)||[];
   return places.map(pl=>{ const loc=pl.location, lat=(typeof loc.lat==='function')?loc.lat():loc.lat, lng=(typeof loc.lng==='function')?loc.lng():loc.lng;
     return { nombre:pl.displayName||'', lat, lng, primaryType:(pl.primaryType||null), types:(pl.types||[]),
@@ -1126,6 +1134,7 @@ let _vibBusy=false;
 async function scanVibrancia(lat,lng,name){
   if(_vibBusy) return; _vibBusy=true;
   const out=document.getElementById('vib-out'), btn=document.getElementById('vib-btn');
+  if(bbPlacesLeft()<1){ if(out)out.innerHTML=BB_CAP_MSG; _vibBusy=false; return; }
   if(btn)btn.disabled=true;
   if(out) out.innerHTML='<div class="notice" style="margin-top:8px"><span class="spin" style="vertical-align:middle"></span> Escaneando el ecosistema de '+name+'…</div>';
   try{
@@ -1179,6 +1188,7 @@ function scoreDistM(d){ if(d==null)return 4; if(d<=120)return 94; if(d<=250)retu
 async function scanEstilo(lat,lng,name){
   if(_evBusy) return; _evBusy=true;
   const out=document.getElementById('ev-out2'), btn=document.getElementById('ev-btn2');
+  if(bbPlacesLeft()<EV_CATS.length){ if(out)out.innerHTML=BB_CAP_MSG; _evBusy=false; return; }
   if(btn)btn.disabled=true;
   if(out) out.innerHTML='<div class="notice" style="margin-top:8px"><span class="spin" style="vertical-align:middle"></span> Midiendo qué tienes cerca en '+name+'…</div>';
   try{
