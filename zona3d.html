@@ -34,7 +34,10 @@
     text-shadow:0 2px 14px rgba(0,0,0,.7);pointer-events:none}
 
   /* panel de controles (glass) */
-  .controls{position:fixed;left:18px;bottom:18px;z-index:20;display:flex;flex-direction:column;gap:10px;max-width:300px}
+  .controls{position:fixed;left:18px;bottom:18px;z-index:20;display:flex;flex-direction:column;gap:10px;max-width:300px;
+    max-height:calc(100vh - 84px);overflow-y:auto;overflow-x:visible;padding-right:4px;scrollbar-width:thin;scrollbar-color:rgba(245,237,227,.25) transparent}
+  .controls::-webkit-scrollbar{width:7px}
+  .controls::-webkit-scrollbar-thumb{background:rgba(245,237,227,.22);border-radius:99px}
   .glass{background:rgba(16,12,10,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
     border:1px solid var(--line-strong);border-radius:18px;padding:14px 16px;box-shadow:0 16px 50px rgba(0,0,0,.5)}
   .glass h2{margin:0 0 4px;font-family:'Fraunces',serif;font-size:16px;font-weight:600}
@@ -97,7 +100,7 @@
     border-radius:50%;animation:sp 1s linear infinite;margin:0 auto 14px}
   @keyframes sp{to{transform:rotate(360deg)}}
   .center{text-align:center}
-  @media(max-width:560px){ .controls{left:12px;right:12px;bottom:12px;max-width:none} .zname{font-size:15px} }
+  @media(max-width:560px){ .controls{left:12px;right:12px;bottom:12px;max-width:none;max-height:calc(100vh - 70px)} .zname{font-size:15px} }
 </style>
 </head>
 <body>

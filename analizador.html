@@ -207,7 +207,9 @@ a.back:hover{color:var(--tx)}
   <div class="card" style="margin-top:22px">
     <h2>🏜️ Desiertos de oportunidad<span class="hint" tabindex="0" data-tip="Detecta servicios esenciales ESCASOS o lejanos alrededor de la zona (farmacia, cajero, súper, salud, escuela, gasolinera) con Google Places. Un servicio lejano = demanda desatendida = oportunidad para comercio de proximidad o usos mixtos.">?</span></h2>
     <p style="font-size:12px;color:var(--mut);margin:-6px 0 14px">Inteligencia para <b>desarrolladores</b>: en vez de ver qué hay, mapeamos <b>lo que falta</b>. Los servicios esenciales lejanos revelan dónde una torre de usos mixtos tendría el <b>monopolio de proximidad</b>.</p>
-    <button class="pdf-btn" id="des-btn" onclick="scanDesiertos()" style="margin-bottom:4px">🛰 Escanear desiertos de la zona</button>
+    <div class="fld" style="margin-bottom:9px"><label>Calle, colonia o punto específico (dentro de la zona)</label>
+      <input id="des-addr" type="text" placeholder="Ej. Av. Universidad 500, colonia Del Valle" onkeydown="if(event.key==='Enter')scanDesiertos()"></div>
+    <button class="pdf-btn" id="des-btn" onclick="scanDesiertos()" style="margin-bottom:4px">🛰 Escanear alrededor de este punto</button>
     <div id="deserts-out"></div>
   </div>
 
@@ -440,6 +442,7 @@ function loadPlacesA(){
 function _havA(a,b){const R=6371000,tR=x=>x*Math.PI/180;const dLat=tR(b.lat-a.lat),dLng=tR(b.lng-a.lng);
   const s=Math.sin(dLat/2)**2+Math.cos(tR(a.lat))*Math.cos(tR(b.lat))*Math.sin(dLng/2)**2;
   return 2*R*Math.asin(Math.sqrt(s));}
+function escA(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 async function scanNear(center,types,radius,fields){
   const lib=await loadPlacesA();
   const {Place,SearchNearbyRankPreference}=lib;
@@ -451,6 +454,18 @@ async function scanNear(center,types,radius,fields){
   return places.map(pl=>{ const loc=pl.location, lat=(typeof loc.lat==='function')?loc.lat():loc.lat, lng=(typeof loc.lng==='function')?loc.lng():loc.lng;
     return { nombre:pl.displayName||'', lat, lng, d:_havA(center,{lat,lng}) }; })
     .filter(x=>isFinite(x.d)).sort((a,b)=>a.d-b.d);
+}
+/* Resuelve una calle/colonia a un punto usando Places Text Search (misma API, no
+   requiere habilitar Geocoding). Sesgado al centro de la zona. */
+async function resolvePunto(q, center){
+  const lib=await loadPlacesA();
+  const {Place}=lib;
+  const r=await Place.searchByText({ textQuery:q, fields:['location','formattedAddress','displayName'],
+    locationBias:{ center:{lat:center.lat,lng:center.lng}, radius:22000 }, maxResultCount:1, language:'es', region:'mx' });
+  const p=(r&&r.places&&r.places[0])||null;
+  if(!p||!p.location) return null;
+  const loc=p.location, lat=(typeof loc.lat==='function')?loc.lat():loc.lat, lng=(typeof loc.lng==='function')?loc.lng():loc.lng;
+  return { lat, lng, formatted:(p.formattedAddress||p.displayName||q) };
 }
 /* ===== Idea 3 · Desiertos de oportunidad ===== */
 const DESIERTOS=[
@@ -468,12 +483,22 @@ async function scanDesiertos(){
   if(!z){ if(out)out.innerHTML='<p style="font-size:12px;color:var(--mut)">Elige una zona primero.</p>'; return; }
   _desBusy=true; if(btn)btn.disabled=true;
   const enableMsg='<div class="note" style="border-left-color:var(--amb)">No se pudo consultar Google Places. Activa la <b>Places API (New)</b> y la facturación en Google Cloud, y permite Places en el key de brickbit.co.</div>';
-  if(out) out.innerHTML='<p style="font-size:12px;color:var(--mut)">🛰 Escaneando servicios esenciales alrededor de '+z.n+'…</p>';
+  const q=(document.getElementById('des-addr')||{}).value ? document.getElementById('des-addr').value.trim() : '';
+  const zc={lat:z.lat,lng:z.lng};
   try{
-    const center={lat:z.lat,lng:z.lng};
+    // Punto de análisis: la calle/colonia escrita (nivel calle) o, si no, el centro de la zona.
+    let center=zc, etiqueta='centro de '+z.n+' (escribe una calle para más precisión)';
+    if(q){
+      if(out) out.innerHTML='<p style="font-size:12px;color:var(--mut)">📍 Localizando "'+q+'"…</p>';
+      const punto=await resolvePunto(q+', '+z.n+', México', zc);
+      if(punto){ center={lat:punto.lat,lng:punto.lng}; etiqueta=punto.formatted; }
+      else if(out){ out.innerHTML='<div class="note" style="border-left-color:var(--amb)">No encontré "'+q+'" dentro de '+z.n+'. Prueba con una calle o colonia más específica.</div>'; _desBusy=false; if(btn)btn.disabled=false; return; }
+    }
+    const RAD=1500; // nivel calle (a pie), no todo el estado
+    if(out) out.innerHTML='<p style="font-size:12px;color:var(--mut)">🛰 Escaneando servicios esenciales alrededor de '+etiqueta+'…</p>';
     const res=await Promise.all(DESIERTOS.map(async cat=>{
-      try{ const places=await scanNear(center,cat.types,3000,['location','displayName']);
-        return {...cat, nearest:places.length?places[0].d:null, within:places.filter(p=>p.d<=1500).length}; }
+      try{ const places=await scanNear(center,cat.types,RAD,['location','displayName']);
+        return {...cat, nearest:places.length?places[0].d:null, within:places.filter(p=>p.d<=800).length}; }
       catch(e){ return {...cat, nearest:null, within:0, err:true}; }
     }));
     if(res.every(r=>r.err)){ out.innerHTML=enableMsg; return; }
@@ -486,10 +511,10 @@ async function scanDesiertos(){
     }).sort((a,b)=> b.sev-a.sev || (b.nearest||9e9)-(a.nearest||9e9));
     const gaps=clasif.filter(c=>c.sev>=2);
     const filas=clasif.map(c=>{
-      const dt=c.nearest==null?'ninguno a 3 km':(c.nearest<1000?Math.round(c.nearest)+' m':(c.nearest/1000).toFixed(1)+' km');
+      const dt=c.nearest==null?'ninguno a 1.5 km':(c.nearest<1000?Math.round(c.nearest)+' m':(c.nearest/1000).toFixed(1)+' km');
       const col=c.sev>=2?'var(--amb)':'var(--grn)';
       return `<div class="cmp-row" style="grid-template-columns:26px 1fr auto auto;gap:10px;align-items:center">
-        <span>${c.emoji}</span><span>${c.label}<div style="font-size:10.5px;color:var(--mut)">${c.within} a ≤1.5 km</div></span>
+        <span>${c.emoji}</span><span>${c.label}<div style="font-size:10.5px;color:var(--mut)">${c.within} a ≤800 m</div></span>
         <span>${dt}</span><span style="color:${col};font-weight:600">${c.estado}</span></div>`;
     }).join('');
     const e=(typeof ECON!=='undefined'&&ECON[z.n])?ECON[z.n]:null;
@@ -499,7 +524,7 @@ async function scanDesiertos(){
          <div style="font-size:12px;color:var(--mut);margin-bottom:10px">${demanda}Un desarrollo de usos mixtos aquí capturaría demanda hoy mal servida.</div>`
       : `<div style="font-family:'Fraunces',serif;font-size:20px;color:var(--grn);margin:4px 0 2px">Zona bien servida</div>
          <div style="font-size:12px;color:var(--mut);margin-bottom:10px">${demanda}Los esenciales están cerca; la oportunidad está en diferenciación, no en cubrir un hueco.</div>`;
-    out.innerHTML=head+filas+`<div class="note" style="margin-top:12px;border-left-color:var(--amb)">Análisis a nivel de <b>centro de zona</b> con Google Places (a vuelo de pájaro). Señal de oportunidad, no un estudio de mercado formal.</div>`;
+    out.innerHTML=`<div style="font-size:11px;color:var(--mut);margin-bottom:8px">📍 Analizando: <b>${escA(etiqueta)}</b> · radio 1.5 km a pie</div>`+head+filas+`<div class="note" style="margin-top:12px;border-left-color:var(--amb)">Análisis <b>alrededor del punto</b> con Google Places (a vuelo de pájaro). Señal de oportunidad, no un estudio de mercado formal.</div>`;
   }catch(err){ console.error('[desiertos]',err); if(out) out.innerHTML=enableMsg; }
   finally{ _desBusy=false; if(btn)btn.disabled=false; }
 }
