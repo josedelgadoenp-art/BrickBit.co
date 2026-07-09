@@ -205,6 +205,13 @@ a.back:hover{color:var(--tx)}
   </div>
 
   <div class="card" style="margin-top:22px">
+    <h2>🏜️ Desiertos de oportunidad<span class="hint" tabindex="0" data-tip="Detecta servicios esenciales ESCASOS o lejanos alrededor de la zona (farmacia, cajero, súper, salud, escuela, gasolinera) con Google Places. Un servicio lejano = demanda desatendida = oportunidad para comercio de proximidad o usos mixtos.">?</span></h2>
+    <p style="font-size:12px;color:var(--mut);margin:-6px 0 14px">Inteligencia para <b>desarrolladores</b>: en vez de ver qué hay, mapeamos <b>lo que falta</b>. Los servicios esenciales lejanos revelan dónde una torre de usos mixtos tendría el <b>monopolio de proximidad</b>.</p>
+    <button class="pdf-btn" id="des-btn" onclick="scanDesiertos()" style="margin-bottom:4px">🛰 Escanear desiertos de la zona</button>
+    <div id="deserts-out"></div>
+  </div>
+
+  <div class="card" style="margin-top:22px">
     <h2>📊 Escenarios · riesgo–retorno<span class="hint" tabindex="0" data-tip="Tres versiones del resultado con el rango real (intervalo de confianza 90%) del pronóstico: pesimista, base y optimista.">?</span></h2>
     <p style="font-size:12px;color:var(--mut);margin:-6px 0 14px">Tres escenarios usando el intervalo de confianza real del pronóstico para el horizonte seleccionado. Los demás supuestos se mantienen constantes.</p>
     <div id="scen-out"></div>
@@ -406,6 +413,95 @@ function renderEconomia(z){
       <b>${_mmex(e.altas)}</b> negocios abrieron en el último corte del DENUE${e.ind_esp>0?` · <b>${e.ind_esp}</b> giro(s) "indicador" de gentrificación (café de especialidad, galería, coworking…)`:''}.
       Las aperturas recientes son una <b>señal temprana</b> de dinamismo económico de la zona.
     </div>`;
+}
+/* ===== Google Places (New) — toolkit (idea 3: Desiertos de oportunidad) =====
+   Carga perezosa; key pública restringida por referrer a brickbit.co. Requiere
+   "Places API (New)" + facturación en el proyecto de Google Cloud de esa key. */
+const GMAPS_KEY_A='AIzaSyC15vodxaWS_VyFiqlRUwYlTtXyKUkSW5o';
+let _plA=null,_plLoadA=null;
+function loadPlacesA(){
+  if(_plA) return Promise.resolve(_plA);
+  if(_plLoadA) return _plLoadA;
+  _plLoadA=new Promise((resolve,reject)=>{
+    const boot=()=>google.maps.importLibrary('places').then(l=>{_plA=l;resolve(l);}).catch(reject);
+    if(window.google&&google.maps&&google.maps.importLibrary){ boot(); return; }
+    ((g)=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",
+      m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,
+      u=()=>h||(h=new Promise(async(f,n)=>{await(a=m.createElement("script"));e.set("libraries",[...r]+"");
+      for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);
+      a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;
+      a.onerror=()=>h=n(Error(p+" could not load."));m.head.append(a)}));
+      d[l]?0:d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({key:GMAPS_KEY_A,v:'weekly'});
+    let t=0;(function chk(){ if(window.google&&google.maps&&google.maps.importLibrary) return boot();
+      if(t++>120) return reject(new Error('timeout Places')); setTimeout(chk,100); })();
+  });
+  return _plLoadA;
+}
+function _havA(a,b){const R=6371000,tR=x=>x*Math.PI/180;const dLat=tR(b.lat-a.lat),dLng=tR(b.lng-a.lng);
+  const s=Math.sin(dLat/2)**2+Math.cos(tR(a.lat))*Math.cos(tR(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));}
+async function scanNear(center,types,radius,fields){
+  const lib=await loadPlacesA();
+  const {Place,SearchNearbyRankPreference}=lib;
+  const rank=(SearchNearbyRankPreference&&SearchNearbyRankPreference.DISTANCE)||'DISTANCE';
+  const r=await Place.searchNearby({ fields:fields||['location','displayName'],
+    locationRestriction:{ center:{lat:center.lat,lng:center.lng}, radius:radius||2500 },
+    includedPrimaryTypes:types, maxResultCount:20, rankPreference:rank });
+  const places=(r&&r.places)||[];
+  return places.map(pl=>{ const loc=pl.location, lat=(typeof loc.lat==='function')?loc.lat():loc.lat, lng=(typeof loc.lng==='function')?loc.lng():loc.lng;
+    return { nombre:pl.displayName||'', lat, lng, d:_havA(center,{lat,lng}) }; })
+    .filter(x=>isFinite(x.d)).sort((a,b)=>a.d-b.d);
+}
+/* ===== Idea 3 · Desiertos de oportunidad ===== */
+const DESIERTOS=[
+  {key:'farmacia',emoji:'💊',label:'Farmacia',    types:['pharmacy'],                    ideal:600},
+  {key:'cajero',  emoji:'🏧',label:'Cajero/Banco',types:['atm','bank'],                  ideal:800},
+  {key:'super',   emoji:'🛒',label:'Supermercado',types:['supermarket','grocery_store'], ideal:800},
+  {key:'salud',   emoji:'🏥',label:'Salud',       types:['hospital','doctor'],           ideal:1500},
+  {key:'escuela', emoji:'🎓',label:'Escuela',     types:['school'],                      ideal:1000},
+  {key:'gas',     emoji:'⛽',label:'Gasolinera',  types:['gas_station'],                 ideal:2000},
+];
+let _desBusy=false;
+async function scanDesiertos(){
+  if(_desBusy) return;
+  const z=zona(), out=document.getElementById('deserts-out'), btn=document.getElementById('des-btn');
+  if(!z){ if(out)out.innerHTML='<p style="font-size:12px;color:var(--mut)">Elige una zona primero.</p>'; return; }
+  _desBusy=true; if(btn)btn.disabled=true;
+  const enableMsg='<div class="note" style="border-left-color:var(--amb)">No se pudo consultar Google Places. Activa la <b>Places API (New)</b> y la facturación en Google Cloud, y permite Places en el key de brickbit.co.</div>';
+  if(out) out.innerHTML='<p style="font-size:12px;color:var(--mut)">🛰 Escaneando servicios esenciales alrededor de '+z.n+'…</p>';
+  try{
+    const center={lat:z.lat,lng:z.lng};
+    const res=await Promise.all(DESIERTOS.map(async cat=>{
+      try{ const places=await scanNear(center,cat.types,3000,['location','displayName']);
+        return {...cat, nearest:places.length?places[0].d:null, within:places.filter(p=>p.d<=1500).length}; }
+      catch(e){ return {...cat, nearest:null, within:0, err:true}; }
+    }));
+    if(res.every(r=>r.err)){ out.innerHTML=enableMsg; return; }
+    const clasif=res.map(r=>{
+      let estado,sev;
+      if(r.nearest==null || r.nearest>r.ideal*2){ estado='🏜️ Desierto'; sev=3; }
+      else if(r.nearest>r.ideal){ estado='⚠️ Oportunidad'; sev=2; }
+      else { estado='✅ Bien servido'; sev=1; }
+      return {...r, estado, sev};
+    }).sort((a,b)=> b.sev-a.sev || (b.nearest||9e9)-(a.nearest||9e9));
+    const gaps=clasif.filter(c=>c.sev>=2);
+    const filas=clasif.map(c=>{
+      const dt=c.nearest==null?'ninguno a 3 km':(c.nearest<1000?Math.round(c.nearest)+' m':(c.nearest/1000).toFixed(1)+' km');
+      const col=c.sev>=2?'var(--amb)':'var(--grn)';
+      return `<div class="cmp-row" style="grid-template-columns:26px 1fr auto auto;gap:10px;align-items:center">
+        <span>${c.emoji}</span><span>${c.label}<div style="font-size:10.5px;color:var(--mut)">${c.within} a ≤1.5 km</div></span>
+        <span>${dt}</span><span style="color:${col};font-weight:600">${c.estado}</span></div>`;
+    }).join('');
+    const e=(typeof ECON!=='undefined'&&ECON[z.n])?ECON[z.n]:null;
+    const demanda=e?`La zona tiene <b>${_mmex(e.neg)}</b> negocios y <b>${_mmex(e.emp)}</b> empleos (DENUE) alimentando esa demanda. `:'';
+    const head=gaps.length
+      ? `<div style="font-family:'Fraunces',serif;font-size:20px;color:var(--amb);margin:4px 0 2px">${gaps.length} servicio(s) desatendido(s)</div>
+         <div style="font-size:12px;color:var(--mut);margin-bottom:10px">${demanda}Un desarrollo de usos mixtos aquí capturaría demanda hoy mal servida.</div>`
+      : `<div style="font-family:'Fraunces',serif;font-size:20px;color:var(--grn);margin:4px 0 2px">Zona bien servida</div>
+         <div style="font-size:12px;color:var(--mut);margin-bottom:10px">${demanda}Los esenciales están cerca; la oportunidad está en diferenciación, no en cubrir un hueco.</div>`;
+    out.innerHTML=head+filas+`<div class="note" style="margin-top:12px;border-left-color:var(--amb)">Análisis a nivel de <b>centro de zona</b> con Google Places (a vuelo de pájaro). Señal de oportunidad, no un estudio de mercado formal.</div>`;
+  }catch(err){ console.error('[desiertos]',err); if(out) out.innerHTML=enableMsg; }
+  finally{ _desBusy=false; if(btn)btn.disabled=false; }
 }
 function onZona(){const z=zona();if(!z)return;
   renderEconomia(z);
