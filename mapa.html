@@ -211,6 +211,7 @@ body{font-family:'Hanken Grotesk',system-ui,-apple-system,sans-serif;background:
       <button id="mt-zonas" class="sel" onclick="pickMode('zonas')">🗺 Zonas</button>
       <button id="mt-prop" onclick="pickMode('prop')">🏢 Inmuebles</button>
       <button id="mt-shf" onclick="pickMode('shf')">🏛 Muestra SHF</button>
+      <button id="mt-muni" onclick="pickMode('muni')">🏙️ Municipios DENUE</button>
       <button id="mt-asesor" onclick="pickMode('asesor')">💡 Asesor</button>
       <button id="mt-heat" onclick="toggleHeat();closeVista()">🔥 Calor</button>
       <div style="height:1px;background:rgba(245,237,227,.1);margin:4px 6px"></div>
@@ -651,7 +652,8 @@ function fcCells(pm2,g,zona){
 }
 
 /* ===== Mapa ===== */
-let map,level=0,curCity=null,curMun=null,horizon=3,curData=null,curTipo="",propMode=false,shfMode=false,asesorMode=false;
+let map,level=0,curCity=null,curMun=null,horizon=3,curData=null,curTipo="",propMode=false,shfMode=false,asesorMode=false,muniMode=false;
+let muniLayer=[], MUNI_FULL=null;
 let perfil={h:3,obj:'eq',riesgo:'mod',presup:null};
 let filtros={ciudad:null,plusvalia_min:null,roi_min:null,tipo:null,operacion:null,giro:null,recamaras_min:null};
 let ultimaQuery="",ultimaBusqueda=null;
@@ -664,7 +666,7 @@ function icon(opp,size){const c=OPP[opp]||"#888",r=size/2;
     `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${c};border:2.5px solid #fff;box-shadow:0 0 12px ${c},0 2px 7px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:#fff;font-size:${size*0.4}px;font-weight:700;font-family:system-ui">${opp[0]}</div>`})}
 function propIcon(p){return L.divIcon({className:"",iconSize:[28,28],iconAnchor:[14,14],html:
   `<div style="width:28px;height:28px;border-radius:8px;background:#111A22;border:2px solid ${p.col};display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 7px rgba(0,0,0,.55)">${p.ic}</div>`})}
-function clearAll(){[...cityM,...munM,...colM,...propM,...shfMunM].forEach(m=>map.removeLayer(m));cityM=[];munM=[];colM=[];propM=[];shfMunM=[]}
+function clearAll(){[...cityM,...munM,...colM,...propM,...shfMunM,...muniLayer].forEach(m=>map.removeLayer(m));cityM=[];munM=[];colM=[];propM=[];shfMunM=[];muniLayer=[]}
 
 function showCities(){clearAll();
   Object.entries(CITIES).forEach(([n,d])=>{const m=L.marker([d.lat,d.lng],{icon:cityIcon(n,d)}).addTo(map);
@@ -706,10 +708,10 @@ function showProps(){
     m.on("click",()=>selProp(p));propM.push(m)});
   list("Inmuebles en venta",props.map(p=>({nom:p.nom,opp:p.opp,g:p.g,yield:p.yield,price:p.price,_p:p})),d=>selProp(d._p||d));
 }
-const VISTA_LABELS={zonas:'🗺 Zonas',prop:'🏢 Inmuebles',shf:'🏛 Muestra SHF',asesor:'💡 Asesor'};
+const VISTA_LABELS={zonas:'🗺 Zonas',prop:'🏢 Inmuebles',shf:'🏛 Muestra SHF',muni:'🏙️ Municipios',asesor:'💡 Asesor'};
 function toggleVista(e){ if(e) e.stopPropagation(); const mu=document.getElementById('vista-menu'); if(mu) mu.classList.toggle('on'); }
 function closeVista(){ const mu=document.getElementById('vista-menu'); if(mu) mu.classList.remove('on'); }
-function pickMode(m){ setMode(m); const b=document.getElementById('vista-btn'); if(b&&VISTA_LABELS[m]) b.innerHTML=VISTA_LABELS[m]+' ▾'; ['zonas','prop','shf','asesor'].forEach(k=>{const el=document.getElementById('mt-'+k); if(el) el.classList.toggle('sel', k===m);}); closeVista(); }
+function pickMode(m){ setMode(m); const b=document.getElementById('vista-btn'); if(b&&VISTA_LABELS[m]) b.innerHTML=VISTA_LABELS[m]+' ▾'; ['zonas','prop','shf','muni','asesor'].forEach(k=>{const el=document.getElementById('mt-'+k); if(el) el.classList.toggle('sel', k===m);}); closeVista(); }
 document.addEventListener('click', e=>{ if(!e.target.closest('#vista-wrap')) closeVista(); });
 /* ----- comparador de zonas ----- */
 function buildCompare(){
@@ -748,12 +750,18 @@ function renderCompare(){
 }
 function setMode(m){
   if(HEAT_ON){HEAT_ON=false;if(heatLayer)map.removeLayer(heatLayer);const _hb=document.getElementById('mt-heat');if(_hb)_hb.classList.remove('active');}
-  propMode=(m==='prop');shfMode=(m==='shf');asesorMode=(m==='asesor');
+  muniLayer.forEach(x=>map.removeLayer(x)); muniLayer=[];   // la capa DENUE es especial: se limpia siempre al cambiar de modo
+  propMode=(m==='prop');shfMode=(m==='shf');asesorMode=(m==='asesor');muniMode=(m==='muni');
   document.getElementById('mt-zonas').classList.toggle('active',m==='zonas');
   document.getElementById('mt-prop').classList.toggle('active',propMode);
   document.getElementById('mt-shf').classList.toggle('active',shfMode);
+  const _mm=document.getElementById('mt-muni'); if(_mm)_mm.classList.toggle('active',muniMode);
   document.getElementById('mt-asesor').classList.toggle('active',asesorMode);
-  if(asesorMode){
+  if(muniMode){
+    clearAll();curCity=null;curMun=null;
+    map.flyTo([23.6,-102],5,{duration:1.0});
+    showMuniDenue();crumbs([]);setLvl(0);
+  } else if(asesorMode){
     clearAll();curCity=null;curMun=null;
     map.flyTo([23.6,-102],5,{duration:1.0});
     Object.entries(CITIES).forEach(([n,d])=>{const mk=L.marker([d.lat,d.lng],{icon:icon(d.opp,28)}).addTo(map);
@@ -910,6 +918,55 @@ function setPresup(v){const n=parseInt(String(v).replace(/[^\d]/g,''),10);perfil
 function asesorGoto(n){const d=CITIES[n];if(!d)return;map.flyTo([d.lat,d.lng],Math.max(d.z-1,6),{duration:0.8});cityM.forEach(mk=>{if(Math.abs(mk.getLatLng().lat-d.lat)<0.01)mk.openTooltip();});}
 
 /* ===== Vista nacional · muestra SHF (74 municipios; plusvalía real) ===== */
+/* ===== Capa "Municipios DENUE" — 2,436 municipios coloreados por dinamismo ===== */
+async function loadMuniFull(){
+  if(MUNI_FULL) return MUNI_FULL;
+  const r=await fetch('data/municipios_full.json'); const j=await r.json();
+  MUNI_FULL=j.municipios||[]; return MUNI_FULL;
+}
+function diColor(di){ return di>=70?'#cdf25a':di>=50?'#a9d23f':di>=30?'#F5C277':'#8a7d6f'; }
+async function showMuniDenue(){
+  muniLayer.forEach(m=>map.removeLayer(m)); muniLayer=[];
+  note('Cargando 2,436 municipios del DENUE…');
+  let arr; try{ arr=await loadMuniFull(); }catch(e){ note('No se pudo cargar data/municipios_full.json'); return; }
+  arr.forEach(mn=>{
+    const col=diColor(mn.di);
+    const c=L.circleMarker([mn.lat,mn.lng],{radius:4,color:col,weight:1,fillColor:col,fillOpacity:.72}).addTo(map);
+    c.bindTooltip('<b>'+mn.m+'</b>, '+mn.e+'<br>Dinamismo '+mn.di+'/100',{direction:'top',offset:[0,-6]});
+    c._mf=mn; c.on('click',()=>selMuniDenue(mn)); muniLayer.push(c);
+  });
+  note('Municipios del DENUE ('+arr.length.toLocaleString('es-MX')+') · color = dinamismo económico (INEGI)');
+  listMuniDenue(arr);
+}
+function selMuniDenue(mn){ map.flyTo([mn.lat,mn.lng],9,{duration:0.7}); panelMuniDenue(mn); }
+function listMuniDenue(arr){
+  const sec=document.getElementById('list-sec'); sec.style.display='block';
+  document.getElementById('list-title').textContent='Municipios · DENUE ('+arr.length.toLocaleString('es-MX')+') — top dinamismo';
+  const el=document.getElementById('zone-list'); el.innerHTML='';
+  arr.slice().sort((a,b)=>b.di-a.di).slice(0,150).forEach(mn=>{const div=document.createElement('div');div.className='zl-item';
+    div.innerHTML='<div><div class="zl-name"><span class="zl-dot" style="background:'+diColor(mn.di)+'"></span>'+mn.m+'</div><div class="zl-meta">'+mn.e+' · '+mn.neg.toLocaleString('es-MX')+' negocios</div></div><div class="zl-price" style="color:'+diColor(mn.di)+'">'+mn.di+'</div>';
+    div.onclick=()=>selMuniDenue(mn); el.appendChild(div);});
+}
+function panelMuniDenue(mn){
+  curData={muniDenue:true,nom:mn.m};
+  document.getElementById('panel-cap').textContent='Municipio · DENUE';
+  const plTag=(mn.pl!=null)?'<div class="model-tag">🏠 Plusvalía SHF: <b>+'+(+mn.pl).toFixed(1)+'% anual</b></div>':'<div class="model-tag">🏠 Plusvalía SHF: <b>sin dato (la SHF no cubre este municipio)</b></div>';
+  document.getElementById('panel-content').innerHTML=
+    '<div class="sel-name">'+mn.m+'</div><div class="sel-tipo">'+mn.e+' · municipio</div>'+
+    '<div class="sel-price" style="color:'+diColor(mn.di)+'">'+mn.di+'<span style="font-size:13px;color:#8FA3A0"> /100 dinamismo</span></div>'+
+    '<div class="sel-sub">Índice de actividad económica (DENUE)</div>'+
+    '<div class="ptitle" style="margin-top:16px">🏢 Economía (DENUE / INEGI)</div>'+
+    '<div class="ind-grid">'+
+      '<div class="ind-c"><div class="ind-l">Negocios</div><div class="ind-v">'+mn.neg.toLocaleString('es-MX')+'</div></div>'+
+      '<div class="ind-c"><div class="ind-l">Empleo</div><div class="ind-v">'+mn.emp.toLocaleString('es-MX')+'</div></div>'+
+      '<div class="ind-c"><div class="ind-l">Diversificación</div><div class="ind-v">'+Math.round(mn.res*100)+'</div></div>'+
+      '<div class="ind-c"><div class="ind-l">Aperturas rec.</div><div class="ind-v">'+mn.alt.toLocaleString('es-MX')+'</div></div>'+
+    '</div>'+
+    plTag+
+    '<div class="model-tag">🧬 Giros indicadores (gentrificación): <b>'+mn.ind+'</b></div>'+
+    '<a href="zona3d.html?zona='+encodeURIComponent(mn.m)+'" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(245,194,119,.4);color:#F5C277;text-decoration:none;margin-top:12px">🌆 Ver en 3D →</a>'+
+    '<div class="notice" style="margin-top:10px">Dinamismo = índice compuesto DENUE (aperturas, giros indicadores, diversificación, tamaño). Dato real INEGI. Plusvalía SHF solo donde la SHF la publica.</div>';
+}
 function showSHFMun(){
   shfMunM.forEach(m=>map.removeLayer(m));shfMunM=[];
   if(!SHFMUN||!SHFMUN.length){note('No hay municipios SHF cargados (data/municipios_shf.json)');return}
