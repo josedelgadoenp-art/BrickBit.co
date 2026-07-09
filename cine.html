@@ -56,7 +56,7 @@ h1 .accent{color:var(--grn);font-style:italic}
 <div class="load" id="load"><div style="text-align:center"><div style="font-size:34px">🎬</div><p class="sub">Preparando el tour por México…</p></div></div>
 <div id="map3d"></div>
 <div class="top">
-  <div class="glass"><h1>BrickBit <span class="accent">Cinema</span></h1><span class="sub">Reel de oportunidades · ranking por Valor Futuro</span></div>
+  <div class="glass"><h1>BrickBit <span class="accent">Cinema</span></h1><span class="sub">Municipios ganadores · ranking nacional por Valor Futuro</span></div>
   <div class="glass"><a class="back" href="index.html">← BrickBit</a></div>
 </div>
 <div class="overlay hide glass" id="ov">
@@ -88,8 +88,21 @@ function _vf3(z){ return (z.f&&z.f['3'])?(z.f['3'].f-1)*100:(z.pl||0)*3; }
   const nz=(v,a)=>{const mn=Math.min(...a),mx=Math.max(...a);return mx===mn?50:(v-mn)/(mx-mn)*100;};
   DATA.forEach((z,k)=>{ z._vf3=vf[k]; z._opp=Math.round(nz(vf[k],vf)*.55 + nz(ys[k],ys)*.25 + nz(ops[k],ops)*.20); });
 })();
-/* orden del tour: por índice de oportunidad descendente (las estrellas primero) */
-const TOUR=[...DATA].sort((a,b)=>b._opp-a._opp);
+/* El reel recorre los MUNICIPIOS ganadores a nivel NACIONAL (no una ciudad por
+   estado). Se cargan de municipios_shf.json y se rankean por índice de oportunidad. */
+let TOUR=[];
+async function loadMuniReel(){
+  try{
+    const r=await fetch('data/municipios_shf.json'); const j=await r.json();
+    const muni=(j.municipios_shf||[]).map(m=>({ n:m.municipio, edo:m.estado, lat:m.lat, lng:m.lng, pl:m.plusvalia, ci:m.ciclo, op:m.oportunidad }));
+    const pls=muni.map(z=>z.pl||0);
+    const nz=(v,a)=>{const mn=Math.min(...a),mx=Math.max(...a);return mx===mn?50:(v-mn)/(mx-mn)*100;};
+    muni.forEach(z=>{ z._vf3=(Math.pow(1+(z.pl||0)/100,3)-1)*100; z._opp=Math.round(nz(z.pl||0,pls)*.7 + (z.op==='Alta'?30:z.op==='Media'?18:8)); });
+    muni.sort((a,b)=>b._opp-a._opp);
+    TOUR=muni.slice(0,40); // top 40 municipios a nivel nacional
+  }catch(e){ TOUR=[]; }
+  if(!TOUR.length) TOUR=[...DATA].sort((a,b)=>b._opp-a._opp); // respaldo: ciudades
+}
 const VIEW={range:640,tilt:76};
 const STAY=18000; /* ms por ciudad (vuelo+órbita) */
 let map=null,i=0,playing=true,timer=null,orbit=false;
@@ -103,6 +116,7 @@ async function init(){
     });
     const lib=await google.maps.importLibrary('maps3d');
     const Map3D=lib.Map3DElement;
+    await loadMuniReel();
     const z=TOUR[0];
     map=new Map3D({center:{lat:z.lat,lng:z.lng,altitude:0},range:12000,tilt:40,heading:0,mode:(lib.MapMode&&lib.MapMode.HYBRID)||'HYBRID'});
     map.style.width='100%';map.style.height='100%';
@@ -115,17 +129,17 @@ async function init(){
 }
 function fmt(n){return Math.round(n).toLocaleString('es-MX');}
 function showOverlay(z,rank){
-  $('ov-sub').innerHTML='#'+rank+' por oportunidad · '+(z.ci||'')+' · <span style="color:var(--grn)">Índice '+z._opp+'/100</span>';
+  $('ov-sub').innerHTML='#'+rank+' municipio a nivel nacional · '+(z.ci||'')+' · <span style="color:var(--grn)">Índice '+z._opp+'/100</span>';
   $('ov-n').textContent=z.n;
   $('ov-m').innerHTML=
     '<span><b>+'+Math.round(z._vf3)+'%</b>Valor Futuro 3a</span>'+
-    '<span><b>$'+fmt(z.p)+'</b>precio /m²</span>'+
-    '<span><b>'+z.y+'%</b>yield renta</span>'+
-    (z.op?'<span><b>'+z.op+'</b>oportunidad</span>':'');
+    '<span><b>+'+(z.pl!=null?(+z.pl).toFixed(1):'—')+'%</b>plusvalía /año</span>'+
+    '<span><b>'+(z.op||'—')+'</b>oportunidad</span>'+
+    (z.edo?'<span><b>'+z.edo+'</b>estado</span>':'');
   const q=encodeURIComponent(z.n);
   $('ov-cta').innerHTML=
-    '<a class="cbtn p" href="analizador.html?zona='+q+'">📊 Analizar esta zona →</a>'+
-    '<a class="cbtn" href="zona3d.html?zona='+q+'">🌆 Ver en 3D</a>';
+    '<a class="cbtn p" href="zona3d.html?zona='+q+'">🌆 Ver en 3D →</a>'+
+    '<a class="cbtn" href="mapa.html">🗺️ Ver en el mapa</a>';
   $('ov').classList.remove('hide');
 }
 function go(n){
