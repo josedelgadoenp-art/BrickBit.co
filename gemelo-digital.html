@@ -838,17 +838,18 @@ const ENGINEERING_SCHEMA = {
 /* =====================================================================
    Llamadas a la API de Anthropic (directo desde navegador, demo)
 ===================================================================== */
-async function callClaude({ system, content, schema }) {
+async function callClaude({ system, content, schema, webSearch }) {
   const backend = ($('backendUrl').value || '').trim();
   const apiKey = ($('anthropicKey').value || '').trim();
 
   let res;
   if (backend) {
-    // Modo backend: la llave de Anthropic vive en el servidor (ver backend/README.md)
+    // Modo backend: la llave de Anthropic vive en el servidor (ver backend/README.md).
+    // El Worker resuelve la búsqueda web (pause_turn) y devuelve el JSON final.
     res = await fetch(backend.replace(/\/+$/, '') + '/api/claude', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ system, content, schema }),
+      body: JSON.stringify({ system, content, schema, webSearch: !!webSearch }),
     });
   } else {
     // Modo demo: llamada directa desde el navegador
@@ -941,12 +942,34 @@ const SISMO_CTX = {
   "Chilpancingo":{sismo:"D (muy alta, Guerrero)",suelo:"transición, laderas",clima:"cálido templado"},
 };
 function sismoContext(nombre){ return SISMO_CTX[nombre] || {sismo:"B (media, supuesta)",suelo:"firme (supuesto)",clima:"templado (supuesto)"}; }
+/* Chequeos DETERMINÍSTICOS de la geometría (criterios de ingeniería reconocidos),
+   para anclar la predicción de fallas de la IA en vez de dejarla libre. */
+function structuralChecks(g, zc){
+  const out=[];
+  const nv=+g.niveles||1, he=+g.alturaEntrepisoM||3, a=+g.anchoM||0, f=+g.fondoM||0;
+  const H=nv*he, minL=Math.min(a,f)||1, maxL=Math.max(a,f)||1;
+  const esbeltez=H/minL, aspecto=maxL/minL;
+  const sis=(g.sistemaEstructural||'').toLowerCase();
+  const zonaAlta=/\b[cd]\b/.test(((zc&&zc.sismo)||'').toLowerCase());
+  if(esbeltez>4) out.push('Esbeltez alta ('+esbeltez.toFixed(1)+':1 — '+Math.round(H)+' m de altura sobre '+Math.round(minL)+' m de base): efectos P-Δ y riesgo de volteo en sismo.');
+  else if(esbeltez>2.5) out.push('Esbeltez moderada ('+esbeltez.toFixed(1)+':1): revisar desplazamientos laterales.');
+  if(aspecto>2.5) out.push('Planta alargada ('+aspecto.toFixed(1)+':1): torsión y concentración de esfuerzos; considerar junta constructiva.');
+  if(/mamposter/.test(sis) && nv>3) out.push('Mampostería con '+nv+' niveles: sobre 3–4 niveles suele ser insuficiente; valorar marcos de concreto o muros de cortante.');
+  if(nv>=5) out.push('Edificio de '+nv+' niveles: demanda sísmica considerable'+(zonaAlta?' en zona sísmica alta':'')+'; sistema de piso y conexiones críticos.');
+  const nCol=Array.isArray(g.columnas)?g.columnas.length:0;
+  const areaPorNivel=(+g.areaTotalM2||0)/Math.max(nv,1);
+  if(nCol>0 && areaPorNivel>0 && areaPorNivel/nCol>40) out.push('Baja densidad de columnas (~1 cada '+Math.round(areaPorNivel/nCol)+' m²): poca redundancia estructural.');
+  return out;
+}
 async function analyzeEngineering(geometry) {
   const _pz = ($('projZona') && $('projZona').value) || '';
   const _zc = _pz ? sismoContext(_pz) : null;
+  const _checks = structuralChecks(geometry, _zc);
   const locCtxLine = _zc
     ? `UBICACIÓN DEL PROYECTO: ${_pz}. Zona sísmica (CFE): ${_zc.sismo}. Suelo probable: ${_zc.suelo}. Clima: ${_zc.clima}. Ajusta CADA falla (probabilidad, severidad, años) a este contexto real del sitio.`
     : `UBICACIÓN: no especificada; asume zona sísmica B y suelo firme, y decláralo en la primera falla.`;
+  const checksLine = _checks.length ? `CHEQUEOS DETERMINÍSTICOS DE LA GEOMETRÍA (criterios de ingeniería ya calculados; refléjalos en las fallas y explícalos):\n- ${_checks.join('\n- ')}` : '';
+  const searchLine = _pz ? `Si te ayuda a precisar, BUSCA en la web la microzonificación sísmica y el reglamento de construcción vigente de ${_pz}, y cita brevemente la fuente en la explicación de la primera falla.` : '';
   return callClaude({
     system: 'Eres un ingeniero estructurista y residente de obra con 25 años de experiencia en México. Cuantificas materiales conforme a prácticas comunes (NTC/CFE/ONNCCE), recomiendas calidades y acero de refuerzo por elemento, y evalúas riesgos de falla de diseño y construcción con horizontes de tiempo realistas. Sé específico y conservador; incluye desperdicio típico en cantidades.',
     content: [
@@ -961,12 +984,15 @@ async function analyzeEngineering(geometry) {
 6) La PRIMERA falla esperada: cuál será, en cuántos años, con qué confianza y por qué.
 
 ${locCtxLine}
-CONTEXTO PARA LAS FALLAS (México): la zona sísmica de la CFE, el tipo de suelo y el clima definen los modos de falla dominantes (suelo lacustre → amplificación sísmica y asentamientos diferenciales; costa salina/húmeda → corrosión y humedad; planta baja comercial abierta → piso suave/"soft-story", la falla #1 en sismos). Ajusta la probabilidad, severidad y horizonte de CADA falla a la ubicación indicada arriba. Es una estimación de IA, no un cálculo estructural formal.
+${checksLine}
+${searchLine}
+CONTEXTO PARA LAS FALLAS (México): la zona sísmica de la CFE, el tipo de suelo y el clima definen los modos de falla dominantes (suelo lacustre → amplificación sísmica y asentamientos diferenciales; costa salina/húmeda → corrosión y humedad; planta baja comercial abierta → piso suave/"soft-story", la falla #1 en sismos). Ajusta la probabilidad, severidad y horizonte de CADA falla a la ubicación y a los chequeos de arriba. Es una estimación de IA, no un cálculo estructural formal.
 
 GEOMETRÍA DEL PROYECTO:
 ${JSON.stringify(geometry, null, 2)}` },
     ],
     schema: ENGINEERING_SCHEMA,
+    webSearch: !!_pz,   // busca microzonificación/reglamento del municipio si hay ubicación
   });
 }
 
