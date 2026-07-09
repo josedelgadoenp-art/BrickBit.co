@@ -201,10 +201,35 @@
    CONFIGURACIÓN
 ============================================================ */
 const LEAD_ENDPOINT = "/api/lead";   // función Netlify → Google Sheet (déjalo "" para desactivar)
+const LEAD_QUEUE_KEY = "bb_leads_pendientes";
+// Un teléfono válido = 10 dígitos (formato MX). Evita registros basura.
+function telValido(t){ return /^\d{10}$/.test(String(t||"").replace(/\D/g,"")); }
+async function postLead(data){
+  const r=await fetch(LEAD_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data),keepalive:true});
+  if(!r.ok) throw new Error("lead_"+r.status);
+  return true;
+}
+function encolarLead(data){
+  try{ const q=JSON.parse(localStorage.getItem(LEAD_QUEUE_KEY)||"[]"); q.push(data);
+       localStorage.setItem(LEAD_QUEUE_KEY, JSON.stringify(q.slice(-50))); }catch(e){}
+}
+// Reintenta enviar los prospectos que quedaron guardados localmente por un fallo previo.
+function reintentarLeads(){
+  let q; try{ q=JSON.parse(localStorage.getItem(LEAD_QUEUE_KEY)||"[]"); }catch(e){ return; }
+  if(!q.length) return;
+  localStorage.removeItem(LEAD_QUEUE_KEY);
+  q.forEach(d=>postLead(d).catch(()=>encolarLead(d)));
+}
+// Envía el prospecto; si falla (p. ej. Netlify sin SHEETS_WEBHOOK_URL/LEAD_SECRET)
+// NO se pierde en silencio: se guarda localmente y se reintenta en la próxima visita.
 function sendLead(data){
   if(!LEAD_ENDPOINT) return;
-  try{ fetch(LEAD_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data),keepalive:true}).catch(()=>{}); }catch(e){}
+  postLead(data).then(reintentarLeads).catch(err=>{
+    console.warn("BrickBit: no se pudo registrar el prospecto ahora; se guardó localmente para reintentar.", err);
+    encolarLead(data);
+  });
 }
+try{ reintentarLeads(); }catch(e){}
 const AGENTE = {
   nombre:   "José Delgado",
   rol:      "Asesor Profesional en Seguros",
@@ -426,6 +451,7 @@ function renderPersona(){
           <div class="fld"><label for="pe">Edad</label><input id="pe" type="number" min="18" max="90" inputmode="numeric" value="${persona.edad}"></div>
           <div class="fld"><label for="pt">Número telefónico</label><input id="pt" type="tel" autocomplete="tel" inputmode="tel" placeholder="10 dígitos" value="${persona.telefono}"></div>
         </div>
+        <div id="pErr" style="display:none;color:#F5C277;font-size:.86rem;margin-top:6px">Escribe un teléfono válido a 10 dígitos para que tu asesor pueda contactarte.</div>
         <div class="priv"><span aria-hidden="true">🔒</span><span>Usamos tus datos para personalizar tu resultado y para que tu asesor, ${AGENTE.nombre}, pueda contactarte con la mejor opción. Nunca se comparten con terceros.</span></div>
       </div>
       <div class="btnrow"><button class="btn btn-primary" id="pContinue">Continuar <span aria-hidden="true">→</span></button></div>
@@ -436,6 +462,11 @@ function renderPersona(){
     persona.apellido=document.getElementById('pa').value.trim();
     persona.edad=document.getElementById('pe').value.trim();
     persona.telefono=document.getElementById('pt').value.trim();
+    if(!telValido(persona.telefono)){
+      const e=document.getElementById('pErr'); if(e)e.style.display='block';
+      const pt=document.getElementById('pt'); if(pt){pt.style.borderColor='#F5C277';pt.focus();}
+      return;
+    }
     finderHistory=[]; chosen=[]; goFinder('start',true);
   });
   document.getElementById('backBtn').addEventListener('click',renderHero);
@@ -621,7 +652,7 @@ function showResult(){
 
   // Captura pasiva: todo diagnóstico completado se registra como prospecto.
   // Los clics en agendar/WhatsApp mandan un registro extra con la acción.
-  if(!resultadoEnviado){
+  if(!resultadoEnviado && telValido(persona.telefono)){
     resultadoEnviado=true;
     sendLead({...leadBase, fecha:new Date().toISOString(),
               origen:"diagnostico-completado", accion:"Completó el diagnóstico"});
