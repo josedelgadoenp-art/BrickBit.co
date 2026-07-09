@@ -319,7 +319,7 @@ const PROYECTO_SCHEMA={type:'object',additionalProperties:false,
 const GMAPS_KEY = 'AIzaSyC15vodxaWS_VyFiqlRUwYlTtXyKUkSW5o';
 /* Tope diario de consultas de Places POR NAVEGADOR (red de seguridad de costo).
    El tope REAL y global se configura como cuota diaria en Google Cloud. */
-const BB_PLACES_MAX = 200;
+const BB_PLACES_MAX = 100;
 function _bbKey(){ return 'bb_places_'+new Date().toISOString().slice(0,10); }
 function bbPlacesLeft(){ try{ return BB_PLACES_MAX-(parseInt(localStorage.getItem(_bbKey())||'0',10)||0); }catch(e){ return BB_PLACES_MAX; } }
 function bbPlacesBump(n){ try{ localStorage.setItem(_bbKey(), String((parseInt(localStorage.getItem(_bbKey())||'0',10)||0)+(n||1))); }catch(e){} }
