@@ -368,11 +368,13 @@ function resetView(){
     map.flyCameraTo({ endCamera:{ center:{lat:viewCenter.lat,lng:viewCenter.lng,altitude:0}, range:viewRange, tilt:viewTilt, heading:viewHeading }, durationMillis:1800 });
   }
 }
-/* Elevar / Bajar la cámara. Subir = más rango y menos tilt (más picada) →
-   la cámara estática y alta deja que los tiles 3D refinen y se vean nítidos. */
+/* Elevar / Bajar la cámara. Subir = más rango y menos tilt (más picada).
+   Límites seguros: el rango nunca baja de 600 m ni el tilt pasa de 66°, para que
+   la cámara SIEMPRE quede por encima de los edificios (altura ≈ range·cos(tilt),
+   ~244 m en el peor caso) y no parezca que entra dentro de ellos. */
 function elevar(dir){
-  viewRange = Math.max(320, Math.min(16000, viewRange * (dir>0 ? 1.7 : 1/1.7)));
-  viewTilt  = Math.max(15, Math.min(82, viewTilt + (dir>0 ? -11 : 11)));
+  viewRange = Math.max(600, Math.min(12000, viewRange * (dir>0 ? 1.35 : 1/1.35)));
+  viewTilt  = Math.max(38, Math.min(66, viewTilt + (dir>0 ? -6 : 6)));
   const c = viewCenter || mapCenter(); if(!map || !c) return;
   if(map.stopCameraAnimation) map.stopCameraAnimation();
   orbiting=false; const ob=$('orbit-btn'); if(ob) ob.textContent='▶ Orbitar';
@@ -485,10 +487,13 @@ function haversine(a,b){
   const s=Math.sin(dLat/2)**2 + Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
   return 2*R*Math.asin(Math.sqrt(s));
 }
+// Curva estricta: llegar a 100 es casi imposible (exige TODO pegado). Un buen
+// lugar ronda 55–75; excelente ~85. Estar "presente pero lejos" puntúa bajo.
 function scoreDist(d){
-  if(d==null) return 8;
-  if(d<=400) return 100; if(d<=800) return 82; if(d<=1200) return 62;
-  if(d<=2000) return 38; if(d<=3000) return 20; return 10;
+  if(d==null) return 4;
+  if(d<=120) return 94; if(d<=250) return 80; if(d<=450) return 66;
+  if(d<=700) return 52; if(d<=1000) return 40; if(d<=1500) return 27;
+  if(d<=2500) return 15; return 7;
 }
 function clearWellMarkers(){
   wellMarkers.forEach(m=>{ try{ m.remove ? m.remove() : (m.parentNode&&m.parentNode.removeChild(m)); }catch(e){} });
@@ -553,11 +558,11 @@ async function analyzeWellbeing(){
   }
 }
 function renderWellbeing(overall, res){
-  const c = overall>=75?'var(--grn)':overall>=50?'var(--amb)':'var(--neg)';
+  const c = overall>=68?'var(--grn)':overall>=42?'var(--amb)':'var(--neg)';
   const filas = res.map(r=>{
     const dtxt = r.nearest==null?'sin datos':(r.nearest<1000?Math.round(r.nearest)+' m':(r.nearest/1000).toFixed(1)+' km');
     const min = r.nearest==null?'':' · '+Math.max(1,Math.round(r.nearest/80))+' min';
-    const col = r.score>=75?'var(--grn)':r.score>=50?'var(--amb)':'var(--neg)';
+    const col = r.score>=60?'var(--grn)':r.score>=38?'var(--amb)':'var(--neg)';
     return `<div class="wrow"><span>${r.emoji} ${r.label}</span><span style="color:${col}">${dtxt}${min}</span></div>`;
   }).join('');
   $('well-out').innerHTML =
