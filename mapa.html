@@ -214,6 +214,7 @@ body{font-family:'Hanken Grotesk',system-ui,-apple-system,sans-serif;background:
       <button id="mt-asesor" onclick="pickMode('asesor')">💡 Asesor</button>
       <button id="mt-heat" onclick="toggleHeat();closeVista()">🔥 Calor</button>
       <div style="height:1px;background:rgba(245,237,227,.1);margin:4px 6px"></div>
+      <button onclick="openPortafolio();closeVista()">📁 Portafolio</button>
       <button onclick="openCompare()">⚖️ Comparar zonas</button>
     </div>
   </span>
@@ -1098,6 +1099,68 @@ function zonaPDF(){
   document.body.appendChild(ov);
 }
 
+/* ===== Simulador de portafolio — retorno esperado, riesgo y diversificación =====
+   Arma una cartera de zonas y ve el Valor Futuro ponderado, la volatilidad y el
+   BrickBit Score promedio. Se guarda en el navegador. */
+let bbPortfolio=(function(){ try{ return JSON.parse(localStorage.getItem('bb_portfolio')||'[]'); }catch(e){ return []; } })();
+function _savePort(){ try{ localStorage.setItem('bb_portfolio', JSON.stringify(bbPortfolio)); }catch(e){} }
+function inPortfolio(name){ return bbPortfolio.some(x=>x.n===name); }
+function addToPortfolio(name){
+  if(inPortfolio(name)) bbPortfolio=bbPortfolio.filter(x=>x.n!==name);
+  else bbPortfolio.push({n:name,w:0});
+  _savePort();
+  const b=document.getElementById('port-add-btn'); if(b) b.textContent=inPortfolio(name)?'✓ En tu portafolio':'➕ Añadir al portafolio';
+}
+function _portWeights(){
+  const anyW=bbPortfolio.some(x=>x.w>0);
+  if(!anyW){ const w=bbPortfolio.length?1/bbPortfolio.length:0; return bbPortfolio.map(()=>w); }
+  const tot=bbPortfolio.reduce((s,x)=>s+(x.w>0?x.w:0),0)||1;
+  return bbPortfolio.map(x=>(x.w>0?x.w:0)/tot);
+}
+function setPortWeight(name,v){
+  const ws=_portWeights();
+  bbPortfolio.forEach((x,i)=>{ x.w=Math.round(ws[i]*100); });
+  const x=bbPortfolio.find(x=>x.n===name); if(x) x.w=Math.max(0,parseFloat(v)||0);
+  _savePort(); renderPortafolio();
+}
+function removeFromPortfolio(name){ bbPortfolio=bbPortfolio.filter(x=>x.n!==name); _savePort(); renderPortafolio(); }
+function openPortafolio(){
+  if(propMode||shfMode||asesorMode||(typeof HEAT_ON!=='undefined'&&HEAT_ON)) setMode('zonas');
+  renderPortafolio();
+}
+function _vf3z(name,d){ const fc=(FORECAST[name]||{})['3']; return fc?(fc.f-1)*100:(Math.pow(1+(d.g||0)/100,3)-1)*100; }
+function renderPortafolio(){
+  document.getElementById('panel-cap').textContent='📁 Portafolio';
+  const cont=document.getElementById('panel-content');
+  const valid=bbPortfolio.filter(x=>CITIES[x.n]);
+  if(!valid.length){ cont.innerHTML='<div class="sel-name">Tu portafolio está vacío</div><div class="hint" style="margin-top:8px">Abre una zona y toca <b>➕ Añadir al portafolio</b>. Aquí verás el retorno esperado, el riesgo y la diversificación combinados de tu cartera.</div>'; document.getElementById('list-sec').style.display='none'; return; }
+  const ws=_portWeights();
+  let vfSum=0,volSum=0,scSum=0; const ciclos={}; const rows=[];
+  bbPortfolio.forEach((x,i)=>{ const d=CITIES[x.n]; if(!d)return; const w=ws[i];
+    const vf=_vf3z(x.n,d), vol=(d._vol!=null?d._vol:4.0), sc=bbScore(x.n,d).total;
+    vfSum+=w*vf; volSum+=w*vol; scSum+=w*sc; ciclos[d.ciclo]=(ciclos[d.ciclo]||0)+1;
+    rows.push({n:x.n,w,vf,sc}); });
+  const scCol=scoreCol(Math.round(scSum));
+  const filas=rows.map(r=>{const nm=escapeHtml(r.n).replace(/'/g,"\\'");
+    return `<div class="zl-item" style="cursor:default">
+      <div style="flex:1"><div class="zl-name">${escapeHtml(r.n)} <span style="color:${scoreCol(r.sc)};font-weight:700">${Math.round(r.sc)}</span></div>
+      <div class="zl-meta">VF 3a +${Math.round(r.vf)}% · <input type="number" min="0" step="1" value="${Math.round(r.w*100)}" onchange="setPortWeight('${nm}',this.value)" style="width:50px;padding:3px 5px;border-radius:6px;border:0.5px solid rgba(245,237,227,.18);background:#0e0a07;color:#f5ede3;font-size:11px">% peso</div></div>
+      <button onclick="removeFromPortfolio('${nm}')" style="background:none;border:none;color:#8FA3A0;cursor:pointer;font-size:15px" title="Quitar">✕</button></div>`;}).join('');
+  const nCiclos=Object.keys(ciclos).length;
+  const kpi=(v,l,c)=>`<div style="flex:1;text-align:center;background:#0e1116;border:1px solid rgba(245,237,227,.12);border-radius:12px;padding:10px 6px"><div style="font-family:'Fraunces',serif;font-weight:600;font-size:23px;color:${c}">${v}</div><div style="font-size:10px;color:#8FA3A0">${l}</div></div>`;
+  cont.innerHTML=`
+    <div style="display:flex;gap:8px;margin:6px 0 12px">
+      ${kpi('+'+Math.round(vfSum)+'%','Retorno esperado 3a','#57c389')}
+      ${kpi(volSum.toFixed(1)+'%','Riesgo (volatilidad)','#F5C277')}
+      ${kpi(Math.round(scSum),'Score promedio',scCol)}
+    </div>
+    <div class="notice" style="margin:0 0 10px">Diversificación: <b>${valid.length} zonas</b> en <b>${nCiclos} etapa(s)</b> del ciclo. ${nCiclos>=3?'Buena diversificación entre ciclos.':'Añade zonas en distintas etapas del ciclo para bajar el riesgo.'}</div>
+    <div class="ptitle">Composición (ajusta los pesos %)</div>
+    <div class="zone-list">${filas}</div>
+    <div class="notice" style="margin-top:8px">El riesgo mostrado es el promedio ponderado de la volatilidad (conservador; diversificar lo reduce más). Informativo, no asesoría.</div>`;
+  document.getElementById('list-sec').style.display='none';
+}
+
 /* panel de ZONA (intacto) */
 function panel(name,d,tipo){
   curData=d;curTipo=tipo;const f=fcCalc(d.price,d.g);d._fc=f;d._fcm=fcModel(name,d.price);
@@ -1130,6 +1193,7 @@ function panel(name,d,tipo){
     ${CITIES[name]?`<a href="analizador.html?zona=${encodeURIComponent(name)}" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(45,212,155,.35);color:#2DD49B;text-decoration:none;margin-top:8px">📊 Analizar esta zona como inversión →</a>`:''}
     ${CITIES[name]?`<a href="zona3d.html?zona=${encodeURIComponent(name)}" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(245,194,119,.4);color:#F5C277;text-decoration:none;margin-top:8px">🌆 Ver en 3D →</a>`:''}
     ${CITIES[name]?`<button class="ia-btn" onclick="zonaPDF()" style="background:#0C1218;border:0.5px solid rgba(245,237,227,.18);color:#f5ede3;margin-top:8px">🖨 Reporte de zona (PDF)</button>`:''}
+    ${CITIES[name]?`<button class="ia-btn" id="port-add-btn" onclick="addToPortfolio('${escapeHtml(name).replace(/'/g,"\\'")}')" style="background:#0C1218;border:0.5px solid rgba(205,242,90,.3);color:#cdf25a;margin-top:8px">${inPortfolio(name)?'✓ En tu portafolio':'➕ Añadir al portafolio'}</button>`:''}
     <div id="ia-out"></div>
     ${(d.lat&&d.lng)?`<div class="ptitle" style="margin-top:18px">🔬 Radar de plusvalía silenciosa</div>
     <div class="notice" style="margin:6px 0;line-height:1.55">

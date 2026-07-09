@@ -173,6 +173,7 @@
         <div id="s-read" class="sread"></div>
         <div id="s-ctx" class="sctx"></div>
         <span class="soon">▦ Pro-forma ilustrativa · estimaciones, no es asesoría de inversión</span>
+        <button class="b ghost" onclick="simPDF()" style="width:100%;margin-top:8px">🖨 Pro-forma en PDF</button>
       </div>
     </div>
   </div>
@@ -642,7 +643,43 @@ function simulate(){
     '<span class="chip">Zona: <b>'+z.nombre+'</b></span>'+
     (z.plusvalia?'<span class="chip">Plusvalía: <b>'+z.plusvalia+'%/año</b></span>':'')+
     (z.yld?'<span class="chip">Yield renta: <b>'+z.yld+'%</b></span>':'');
+  _simLast={ z, m, tM2, cM2, ind, efi, pV, vendible, terreno, constr, inversion, ventas, util, margen, multiplo };
 }
+let _simLast=null;
+/* Pro-forma del Simulador 3D en PDF con marca BrickBit. */
+function simPDF(){
+  if(!_simLast){ simulate(); }
+  if(!_simLast){ return; }
+  const s=_simLast, z=s.z;
+  const f=n=>Math.round(n).toLocaleString('es-MX');
+  const fdate=new Date().toLocaleString('es-MX',{year:'numeric',month:'long',day:'numeric'});
+  const rows=[
+    ['Terreno','<b>'+f(z.precio_m2||0)+' base</b> · lote '+f(s.m.lote)+' m²'],
+    ['Construible / vendible',f(s.m.construible)+' / '+f(s.vendible)+' m²'],
+    ['Niveles',f(s.m.niveles)+' · altura '+f(s.m.height)+' m'],
+    ['Inversión — terreno',_smoney(s.terreno)],
+    ['Inversión — construcción + indirectos',_smoney(s.constr*(1+s.ind))],
+    ['Inversión total',_smoney(s.inversion)],
+    ['Ventas ('+f(s.pV)+' $/m²)',_smoney(s.ventas)],
+    ['Utilidad bruta',_smoney(s.util)+' · '+s.margen.toFixed(1)+'%'],
+    ['Múltiplo (ventas/inversión)',s.multiplo.toFixed(2)+'x'],
+  ].map(r=>'<tr><td>'+r[0]+'</td><td class="r b">'+r[1]+'</td></tr>').join('');
+  const w=window.open('','_blank'); if(!w){ alert('Permite las ventanas emergentes para el PDF.'); return; }
+  w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Simulador 3D · '+z.nombre+'</title>'+
+   '<style>body{font-family:system-ui,-apple-system,sans-serif;color:#21292f;max-width:800px;margin:24px auto;padding:0 20px}'+
+   '.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1a7d50;padding-bottom:12px}'+
+   '.brand{font-size:26px;font-weight:800;letter-spacing:-1px;color:#0F6E56}.brand span{color:#1a7d50}'+
+   'h1{font-size:21px;margin:16px 0 2px}.meta{font-size:12px;color:#6c787d}'+
+   'table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}td{padding:6px 4px;border-bottom:1px solid #e7ecea}td.r{text-align:right}td.b{font-weight:700;color:#0F6E56}'+
+   '.foot{margin-top:22px;border-top:1px solid #d8e0dd;padding-top:10px;font-size:10.5px;color:#7a878c}@media print{@page{margin:16mm}}</style></head><body>'+
+   '<div class="head"><div><div class="brand">brick<span>bit</span></div><div class="meta">Simulador de desarrollo 3D</div></div><div class="meta">'+fdate+'</div></div>'+
+   '<h1>'+z.nombre+'</h1><div class="meta">COS/CUS y costos estimados · precio de venta '+f(s.pV)+' $/m²</div>'+
+   '<table>'+rows+'</table>'+
+   '<div class="foot"><b>BrickBit</b> · Volumen y pro-forma ilustrativos (estimaciones), no son linderos reales ni asesoría de inversión.</div>'+
+   '<script>setTimeout(function(){window.print();},350);<\/script></body></html>');
+  w.document.close();
+}
+function _smoney(n){ const a=Math.abs(n); const s=a>=1e6?'$'+(n/1e6).toFixed(1)+'M':a>=1e3?'$'+Math.round(n/1e3)+'k':'$'+Math.round(n); return s; }
 
 /* ====== overlays de ayuda ====== */
 function showSetup(){
