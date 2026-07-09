@@ -1361,7 +1361,21 @@ async function scanVibrancia(lat,lng,name){
         <div style="font-size:11px;color:#8FA3A0">${n} locales del ecosistema en crecimiento en ${R} m${avg?` · ★${avg.toFixed(1)} promedio`:''}</div></div>
       </div>
       ${top?`<div style="margin-top:8px">${top}</div>`:''}
-      <div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">Señal de <b>densidad y calidad</b> del ecosistema hoy — Google Places no expone la fecha de apertura, así que es un <b>proxy</b> de gentrificación, no un hecho.</div>`;
+      <div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">Señal de <b>densidad y calidad</b> del ecosistema hoy — Google Places no expone la fecha de apertura, así que es un <b>proxy</b> de gentrificación, no un hecho.</div>
+      <div id="vib-trend"></div>`;
+    // Radar de gentrificación EN EL TIEMPO: registra la lectura y muestra la tendencia si hay historial.
+    try{
+      const base=BB_BACKEND.replace(/\/+$/,'');
+      fetch(base+'/api/vibra-log',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({zona:name,score:score}),keepalive:true}).catch(()=>{});
+      const hr=await fetch(base+'/api/vibra?zona='+encodeURIComponent(name));
+      if(hr.ok){ const h=((await hr.json()).historial)||[];
+        if(h.length>=2){ const first=h[0].s,last=h[h.length-1].s,delta=last-first;
+          const dc=delta>0?'#57c389':delta<0?'#F08886':'#8FA3A0';
+          const tr=document.getElementById('vib-trend');
+          if(tr) tr.innerHTML='<div class="notice" style="margin-top:8px">📈 <b>Tendencia</b> ('+h.length+' lecturas): índice '+first+' → <b style="color:'+dc+'">'+last+'</b> ('+(delta>=0?'+':'')+delta+' pts). Se actualiza con cada escaneo.</div>';
+        }
+      }
+    }catch(e){}
   }catch(e){
     console.error('[vibrancia]',e);
     if(out) out.innerHTML='<div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">No se pudo consultar Google Places. Activa la <b>Places API (New)</b> y la facturación en Google Cloud, y permite Places en el key de brickbit.co.</div>';

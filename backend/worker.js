@@ -93,6 +93,15 @@ export default {
       return handlePublicApi('forecast', request, url, env);
     }
 
+    /* ---- Radar de gentrificación: registra/consulta el historial de vibrancia
+       por zona (requiere KV SHARES; si falta, no rompe). ---- */
+    if (url.pathname === '/api/vibra-log' && request.method === 'POST') {
+      return handleVibraLog(request, env);
+    }
+    if (url.pathname === '/api/vibra' && (request.method === 'GET' || request.method === 'OPTIONS')) {
+      return handleVibraGet(request, url, env);
+    }
+
     if (url.pathname !== '/api/claude' || request.method !== 'POST') {
       return json({ error: { message: 'No encontrado. Usa GET /api/score?zona=, GET /api/forecast?zona=, POST /api/claude, POST /api/share o GET /api/share/{id}' } }, 404, headers);
     }
@@ -588,6 +597,40 @@ async function handlePublicApi(kind, request, url, env) {
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err && err.message || err) }), { status: 500, headers });
   }
+}
+
+/* =====================================================================
+   Radar de gentrificación en el tiempo
+   Guarda una lectura de vibrancia por zona y día en KV (SHARES) y devuelve el
+   historial, para graficar la tendencia. Empieza a acumular en cuanto la gente
+   usa el escaneo de vibrancia; la curva aparece cuando hay ≥2 lecturas.
+===================================================================== */
+async function handleVibraLog(request, env) {
+  const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
+  if (!env.SHARES) return new Response(JSON.stringify({ ok: false, error: 'sin_kv' }), { status: 200, headers });
+  let d; try { d = await request.json(); } catch { return new Response(JSON.stringify({ ok: false }), { status: 400, headers }); }
+  const zona = String(d && d.zona || '').slice(0, 80);
+  const score = Math.round(Number(d && d.score));
+  if (!zona || !isFinite(score)) return new Response(JSON.stringify({ ok: false }), { status: 400, headers });
+  const key = 'vibra:' + zona.toLowerCase();
+  let arr = [];
+  try { const v = await env.SHARES.get(key); if (v) arr = JSON.parse(v); } catch {}
+  const today = new Date().toISOString().slice(0, 10);
+  const last = arr[arr.length - 1];
+  if (last && last.d === today) last.s = score;      // una lectura por día por zona
+  else arr.push({ d: today, s: score });
+  arr = arr.slice(-60);
+  await env.SHARES.put(key, JSON.stringify(arr));
+  return new Response(JSON.stringify({ ok: true, n: arr.length }), { headers });
+}
+async function handleVibraGet(request, url, env) {
+  const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json', 'cache-control': 'public, max-age=300' };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+  const zona = (url.searchParams.get('zona') || '').trim();
+  if (!env.SHARES || !zona) return new Response(JSON.stringify({ historial: [] }), { headers });
+  let arr = [];
+  try { const v = await env.SHARES.get('vibra:' + zona.toLowerCase()); if (v) arr = JSON.parse(v); } catch {}
+  return new Response(JSON.stringify({ zona, historial: arr }), { headers });
 }
 
 /* --- WhatsApp vía Twilio --- */
