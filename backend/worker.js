@@ -70,6 +70,20 @@ export default {
       return handleIris(request, env, headers);
     }
 
+    /* ---- Alertas de zona por WhatsApp: disparo manual protegido con clave.
+       Útil para probar sin esperar al cron. POST /api/zone-alerts/run?key=… ---- */
+    if (url.pathname === '/api/zone-alerts/run' && request.method === 'POST') {
+      if (!env.ALERT_TEST_KEY || url.searchParams.get('key') !== env.ALERT_TEST_KEY) {
+        return json({ error: { message: 'no_autorizado' } }, 403, headers);
+      }
+      try {
+        const out = await runZoneAlerts(env);
+        return json({ ok: true, ...out }, 200, headers);
+      } catch (e) {
+        return json({ ok: false, error: String(e && e.message || e) }, 500, headers);
+      }
+    }
+
     if (url.pathname !== '/api/claude' || request.method !== 'POST') {
       return json({ error: { message: 'No encontrado. Usa POST /api/claude, POST /api/share o GET /api/share/{id}' } }, 404, headers);
     }
@@ -146,7 +160,9 @@ export default {
   /* Cron mensual (ver [triggers] en wrangler.toml): envía el informe de zona
      por correo a los suscriptores. Requiere KV SHARES + RESEND_API_KEY. */
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(runMonthlyAlerts(env));
+    // El informe mensual sólo en su horario (día 1); las alertas de zona en cada disparo.
+    if (event.cron === '0 14 1 * *') ctx.waitUntil(runMonthlyAlerts(env));
+    ctx.waitUntil(runZoneAlerts(env).catch(e => console.error('[zone-alerts]', e && e.message)));
   },
 };
 
@@ -385,4 +401,122 @@ async function sendAlertEmail(env, emails, zona, informeHtml) {
     }),
   });
   if (!res.ok) throw new Error('Resend ' + res.status + ': ' + (await res.text()).slice(0, 200));
+}
+
+
+/* =====================================================================
+   Alertas de zona por WhatsApp (MVP: te avisan a TI, José)
+   ---------------------------------------------------------------------
+   Lee la tabla `zone_alerts` de Supabase (con la service key, saltando RLS),
+   compara la apreciación proyectada de cada zona vigilada contra la línea base
+   guardada (`ultimo_valor`) y, si el pronóstico se movió más que el umbral del
+   usuario, te manda UN WhatsApp (vía Twilio) con el resumen de los cambios.
+
+   Secretos requeridos en el Worker (si falta alguno, la función no hace nada):
+     SUPABASE_URL           p.ej. https://xxxx.supabase.co
+     SUPABASE_SERVICE_KEY   service_role key (NUNCA en el navegador)
+     TWILIO_ACCOUNT_SID
+     TWILIO_AUTH_TOKEN
+     TWILIO_WHATSAPP_FROM   p.ej. whatsapp:+14155238886 (sandbox) o tu número
+     ALERT_WHATSAPP_TO      tu número, p.ej. whatsapp:+5215584681927
+   Opcional:
+     SITE_URL               de dónde leer forecast.json (def. https://brickbit.co)
+     ALERT_TEST_KEY         clave para el disparo manual POST /api/zone-alerts/run
+===================================================================== */
+async function runZoneAlerts(env) {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_KEY) return { skipped: 'falta_supabase' };
+  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_WHATSAPP_FROM || !env.ALERT_WHATSAPP_TO) {
+    return { skipped: 'falta_twilio' };
+  }
+
+  // 1) alertas activas
+  const rows = await sbSelect(env,
+    'zone_alerts',
+    '?activa=eq.true&select=id,user_id,zona,horizonte,umbral_pct,ultimo_valor');
+  if (!rows || !rows.length) return { revisadas: 0, cambios: [] };
+
+  // 2) pronóstico actual (multiplicadores por zona/horizonte)
+  const site = (env.SITE_URL || 'https://brickbit.co').replace(/\/+$/, '');
+  const fRes = await fetch(site + '/data/forecast.json', { cf: { cacheTtl: 0 } });
+  if (!fRes.ok) throw new Error('forecast.json ' + fRes.status);
+  const forecast = await fRes.json();
+
+  const cambios = [];
+  for (const a of rows) {
+    const zf = forecast[a.zona];
+    const c = zf && zf[String(a.horizonte)];
+    if (!c || typeof c.f !== 'number') continue;
+
+    // apreciación proyectada, en %, para comparar contra el umbral (en puntos)
+    const apprNueva = Math.round((c.f - 1) * 1000) / 10;
+    const prev = a.ultimo_valor;
+
+    // primera vez: sólo fijamos la línea base, sin notificar
+    if (prev === null || prev === undefined) {
+      await sbUpdate(env, 'zone_alerts', a.id, { ultimo_valor: apprNueva });
+      continue;
+    }
+    const delta = Math.abs(apprNueva - Number(prev));
+    if (delta >= Number(a.umbral_pct)) {
+      cambios.push({ zona: a.zona, horizonte: a.horizonte, antes: Number(prev), ahora: apprNueva, delta: Math.round(delta * 10) / 10 });
+      await sbUpdate(env, 'zone_alerts', a.id, { ultimo_valor: apprNueva, notificado_en: new Date().toISOString() });
+    }
+  }
+
+  if (cambios.length) {
+    // dedup de líneas por zona+horizonte (varios usuarios pueden vigilar lo mismo)
+    const vistos = new Set();
+    const lineas = [];
+    for (const c of cambios) {
+      const k = c.zona + '|' + c.horizonte;
+      if (vistos.has(k)) continue;
+      vistos.add(k);
+      const sa = (c.antes >= 0 ? '+' : '') + c.antes, sn = (c.ahora >= 0 ? '+' : '') + c.ahora;
+      lineas.push(`• ${c.zona} (${c.horizonte}a): ${sa}% → ${sn}% (Δ ${c.delta} pts)`);
+    }
+    const cuerpo =
+      '🏗️ BrickBit · Alertas de pronóstico\n' +
+      lineas.length + ' zona(s) vigilada(s) por tus usuarios cambiaron más que su umbral:\n\n' +
+      lineas.join('\n') +
+      '\n\nEntra a "Mi BrickBit" para ver el detalle.';
+    await sendWhatsAppTwilio(env, env.ALERT_WHATSAPP_TO, cuerpo);
+  }
+
+  return { revisadas: rows.length, cambios };
+}
+
+/* --- Supabase REST con service key (salta RLS: úsala SOLO en el servidor) --- */
+async function sbSelect(env, table, query) {
+  const r = await fetch(env.SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/' + table + query, {
+    headers: { apikey: env.SUPABASE_SERVICE_KEY, authorization: 'Bearer ' + env.SUPABASE_SERVICE_KEY },
+  });
+  if (!r.ok) throw new Error('Supabase select ' + r.status + ': ' + (await r.text()).slice(0, 200));
+  return r.json();
+}
+async function sbUpdate(env, table, id, patch) {
+  const r = await fetch(env.SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/' + table + '?id=eq.' + encodeURIComponent(id), {
+    method: 'PATCH',
+    headers: {
+      apikey: env.SUPABASE_SERVICE_KEY, authorization: 'Bearer ' + env.SUPABASE_SERVICE_KEY,
+      'content-type': 'application/json', prefer: 'return=minimal',
+    },
+    body: JSON.stringify(patch),
+  });
+  if (!r.ok) throw new Error('Supabase update ' + r.status + ': ' + (await r.text()).slice(0, 200));
+}
+
+/* --- WhatsApp vía Twilio --- */
+async function sendWhatsAppTwilio(env, to, body) {
+  const sid = env.TWILIO_ACCOUNT_SID, tok = env.TWILIO_AUTH_TOKEN;
+  const wa = s => (String(s).startsWith('whatsapp:') ? String(s) : 'whatsapp:' + s);
+  const form = new URLSearchParams();
+  form.set('From', wa(env.TWILIO_WHATSAPP_FROM));
+  form.set('To', wa(to));
+  form.set('Body', body);
+  const r = await fetch('https://api.twilio.com/2010-04-01/Accounts/' + sid + '/Messages.json', {
+    method: 'POST',
+    headers: { authorization: 'Basic ' + btoa(sid + ':' + tok), 'content-type': 'application/x-www-form-urlencoded' },
+    body: form.toString(),
+  });
+  if (!r.ok) throw new Error('Twilio ' + r.status + ': ' + (await r.text()).slice(0, 200));
 }

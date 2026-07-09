@@ -214,6 +214,7 @@ body{font-family:'Hanken Grotesk',system-ui,-apple-system,sans-serif;background:
       <button id="mt-asesor" onclick="pickMode('asesor')">💡 Asesor</button>
       <button id="mt-heat" onclick="toggleHeat();closeVista()">🔥 Calor</button>
       <div style="height:1px;background:rgba(245,237,227,.1);margin:4px 6px"></div>
+      <button onclick="openEstiloVida();closeVista()">🧭 Estilo de vida</button>
       <button onclick="openCompare()">⚖️ Comparar zonas</button>
     </div>
   </span>
@@ -310,6 +311,50 @@ const PROYECTO_SCHEMA={type:'object',additionalProperties:false,
   },
   required:['tipo','desc','niveles','units','supVend','mix','fin','just']
 };
+
+/* ===== Google Places (New) — toolkit compartido =====
+   El mapa es Leaflet; Places se carga de forma PEREZOSA sólo al usarse (Vibrancia
+   y Búsqueda por estilo de vida). La key es pública por diseño (restringida por
+   referrer a brickbit.co). Requiere "Places API (New)" + facturación en el
+   proyecto de Google Cloud de esa key. */
+const GMAPS_KEY = 'AIzaSyC15vodxaWS_VyFiqlRUwYlTtXyKUkSW5o';
+let _placesLib=null,_placesLoading=null;
+function loadPlaces(){
+  if(_placesLib) return Promise.resolve(_placesLib);
+  if(_placesLoading) return _placesLoading;
+  _placesLoading = new Promise((resolve,reject)=>{
+    const boot=()=>google.maps.importLibrary('places').then(l=>{_placesLib=l;resolve(l);}).catch(reject);
+    if(window.google && google.maps && google.maps.importLibrary){ boot(); return; }
+    ((g)=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",
+      m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,
+      u=()=>h||(h=new Promise(async(f,n)=>{await(a=m.createElement("script"));e.set("libraries",[...r]+"");
+      for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);
+      a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;
+      a.onerror=()=>h=n(Error(p+" could not load."));m.head.append(a)}));
+      d[l]?0:d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({key:GMAPS_KEY,v:'weekly'});
+    let t=0;(function chk(){ if(window.google&&google.maps&&google.maps.importLibrary) return boot();
+      if(t++>120) return reject(new Error('timeout Places')); setTimeout(chk,100); })();
+  });
+  return _placesLoading;
+}
+function _hav(a,b){const R=6371000,tR=x=>x*Math.PI/180;const dLat=tR(b.lat-a.lat),dLng=tR(b.lng-a.lng);
+  const s=Math.sin(dLat/2)**2+Math.cos(tR(a.lat))*Math.cos(tR(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));}
+async function scanPlaces(center,types,radius,fields){
+  const lib=await loadPlaces();
+  const {Place,SearchNearbyRankPreference}=lib;
+  const rank=(SearchNearbyRankPreference&&SearchNearbyRankPreference.DISTANCE)||'DISTANCE';
+  const r=await Place.searchNearby({
+    fields: fields||['location','displayName'],
+    locationRestriction:{ center:{lat:center.lat,lng:center.lng}, radius: radius||2000 },
+    includedPrimaryTypes: types, maxResultCount: 20, rankPreference: rank
+  });
+  const places=(r&&r.places)||[];
+  return places.map(pl=>{ const loc=pl.location, lat=(typeof loc.lat==='function')?loc.lat():loc.lat, lng=(typeof loc.lng==='function')?loc.lng():loc.lng;
+    return { nombre:pl.displayName||'', lat, lng, primaryType:(pl.primaryType||null), types:(pl.types||[]),
+             rating:(pl.rating!=null?pl.rating:null), total:(pl.userRatingCount!=null?pl.userRatingCount:null), d:_hav(center,{lat,lng}) }; })
+    .filter(x=>isFinite(x.d)).sort((a,b)=>a.d-b.d);
+}
 
 /* ===== Capa por métrica (multicapa + Valor Futuro) + Top zonas ===== */
 let METRIC='oport';
@@ -943,7 +988,11 @@ function panel(name,d,tipo){
     ${(CITIES[name]&&window.bbConfigured)?`<button class="ia-btn" id="fav-btn" data-zona="${escapeHtml(name)}" onclick="toggleFav(this)" style="background:#0C1218;border:0.5px solid rgba(245,237,227,.18);color:#f5ede3;margin-top:8px">☆ Guardar zona en favoritos</button>`:''}
     ${CITIES[name]?`<a href="analizador.html?zona=${encodeURIComponent(name)}" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(45,212,155,.35);color:#2DD49B;text-decoration:none;margin-top:8px">📊 Analizar esta zona como inversión →</a>`:''}
     ${CITIES[name]?`<a href="zona3d.html?zona=${encodeURIComponent(name)}" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(245,194,119,.4);color:#F5C277;text-decoration:none;margin-top:8px">🌆 Ver en 3D →</a>`:''}
-    <div id="ia-out"></div>`;
+    <div id="ia-out"></div>
+    ${(d.lat&&d.lng)?`<div class="ptitle" style="margin-top:18px">🔬 Radar de plusvalía silenciosa</div>
+    <div class="notice" style="margin:6px 0">Detecta el <b>ecosistema "canario"</b> (cafés de especialidad, galerías, bares, gimnasios, librerías) que suele anticipar la gentrificación de una zona.</div>
+    <button class="ia-btn" id="vib-btn" onclick="scanVibrancia(${d.lat},${d.lng},'${escapeHtml(name).replace(/'/g,"\\'")}')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="9"/></svg>Escanear vibrancia de la zona</button>
+    <div id="vib-out"></div>`:''}`;
   renderFC();drawFC();
   if(window.bbConfigured) initFavBtn(name);
 }
@@ -1063,6 +1112,138 @@ function calcProyectoLocal(name,d,tipo){
     fin:{cTot,ing,util,roi:+roi.toFixed(1),tir:+tir.toFixed(1),plazo,vpn,peq},
     just:[`Lote representativo de ${lot} m² con CUS ${cus} → ${supVend.toLocaleString()} m² vendibles.`,`Precio de venta ${fmt(sale)}/m² y costo de obra ${fmt(constM2)}/m² definen el margen.`,`Tipología óptima: ${tipoP.toLowerCase()} para el rango de precio de ${name}.`,`Costo total ${fmtM(cTot)} (terreno ${fmtM(cT)} + obra ${fmtM(cC)} + indirectos ${fmtM(cI)}).`,`Ingresos ${fmtM(ing)} → ROI ${Math.round(roi)}% y TIR ${Math.round(tir)}% en ${plazo} meses.`],src:"local"};
 }
+/* ===== Idea 1 · Radar de "plusvalía silenciosa" (Índice de Vibrancia) =====
+   Cuenta el ecosistema "canario" (cafés, galerías, bares, gimnasios, librerías)
+   como proxy de gentrificación temprana. NOTA HONESTA: Google Places no expone la
+   fecha de apertura, así que medimos DENSIDAD y CALIDAD del ecosistema HOY, no
+   "abrieron en los últimos 6 meses". Es una señal, no un hecho. */
+let _vibBusy=false;
+async function scanVibrancia(lat,lng,name){
+  if(_vibBusy) return; _vibBusy=true;
+  const out=document.getElementById('vib-out'), btn=document.getElementById('vib-btn');
+  if(btn)btn.disabled=true;
+  if(out) out.innerHTML='<div class="notice" style="margin-top:8px"><span class="spin" style="vertical-align:middle"></span> Escaneando el ecosistema de '+name+'…</div>';
+  try{
+    const canary=['cafe','art_gallery','bar','gym','book_store'], R=1600;
+    const places=await scanPlaces({lat,lng},canary,R,['location','displayName','rating','userRatingCount','primaryType']);
+    const dentro=places.filter(p=>p.d<=R);
+    const buenos=dentro.filter(p=>p.rating==null||p.rating>=4.0);
+    const n=buenos.length;
+    const rated=buenos.filter(p=>p.rating!=null);
+    const avg=rated.length?rated.reduce((s,p)=>s+p.rating,0)/rated.length:0;
+    const dens=Math.min(1,n/12), qual=avg?Math.max(0,Math.min(1,avg-4)):0;
+    const score=Math.round(Math.min(100, dens*80 + qual*20));
+    const col=score>=66?'#57c389':score>=40?'#F5C277':'#8FA3A0';
+    const nivel=score>=66?'Hotspot emergente':score>=40?'Ecosistema en formación':'Aún tranquila';
+    const top=buenos.slice(0,6).map(p=>{
+      const dt=p.d<1000?Math.round(p.d)+' m':(p.d/1000).toFixed(1)+' km';
+      const st=p.rating!=null?` · ★${p.rating.toFixed(1)}`:'';
+      return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:0.5px solid rgba(255,255,255,.06)"><span>${escapeHtml(p.nombre)}</span><span style="color:#8FA3A0">${dt}${st}</span></div>`;
+    }).join('');
+    out.innerHTML=`
+      <div style="display:flex;align-items:center;gap:14px;margin-top:6px">
+        <div style="font-family:'Fraunces',serif;font-weight:600;font-size:38px;line-height:1;color:${col}">${score}</div>
+        <div><div style="font-weight:700;color:${col}">${nivel}</div>
+        <div style="font-size:11px;color:#8FA3A0">${n} locales "canario" en ${R} m${avg?` · ★${avg.toFixed(1)} promedio`:''}</div></div>
+      </div>
+      ${top?`<div style="margin-top:8px">${top}</div>`:''}
+      <div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">Señal de <b>densidad y calidad</b> del ecosistema hoy — Google Places no expone la fecha de apertura, así que es un <b>proxy</b> de gentrificación, no un hecho.</div>`;
+  }catch(e){
+    console.error('[vibrancia]',e);
+    if(out) out.innerHTML='<div class="notice" style="margin-top:8px;border-color:rgba(224,161,58,.35)">No se pudo consultar Google Places. Activa la <b>Places API (New)</b> y la facturación en Google Cloud, y permite Places en el key de brickbit.co.</div>';
+  }finally{ _vibBusy=false; if(btn)btn.disabled=false; }
+}
+
+/* ===== Idea 2 · Búsqueda inversa por "ecosistema de vida" =====
+   El usuario define sus reglas (parque, súper, transporte, restaurantes bien
+   calificados…) y BrickBit rankea las 32 zonas donde MEJOR se cumplen. Evalúa a
+   nivel de CENTRO de ciudad (aún no colonia) con Google Places. */
+const EV_CATS=[
+  {key:'parque', emoji:'🌳', label:'Parque',             types:['park']},
+  {key:'super',  emoji:'🛒', label:'Supermercado',       types:['supermarket','grocery_store']},
+  {key:'rest',   emoji:'🍽️', label:'Restaurantes 4.3★+', types:['restaurant'], minRating:4.3},
+  {key:'transp', emoji:'🚇', label:'Transporte',         types:['transit_station','bus_station','subway_station']},
+  {key:'gym',    emoji:'🏋️', label:'Gimnasio',           types:['gym']},
+  {key:'escuela',emoji:'🎓', label:'Escuela',            types:['school']},
+  {key:'salud',  emoji:'🏥', label:'Salud',              types:['hospital','pharmacy']},
+];
+let evSel={parque:true,super:true,rest:true}, evMin=10, evBusy=false;
+function openEstiloVida(){
+  if(propMode||shfMode||asesorMode||(typeof HEAT_ON!=='undefined'&&HEAT_ON)) setMode('zonas');
+  renderEstiloVida();
+}
+function evToggle(k){ evSel[k]=!evSel[k]; renderEstiloVida(true); }
+function setEvMin(v){ evMin=+v; const l=document.getElementById('ev-min-l'); if(l)l.textContent=evMin+' min'; }
+function renderEstiloVida(keepOut){
+  const prevOut = keepOut ? ((document.getElementById('ev-out')||{}).innerHTML||'') : '';
+  document.getElementById('panel-cap').textContent='🧭 Estilo de vida';
+  const chips = EV_CATS.map(c=>`<button onclick="evToggle('${c.key}')" class="hz-btn ${evSel[c.key]?'active':''}" style="flex:0 0 auto;padding:6px 10px;margin:3px">${c.emoji} ${c.label}</button>`).join('');
+  document.getElementById('panel-content').innerHTML=`
+    <div class="sel-name">Tu ecosistema a la medida</div>
+    <div class="sel-tipo">Elige lo que quieres cerca y te digo qué zonas lo cumplen mejor.</div>
+    <div style="display:flex;flex-wrap:wrap;margin:10px 0 4px">${chips}</div>
+    <div class="asesor-f" style="margin-top:8px"><div class="af-l">Cercanía máxima (<span id="ev-min-l">${evMin} min</span> a pie)</div>
+      <input type="range" min="5" max="20" step="5" value="${evMin}" oninput="setEvMin(this.value)" style="width:100%;accent-color:#cdf25a"></div>
+    <button onclick="buscarEstiloVida()" class="ia-btn" id="ev-run" style="margin-top:6px">🔎 Buscar mis zonas ideales</button>
+    <div class="notice" style="margin:10px 0;border-color:rgba(224,161,58,.35)">Evalúa las 32 zonas a nivel de <b>centro de ciudad</b> con Google Places (consume cuota). El detalle por colonia llegará con listados reales.</div>
+    <div id="ev-out">${prevOut}</div>`;
+}
+async function _chunkRun(items, size, fn){
+  const out=[];
+  for(let i=0;i<items.length;i+=size){ const part=await Promise.all(items.slice(i,i+size).map(fn)); out.push(...part); }
+  return out;
+}
+function _matchCat(places, cat, maxM){
+  const cand=places.filter(p=>{
+    const inType=(p.primaryType&&cat.types.includes(p.primaryType)) || cat.types.some(t=>(p.types||[]).includes(t));
+    if(!inType) return false;
+    if(cat.minRating && !(p.rating!=null && p.rating>=cat.minRating)) return false;
+    return true;
+  });
+  const nearest=cand.length?cand[0]:null; // scanPlaces ya ordena por distancia
+  return { pass: !!(nearest && nearest.d<=maxM), nearest };
+}
+async function buscarEstiloVida(){
+  if(evBusy) return;
+  const sel=EV_CATS.filter(c=>evSel[c.key]);
+  const out=document.getElementById('ev-out'), btn=document.getElementById('ev-run');
+  if(!sel.length){ if(out)out.innerHTML='<div class="hint">Elige al menos una cosa que quieras cerca.</div>'; return; }
+  evBusy=true; if(btn)btn.disabled=true;
+  const maxM=evMin*80;                          // ~80 m por minuto a pie
+  const unionTypes=[...new Set(sel.flatMap(c=>c.types))];
+  const zonas=Object.entries(CITIES);
+  if(out) out.innerHTML='<div class="notice" style="margin-top:8px"><span class="spin" style="vertical-align:middle"></span> Evaluando las '+zonas.length+' zonas contra tu estilo de vida…</div>';
+  try{
+    const evaluadas=await _chunkRun(zonas, 6, async ([nom,d])=>{
+      try{
+        const places=await scanPlaces({lat:d.lat,lng:d.lng}, unionTypes, Math.max(2600,maxM+400), ['location','displayName','primaryType','types','rating']);
+        const cats=sel.map(c=>({ c, m:_matchCat(places,c,maxM) }));
+        const passes=cats.filter(x=>x.m.pass).length;
+        const sumD=cats.reduce((s,x)=>s+(x.m.nearest?x.m.nearest.d:9999),0);
+        return { nom, d, passes, total:sel.length, sumD, cats };
+      }catch(e){ return { nom, d, passes:-1, total:sel.length, sumD:9e9, cats:[] }; }
+    });
+    const ok=evaluadas.filter(z=>z.passes>=0);
+    if(!ok.length){ out.innerHTML='<div class="notice" style="border-color:rgba(224,161,58,.35)">No se pudo consultar Google Places. Activa la <b>Places API (New)</b> y la facturación en Google Cloud.</div>'; return; }
+    ok.sort((a,b)=> b.passes-a.passes || a.sumD-b.sumD);
+    const top=ok.slice(0,8);
+    const filas=top.map((z,i)=>{
+      const ticks=sel.map(c=>{ const m=z.cats.find(x=>x.c.key===c.key); const p=m&&m.m.pass; return `<span title="${c.label}" style="opacity:${p?1:.28}">${c.emoji}</span>`; }).join(' ');
+      const col=z.passes===z.total?'#57c389':z.passes>=z.total*0.6?'#cdf25a':'#F5C277';
+      return `<div class="zl-item" onclick="topGoto('${escapeHtml(z.nom).replace(/'/g,"\\'")}')">
+        <div><div class="zl-name"><span style="display:inline-block;width:18px;color:#6b7d79">${i+1}</span>${escapeHtml(z.nom)}</div>
+        <div class="zl-meta">${ticks} · cumple <b>${z.passes}/${z.total}</b></div></div>
+        <div class="zl-price" style="color:${col}">${Math.round(z.passes/z.total*100)}%</div></div>`;
+    }).join('');
+    out.innerHTML=`<div class="ptitle" style="margin-top:6px">Zonas que mejor encajan (${ok.length} evaluadas)</div>
+      <div class="zone-list">${filas}</div>
+      <div class="notice" style="margin-top:8px">Emoji encendido = ese servicio está a ≤ ${evMin} min a pie del centro de la zona. Toca una zona para verla.</div>`;
+  }catch(e){
+    console.error('[estilo]',e);
+    if(out) out.innerHTML='<div class="notice" style="border-color:rgba(224,161,58,.35)">No se pudo completar la búsqueda con Google Places.</div>';
+  }finally{ evBusy=false; if(btn)btn.disabled=false; }
+}
+
 async function runIA(){
   if(!curData)return;const d=curData,name=document.querySelector(".sel-name").textContent;
   const btn=document.getElementById("ia-btn"),out=document.getElementById("ia-out");btn.disabled=true;

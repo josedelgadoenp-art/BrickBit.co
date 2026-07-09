@@ -69,6 +69,14 @@
   .sread .row{display:flex;justify-content:space-between;gap:10px}
   .sread .row.total{border-top:1px solid rgba(245,237,227,.15);margin-top:5px;padding-top:5px;font-weight:700}
   .sread .pos{color:var(--grn)} .sread .negv{color:var(--neg)} .sread .ambv{color:var(--amb)}
+  /* Bienestar y servicios */
+  .wscore{font-family:'Fraunces',serif;font-weight:600;font-size:36px;line-height:1;margin-top:12px;text-align:center}
+  .wscore span{font-size:15px;color:var(--sec)}
+  .wlabel{text-align:center;font-size:11px;color:var(--sec);letter-spacing:.02em;margin:2px 0 2px}
+  .wradar{width:100%;max-width:220px;display:block;margin:2px auto 4px}
+  .wlist{margin-top:4px}
+  .wrow{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:5px 0;border-bottom:.5px solid rgba(245,237,227,.07)}
+  .wrow span:first-child{color:var(--tx)}
   .sctx{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
   .sctx .chip{font-family:'Space Mono',monospace;font-size:10px;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:4px 9px}
   .sctx .chip b{color:var(--tx)}
@@ -118,6 +126,9 @@
       <button class="b primary" id="analyze-btn">Analizar esta zona →</button>
       <button class="b ghost" id="vol-btn" onclick="toggleVolPanel()">🏗️ Volumen</button>
     </div>
+    <div class="btnrow" style="margin-top:8px">
+      <button class="b ghost" id="well-btn" onclick="toggleWell()" style="width:100%">🧭 Bienestar y servicios</button>
+    </div>
   </div>
 
   <div class="glass" id="vol-panel" style="display:none">
@@ -162,6 +173,17 @@
       </div>
     </div>
   </div>
+
+  <div class="glass" id="well-panel" style="display:none">
+    <h2>🧭 Bienestar y servicios</h2>
+    <p>Índice de vida real de la ubicación: mide qué tan cerca están las escuelas,
+       salud, abasto, parques, transporte y ocio. Datos de Google Places.</p>
+    <div class="btnrow">
+      <button class="b primary" id="well-run" onclick="analyzeWellbeing()" style="width:100%">Calcular índice de bienestar</button>
+    </div>
+    <div id="well-out"></div>
+    <span class="soon">▦ Radios a vuelo de pájaro · servicios reales de Google Places</span>
+  </div>
 </div>
 
 <!-- overlay: carga / instrucciones / error -->
@@ -191,8 +213,10 @@ const HOME = { lat:19.4270, lng:-99.1677, heading:240, label:'Paseo de la Reform
 // Vista a ras de suelo (~35-40 m de altura, casi horizontal) — afina aquí
 // Vista de reposo: más ALTA y con más picada (tilt menor) = tiles nítidos.
 // El tilt alto/rango corto ponía la cámara casi a ras de piso y borrosa.
-const VIEW      = { range:820, tilt:63, heading:25 };
-const VIEW_WIDE = { range:1500, tilt:55, heading:45 }; // toma de entrada (más alta)
+// Cámara ~150 m más alta que antes: altura ≈ range·cos(tilt), así que
+// para subir 150 m se aumenta el range en 150/cos(tilt) (≈330 a 63°, ≈260 a 55°).
+const VIEW      = { range:1150, tilt:63, heading:25 };   // antes 820 (+~150 m de altura)
+const VIEW_WIDE = { range:1760, tilt:55, heading:45 };   // toma de entrada (antes 1500)
 // Altura/inclinación EN VIVO (las cambian los botones Elevar / Bajar).
 let viewRange = VIEW.range, viewTilt = VIEW.tilt;
 
@@ -430,6 +454,129 @@ function removeVolume(){
   if(volPoly && volPoly.remove) volPoly.remove();
   else if(volPoly && volPoly.parentNode) volPoly.parentNode.removeChild(volPoly);
   volPoly=null; $('v-read').innerHTML='';
+}
+
+/* ====== Bienestar y servicios (Google Places) ======
+   Índice de vida de la ubicación a partir de los servicios REALES alrededor
+   del lote. Se ejecuta a demanda (control de costo) y cachea por punto. Cada
+   pilar hace un searchNearby; el más cercano define el puntaje (400 m ≈ 5 min
+   a pie, 1200 m ≈ 15 min). Además resalta en el mapa 3D los servicios hallados. */
+const WELL_PILARES = [
+  { key:'salud',  emoji:'🏥', label:'Salud',      types:['hospital','pharmacy'] },
+  { key:'educ',   emoji:'🎓', label:'Educación',  types:['school','university'] },
+  { key:'abasto', emoji:'🛒', label:'Abasto',     types:['supermarket','shopping_mall'] },
+  { key:'parque', emoji:'🌳', label:'Parques',    types:['park'] },
+  { key:'transp', emoji:'🚇', label:'Transporte', types:['transit_station','bus_station','subway_station'] },
+  { key:'ocio',   emoji:'🍽️', label:'Ocio',       types:['restaurant','cafe'] },
+];
+let wellMarkers=[], wellPlacesLib=null, wellMarker3D=null, wellBusy=false, wellCacheKey='';
+
+function toggleWell(){
+  const p=$('well-panel'); const open = p.style.display==='none';
+  p.style.display = open ? 'block' : 'none';
+  $('well-btn').classList.toggle('primary', open);
+}
+function haversine(a,b){
+  const R=6371000, toR=x=>x*Math.PI/180;
+  const dLat=toR(b.lat-a.lat), dLng=toR(b.lng-a.lng);
+  const s=Math.sin(dLat/2)**2 + Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s));
+}
+function scoreDist(d){
+  if(d==null) return 8;
+  if(d<=400) return 100; if(d<=800) return 82; if(d<=1200) return 62;
+  if(d<=2000) return 38; if(d<=3000) return 20; return 10;
+}
+function clearWellMarkers(){
+  wellMarkers.forEach(m=>{ try{ m.remove ? m.remove() : (m.parentNode&&m.parentNode.removeChild(m)); }catch(e){} });
+  wellMarkers=[];
+}
+async function analyzeWellbeing(){
+  if(!map || wellBusy) return;
+  const center = volCenter || mapCenter() || viewCenter;
+  const out=$('well-out'); if(!center){ return; }
+  const ck = center.lat.toFixed(4)+','+center.lng.toFixed(4);
+  if(ck===wellCacheKey && out.innerHTML.indexOf('wscore')>-1) return; // ya calculado para este punto
+  wellBusy=true; $('well-run').disabled=true;
+  out.innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12.5px;color:var(--sec)"><span class="spin" style="width:15px;height:15px"></span> Consultando servicios alrededor…</div>';
+  try{
+    if(!wellPlacesLib) wellPlacesLib = await google.maps.importLibrary('places');
+    if(!wellMarker3D){ try{ wellMarker3D = (await google.maps.importLibrary('maps3d')).Marker3DElement || null; }catch(e){ wellMarker3D=null; } }
+    const { Place, SearchNearbyRankPreference } = wellPlacesLib;
+    const rank = (SearchNearbyRankPreference && SearchNearbyRankPreference.DISTANCE) || 'DISTANCE';
+
+    clearWellMarkers();
+    const resultados=[]; let callsOk=0;
+    for(const pil of WELL_PILARES){
+      let places=[];
+      try{
+        const r = await Place.searchNearby({
+          fields:['location','displayName'],
+          locationRestriction:{ center:{lat:center.lat,lng:center.lng}, radius:2500 },
+          includedPrimaryTypes: pil.types,
+          maxResultCount: 10,
+          rankPreference: rank
+        });
+        places = (r && r.places) || []; callsOk++;
+      }catch(e){ /* un pilar puede fallar aislado; se sigue */ }
+      const conDist = places.map(pl=>{
+        const loc=pl.location, lat=(typeof loc.lat==='function')?loc.lat():loc.lat, lng=(typeof loc.lng==='function')?loc.lng():loc.lng;
+        return { nombre: pl.displayName||'Servicio', lat, lng, d: haversine(center,{lat,lng}) };
+      }).filter(x=>isFinite(x.d)).sort((a,b)=>a.d-b.d);
+      const nearest = conDist.length ? conDist[0].d : null;
+      resultados.push({ ...pil, score:scoreDist(nearest), nearest, count:conDist.length });
+      if(wellMarker3D){
+        conDist.slice(0,2).forEach(pl=>{
+          try{
+            const mk=new wellMarker3D({ position:{lat:pl.lat,lng:pl.lng,altitude:25}, label:pil.emoji,
+              altitudeMode:(AltMode&&AltMode.RELATIVE_TO_GROUND)||'RELATIVE_TO_GROUND' });
+            (map.append?map.append(mk):map.appendChild(mk)); wellMarkers.push(mk);
+          }catch(e){}
+        });
+      }
+    }
+    if(callsOk===0){
+      out.innerHTML='<div style="color:var(--amb);font-size:12.5px;line-height:1.55;margin-top:10px">No se pudo consultar Google Places. Activa la <b>Places API (New)</b> y la <b>facturación</b> en Google Cloud, y agrega Places a las restricciones del key de brickbit.co.</div>';
+      return;
+    }
+    wellCacheKey=ck;
+    const overall=Math.round(resultados.reduce((s,r)=>s+r.score,0)/resultados.length);
+    renderWellbeing(overall, resultados);
+  }catch(err){
+    console.error('[BrickBit bienestar]', err);
+    out.innerHTML='<div style="color:var(--amb);font-size:12.5px;line-height:1.55;margin-top:10px">No se pudo consultar Google Places. Activa la <b>Places API (New)</b> y la <b>facturación</b> en Google Cloud, y agrega Places a las restricciones del key de brickbit.co.</div>';
+  }finally{
+    wellBusy=false; $('well-run').disabled=false;
+  }
+}
+function renderWellbeing(overall, res){
+  const c = overall>=75?'var(--grn)':overall>=50?'var(--amb)':'var(--neg)';
+  const filas = res.map(r=>{
+    const dtxt = r.nearest==null?'sin datos':(r.nearest<1000?Math.round(r.nearest)+' m':(r.nearest/1000).toFixed(1)+' km');
+    const min = r.nearest==null?'':' · '+Math.max(1,Math.round(r.nearest/80))+' min';
+    const col = r.score>=75?'var(--grn)':r.score>=50?'var(--amb)':'var(--neg)';
+    return `<div class="wrow"><span>${r.emoji} ${r.label}</span><span style="color:${col}">${dtxt}${min}</span></div>`;
+  }).join('');
+  $('well-out').innerHTML =
+    `<div class="wscore" style="color:${c}">${overall}<span>/100</span></div>
+     <div class="wlabel">Índice de bienestar de la ubicación</div>
+     ${radarSVG(res)}
+     <div class="wlist">${filas}</div>`;
+}
+function radarSVG(res){
+  const n=res.length, cx=110, cy=100, R=72;
+  let grid='';
+  [0.25,0.5,0.75,1].forEach(s=>{
+    const p=res.map((_,i)=>{ const a=-Math.PI/2+i*2*Math.PI/n; return (cx+R*s*Math.cos(a)).toFixed(1)+','+(cy+R*s*Math.sin(a)).toFixed(1); }).join(' ');
+    grid+=`<polygon points="${p}" fill="none" stroke="rgba(245,237,227,.09)" stroke-width="1"/>`;
+  });
+  let axes='', labels='';
+  res.forEach((r,i)=>{ const a=-Math.PI/2+i*2*Math.PI/n;
+    axes+=`<line x1="${cx}" y1="${cy}" x2="${(cx+R*Math.cos(a)).toFixed(1)}" y2="${(cy+R*Math.sin(a)).toFixed(1)}" stroke="rgba(245,237,227,.09)" stroke-width="1"/>`;
+    labels+=`<text x="${(cx+(R+14)*Math.cos(a)).toFixed(1)}" y="${(cy+(R+14)*Math.sin(a)).toFixed(1)}" font-size="13" text-anchor="middle" dominant-baseline="middle">${r.emoji}</text>`;
+  });
+  const poly = res.map((r,i)=>{ const a=-Math.PI/2+i*2*Math.PI/n, rr=R*(r.score/100); return (cx+rr*Math.cos(a)).toFixed(1)+','+(cy+rr*Math.sin(a)).toFixed(1); }).join(' ');
+  return `<svg viewBox="0 0 220 200" class="wradar" aria-label="Radar de servicios">${grid}${axes}<polygon points="${poly}" fill="rgba(205,242,90,.22)" stroke="var(--lim)" stroke-width="2"/>${labels}</svg>`;
 }
 
 /* ====== simulador de desarrollo (pro-forma en vivo) ====== */

@@ -14,6 +14,8 @@ panel.html            "Mi BrickBit" (cuenta del usuario)
 
 # Experiencias 3D (Google Maps 3D / Map3DElement, canal v=alpha)
 zona3d.html           Simulador 3D: volumen COS/CUS extruido + pro-forma financiera EN VIVO
+                      + "Bienestar y servicios": índice de vida (salud/educación/abasto/
+                      parques/transporte/ocio) vía Google Places (New), con radar y marcadores 3D.
 pulso.html            Pulso de México: 32 ciudades como torres de datos + viaje en el tiempo (SHF 2005-2026 + forecast)
 cine.html             Tour cinematográfico por las 32 ciudades
 versus.html           Duelo de 2 ciudades en pantalla dividida
@@ -55,7 +57,7 @@ backend/              Cloudflare Worker para la IA de Arquitectos (NO va a Netli
 
 ## Qué falta / pendientes
 - **DENUE**: los índices económicos por zona se calculan con `denue_local.py` (script local que lee CSV del DENUE; INEGI bloquea la nube). Falta cargar `zone_denue` en Supabase y construir la tarjeta "Economía de la zona" en el analizador.
-- **Google Places / Location Scoring**: pausado hasta activar facturación de Google Cloud.
+- **Google Places / Location Scoring**: "Bienestar y servicios" ya integrado en `zona3d.html` (usa la key de Maps embebida). Para que funcione en vivo: habilitar **Places API (New)** + **facturación** en el proyecto de Google Cloud de esa key, y permitir Places en las restricciones del key (referrer brickbit.co). Ideas B2B pendientes (Índice de Vibrancia/gentrificación, Búsqueda inversa por estilo de vida, Desiertos de oportunidad) usan la misma API.
 - **CRM de Financial**: crear el Google Sheet + Apps Script y setear en Netlify las vars `SHEETS_WEBHOOK_URL`, `LEAD_SECRET`, `ALLOWED_ORIGIN`.
 - **IA de Arquitectos**: desplegar `backend/` en Cloudflare (`wrangler secret put ANTHROPIC_API_KEY` + `wrangler deploy`) y pegar la URL del worker en la config de cada herramienta.
 
