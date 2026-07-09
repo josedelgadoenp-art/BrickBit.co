@@ -275,6 +275,42 @@ function fcModel(zona,pm2){
   return Object.keys(o).length===4?o:null;
 }
 
+/* ===== IA vía el Worker de Cloudflare (mismo backend que las herramientas de
+   Arquitectos: la llave de Anthropic vive en el Worker, no en el navegador).
+   Devuelve JSON validado contra el esquema; si algo falla, quien llama cae a
+   su motor local. ===== */
+const BB_BACKEND=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').trim();
+async function iaJSON(system,prompt,schema){
+  const r=await fetch(BB_BACKEND.replace(/\/+$/,'')+'/api/claude',{
+    method:'POST',headers:{'content-type':'application/json'},
+    body:JSON.stringify({system,content:[{type:'text',text:prompt}],schema})
+  });
+  if(!r.ok)throw new Error('ia_'+r.status);
+  const data=await r.json();
+  if(data.stop_reason==='refusal')throw new Error('refusal');
+  const texts=(data.content||[]).filter(b=>b.type==='text');
+  if(!texts.length)throw new Error('empty');
+  return JSON.parse(texts[texts.length-1].text);
+}
+const BUSQUEDA_SCHEMA={type:'object',additionalProperties:false,
+  properties:{
+    tipo:{type:['string','null']},operacion:{type:['string','null']},ciudad:{type:['string','null']},
+    presupuesto_max:{type:['number','null']},roi_min:{type:['number','null']},plusvalia_min:{type:['number','null']},
+    horizonte_anios:{type:['number','null']},objetivo:{type:['string','null']},riesgo:{type:['string','null']},
+    recamaras_min:{type:['number','null']},giro:{type:['string','null']}
+  },
+  required:['tipo','operacion','ciudad','presupuesto_max','roi_min','plusvalia_min','horizonte_anios','objetivo','riesgo','recamaras_min','giro']
+};
+const PROYECTO_SCHEMA={type:'object',additionalProperties:false,
+  properties:{
+    tipo:{type:'string'},desc:{type:'string'},niveles:{type:'number'},units:{type:'number'},supVend:{type:'number'},
+    mix:{type:'array',items:{type:'object',additionalProperties:false,properties:{t:{type:'string'},c:{type:'number'},m:{type:'number'},pu:{type:'number'}},required:['t','c','m','pu']}},
+    fin:{type:'object',additionalProperties:false,properties:{cTot:{type:'number'},ing:{type:'number'},util:{type:'number'},roi:{type:'number'},tir:{type:'number'},plazo:{type:'number'},vpn:{type:'number'},peq:{type:'number'}},required:['cTot','ing','util','roi','tir','plazo','vpn','peq']},
+    just:{type:'array',items:{type:'string'}}
+  },
+  required:['tipo','desc','niveles','units','supVend','mix','fin','just']
+};
+
 /* ===== Capa por métrica (multicapa + Valor Futuro) + Top zonas ===== */
 let METRIC='oport';
 function vfPct(n,h){const z=(FORECAST[n]||{})[String(h)];return z?(z.f-1)*100:null;}
@@ -767,13 +803,11 @@ function renderAsesor(){
 }
 async function parseBusqueda(q){
   const ciudades=Object.keys(CITIES).join(", ");
-  const prompt=`Eres un parser de búsqueda inmobiliaria para México. Convierte la consulta del usuario en SOLO un objeto JSON, sin markdown ni explicación. Esquema exacto (usa null donde no aplique):\n{"tipo":"casa|departamento|terreno|local|oficina|bodega|null","operacion":"venta|renta|null","ciudad":"<una de la lista o null>","presupuesto_max":"<pesos o null>","roi_min":"<número o null>","plusvalia_min":"<número o null>","horizonte_anios":"<1|3|5|10 o null>","objetivo":"plusvalia|renta|equilibrado|null","riesgo":"conservador|moderado|agresivo|null","recamaras_min":"<número o null>","giro":"<texto o null>"}\nReglas: "3 millones"=3000000; "mdp"=millones de pesos. ciudad SOLO de esta lista: ${ciudades}. horizonte_anios redondéalo a 1, 3, 5 o 10. Consulta: "${q.replace(/"/g,"'")}". Devuelve únicamente el JSON.`;
+  const system=`Eres un parser de búsqueda inmobiliaria para México. Rellena los campos del esquema a partir de la consulta del usuario; usa null donde no aplique. Reglas: tipo ∈ {casa,departamento,terreno,local,oficina,bodega}; operacion ∈ {venta,renta}; objetivo ∈ {plusvalia,renta,equilibrado}; riesgo ∈ {conservador,moderado,agresivo}. "3 millones"=3000000; "mdp"=millones de pesos. ciudad debe ser EXACTAMENTE una de esta lista o null: ${ciudades}. horizonte_anios redondéalo a 1, 3, 5 o 10.`;
+  const prompt=`Consulta del usuario: "${q.replace(/"/g,"'")}"`;
   try{
-    const r=await fetch("/.netlify/functions/ia",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
-    if(!r.ok)throw 0;
-    const j=await r.json();let raw=(j.content||[]).map(b=>b.text||"").join("");
-    const m=raw.replace(/```json|```/g,"").match(/\{[\s\S]*\}/);if(!m)throw 0;
-    const f=JSON.parse(m[0]);if(typeof f!=='object'||f===null)throw 0;
+    const f=await iaJSON(system,prompt,BUSQUEDA_SCHEMA);
+    if(typeof f!=='object'||f===null)throw 0;
     return {f,fuente:'ai'};
   }catch(e){return {f:parseLocal(q),fuente:'local'};}
 }
@@ -1035,15 +1069,14 @@ async function runIA(){
   out.innerHTML=`<div class="ia-load"><div class="spin"></div><span id="ia-lt">Analizando uso de suelo y mercado…</span></div>`;
   const msgs=["Analizando uso de suelo…","Calculando superficie vendible…","Evaluando tipología óptima…","Modelando escenario financiero…","Calculando ROI, TIR y VPN…"];
   let mi=0;const tm=setInterval(()=>{mi=(mi+1)%msgs.length;const e=document.getElementById("ia-lt");if(e)e.textContent=msgs[mi]},1300);
-  const prompt=`Eres experto en desarrollo inmobiliario en México. Para la zona "${name}" con precio de venta ${fmt(d.price)}/m², plusvalía ${d.g}%, yield ${d.yield}% y ciclo ${d.ciclo}, recomienda el proyecto óptimo. Responde SOLO en JSON sin markdown: {"tipo":"","desc":"","niveles":0,"units":0,"supVend":0,"mix":[{"t":"","c":0,"m":0,"pu":0}],"fin":{"cTot":0,"ing":0,"util":0,"roi":0,"tir":0,"plazo":0,"vpn":0,"peq":0},"just":["","","","",""]}`;
+  const system=`Eres experto en desarrollo inmobiliario en México. Recomienda el proyecto óptimo para el lote y rellena SOLO los campos del esquema (montos en pesos MXN, superficies en m², plazo en meses, roi/tir en %). Da exactamente 5 justificaciones concretas en "just".`;
+  const prompt=`Zona "${name}": precio de venta ${fmt(d.price)}/m², plusvalía ${d.g}%, yield ${d.yield}%, ciclo ${d.ciclo}. Recomienda tipología, niveles, unidades, mezcla de productos y el escenario financiero completo (ROI, TIR, VPN).`;
   let ia,fb=false,limited=false;
   try{let ok=null;
     for(let i=0;i<3&&!ok;i++){try{
-      const r=await fetch("/.netlify/functions/ia",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt})});
-      if(r.status===429){limited=true;throw 0;}
-      if(!r.ok)throw 0;const j=await r.json();let raw=(j.content||[]).map(b=>b.text||"").join("");
-      const m=raw.replace(/```json|```/g,"").match(/\{[\s\S]*\}/);if(!m)throw 0;const pp=JSON.parse(m[0]);if(!pp.tipo||!pp.fin)throw 0;ok=pp;
-    }catch(e){if(limited)break;await new Promise(r=>setTimeout(r,500*(i+1)))}}
+      const pp=await iaJSON(system,prompt,PROYECTO_SCHEMA);
+      if(!pp.tipo||!pp.fin)throw 0;ok=pp;
+    }catch(e){if(String(e&&e.message).includes('429')){limited=true;break;}await new Promise(r=>setTimeout(r,500*(i+1)))}}
     if(ok){ia=ok;ia.src="ai"}else throw 0;
   }catch(e){ia=calcProyectoLocal(name,d,curTipo);fb=true}
   clearInterval(tm);renderIA(ia,fb,limited);btn.disabled=false;
@@ -1052,7 +1085,7 @@ function renderIA(ia,fb,limited){
   _lastIA={ia,fb,name:(document.querySelector(".sel-name")||{}).textContent||"",zona:curData};
   const f=ia.fin,roi=f.roi||0,col=roi>=25?"#2DD49B":roi>=15?"#F5C277":"#F08886",pct=Math.min(roi,60)/60*100;
   document.getElementById("ia-out").innerHTML=`
-    <div class="ia-src ${fb?'local':'ai'}">${fb?(limited?'⚠ Límite de usos de IA alcanzado. Mostrando el motor de cálculo Brickbit.':'⚙ Motor de cálculo Brickbit (configura ANTHROPIC_API_KEY en Netlify para activar la IA generativa).'):'✨ Generado por IA (Claude).'}</div>
+    <div class="ia-src ${fb?'local':'ai'}">${fb?(limited?'⚠ Límite de usos de IA alcanzado. Mostrando el motor de cálculo Brickbit.':'⚙ Motor de cálculo Brickbit (la IA no estuvo disponible en este momento).'):'✨ Generado por IA (Claude).'}</div>
     <div class="ia-hero"><div class="ia-tipo">${ia.tipo}</div><div class="ia-desc">${ia.desc}</div></div>
     <div class="ia-block"><div class="ia-bt">📐 Programa arquitectónico</div>
       <div class="u3"><div class="uc"><div class="ul">Niveles</div><div class="uv">${ia.niveles}</div></div><div class="uc"><div class="ul">Unidades</div><div class="uv">${ia.units}</div></div><div class="uc"><div class="ul">Vendible</div><div class="uv">${(ia.supVend/1000).toFixed(1)}k</div></div></div>

@@ -78,9 +78,9 @@ footer{border-top:1px solid var(--line);margin-top:46px;padding:24px 0 50px;colo
     <h2>📍 Mis zonas favoritas <span class="count" id="fav-count">0</span></h2>
     <div id="fav-list"></div>
 
-    <h2>🔔 Alertas <span class="count" id="al-count">0</span></h2>
+    <h2>🔔 Alertas <span class="count" id="al-count">0</span> <span style="font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;vertical-align:middle;background:rgba(245,194,119,.14);color:var(--amb,#F5C277);border:1px solid rgba(245,194,119,.35);border-radius:99px;padding:2px 8px;font-weight:700">Beta</span></h2>
     <div id="al-list"></div>
-    <div class="note">Las alertas quedan guardadas en tu cuenta. El envío por correo se conectará en una fase posterior (un proceso programado leerá estas alertas y te avisará cuando el pronóstico de una zona cambie más que tu umbral).</div>
+    <div class="note">Tus alertas se <b>guardan</b> en tu cuenta desde ya. El <b>aviso por correo</b> aún no está activo: lo conectaremos en una fase posterior (un proceso programado leerá estas alertas y te avisará cuando el pronóstico de una zona cambie más que tu umbral). Por ahora consúltalas aquí cuando quieras.</div>
   </div>
 
   <footer>© BrickBit · <a href="index.html" style="color:var(--clay-soft)">brickbit.co</a></footer>
@@ -195,7 +195,7 @@ async function setAlert(z, field, val){
     if(error) throw error;
     toast(a.activa?'Alerta guardada':'Alerta actualizada');
     const favs=await bbFavs(); $('al-count').textContent=favs.filter(x=>ALERTS[x]&&ALERTS[x].activa).length;
-  }catch(e){ toast('Ejecuta el SQL de alertas en Supabase'); console.warn(e&&e.message); }
+  }catch(e){ toast('No pudimos guardar tu alerta. Inténtalo de nuevo en un momento.'); console.warn(e&&e.message); }
 }
 
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }

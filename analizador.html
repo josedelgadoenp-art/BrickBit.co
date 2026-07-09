@@ -156,8 +156,9 @@ a.back:hover{color:var(--tx)}
   <div class="card">
     <h2>📋 Tu operación</h2>
     <div class="fld"><label>Zona</label><select id="zona" onchange="onZona()"></select></div>
-    <div class="fld"><label>Precio de compra (MXN)</label><input id="precio" type="text" inputmode="numeric" oninput="calc()"></div>
-    <div class="fld"><label>Renta mensual estimada (MXN)</label><input id="renta" type="text" inputmode="numeric" oninput="calc()"></div>
+    <div class="fld"><label>Precio de compra (MXN) <span class="tag ex" id="tag-precio" style="display:none">est.</span></label><input id="precio" type="text" inputmode="numeric" oninput="marcarReal('precio')"></div>
+    <div class="fld"><label>Renta mensual estimada (MXN) <span class="tag ex" id="tag-renta" style="display:none">est.</span></label><input id="renta" type="text" inputmode="numeric" oninput="marcarReal('renta')"></div>
+    <div class="note" id="estHint" style="display:none;border-left-color:var(--amb)">💡 <b style="color:var(--amb)">Estimado:</b> al elegir zona autocompletamos el precio (precio/m² típico × superficie media) y la renta (yield de la zona). Son <b>estimaciones</b>, no listados reales. <b>Ajústalos con tu operación</b> y la etiqueta "est." desaparecerá.</div>
     <div class="fld"><label>Horizonte de tenencia</label><div class="hz" id="hz"></div></div>
     <div class="cgrid">
       <div class="fld"><label>Enganche (%)</label><input id="eng" type="number" step="1" value="100" oninput="calc()"></div>
@@ -411,6 +412,14 @@ function onZona(){const z=zona();if(!z)return;
   const precio=Math.round(z.pm2*z.sup);
   $('precio').value=precio.toLocaleString('es-MX');
   $('renta').value=Math.round(precio*z.y/100/12).toLocaleString('es-MX');
+  // Estos dos valores son estimaciones de la zona: marca "est." hasta que el usuario los ajuste.
+  ['precio','renta'].forEach(id=>{const t=$('tag-'+id);if(t)t.style.display='';});
+  const h=$('estHint');if(h)h.style.display='block';
+  calc();
+}
+// Cuando el usuario edita un valor autocompletado, deja de ser estimación de zona.
+function marcarReal(id){const t=$('tag-'+id);if(t)t.style.display='none';
+  if($('tag-precio')&&$('tag-precio').style.display==='none'&&$('tag-renta')&&$('tag-renta').style.display==='none'){const h=$('estHint');if(h)h.style.display='none';}
   calc();
 }
 function facH(z){return z['f'+H]||Math.pow(1+(z.g||0)/100,H);}
