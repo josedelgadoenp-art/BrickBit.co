@@ -84,8 +84,17 @@ export default {
       }
     }
 
+    /* ---- API pública: BrickBit Score y pronóstico por zona (para widgets/partners).
+       Lectura pública (CORS *), datos derivados de estados.json + forecast.json. ---- */
+    if (url.pathname === '/api/score' && (request.method === 'GET' || request.method === 'OPTIONS')) {
+      return handlePublicApi('score', request, url, env);
+    }
+    if (url.pathname === '/api/forecast' && (request.method === 'GET' || request.method === 'OPTIONS')) {
+      return handlePublicApi('forecast', request, url, env);
+    }
+
     if (url.pathname !== '/api/claude' || request.method !== 'POST') {
-      return json({ error: { message: 'No encontrado. Usa POST /api/claude, POST /api/share o GET /api/share/{id}' } }, 404, headers);
+      return json({ error: { message: 'No encontrado. Usa GET /api/score?zona=, GET /api/forecast?zona=, POST /api/claude, POST /api/share o GET /api/share/{id}' } }, 404, headers);
     }
 
     // Si se configuraron orígenes explícitos, rechaza los demás
@@ -503,6 +512,82 @@ async function sbUpdate(env, table, id, patch) {
     body: JSON.stringify(patch),
   });
   if (!r.ok) throw new Error('Supabase update ' + r.status + ': ' + (await r.text()).slice(0, 200));
+}
+
+/* =====================================================================
+   API pública: BrickBit Score y pronóstico por zona
+   ---------------------------------------------------------------------
+   Datos derivados de estados.json + forecast.json del sitio. Pensado para
+   incrustar en fichas de propiedad de terceros (widgets) o consumir como API.
+   El Score replica el índice del mapa (Valor Futuro, rendimiento, riesgo,
+   liquidez, oportunidad) normalizado entre las 32 zonas.
+===================================================================== */
+let _bbData = null; // caché best-effort dentro del isolate
+async function loadBBData(env) {
+  if (_bbData) return _bbData;
+  const site = (env.SITE_URL || 'https://brickbit.co').replace(/\/+$/, '');
+  const [er, fr] = await Promise.all([
+    fetch(site + '/data/estados.json', { cf: { cacheTtl: 3600 } }),
+    fetch(site + '/data/forecast.json', { cf: { cacheTtl: 3600 } }),
+  ]);
+  if (!er.ok || !fr.ok) throw new Error('No se pudieron leer los datos del sitio.');
+  const ej = await er.json(), fj = await fr.json();
+  _bbData = { estados: (ej.estados || ej), forecast: fj };
+  return _bbData;
+}
+function _pubInputs(e, forecast) {
+  const fc = forecast[e.nombre] && forecast[e.nombre]['3'];
+  const appr = fc ? (fc.f - 1) * 100 : (Math.pow(1 + (e.plusvalia || 0) / 100, 3) - 1) * 100;
+  return { appr, yld: (+e['yield'] || 0), vol: (e.volatilidad_anual != null ? e.volatilidad_anual : 4.0),
+           dom: (+e.dom || 60), opp: (e.oportunidad === 'Alta' ? 3 : e.oportunidad === 'Media' ? 2 : 1) };
+}
+function _pubScore(inputs) {
+  const rng = k => { const v = inputs.map(o => o.x[k]); return [Math.min(...v), Math.max(...v)]; };
+  const R = { appr: rng('appr'), yld: rng('yld'), vol: rng('vol'), dom: rng('dom'), opp: rng('opp') };
+  const nrm = (v, r, inv) => { const mn = r[0], mx = r[1]; if (mx === mn) return 50; let t = (v - mn) / (mx - mn); if (inv) t = 1 - t; return Math.max(0, Math.min(1, t)) * 100; };
+  return x => {
+    const parts = [
+      ['Valor Futuro', nrm(x.appr, R.appr, false), .35],
+      ['Rendimiento', nrm(x.yld, R.yld, false), .20],
+      ['Riesgo bajo', nrm(x.vol, R.vol, true), .20],
+      ['Liquidez', nrm(x.dom, R.dom, true), .10],
+      ['Oportunidad', nrm(x.opp, R.opp, false), .15],
+    ];
+    const total = Math.round(parts.reduce((a, p) => a + p[1] * p[2], 0));
+    const grade = total >= 80 ? 'A' : total >= 65 ? 'B' : total >= 50 ? 'C' : 'D';
+    return { total, grade, parts: parts.map(p => ({ k: p[0], s: Math.round(p[1]) })) };
+  };
+}
+async function handlePublicApi(kind, request, url, env) {
+  const headers = { 'access-control-allow-origin': '*', 'access-control-allow-methods': 'GET, OPTIONS',
+                    'access-control-allow-headers': 'content-type', 'cache-control': 'public, max-age=600',
+                    'content-type': 'application/json' };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+  try {
+    const zona = (url.searchParams.get('zona') || '').trim();
+    const { estados, forecast } = await loadBBData(env);
+    if (kind === 'forecast') {
+      if (!zona) return new Response(JSON.stringify({ zonas: Object.keys(forecast) }), { headers });
+      const f = forecast[zona] || forecast[Object.keys(forecast).find(k => k.toLowerCase() === zona.toLowerCase())];
+      if (!f) return new Response(JSON.stringify({ error: 'zona_no_encontrada' }), { status: 404, headers });
+      return new Response(JSON.stringify({ zona, forecast: f }), { headers });
+    }
+    const inputs = estados.map(e => ({ e, x: _pubInputs(e, forecast) }));
+    const calc = _pubScore(inputs);
+    if (!zona) {
+      const all = inputs.map(o => ({ zona: o.e.nombre, ...calc(o.x) })).sort((a, b) => b.total - a.total);
+      return new Response(JSON.stringify({ zonas: all }), { headers });
+    }
+    const o = inputs.find(o => o.e.nombre === zona || o.e.nombre.toLowerCase() === zona.toLowerCase());
+    if (!o) return new Response(JSON.stringify({ error: 'zona_no_encontrada' }), { status: 404, headers });
+    const sc = calc(o.x);
+    return new Response(JSON.stringify({
+      zona: o.e.nombre, score: sc.total, grade: sc.grade, parts: sc.parts,
+      precio_m2: o.e.precio_m2, plusvalia: o.e.plusvalia, yield: o.e['yield'], valorFuturo3a: Math.round(o.x.appr),
+    }), { headers });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: String(err && err.message || err) }), { status: 500, headers });
+  }
 }
 
 /* --- WhatsApp vía Twilio --- */

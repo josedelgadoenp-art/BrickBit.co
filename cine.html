@@ -45,19 +45,25 @@ h1 .accent{color:var(--grn);font-style:italic}
 .load{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:50;transition:opacity .5s}
 .load.off{opacity:0;pointer-events:none}
 .sub{font-size:12px;color:var(--mut)}
+.ov-cta{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+.cbtn{text-decoration:none;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:999px;border:1px solid var(--line-strong);color:var(--tx);background:rgba(16,12,10,.6);transition:border-color .2s,transform .15s}
+.cbtn:hover{border-color:var(--grn);transform:translateY(-1px)}
+.cbtn.p{background:var(--for);border:none;color:#fff}
+.cbtn.p:hover{background:#22996a}
 </style>
 </head>
 <body>
 <div class="load" id="load"><div style="text-align:center"><div style="font-size:34px">🎬</div><p class="sub">Preparando el tour por México…</p></div></div>
 <div id="map3d"></div>
 <div class="top">
-  <div class="glass"><h1>BrickBit <span class="accent">Cinema</span></h1><span class="sub">Tour 3D por las 32 ciudades</span></div>
+  <div class="glass"><h1>BrickBit <span class="accent">Cinema</span></h1><span class="sub">Reel de oportunidades · ranking por Valor Futuro</span></div>
   <div class="glass"><a class="back" href="index.html">← BrickBit</a></div>
 </div>
 <div class="overlay hide glass" id="ov">
   <p class="ov-sub" id="ov-sub"></p>
   <h2 class="ov-n" id="ov-n"></h2>
   <div class="ov-m" id="ov-m"></div>
+  <div class="ov-cta" id="ov-cta"></div>
 </div>
 <div class="bar">
   <button class="b" onclick="prev()">⏮</button>
@@ -73,8 +79,17 @@ const DATA=[{"n":"Ciudad de México","lat":19.432,"lng":-99.133,"p":40500,"pl":5
 
 const GMAPS_KEY='AIzaSyC15vodxaWS_VyFiqlRUwYlTtXyKUkSW5o';
 const $=id=>document.getElementById(id);
-/* orden del tour: por plusvalía descendente (las estrellas primero) */
-const TOUR=[...DATA].sort((a,b)=>b.pl-a.pl);
+/* Índice de oportunidad del reel (0–100): Valor Futuro a 3 años (forecast) +
+   yield + oportunidad, normalizado entre las 32 ciudades. Las de mayor potencial
+   van primero. */
+function _vf3(z){ return (z.f&&z.f['3'])?(z.f['3'].f-1)*100:(z.pl||0)*3; }
+(function(){
+  const vf=DATA.map(_vf3), ys=DATA.map(z=>z.y||0), ops=DATA.map(z=>z.op==='Alta'?3:z.op==='Media'?2:1);
+  const nz=(v,a)=>{const mn=Math.min(...a),mx=Math.max(...a);return mx===mn?50:(v-mn)/(mx-mn)*100;};
+  DATA.forEach((z,k)=>{ z._vf3=vf[k]; z._opp=Math.round(nz(vf[k],vf)*.55 + nz(ys[k],ys)*.25 + nz(ops[k],ops)*.20); });
+})();
+/* orden del tour: por índice de oportunidad descendente (las estrellas primero) */
+const TOUR=[...DATA].sort((a,b)=>b._opp-a._opp);
 const VIEW={range:640,tilt:76};
 const STAY=18000; /* ms por ciudad (vuelo+órbita) */
 let map=null,i=0,playing=true,timer=null,orbit=false;
@@ -100,13 +115,17 @@ async function init(){
 }
 function fmt(n){return Math.round(n).toLocaleString('es-MX');}
 function showOverlay(z,rank){
-  $('ov-sub').textContent='#'+rank+' por plusvalía · '+(z.ci||'');
+  $('ov-sub').innerHTML='#'+rank+' por oportunidad · '+(z.ci||'')+' · <span style="color:var(--grn)">Índice '+z._opp+'/100</span>';
   $('ov-n').textContent=z.n;
   $('ov-m').innerHTML=
+    '<span><b>+'+Math.round(z._vf3)+'%</b>Valor Futuro 3a</span>'+
     '<span><b>$'+fmt(z.p)+'</b>precio /m²</span>'+
-    '<span><b>'+z.pl+'%</b>plusvalía /año</span>'+
     '<span><b>'+z.y+'%</b>yield renta</span>'+
     (z.op?'<span><b>'+z.op+'</b>oportunidad</span>':'');
+  const q=encodeURIComponent(z.n);
+  $('ov-cta').innerHTML=
+    '<a class="cbtn p" href="analizador.html?zona='+q+'">📊 Analizar esta zona →</a>'+
+    '<a class="cbtn" href="zona3d.html?zona='+q+'">🌆 Ver en 3D</a>';
   $('ov').classList.remove('hide');
 }
 function go(n){
