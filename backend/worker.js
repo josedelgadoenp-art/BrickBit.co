@@ -102,6 +102,15 @@ export default {
       return handleVibraGet(request, url, env);
     }
 
+    /* ---- Datos de DEMANDA: registra qué buscan los usuarios (zona, presupuesto,
+       estilo de vida) para construir mapas de calor de demanda. KV SHARES. ---- */
+    if (url.pathname === '/api/demand-log' && request.method === 'POST') {
+      return handleDemandLog(request, env);
+    }
+    if (url.pathname === '/api/demand' && (request.method === 'GET' || request.method === 'OPTIONS')) {
+      return handleDemandGet(request, url, env);
+    }
+
     if (url.pathname !== '/api/claude' || request.method !== 'POST') {
       return json({ error: { message: 'No encontrado. Usa GET /api/score?zona=, GET /api/forecast?zona=, POST /api/claude, POST /api/share o GET /api/share/{id}' } }, 404, headers);
     }
@@ -631,6 +640,46 @@ async function handleVibraGet(request, url, env) {
   let arr = [];
   try { const v = await env.SHARES.get('vibra:' + zona.toLowerCase()); if (v) arr = JSON.parse(v); } catch {}
   return new Response(JSON.stringify({ zona, historial: arr }), { headers });
+}
+
+/* =====================================================================
+   Datos de DEMANDA — el moat que un bróker con inventario no tiene
+   Agrega, de forma anónima, qué zonas/presupuestos/estilos de vida buscan los
+   usuarios en las herramientas. Con esto se arman "mapas de calor de demanda"
+   para desarrolladores. KV SHARES; si falta, no rompe.
+===================================================================== */
+const DEMAND_KEY = 'demand:agg';
+async function handleDemandLog(request, env) {
+  const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
+  if (!env.SHARES) return new Response(JSON.stringify({ ok: false, error: 'sin_kv' }), { status: 200, headers });
+  let d; try { d = await request.json(); } catch { return new Response(JSON.stringify({ ok: false }), { status: 400, headers }); }
+  const evento = String(d && d.evento || '').slice(0, 24);
+  const zona = String(d && d.zona || '').slice(0, 80);
+  if (!evento) return new Response(JSON.stringify({ ok: false }), { status: 400, headers });
+  let agg = {};
+  try { const v = await env.SHARES.get(DEMAND_KEY); if (v) agg = JSON.parse(v); } catch {}
+  agg.zonas = agg.zonas || {}; agg.presupuestos = agg.presupuestos || {}; agg.estilos = agg.estilos || {}; agg.tipos = agg.tipos || {};
+  agg.total = (agg.total || 0) + 1;
+  if (zona) { const z = agg.zonas[zona] = agg.zonas[zona] || { n: 0, ev: {} }; z.n++; z.ev[evento] = (z.ev[evento] || 0) + 1; }
+  const meta = (d && d.meta) || {};
+  if (meta.presupuesto) { const k = String(meta.presupuesto).slice(0, 40); agg.presupuestos[k] = (agg.presupuestos[k] || 0) + 1; }
+  if (meta.tipo) { const k = String(meta.tipo).slice(0, 24); agg.tipos[k] = (agg.tipos[k] || 0) + 1; }
+  if (Array.isArray(meta.estilos)) meta.estilos.slice(0, 10).forEach(c => { const k = String(c).slice(0, 24); agg.estilos[k] = (agg.estilos[k] || 0) + 1; });
+  agg.actualizado = new Date().toISOString();
+  await env.SHARES.put(DEMAND_KEY, JSON.stringify(agg));
+  return new Response(JSON.stringify({ ok: true }), { headers });
+}
+async function handleDemandGet(request, url, env) {
+  const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json', 'cache-control': 'public, max-age=300' };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+  if (!env.SHARES) return new Response(JSON.stringify({ zonas: {}, total: 0 }), { headers });
+  let agg = {};
+  try { const v = await env.SHARES.get(DEMAND_KEY); if (v) agg = JSON.parse(v); } catch {}
+  // ranking de zonas por demanda
+  const ranking = Object.entries(agg.zonas || {}).map(([z, o]) => ({ zona: z, n: o.n, eventos: o.ev }))
+    .sort((a, b) => b.n - a.n).slice(0, 100);
+  return new Response(JSON.stringify({ total: agg.total || 0, actualizado: agg.actualizado || null, ranking,
+    presupuestos: agg.presupuestos || {}, estilos: agg.estilos || {}, tipos: agg.tipos || {} }), { headers });
 }
 
 /* --- WhatsApp vía Twilio --- */

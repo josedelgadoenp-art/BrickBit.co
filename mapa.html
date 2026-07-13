@@ -282,6 +282,12 @@ function fcModel(zona,pm2){
    Devuelve JSON validado contra el esquema; si algo falla, quien llama cae a
    su motor local. ===== */
 const BB_BACKEND=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').trim();
+/* Registro de DEMANDA (anónimo): qué zonas/presupuestos/tipos busca la gente.
+   Best-effort; si el Worker no está, no pasa nada. */
+function bbDemand(evento,zona,meta){
+  try{ fetch(BB_BACKEND.replace(/\/+$/,'')+'/api/demand-log',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({evento,zona:zona||'',meta:meta||{}}),keepalive:true}).catch(()=>{}); }catch(e){}
+}
+function _presupBucket(v){ if(!v)return null; v=+v; if(v<1e6)return'<1M'; if(v<2e6)return'1–2M'; if(v<3e6)return'2–3M'; if(v<5e6)return'3–5M'; if(v<1e7)return'5–10M'; return'>10M'; }
 async function iaJSON(system,prompt,schema){
   const r=await fetch(BB_BACKEND.replace(/\/+$/,'')+'/api/claude',{
     method:'POST',headers:{'content-type':'application/json'},
@@ -905,7 +911,9 @@ function aplicarBusqueda(f,fuente){
   if(f.presupuesto_max)perfil.presup=+f.presupuesto_max||perfil.presup;
   filtros={ciudad:f.ciudad||null,plusvalia_min:(f.plusvalia_min!=null?+f.plusvalia_min:null),roi_min:(f.roi_min!=null?+f.roi_min:null),
            tipo:f.tipo||null,operacion:f.operacion||null,giro:f.giro||null,recamaras_min:(f.recamaras_min!=null?+f.recamaras_min:null)};
-  ultimaBusqueda={f,fuente};renderAsesor();
+  ultimaBusqueda={f,fuente};
+  bbDemand('busqueda', f.ciudad||'', {tipo:f.tipo||null, presupuesto:_presupBucket(f.presupuesto_max)});
+  renderAsesor();
 }
 async function lanzarBusqueda(){
   const inp=document.getElementById('ai-q');if(!inp)return;const q=inp.value.trim();if(!q)return;
@@ -1221,6 +1229,7 @@ function renderPortafolio(){
 /* panel de ZONA (intacto) */
 function panel(name,d,tipo){
   curData=d;curTipo=tipo;const f=fcCalc(d.price,d.g);d._fc=f;d._fcm=fcModel(name,d.price);
+  if(CITIES[name]) bbDemand('zona', name);   // señal de demanda: interés por esta zona
   document.getElementById("panel-cap").textContent="Zona seleccionada";
   document.getElementById("panel-content").innerHTML=`
     <div class="sel-name">${name}</div><div class="sel-tipo">${tipo}</div>

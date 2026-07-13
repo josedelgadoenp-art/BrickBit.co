@@ -483,6 +483,9 @@ function _bbKey(){ return 'bb_places_'+new Date().toISOString().slice(0,10); }
 function bbPlacesLeft(){ try{ return BB_PLACES_MAX-(parseInt(localStorage.getItem(_bbKey())||'0',10)||0); }catch(e){ return BB_PLACES_MAX; } }
 function bbPlacesBump(n){ try{ localStorage.setItem(_bbKey(), String((parseInt(localStorage.getItem(_bbKey())||'0',10)||0)+(n||1))); }catch(e){} }
 const BB_CAP_MSG_A='<div class="note" style="border-left-color:var(--amb)">Alcanzaste el <b>límite diario</b> de consultas de ubicación en este navegador (protección de costo). Se reinicia mañana.</div>';
+/* Registro de DEMANDA (anónimo) — mismo Worker que la IA. */
+const BB_BACKEND_A=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').replace(/\/+$/,'');
+function bbDemand(evento,zona,meta){ try{ fetch(BB_BACKEND_A+'/api/demand-log',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({evento,zona:zona||'',meta:meta||{}}),keepalive:true}).catch(()=>{}); }catch(e){} }
 async function scanNear(center,types,radius,fields){
   const lib=await loadPlacesA();
   const {Place,SearchNearbyRankPreference}=lib;
@@ -733,6 +736,7 @@ async function brickbitEstimate(){
   try{
     const punto=await resolvePunto(q+', '+z.n+', México', {lat:z.lat,lng:z.lng});
     if(!punto){ out.innerHTML='<div class="note" style="border-left-color:var(--amb)">No encontré esa dirección en '+z.n+'. Prueba con más detalle.</div>'; _estBusy=false; return; }
+    bbDemand('estimate', z.n, {m2:_dvn('est-m2',0)});   // señal de demanda: valuación de propiedad
     const center={lat:punto.lat,lng:punto.lng};
     const res=await Promise.all(EST_CATS.map(async c=>{
       try{ const places=await scanNear(center,c.types,6000,['location','displayName']);   // radio amplio: menos "sin datos"
@@ -768,6 +772,7 @@ async function brickbitEstimate(){
 }
 function onZona(){const z=zona();if(!z)return;
   renderEconomia(z);
+  bbDemand('analiza', z.n);   // señal de demanda: interés por analizar esta zona
   if($('est-m2') && !$('est-m2').value) $('est-m2').value=Math.round(z.sup||90);
   const precio=Math.round(z.pm2*z.sup);
   $('precio').value=precio.toLocaleString('es-MX');
