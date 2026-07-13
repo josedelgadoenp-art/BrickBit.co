@@ -453,6 +453,7 @@
       <div class="hint" id="sunInfo" style="flex:1;min-width:160px"></div>
     </div>
     <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-ar" id="btnAR">🕶️ Ver en Realidad Aumentada <span class="help" tabindex="0" data-tip="Coloca tu edificio a escala real sobre el terreno o la banqueta con la cámara de tu celular. En Android es AR completa; en iPhone ves el modelo 3D (la colocación AR llega pronto). Ninguna app: todo en el navegador.">?</span></button>
       <button class="btn btn-ghost" id="btnExportGltf">⬇ Modelo 3D (.glb) <span class="help" tabindex="0" data-tip="Descarga el edificio en formato glTF, el estándar de la industria 3D. Se abre en Blender, Unity, Unreal o visores web.">?</span></button>
       <button class="btn btn-ghost" id="btnReport">📄 Reporte ejecutivo (PDF) <span class="help" tabindex="0" data-tip="Genera un documento imprimible con todo el análisis: geometría, materiales, fallas e inversión. Ideal para llevarlo al banco o a inversionistas. En el diálogo de impresión elige “Guardar como PDF”.">?</span></button>
       <button class="btn btn-ghost" id="btnRecord">🎬 Video órbita <span class="help" tabindex="0" data-tip="Graba 10 segundos del gemelo girando en 360° y descarga un video .webm listo para redes, presentaciones o inversionistas.">?</span></button>
@@ -602,6 +603,9 @@
 </div>
 
 <script src="zonas.js"></script>
+
+<!-- model-viewer: Realidad Aumentada (Scene Viewer en Android, Quick Look en iOS). Carga aparte, no choca con el three de la página. -->
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
 
 <!-- Three.js via import map -->
 <script type="importmap">
@@ -1930,6 +1934,46 @@ $('btnExportGltf').addEventListener('click', () => {
 });
 
 /* =====================================================================
+   Realidad Aumentada — reutiliza el mismo GLB del gemelo en <model-viewer>
+   Android: AR completa (Scene Viewer). iOS: 3D por ahora (Quick Look
+   necesita USDZ, próxima fase). Sin instalar nada: todo en el navegador.
+===================================================================== */
+(function () {
+  const overlay = $('arOverlay'), viewer = $('arViewer'), help = $('arHelp');
+  if (!overlay || !viewer) return;
+  let arUrl = null;
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
+
+  function cerrar() { overlay.classList.remove('on'); overlay.setAttribute('aria-hidden', 'true'); }
+  function abrir() {
+    if (!three || !state.geometry) { alert('Primero genera el gemelo digital.'); return; }
+    const building = three.scene.getObjectByName('building');
+    if (!building) { alert('Aún no hay un modelo 3D generado.'); return; }
+    help.textContent = 'Preparando el modelo…';
+    overlay.classList.add('on'); overlay.setAttribute('aria-hidden', 'false');
+    new GLTFExporter().parse(building, (result) => {
+      const blob = new Blob([result], { type: 'model/gltf-binary' });
+      if (arUrl) URL.revokeObjectURL(arUrl);
+      arUrl = URL.createObjectURL(blob);
+      viewer.src = arUrl;
+      if (isIOS) {
+        viewer.setAttribute('ar-modes', 'webxr');   // sin quick-look ⇒ no muestra un botón AR que fallaría
+        help.innerHTML = 'En iPhone puedes girar y explorar el modelo en 3D. La colocación en AR (Quick Look) llega en la próxima fase.';
+      } else {
+        viewer.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
+        help.innerHTML = 'Toca <b style="color:var(--cream)">“Ver a escala real en la calle”</b> y apunta la cámara al terreno o a la banqueta. Camina alrededor para verlo desde todos los ángulos.';
+      }
+    }, (err) => { help.textContent = 'No se pudo preparar el modelo: ' + err.message; },
+    { binary: true });
+  }
+  $('btnAR').addEventListener('click', abrir);
+  $('arClose').addEventListener('click', cerrar);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) cerrar(); });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('on')) cerrar(); });
+})();
+
+/* =====================================================================
    Proyectos guardados (localStorage) — para la comparación
 ===================================================================== */
 function loadProjects() {
@@ -2349,6 +2393,54 @@ function showError(id, msg) { const el = $(id); el.textContent = msg; el.classLi
 function hideError(id) { $(id).classList.remove('show'); }
 </script>
 <script defer src="/iris.js"></script>
+
+<!-- ===== Realidad Aumentada (nivel superior: position:fixed cubre el viewport) ===== -->
+<style>
+  .btn-ar{background:linear-gradient(120deg,var(--lime),var(--lime-deep));color:#0e0a07;
+    border:none;font-weight:700;box-shadow:0 8px 24px rgba(205,242,90,.18)}
+  .btn-ar:hover{filter:brightness(1.05);transform:translateY(-1px)}
+  .ar-overlay{position:fixed;inset:0;z-index:1200;display:none;align-items:center;justify-content:center;
+    padding:20px;background:rgba(8,6,5,.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  .ar-overlay.on{display:flex}
+  .ar-shell{width:100%;max-width:860px;height:min(84vh,720px);display:flex;flex-direction:column;
+    background:var(--bg-2);border:1px solid var(--line-strong);border-radius:20px;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.6)}
+  .ar-top{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:15px 18px;border-bottom:1px solid var(--line)}
+  .ar-ttl{font-family:'Fraunces',serif;font-weight:600;font-size:1.08rem;color:var(--cream)}
+  .ar-x{background:rgba(245,237,227,.06);border:1px solid var(--line);color:var(--cream);
+    width:34px;height:34px;border-radius:9px;cursor:pointer;font-size:15px;line-height:1}
+  .ar-x:hover{background:rgba(245,237,227,.12)}
+  #arViewer{flex:1;width:100%;min-height:0;
+    background:radial-gradient(120% 100% at 50% 0%, #1b1611 0%, #100c0a 70%);
+    --poster-color:transparent}
+  .ar-cta{background:linear-gradient(120deg,var(--lime),var(--lime-deep));color:#0e0a07;
+    border:none;font-family:'Hanken Grotesk',sans-serif;font-weight:700;font-size:.95rem;
+    padding:12px 20px;border-radius:999px;cursor:pointer;position:absolute;bottom:18px;left:50%;
+    transform:translateX(-50%);white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .ar-foot{padding:13px 18px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted-txt)}
+  .ar-amber{color:#F5C277;font-weight:600}
+  .ar-help{margin-top:6px;color:var(--muted-txt);font-size:.8rem}
+  @media(max-width:560px){.ar-shell{height:88vh;max-width:100%}.ar-ttl{font-size:.98rem}}
+</style>
+<div class="ar-overlay" id="arOverlay" role="dialog" aria-modal="true" aria-label="Vista en realidad aumentada" aria-hidden="true">
+  <div class="ar-shell">
+    <div class="ar-top">
+      <div class="ar-ttl">🕶️ Tu edificio en Realidad Aumentada</div>
+      <button class="ar-x" id="arClose" aria-label="Cerrar">✕</button>
+    </div>
+    <model-viewer id="arViewer" camera-controls auto-rotate touch-action="pan-y"
+        shadow-intensity="1" exposure="1.05" environment-image="neutral"
+        ar ar-modes="webxr scene-viewer quick-look" ar-scale="fixed" ar-placement="floor"
+        alt="Modelo 3D del proyecto para realidad aumentada">
+      <button slot="ar-button" class="ar-cta">📱 Ver a escala real en la calle</button>
+    </model-viewer>
+    <div class="ar-foot">
+      <span class="ar-amber">● Vista ilustrativa (est.)</span> — refleja el volumen y las proporciones del proyecto; acabados, color y contexto son referenciales.
+      <div class="ar-help" id="arHelp"></div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
