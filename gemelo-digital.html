@@ -1942,10 +1942,23 @@ const DEMO_INVESTMENT = {
 
 /* =====================================================================
    Exportar el gemelo digital a glTF (.glb)
+   exportRoot(): clon del edificio SOLO con mallas visibles. Las aristas
+   decorativas (LineSegments → primitivo LINES de glTF) rompen visores
+   como 3D Builder de Windows y algunos AR; se quedan en pantalla pero
+   no salen en el archivo.
 ===================================================================== */
+function exportRoot() {
+  const b = three && three.scene.getObjectByName('building');
+  if (!b) return null;
+  const c = b.clone(true);
+  const dead = [];
+  c.traverse((o) => { if (!o.visible || o.isLine || o.isPoints) dead.push(o); });
+  dead.forEach((o) => o.parent && o.parent.remove(o));
+  return c;
+}
 $('btnExportGltf').addEventListener('click', () => {
   if (!three || !state.geometry) { alert('Primero genera el gemelo digital.'); return; }
-  const building = three.scene.getObjectByName('building');
+  const building = exportRoot();
   if (!building) return;
   new GLTFExporter().parse(
     building,
@@ -2109,18 +2122,6 @@ $('chipInt').addEventListener('click', () => $('btnInteriores').click());
   const ua = navigator.userAgent || '';
   const isIOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
 
-  // clon del edificio sin los nodos ocultos (GLTF ya respeta visibilidad;
-  // USDZ no siempre, así que exportamos un árbol limpio para ambos)
-  function exportRoot() {
-    const b = three.scene.getObjectByName('building');
-    if (!b) return null;
-    const c = b.clone(true);
-    const dead = [];
-    c.traverse((o) => { if (!o.visible) dead.push(o); });
-    dead.forEach((o) => o.parent && o.parent.remove(o));
-    return c;
-  }
-
   function cerrar() { overlay.classList.remove('on'); overlay.setAttribute('aria-hidden', 'true'); }
   function abrir() {
     if (!three || !state.geometry) { alert('Primero genera el gemelo digital.'); return; }
@@ -2141,6 +2142,12 @@ $('chipInt').addEventListener('click', () => $('btnInteriores').click());
       if (!isIOS) {
         viewer.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
         help.innerHTML = 'Toca <b style="color:var(--cream)">“Ver a escala real en la calle”</b> y apunta la cámara al terreno o a la banqueta. Camina alrededor para verlo desde todos los ángulos.' + extra;
+        // en computadora no hay AR: explicarlo en vez de dejar la instrucción confusa
+        viewer.addEventListener('load', () => {
+          if (!viewer.canActivateAR) {
+            help.innerHTML = 'Aquí puedes girar y explorar el modelo en 3D. Para colocarlo a escala real en la calle, abre <b style="color:var(--cream)">brickbit.co/gemelo-digital.html</b> en tu celular (Android o iPhone) y genera el proyecto ahí.' + extra;
+          }
+        }, { once: true });
       }
     }, (err) => { help.textContent = 'No se pudo preparar el modelo: ' + err.message; },
     { binary: true });
