@@ -169,6 +169,20 @@
     background:radial-gradient(600px 400px at 50% 0%, #1c2420, #0d0f0c);
     display:block;
   }
+  #vpWrap{position:relative}
+  .vp-chips{position:absolute;top:12px;right:12px;display:flex;gap:8px;flex-wrap:wrap;
+    justify-content:flex-end;z-index:5}
+  .vp-chip{border:1px solid var(--line-strong);background:rgba(16,12,10,.74);
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--cream);
+    font-family:'Hanken Grotesk',sans-serif;font-weight:600;font-size:.82rem;
+    padding:8px 13px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .vp-chip:hover{background:rgba(36,28,23,.92)}
+  .vp-chip.on{border-color:var(--lime);color:var(--lime)}
+  .vp-chip-ar{background:linear-gradient(120deg,var(--lime),var(--lime-deep));color:#0e0a07;border:none;
+    box-shadow:0 8px 22px rgba(205,242,90,.22)}
+  .vp-chip-ar:hover{filter:brightness(1.06);background:linear-gradient(120deg,var(--lime),var(--lime-deep))}
+  .vp-est{font-family:'Space Mono',monospace;font-size:.6rem;color:#F5C277;letter-spacing:.06em}
+  @media(max-width:560px){.vp-chip{font-size:.76rem;padding:7px 11px}}
   #map3dContainer{
     width:100%;height:520px;border-radius:var(--r);border:1px solid var(--line-strong);overflow:hidden;
     background:var(--bg-2);position:relative;
@@ -439,7 +453,13 @@
     <div class="card-head"><span class="knum">02–03 /</span><h2>Gemelo digital 3D <span class="help" tabindex="0" data-tip="Un gemelo digital es una copia virtual de tu edificio, creada a partir del plano. Permite verlo, simularlo y analizarlo antes de gastar un solo peso en obra.">?</span></h2></div>
     <p class="sub" id="modelSummary"></p>
     <div class="geo-stats" id="geoStats"></div>
-    <canvas id="viewer3d"></canvas>
+    <div id="vpWrap">
+      <canvas id="viewer3d"></canvas>
+      <div class="vp-chips">
+        <button class="vp-chip vp-chip-ar" id="chipAR" title="Ver en Realidad Aumentada">🕶️ Realidad Aumentada</button>
+        <button class="vp-chip" id="chipInt" title="Interiores amueblados (distribución ilustrativa)"><span id="intChipLbl">🛋️ Interiores</span> <span class="vp-est">est.</span></button>
+      </div>
+    </div>
     <div class="hint" style="margin-top:10px">Arrastra para orbitar · rueda para acercar · clic derecho para desplazar.</div>
     <div class="toolbar" style="margin-top:16px;align-items:center">
       <div class="field" style="min-width:190px;flex:0 1 230px">
@@ -1231,6 +1251,10 @@ function buildScene(g) {
   try { _matXRay.clear(); } catch (e) {}
   const _il = document.getElementById('intLbl');
   if (_il) _il.textContent = '🛋️ Interiores amueblados (est.)';
+  const _ic = document.getElementById('chipInt');
+  if (_ic) _ic.classList.remove('on');
+  const _icl = document.getElementById('intChipLbl');
+  if (_icl) _icl.textContent = '🛋️ Interiores';
 
   const group = new THREE.Group();
   group.name = 'building';
@@ -2063,7 +2087,14 @@ $('btnInteriores').addEventListener('click', () => {
   f.visible = on;
   setXRay(on);
   $('intLbl').textContent = on ? '🛋️ Ocultar interiores' : '🛋️ Interiores amueblados (est.)';
+  const chip = $('chipInt');
+  if (chip) chip.classList.toggle('on', on);
+  const cl = $('intChipLbl');
+  if (cl) cl.textContent = on ? '🛋️ Ocultar interiores' : '🛋️ Interiores';
 });
+// chips flotantes sobre el visor 3D → mismas acciones
+$('chipAR').addEventListener('click', () => $('btnAR').click());
+$('chipInt').addEventListener('click', () => $('btnInteriores').click());
 
 /* =====================================================================
    Realidad Aumentada — el mismo modelo del gemelo en <model-viewer>.
