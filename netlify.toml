@@ -44,3 +44,8 @@
   from = "/morfogenesis"
   to = "/morfogenesis.html"
   status = 200
+
+[[redirects]]
+  from = "/presentacion"
+  to = "/docs/presentacion-brickbit.html"
+  status = 200
