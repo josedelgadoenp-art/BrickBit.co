@@ -453,7 +453,8 @@
       <div class="hint" id="sunInfo" style="flex:1;min-width:160px"></div>
     </div>
     <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">
-      <button class="btn btn-ar" id="btnAR">🕶️ Ver en Realidad Aumentada <span class="help" tabindex="0" data-tip="Coloca tu edificio a escala real sobre el terreno o la banqueta con la cámara de tu celular. En Android es AR completa; en iPhone ves el modelo 3D (la colocación AR llega pronto). Ninguna app: todo en el navegador.">?</span></button>
+      <button class="btn btn-ar" id="btnAR">🕶️ Ver en Realidad Aumentada <span class="help" tabindex="0" data-tip="Coloca tu edificio a escala real sobre el terreno o la banqueta con la cámara de tu celular. Android usa Scene Viewer y iPhone usa Quick Look (AR de Apple). Ninguna app: todo en el navegador.">?</span></button>
+      <button class="btn btn-ghost" id="btnInteriores"><span id="intLbl">🛋️ Interiores amueblados (est.)</span> <span class="help" tabindex="0" data-tip="Amuebla cada espacio del plano (cama, sala, cocina, comedor…) en su posición real y activa una vista de rayos X para ver el interior. Los muebles también salen en la Realidad Aumentada. Es una distribución esquemática ilustrativa — no un diseño de interiores final.">?</span></button>
       <button class="btn btn-ghost" id="btnExportGltf">⬇ Modelo 3D (.glb) <span class="help" tabindex="0" data-tip="Descarga el edificio en formato glTF, el estándar de la industria 3D. Se abre en Blender, Unity, Unreal o visores web.">?</span></button>
       <button class="btn btn-ghost" id="btnReport">📄 Reporte ejecutivo (PDF) <span class="help" tabindex="0" data-tip="Genera un documento imprimible con todo el análisis: geometría, materiales, fallas e inversión. Ideal para llevarlo al banco o a inversionistas. En el diálogo de impresión elige “Guardar como PDF”.">?</span></button>
       <button class="btn btn-ghost" id="btnRecord">🎬 Video órbita <span class="help" tabindex="0" data-tip="Graba 10 segundos del gemelo girando en 360° y descarga un video .webm listo para redes, presentaciones o inversionistas.">?</span></button>
@@ -621,6 +622,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { USDZExporter } from 'three/addons/exporters/USDZExporter.js';
 
 /* =====================================================================
    Estado global
@@ -1224,6 +1226,11 @@ function buildScene(g) {
   if (prev) scene.remove(prev);
   const prevGround = scene.getObjectByName('ground');
   if (prevGround) scene.remove(prevGround);
+
+  // el edificio se regenera sólido: reset del modo interiores/rayos X
+  try { _matXRay.clear(); } catch (e) {}
+  const _il = document.getElementById('intLbl');
+  if (_il) _il.textContent = '🛋️ Interiores amueblados (est.)';
 
   const group = new THREE.Group();
   group.name = 'building';
@@ -1934,22 +1941,165 @@ $('btnExportGltf').addEventListener('click', () => {
 });
 
 /* =====================================================================
-   Realidad Aumentada — reutiliza el mismo GLB del gemelo en <model-viewer>
-   Android: AR completa (Scene Viewer). iOS: 3D por ahora (Quick Look
-   necesita USDZ, próxima fase). Sin instalar nada: todo en el navegador.
+   Interiores amueblados (esquemáticos, est.)
+   Amuebla cada espacio del plano en su centro real (x,y del esquema) con
+   kits por tipo de habitación, y activa una vista de rayos X (muros y
+   losas translúcidos) para ver el interior. Distribución ilustrativa.
+===================================================================== */
+let _fm = null;
+function furnMats() {
+  if (_fm) return _fm;
+  const M = (c, r) => new THREE.MeshStandardMaterial({ color: c, roughness: r ?? 0.8 });
+  _fm = { wood: M(0x8a6f4d), fabric: M(0xd8cfc0), dark: M(0x4a4038), metal: M(0x9a938a, 0.4),
+          white: M(0xf5ede3), green: M(0x57c389) };
+  return _fm;
+}
+function _fb(w, h, d, mat) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.userData.furn = true; m.castShadow = true; return m;
+}
+function _fc(r, h, mat) {
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 20), mat);
+  m.userData.furn = true; m.castShadow = true; return m;
+}
+function _at(o, x, y, z) { o.position.set(x, y, z); return o; }
+
+function roomKit(nombre) {
+  const n = String(nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (/recamara|dormitorio|habitacion|alcoba|bedroom/.test(n)) return 'cama';
+  if (/sala|estancia|living|familiar/.test(n)) return 'sala';
+  if (/comedor|dining/.test(n)) return 'comedor';
+  if (/cocina|kitchen/.test(n)) return 'cocina';
+  if (/bano|sanitario|aseo|\bwc\b/.test(n)) return 'bano';
+  if (/estudio|oficina|despacho|office/.test(n)) return 'estudio';
+  if (/cochera|garaje|garage|estacionamiento/.test(n)) return 'auto';
+  if (/patio|jardin|terraza|balcon/.test(n)) return 'planta';
+  if (/lavado|servicio/.test(n)) return 'lavado';
+  return null;
+}
+function buildKit(tipo) {
+  const M = furnMats(), g = new THREE.Group();
+  if (tipo === 'cama') {
+    g.add(_at(_fb(1.6, .32, 2, M.wood), 0, .16, 0));        // base
+    g.add(_at(_fb(1.5, .16, 1.9, M.white), 0, .40, 0));     // colchón
+    g.add(_at(_fb(1.6, .75, .08, M.wood), 0, .55, -1.02));  // cabecera
+    g.add(_at(_fb(.45, .45, .45, M.wood), -1.15, .225, -.75)); // burós
+    g.add(_at(_fb(.45, .45, .45, M.wood), 1.15, .225, -.75));
+  } else if (tipo === 'sala') {
+    g.add(_at(_fb(1.9, .4, .85, M.fabric), 0, .2, 0));      // asiento
+    g.add(_at(_fb(1.9, .45, .2, M.fabric), 0, .62, -.42));  // respaldo
+    g.add(_at(_fb(.22, .55, .85, M.fabric), -1.06, .275, 0));
+    g.add(_at(_fb(.22, .55, .85, M.fabric), 1.06, .275, 0));
+    g.add(_at(_fb(.95, .32, .5, M.wood), 0, .16, 1.05));    // mesa de centro
+  } else if (tipo === 'comedor') {
+    g.add(_at(_fb(1.5, .06, .9, M.wood), 0, .72, 0));       // cubierta
+    g.add(_at(_fc(.09, .7, M.dark), 0, .35, 0));            // pedestal
+    [[-.45, .75], [.45, .75], [-.45, -.75], [.45, -.75]].forEach(([x, z]) =>
+      g.add(_at(_fb(.4, .45, .4, M.dark), x, .225, z)));    // sillas
+  } else if (tipo === 'cocina') {
+    g.add(_at(_fb(2.2, .9, .6, M.wood), 0, .45, -.5));      // barra
+    g.add(_at(_fb(.6, .9, 1.4, M.wood), -1.4, .45, .5));    // L
+    g.add(_at(_fb(.7, 1.75, .7, M.metal), 1.2, .875, .55)); // refrigerador
+  } else if (tipo === 'bano') {
+    g.add(_at(_fb(.4, .42, .55, M.white), -.4, .21, 0));    // wc
+    g.add(_at(_fb(.4, .35, .12, M.white), -.4, .6, -.25));
+    g.add(_at(_fc(.22, .8, M.white), .35, .4, 0));          // lavabo
+    g.add(_at(_fb(.9, .06, .9, M.metal), 0, .03, .8));      // regadera
+  } else if (tipo === 'estudio') {
+    g.add(_at(_fb(1.4, .05, .7, M.wood), 0, .73, 0));       // escritorio
+    g.add(_at(_fb(.06, .73, .65, M.wood), -.65, .365, 0));
+    g.add(_at(_fb(.06, .73, .65, M.wood), .65, .365, 0));
+    g.add(_at(_fb(.45, .48, .45, M.dark), 0, .24, .65));    // silla
+  } else if (tipo === 'auto') {
+    g.add(_at(_fb(1.75, .5, 4.1, M.metal), 0, .45, 0));     // carrocería
+    g.add(_at(_fb(1.6, .45, 2.0, M.dark), 0, .9, -.2));     // cabina
+  } else if (tipo === 'planta') {
+    g.add(_at(_fc(.22, .4, M.dark), 0, .2, 0));             // maceta
+    const fol = new THREE.Mesh(new THREE.SphereGeometry(.45, 16, 12), M.green);
+    fol.userData.furn = true; fol.castShadow = true;
+    g.add(_at(fol, 0, .85, 0));
+  } else if (tipo === 'lavado') {
+    g.add(_at(_fb(.6, .85, .6, M.white), -.35, .425, 0));
+    g.add(_at(_fb(.6, .85, .6, M.metal), .35, .425, 0));
+  }
+  return g;
+}
+function buildFurniture(g) {
+  const grp = new THREE.Group(); grp.name = 'furniture';
+  const cx = g.anchoM / 2, cy = g.fondoM / 2;
+  for (const e of (g.espacios || [])) {
+    const tipo = roomKit(e.nombre); if (!tipo) continue;
+    const kit = buildKit(tipo);
+    if (e.areaM2 && e.areaM2 < 8) kit.scale.setScalar(0.85);
+    kit.position.set((+e.x || 0) - cx, 0.152, (+e.y || 0) - cy); // sobre la losa de PB
+    grp.add(kit);
+  }
+  return grp;
+}
+const _matXRay = new Map();
+function setXRay(on) {
+  const b = three && three.scene.getObjectByName('building');
+  if (!b) return;
+  if (on) {
+    b.traverse((o) => {
+      if (o.isMesh && !o.userData.furn) {
+        const m = o.material;
+        if (!_matXRay.has(m)) _matXRay.set(m, { t: m.transparent, o: m.opacity, d: m.depthWrite });
+        m.transparent = true; m.opacity = 0.18; m.depthWrite = false;
+      }
+    });
+  } else {
+    for (const [m, s] of _matXRay) { m.transparent = s.t; m.opacity = s.o; m.depthWrite = s.d; }
+    _matXRay.clear();
+  }
+}
+$('btnInteriores').addEventListener('click', () => {
+  if (!three || !state.geometry) { alert('Primero genera el gemelo digital.'); return; }
+  const b = three.scene.getObjectByName('building');
+  if (!b) { alert('Aún no hay un modelo 3D generado.'); return; }
+  let f = b.getObjectByName('furniture');
+  if (!f) { f = buildFurniture(state.geometry); f.visible = false; b.add(f); }
+  const on = !f.visible;
+  f.visible = on;
+  setXRay(on);
+  $('intLbl').textContent = on ? '🛋️ Ocultar interiores' : '🛋️ Interiores amueblados (est.)';
+});
+
+/* =====================================================================
+   Realidad Aumentada — el mismo modelo del gemelo en <model-viewer>.
+   Android: Scene Viewer (GLB). iPhone: Quick Look (USDZ generado aquí
+   mismo con USDZExporter). Exporta lo que se ve: si los interiores
+   están activos, van incluidos (vista rayos X). Sin instalar nada.
 ===================================================================== */
 (function () {
   const overlay = $('arOverlay'), viewer = $('arViewer'), help = $('arHelp');
   if (!overlay || !viewer) return;
-  let arUrl = null;
+  let arUrl = null, usdzUrl = null;
   const ua = navigator.userAgent || '';
   const isIOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
+
+  // clon del edificio sin los nodos ocultos (GLTF ya respeta visibilidad;
+  // USDZ no siempre, así que exportamos un árbol limpio para ambos)
+  function exportRoot() {
+    const b = three.scene.getObjectByName('building');
+    if (!b) return null;
+    const c = b.clone(true);
+    const dead = [];
+    c.traverse((o) => { if (!o.visible) dead.push(o); });
+    dead.forEach((o) => o.parent && o.parent.remove(o));
+    return c;
+  }
 
   function cerrar() { overlay.classList.remove('on'); overlay.setAttribute('aria-hidden', 'true'); }
   function abrir() {
     if (!three || !state.geometry) { alert('Primero genera el gemelo digital.'); return; }
-    const building = three.scene.getObjectByName('building');
-    if (!building) { alert('Aún no hay un modelo 3D generado.'); return; }
+    const orig = three.scene.getObjectByName('building');
+    if (!orig) { alert('Aún no hay un modelo 3D generado.'); return; }
+    const conInteriores = !!(orig.getObjectByName('furniture') || {}).visible;
+    const extra = conInteriores
+      ? ' Incluye los interiores esquemáticos tal como los ves (vista rayos X).'
+      : '';
+    const building = exportRoot();
     help.textContent = 'Preparando el modelo…';
     overlay.classList.add('on'); overlay.setAttribute('aria-hidden', 'false');
     new GLTFExporter().parse(building, (result) => {
@@ -1957,15 +2107,35 @@ $('btnExportGltf').addEventListener('click', () => {
       if (arUrl) URL.revokeObjectURL(arUrl);
       arUrl = URL.createObjectURL(blob);
       viewer.src = arUrl;
-      if (isIOS) {
-        viewer.setAttribute('ar-modes', 'webxr');   // sin quick-look ⇒ no muestra un botón AR que fallaría
-        help.innerHTML = 'En iPhone puedes girar y explorar el modelo en 3D. La colocación en AR (Quick Look) llega en la próxima fase.';
-      } else {
+      if (!isIOS) {
         viewer.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
-        help.innerHTML = 'Toca <b style="color:var(--cream)">“Ver a escala real en la calle”</b> y apunta la cámara al terreno o a la banqueta. Camina alrededor para verlo desde todos los ángulos.';
+        help.innerHTML = 'Toca <b style="color:var(--cream)">“Ver a escala real en la calle”</b> y apunta la cámara al terreno o a la banqueta. Camina alrededor para verlo desde todos los ángulos.' + extra;
       }
     }, (err) => { help.textContent = 'No se pudo preparar el modelo: ' + err.message; },
     { binary: true });
+
+    // iPhone/iPad: generar USDZ para Quick Look
+    if (isIOS) {
+      viewer.setAttribute('ar-modes', 'webxr'); // hasta tener el USDZ listo
+      help.textContent = 'Preparando la versión para iPhone…';
+      const ok = (data) => {
+        const blob = new Blob([data], { type: 'model/vnd.usdz+zip' });
+        if (usdzUrl) URL.revokeObjectURL(usdzUrl);
+        usdzUrl = URL.createObjectURL(blob);
+        viewer.setAttribute('ios-src', usdzUrl);
+        viewer.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
+        help.innerHTML = 'Toca <b style="color:var(--cream)">“Ver a escala real en la calle”</b> y apunta la cámara al piso: tu iPhone lo coloca en el espacio con Quick Look.' + extra;
+      };
+      const fail = () => {
+        help.innerHTML = 'En este dispositivo puedes girar y explorar el modelo en 3D. (No se pudo preparar la colocación AR.)';
+      };
+      try {
+        const ex = new USDZExporter();
+        const p = ex.parseAsync ? ex.parseAsync(building)
+                : new Promise((res, rej) => ex.parse(building, res, rej));
+        p.then(ok).catch(fail);
+      } catch (e) { fail(); }
+    }
   }
   $('btnAR').addEventListener('click', abrir);
   $('arClose').addEventListener('click', cerrar);
