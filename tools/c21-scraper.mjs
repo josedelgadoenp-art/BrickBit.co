@@ -168,13 +168,84 @@ function parseVentanas(html) {
   return out;
 }
 
+/* Estrategia 3: JSON incrustado (Next.js __NEXT_DATA__, application/json,
+   window.__NUXT__/__INITIAL_STATE__) — recorre el árbol y saca los objetos
+   que "parecen propiedad" (precio + ubicación/título). */
+const K = {
+  precio: /^(precio|price|amount|valor|monto|list_?price|price_?value|sale_?price)$/i,
+  moneda: /^(moneda|currency|price_?currency)$/i,
+  constr: /^(construccion|construcción|m2_?construccion|construction|constructed|built|built_?area|building_?area|construction_?(?:size|area)|covered_?area|superficie_?construida|sup_?construccion|surface_?built)$/i,
+  terreno: /^(terreno|land|land_?area|lot_?size|lot_?area|superficie_?terreno|sup_?terreno|land_?size)$/i,
+  rec: /^(recamaras|recámaras|habitaciones|bedrooms|rooms|dormitorios|beds)$/i,
+  banos: /^(banos|baños|banios|bathrooms|baths)$/i,
+  estac: /^(estacionamientos|parking|garages|cocheras|parking_?spaces)$/i,
+  tipo: /^(tipo|type|property_?type|tipo_?propiedad|category|categoria)$/i,
+  oper: /^(operacion|operación|operation|tipo_?operacion|transaction|listing_?type)$/i,
+  titulo: /^(titulo|título|title|name|nombre|headline)$/i,
+  ubic: /^(ubicacion|ubicación|direccion|dirección|address|location|colonia|municipio|ciudad|estado|neighborhood|full_?address)$/i,
+  url: /^(url|slug|link|permalink|detail_?url|canonical)$/i,
+  img: /^(imagen|image|foto|photo|thumbnail|main_?image|cover|images|fotos|photos)$/i,
+  lat: /^(lat|latitude|latitud)$/i,
+  lng: /^(lng|lon|long|longitude|longitud)$/i,
+};
+const asNum2 = (v) => typeof v === 'number' ? v : numero(v);
+function pick(o, rx) { for (const k of Object.keys(o)) if (rx.test(k)) return o[k]; return undefined; }
+function esPropiedad(o) {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return false;
+  const p = asNum2(pick(o, K.precio));
+  if (!p || p < 1000) return false;
+  return !!(pick(o, K.ubic) || pick(o, K.titulo));
+}
+function mapProp(o) {
+  const imgRaw = pick(o, K.img);
+  const img = Array.isArray(imgRaw) ? (typeof imgRaw[0] === 'string' ? imgRaw[0] : (imgRaw[0] && (imgRaw[0].url || imgRaw[0].src))) : imgRaw;
+  const tipo = limpia(pick(o, K.tipo) || '');
+  const operRaw = limpia(pick(o, K.oper) || tipo || '');
+  const oper = /renta|rent|lease/i.test(operRaw) ? 'renta' : /venta|sale|sell/i.test(operRaw) ? 'venta' : null;
+  let url = pick(o, K.url);
+  if (typeof url === 'string' && url.startsWith('/')) url = BASE + url;
+  else if (typeof url === 'string' && !/^https?:/i.test(url)) url = BASE + '/' + url.replace(/^\/+/, '');
+  const ub = pick(o, K.ubic);
+  const ubic = typeof ub === 'object' && ub ? Object.values(ub).filter((v) => typeof v === 'string').join(', ') : ub;
+  return {
+    url: typeof url === 'string' ? url : null,
+    titulo: limpia(pick(o, K.titulo) || ''),
+    precio: asNum2(pick(o, K.precio)), moneda: limpia(pick(o, K.moneda) || 'MXN') || 'MXN',
+    ubicacion: limpia(ubic || ''),
+    m2_construccion: asNum2(pick(o, K.constr)), m2_terreno: asNum2(pick(o, K.terreno)),
+    recamaras: asNum2(pick(o, K.rec)), banos: asNum2(pick(o, K.banos)), estacionamientos: asNum2(pick(o, K.estac)),
+    tipo: tipo || null, operacion: oper,
+    imagen: typeof img === 'string' ? img : null,
+    lat: asNum2(pick(o, K.lat)), lng: asNum2(pick(o, K.lng)),
+    _via: 'json',
+  };
+}
+function walk(node, out, depth = 0) {
+  if (!node || depth > 12) return;
+  if (Array.isArray(node)) { for (const x of node) walk(x, out, depth + 1); return; }
+  if (typeof node !== 'object') return;
+  if (esPropiedad(node)) out.push(mapProp(node));
+  for (const k of Object.keys(node)) walk(node[k], out, depth + 1);
+}
+function blobsJSON(html) {
+  const blobs = []; let m;
+  const reScript = /<script[^>]*(?:id\s*=\s*["']__NEXT_DATA__["']|type\s*=\s*["']application\/json["'])[^>]*>([\s\S]*?)<\/script>/gi;
+  while ((m = reScript.exec(html))) blobs.push(m[1]);
+  const reWin = /(?:window\.__NUXT__|__INITIAL_STATE__|__APOLLO_STATE__)\s*=\s*(\{[\s\S]*?\})\s*<\/script>/gi;
+  while ((m = reWin.exec(html))) blobs.push(m[1]);
+  return blobs;
+}
+function parseEmbeddedJson(html) {
+  const out = [];
+  for (const b of blobsJSON(html)) { try { walk(JSON.parse(b), out); } catch { /* no-JSON: ignorar */ } }
+  const seen = new Set();
+  return out.filter((x) => { const k = llave(x); if (seen.has(k)) return false; seen.add(k); return true; });
+}
+
 function parsePagina(html) {
-  const ld = parseJsonLd(html);
-  const vent = parseVentanas(html);
-  // usa la estrategia que más encontró; si empatan, combina por url
-  const items = vent.length >= ld.length ? vent : ld;
-  // filtra falsos positivos obvios (sin precio o precio ridículo)
-  return items.filter((x) => x.precio && x.precio >= 1000);
+  const cands = [parseEmbeddedJson(html), parseJsonLd(html), parseVentanas(html)]
+    .sort((a, b) => b.length - a.length);
+  return cands[0].filter((x) => x.precio && x.precio >= 1000);
 }
 
 const llave = (x) => x.url || [x.titulo, x.precio, x.ubicacion].join('|');
@@ -187,6 +258,19 @@ async function muestra() {
   const html = await fetchText(url);
   fs.writeFileSync(path.join(OUT, 'muestra_pagina1.html'), html);
   const items = parsePagina(html);
+
+  // diagnóstico: ¿dónde están los datos?
+  const nBlobs = blobsJSON(html).length;
+  const hayNext = /__NEXT_DATA__/.test(html);
+  const hayNextFlight = /self\.__next_f/.test(html);
+  const apis = [...new Set([...html.matchAll(/["'](\/(?:api|v1|v2|search|graphql)[^"'\s]{0,60})["']/gi)].map((m) => m[1]))].slice(0, 8);
+  const algolia = /algolia/i.test(html);
+  console.log('\n   Diagnóstico de estructura:');
+  console.log(`   · bloques JSON incrustados: ${nBlobs}${hayNext ? ' (incluye __NEXT_DATA__)' : ''}`);
+  if (hayNextFlight) console.log('   · Next.js App Router (streaming self.__next_f) detectado');
+  if (algolia) console.log('   · usa Algolia (buscador externo)');
+  if (apis.length) console.log('   · rutas tipo API en el HTML: ' + apis.join('  '));
+
   const tot = html.match(/([\d.,]{4,})\s*(?:propiedades|inmuebles|resultados)/i);
   const pct = (k) => Math.round((items.filter((x) => x[k] != null).length / (items.length || 1)) * 100);
   console.log(`\n   Propiedades detectadas en la página: ${items.length}`);
