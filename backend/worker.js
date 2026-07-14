@@ -111,6 +111,17 @@ export default {
       return handleDemandGet(request, url, env);
     }
 
+    /* ---- Modelos AR temporales (~1h). Scene Viewer (Android) y Quick Look
+       (iPhone) no leen blob: URLs; necesitan una URL https real. El gemelo
+       sube aquí su GLB/USDZ y model-viewer usa estas URLs. KV SHARES. ---- */
+    if (url.pathname === '/api/ar-model' && request.method === 'POST') {
+      return handleArModelCreate(request, env);
+    }
+    const arMatch = url.pathname.match(/^\/api\/ar-model\/([a-z0-9]{4,20})\.(glb|usdz)$/);
+    if (arMatch && request.method === 'GET') {
+      return handleArModelGet(arMatch[1], arMatch[2], env);
+    }
+
     if (url.pathname !== '/api/claude' || request.method !== 'POST') {
       return json({ error: { message: 'No encontrado. Usa GET /api/score?zona=, GET /api/forecast?zona=, POST /api/claude, POST /api/share o GET /api/share/{id}' } }, 404, headers);
     }
@@ -680,6 +691,53 @@ async function handleDemandGet(request, url, env) {
     .sort((a, b) => b.n - a.n).slice(0, 100);
   return new Response(JSON.stringify({ total: agg.total || 0, actualizado: agg.actualizado || null, ranking,
     presupuestos: agg.presupuestos || {}, estilos: agg.estilos || {}, tipos: agg.tipos || {} }), { headers });
+}
+
+/* --- Modelos AR temporales (GLB/USDZ) --- */
+const AR_TTL_SECONDS = 3600;      // 1 hora: suficiente para la sesión de AR
+const AR_MAX_B64 = 15_000_000;    // ~11 MB binarios por archivo
+
+async function handleArModelCreate(request, env) {
+  const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
+  if (!env.SHARES) {
+    return new Response(JSON.stringify({ error: 'El backend no tiene el KV SHARES configurado.' }), { status: 501, headers });
+  }
+  let data;
+  try { data = await request.json(); } catch { data = null; }
+  if (!data || typeof data.glb !== 'string' || !data.glb) {
+    return new Response(JSON.stringify({ error: 'Falta el modelo glb (base64).' }), { status: 400, headers });
+  }
+  if (data.glb.length > AR_MAX_B64 || (typeof data.usdz === 'string' && data.usdz.length > AR_MAX_B64)) {
+    return new Response(JSON.stringify({ error: 'Modelo demasiado grande.' }), { status: 413, headers });
+  }
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const id = [...crypto.getRandomValues(new Uint8Array(8))].map(b => alphabet[b % 36]).join('');
+  await env.SHARES.put('ar:' + id + ':glb', data.glb, { expirationTtl: AR_TTL_SECONDS });
+  const hayUsdz = typeof data.usdz === 'string' && data.usdz.length > 0;
+  if (hayUsdz) await env.SHARES.put('ar:' + id + ':usdz', data.usdz, { expirationTtl: AR_TTL_SECONDS });
+  const base = new URL(request.url).origin;
+  return new Response(JSON.stringify({
+    id,
+    glb: base + '/api/ar-model/' + id + '.glb',
+    usdz: hayUsdz ? base + '/api/ar-model/' + id + '.usdz' : null,
+    expiraEnMin: Math.round(AR_TTL_SECONDS / 60),
+  }), { status: 200, headers });
+}
+
+async function handleArModelGet(id, fmt, env) {
+  const cors = { 'access-control-allow-origin': '*' };
+  if (!env.SHARES) return new Response('sin KV', { status: 501, headers: cors });
+  const b64 = await env.SHARES.get('ar:' + id + ':' + fmt);
+  if (!b64) return new Response('Modelo no encontrado o expirado (duran 1 hora).', { status: 404, headers: cors });
+  const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+  return new Response(bin, {
+    status: 200,
+    headers: {
+      ...cors,
+      'content-type': fmt === 'glb' ? 'model/gltf-binary' : 'model/vnd.usdz+zip',
+      'cache-control': 'public, max-age=3600',
+    },
+  });
 }
 
 /* --- WhatsApp vía Twilio --- */

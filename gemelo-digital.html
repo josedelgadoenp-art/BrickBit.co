@@ -2134,46 +2134,69 @@ $('chipInt').addEventListener('click', () => $('btnInteriores').click());
     const building = exportRoot();
     help.textContent = 'Preparando el modelo…';
     overlay.classList.add('on'); overlay.setAttribute('aria-hidden', 'false');
-    new GLTFExporter().parse(building, (result) => {
-      const blob = new Blob([result], { type: 'model/gltf-binary' });
+
+    // Scene Viewer (Android) y Quick Look (iPhone) NO leen blob: URLs — si se
+    // les da una, el teléfono descarga el archivo en vez de colocarlo. El blob
+    // solo sirve para la vista previa 3D; la AR usa URLs https del backend.
+    viewer.removeAttribute('ios-src');
+    viewer.setAttribute('ar-modes', 'webxr'); // seguro hasta tener URLs https
+
+    const b64 = (buf) => {
+      const u = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+      let s = '';
+      for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+      return btoa(s);
+    };
+    const msgSinAR = 'Aquí puedes girar y explorar el modelo en 3D. Para colocarlo a escala real hace falta el backend de BrickBit activo (los modelos AR se sirven desde ahí).';
+    const msgDesktop = 'Aquí puedes girar y explorar el modelo en 3D. Para colocarlo a escala real en la calle, abre <b style="color:var(--cream)">brickbit.co/gemelo-digital.html</b> en tu celular (Android o iPhone) y genera el proyecto ahí.';
+
+    function hostAR(glbBuf, usdzBuf) {
+      const backend = ($('backendUrl').value || '').trim().replace(/\/+$/, '');
+      if (!backend) return Promise.resolve(null);
+      const payload = { glb: b64(glbBuf) };
+      if (usdzBuf) payload.usdz = b64(usdzBuf);
+      return fetch(backend + '/api/ar-model', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    }
+
+    new GLTFExporter().parse(building, (glbBuf) => {
+      // vista previa inmediata con blob (esto sí funciona en cualquier navegador)
+      const blob = new Blob([glbBuf], { type: 'model/gltf-binary' });
       if (arUrl) URL.revokeObjectURL(arUrl);
       arUrl = URL.createObjectURL(blob);
       viewer.src = arUrl;
-      if (!isIOS) {
-        viewer.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
-        help.innerHTML = 'Toca <b style="color:var(--cream)">“Ver a escala real en la calle”</b> y apunta la cámara al terreno o a la banqueta. Camina alrededor para verlo desde todos los ángulos.' + extra;
-        // en computadora no hay AR: explicarlo en vez de dejar la instrucción confusa
-        viewer.addEventListener('load', () => {
-          if (!viewer.canActivateAR) {
-            help.innerHTML = 'Aquí puedes girar y explorar el modelo en 3D. Para colocarlo a escala real en la calle, abre <b style="color:var(--cream)">brickbit.co/gemelo-digital.html</b> en tu celular (Android o iPhone) y genera el proyecto ahí.' + extra;
-          }
-        }, { once: true });
-      }
+      help.textContent = 'Preparando la colocación AR…';
+
+      // USDZ solo hace falta en iPhone/iPad
+      const usdzP = !isIOS ? Promise.resolve(null) : (() => {
+        try {
+          const ex = new USDZExporter();
+          return (ex.parseAsync ? ex.parseAsync(building)
+            : new Promise((res, rej) => ex.parse(building, res, rej))).catch(() => null);
+        } catch (e) { return Promise.resolve(null); }
+      })();
+
+      const esMovil = isIOS || /Android/i.test(ua);
+      usdzP.then((usdzBuf) => hostAR(glbBuf, usdzBuf).then((host) => {
+        if (host && host.glb) {
+          if (isIOS && host.usdz) viewer.setAttribute('ios-src', host.usdz);
+          if (!isIOS) viewer.src = host.glb; // Scene Viewer exige URL https
+          viewer.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
+        }
+        const msgOk = 'Toca <b style="color:var(--cream)">“Ver a escala real en la calle”</b> y apunta la cámara al terreno o a la banqueta. Camina alrededor para verlo desde todos los ángulos.' + extra;
+        const revisar = () => {
+          if (viewer.canActivateAR) help.innerHTML = msgOk;
+          else if (esMovil) help.innerHTML = msgSinAR;
+          else help.innerHTML = msgDesktop + extra;
+        };
+        revisar();
+        setTimeout(revisar, 1500); // canActivateAR se actualiza async tras cambiar src/modos
+      }));
     }, (err) => { help.textContent = 'No se pudo preparar el modelo: ' + err.message; },
     { binary: true });
-
-    // iPhone/iPad: generar USDZ para Quick Look
-    if (isIOS) {
-      viewer.setAttribute('ar-modes', 'webxr'); // hasta tener el USDZ listo
-      help.textContent = 'Preparando la versión para iPhone…';
-      const ok = (data) => {
-        const blob = new Blob([data], { type: 'model/vnd.usdz+zip' });
-        if (usdzUrl) URL.revokeObjectURL(usdzUrl);
-        usdzUrl = URL.createObjectURL(blob);
-        viewer.setAttribute('ios-src', usdzUrl);
-        viewer.setAttribute('ar-modes', 'webxr scene-viewer quick-look');
-        help.innerHTML = 'Toca <b style="color:var(--cream)">“Ver a escala real en la calle”</b> y apunta la cámara al piso: tu iPhone lo coloca en el espacio con Quick Look.' + extra;
-      };
-      const fail = () => {
-        help.innerHTML = 'En este dispositivo puedes girar y explorar el modelo en 3D. (No se pudo preparar la colocación AR.)';
-      };
-      try {
-        const ex = new USDZExporter();
-        const p = ex.parseAsync ? ex.parseAsync(building)
-                : new Promise((res, rej) => ex.parse(building, res, rej));
-        p.then(ok).catch(fail);
-      } catch (e) { fail(); }
-    }
   }
   $('btnAR').addEventListener('click', abrir);
   $('arClose').addEventListener('click', cerrar);
