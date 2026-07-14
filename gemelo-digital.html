@@ -636,10 +636,10 @@
 
 <script src="zonas.js"></script>
 
-<!-- model-viewer: Realidad Aumentada (Scene Viewer en Android, Quick Look en iOS). Carga aparte, no choca con el three de la página. -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
-
-<!-- Three.js via import map -->
+<!-- Three.js via import map.
+     IMPORTANTE: el importmap DEBE ir antes que cualquier <script type="module">.
+     Si un módulo (p. ej. model-viewer) empieza a cargar primero, Safari/iOS
+     descarta el mapa, el import de 'three' falla y muere toda la página. -->
 <script type="importmap">
 {
   "imports": {
@@ -648,6 +648,9 @@
   }
 }
 </script>
+
+<!-- model-viewer: Realidad Aumentada (Scene Viewer en Android, Quick Look en iOS). Carga aparte, no choca con el three de la página. -->
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
 
 <script type="module">
 import * as THREE from 'three';
@@ -2198,6 +2201,12 @@ $('chipInt').addEventListener('click', () => $('btnInteriores').click());
     if (!three || !state.geometry) { alert('Primero genera el gemelo digital.'); return; }
     const orig = three.scene.getObjectByName('building');
     if (!orig) { alert('Aún no hay un modelo 3D generado.'); return; }
+    if (!window.customElements || !customElements.get('model-viewer')) {
+      // el script del visor AR no cargó (red/CDN): avisar en vez de mostrar una caja muerta
+      overlay.classList.add('on'); overlay.setAttribute('aria-hidden', 'false');
+      help.innerHTML = 'El visor de realidad aumentada no terminó de cargar. Revisa tu conexión a internet y <b style="color:var(--cream)">recarga la página</b> para intentarlo de nuevo.';
+      return;
+    }
     const conInteriores = !!(orig.getObjectByName('furniture') || {}).visible;
     const extra = conInteriores
       ? ' Incluye los interiores esquemáticos tal como los ves (vista rayos X).'
@@ -2723,6 +2732,9 @@ function hideError(id) { $(id).classList.remove('show'); }
   .ar-foot{padding:13px 18px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted-txt)}
   .ar-amber{color:#F5C277;font-weight:600}
   .ar-help{margin-top:6px;color:var(--muted-txt);font-size:.8rem}
+  /* si el web component no se registró, ocultar el botón AR huérfano */
+  model-viewer:not(:defined){display:block;min-height:200px}
+  model-viewer:not(:defined) .ar-cta{display:none}
   @media(max-width:560px){.ar-shell{height:88vh;max-width:100%}.ar-ttl{font-size:.98rem}}
 </style>
 <div class="ar-overlay" id="arOverlay" role="dialog" aria-modal="true" aria-label="Vista en realidad aumentada" aria-hidden="true">
