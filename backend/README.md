@@ -32,9 +32,19 @@ npx wrangler login
 # 2. Guarda tu llave de Anthropic como secreto (te la pedirá por consola)
 npx wrangler secret put ANTHROPIC_API_KEY
 
+# 2b. (Opcional) Textura de fachada con IA en el Gemelo Digital.
+#     Crea una llave gratis en https://aistudio.google.com/apikey y guárdala:
+npx wrangler secret put GOOGLE_AI_KEY
+
 # 3. Despliega
 npx wrangler deploy
 ```
+
+> **`GOOGLE_AI_KEY`** habilita `POST /api/texture`, que usa **Gemini (Google AI
+> Studio)** para generar una textura de fachada bajo demanda. Sin esta llave, el
+> botón "🎨 Texturizar" del Gemelo avisa que falta configurarla; el resto del
+> backend funciona igual. La generación de imágenes se factura por imagen en el
+> plan de pago de Google (hay capa gratuita para pruebas).
 
 Al terminar, wrangler imprime la URL del Worker, por ejemplo:
 

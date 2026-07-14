@@ -122,6 +122,12 @@ export default {
       return handleArModelGet(arMatch[1], arMatch[2], env);
     }
 
+    /* ---- Textura de fachada por IA (Google AI Studio / Gemini). Bajo
+       demanda: una imagen por petición. Requiere el secreto GOOGLE_AI_KEY. ---- */
+    if (url.pathname === '/api/texture' && request.method === 'POST') {
+      return handleTexture(request, env);
+    }
+
     if (url.pathname !== '/api/claude' || request.method !== 'POST') {
       return json({ error: { message: 'No encontrado. Usa GET /api/score?zona=, GET /api/forecast?zona=, POST /api/claude, POST /api/share o GET /api/share/{id}' } }, 404, headers);
     }
@@ -738,6 +744,49 @@ async function handleArModelGet(id, fmt, env) {
       'cache-control': 'public, max-age=3600',
     },
   });
+}
+
+/* --- Textura de fachada por IA (Gemini de Google AI Studio) --- */
+const TEX_ESTILOS = {
+  contemporaneo: 'fachada residencial contemporánea de concreto aparente y grandes paños de vidrio',
+  ladrillo: 'muro de ladrillo rojo aparente estilo industrial, con juntas de mortero',
+  colonial: 'fachada colonial mexicana con aplanado texturizado, molduras y cantera',
+  minimalista: 'fachada minimalista blanca, superficie lisa y limpia, mínimas juntas',
+  madera: 'revestimiento de listones de madera natural en tono cálido',
+};
+async function handleTexture(request, env) {
+  const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
+  if (!env.GOOGLE_AI_KEY) {
+    return new Response(JSON.stringify({ error: 'El backend no tiene GOOGLE_AI_KEY configurada. Ver backend/README.md.' }), { status: 501, headers });
+  }
+  let body; try { body = await request.json(); } catch { body = {}; }
+  const estilo = String(body.estilo || 'contemporaneo').toLowerCase();
+  const desc = TEX_ESTILOS[estilo] || TEX_ESTILOS.contemporaneo;
+  const prompt = `Textura de material arquitectónico SIN COSTURAS (seamless, tileable) para mapear sobre una pared 3D: ${desc}. Vista frontal completamente plana (elevación ortográfica), sin perspectiva, sin cielo ni suelo ni entorno, sin sombras marcadas, iluminación uniforme y difusa, patrón que se repite en mosaico sin bordes visibles, alta resolución, cuadrada.`;
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent';
+  let r;
+  try {
+    r = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GOOGLE_AI_KEY },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: 'No se pudo contactar a Google: ' + e.message }), { status: 502, headers });
+  }
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    return new Response(JSON.stringify({ error: 'Google respondió ' + r.status, detalle: t.slice(0, 300) }), { status: 502, headers });
+  }
+  let data; try { data = await r.json(); } catch { data = null; }
+  const parts = (((data || {}).candidates || [])[0] || {}).content?.parts || [];
+  const img = parts.find((p) => p.inlineData || p.inline_data);
+  const inline = img && (img.inlineData || img.inline_data);
+  if (!inline || !inline.data) {
+    return new Response(JSON.stringify({ error: 'La respuesta de Google no incluyó una imagen.' }), { status: 502, headers });
+  }
+  const mime = inline.mimeType || inline.mime_type || 'image/png';
+  return new Response(JSON.stringify({ image: `data:${mime};base64,${inline.data}`, estilo }), { status: 200, headers });
 }
 
 /* --- WhatsApp vía Twilio --- */
