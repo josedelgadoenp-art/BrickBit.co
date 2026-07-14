@@ -458,6 +458,7 @@
       <div class="vp-chips">
         <button class="vp-chip vp-chip-ar" id="chipAR" title="Ver en Realidad Aumentada">🕶️ Realidad Aumentada</button>
         <button class="vp-chip" id="chipInt" title="Interiores amueblados (distribución ilustrativa)"><span id="intChipLbl">🛋️ Interiores</span> <span class="vp-est">est.</span></button>
+        <button class="vp-chip" id="chipTex" title="Genera una textura de fachada con IA y la aplica al modelo (ilustrativo)"><span id="texChipLbl">🎨 Texturizar</span> <span class="vp-est">est.</span></button>
       </div>
     </div>
     <div class="hint" style="margin-top:10px">Arrastra para orbitar · rueda para acercar · clic derecho para desplazar.</div>
@@ -469,6 +470,16 @@
       <div class="field" style="min-width:190px;flex:0 1 230px">
         <label>hora: <b id="sunHoraLbl" style="color:var(--lime)">12:00</b></label>
         <input type="range" id="sunHora" min="6" max="20" step="0.5" value="12" style="width:100%;accent-color:var(--lime)">
+      </div>
+      <div class="field" style="min-width:150px;flex:0 1 200px">
+        <label>🎨 Estilo de fachada <span class="help" tabindex="0" data-tip="Estilo que usará la IA (Gemini) al generar la textura del edificio cuando toques “Texturizar”. La textura es ilustrativa; no reproduce los acabados exactos del proyecto.">?</span></label>
+        <select id="texEstilo" style="width:100%">
+          <option value="contemporaneo">Contemporáneo (concreto y vidrio)</option>
+          <option value="ladrillo">Ladrillo aparente</option>
+          <option value="colonial">Colonial mexicano</option>
+          <option value="minimalista">Minimalista blanco</option>
+          <option value="madera">Madera</option>
+        </select>
       </div>
       <div class="hint" id="sunInfo" style="flex:1;min-width:160px"></div>
     </div>
@@ -1255,6 +1266,11 @@ function buildScene(g) {
   if (_ic) _ic.classList.remove('on');
   const _icl = document.getElementById('intChipLbl');
   if (_icl) _icl.textContent = '🛋️ Interiores';
+  // el edificio nace sin textura (materiales frescos): reset del chip
+  const _tc = document.getElementById('chipTex');
+  if (_tc) _tc.classList.remove('on');
+  const _tcl = document.getElementById('texChipLbl');
+  if (_tcl) _tcl.textContent = '🎨 Texturizar';
 
   const group = new THREE.Group();
   group.name = 'building';
@@ -1301,6 +1317,8 @@ function buildScene(g) {
       );
       mesh.rotation.y = -Math.atan2(dy, dx);
       mesh.castShadow = mesh.receiveShadow = true;
+      mesh.userData.wall = true;                    // objetivo de la textura de fachada
+      mesh.userData.wlen = len; mesh.userData.wh = h - slabT;
       group.add(mesh);
     }
 
@@ -2105,6 +2123,59 @@ $('btnInteriores').addEventListener('click', () => {
   const cl = $('intChipLbl');
   if (cl) cl.textContent = on ? '🛋️ Ocultar interiores' : '🛋️ Interiores';
 });
+/* =====================================================================
+   Textura de fachada por IA (bajo demanda). Pide una imagen al Worker
+   (Gemini), la aplica como material de los muros y queda incluida en la
+   AR. Ilustrativa (est.): no reproduce los acabados reales del proyecto.
+===================================================================== */
+let _texActual = null;
+function aplicarTexturaFachada(dataUrl) {
+  return new Promise((resolve) => {
+    new THREE.TextureLoader().load(dataUrl, (tex) => {
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const b = three.scene.getObjectByName('building');
+      if (b) b.traverse((o) => {
+        if (o.isMesh && o.userData.wall) {
+          const t = tex.clone(); t.needsUpdate = true;
+          // repetición ~1 baldosa cada 3 m para que no se estire ni se llene de costuras
+          t.repeat.set(Math.max(1, Math.round((o.userData.wlen || 3) / 3)),
+                       Math.max(1, Math.round((o.userData.wh || 3) / 3)));
+          o.material = o.material.clone();
+          o.material.map = t; o.material.color.set(0xffffff); o.material.roughness = 0.85;
+          o.material.needsUpdate = true;
+        }
+      });
+      _texActual = tex;
+      resolve(true);
+    }, undefined, () => resolve(false));
+  });
+}
+$('chipTex').addEventListener('click', async () => {
+  if (!three || !state.geometry) { alert('Primero genera el gemelo digital.'); return; }
+  const backend = ($('backendUrl').value || '').trim().replace(/\/+$/, '');
+  if (!backend) { alert('Para generar la textura se necesita el backend de BrickBit configurado (paso 00).'); return; }
+  const chip = $('chipTex'), lbl = $('texChipLbl');
+  const estilo = ($('texEstilo') || {}).value || 'contemporaneo';
+  const prev = lbl.textContent;
+  lbl.textContent = 'Generando…'; chip.disabled = true;
+  try {
+    const r = await fetch(backend + '/api/texture', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ estilo }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.image) throw new Error(j.error || ('HTTP ' + r.status));
+    const ok = await aplicarTexturaFachada(j.image);
+    if (!ok) throw new Error('no se pudo cargar la imagen');
+    lbl.textContent = '🎨 Retexturizar';
+    chip.classList.add('on');
+  } catch (e) {
+    lbl.textContent = prev;
+    alert('No se pudo generar la textura: ' + e.message);
+  } finally { chip.disabled = false; }
+});
+
 // chips flotantes sobre el visor 3D → mismas acciones
 $('chipAR').addEventListener('click', () => $('btnAR').click());
 $('chipInt').addEventListener('click', () => $('btnInteriores').click());
