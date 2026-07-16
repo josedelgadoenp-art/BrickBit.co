@@ -66,7 +66,7 @@ const pausa = () => new Promise((s) => setTimeout(s, 600 + Math.random() * 500))
 /* ---------- utilidades de parseo ---------- */
 const numero = (s) => {
   if (s == null) return null;
-  const m = String(s).replace(/,/g, '').match(/[\d.]+/);
+  const m = String(s).replace(/,/g, '').match(/-?[\d.]+/); // -? conserva el signo (longitudes)
   return m ? parseFloat(m[0]) : null;
 };
 const limpia = (s) => String(s || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -304,65 +304,41 @@ const llave = (x) => x.url || [x.titulo, x.precio, x.ubicacion].join('|');
 const ESTADOS_MX = ['aguascalientes', 'baja-california', 'baja-california-sur', 'campeche', 'chiapas', 'chihuahua', 'ciudad-de-mexico', 'coahuila', 'colima', 'durango', 'estado-de-mexico', 'guanajuato', 'guerrero', 'hidalgo', 'jalisco', 'michoacan', 'morelos', 'nayarit', 'nuevo-leon', 'oaxaca', 'puebla', 'queretaro', 'quintana-roo', 'san-luis-potosi', 'sinaloa', 'sonora', 'tabasco', 'tamaulipas', 'tlaxcala', 'veracruz', 'yucatan', 'zacatecas'];
 const urlEstado = (slug, p) => `${BASE}/v/resultados/en-pais_mexico/en-estado_${slug}/pagina_${p}`;
 const urlMx = (p) => `${BASE}/v/resultados/en-pais_mexico/pagina_${p}`;
+// ?json=true hace que el servidor devuelva el JSON de resultados YA filtrado
+// (México por estado) en vez de la página con las "exclusivas" por defecto.
+const urlEstadoJson = (slug, p) => `${urlEstado(slug, p)}?json=true`;
+async function fetchJSON(url) { return JSON.parse(await fetchText(url)); }
 
 /* ---------- modo MUESTRA ---------- */
 async function muestra() {
-  // el filtro por-país solo no engancha (devuelve la red global); el de
-  // estado sí. Probamos con un estado real para reflejar lo que hace 'todo'.
   const iE = args.indexOf('--estado');
   const estadoPrueba = iE >= 0 ? args[iE + 1] : 'nuevo-leon';
-  console.log(`🔎 MODO MUESTRA — 1 página de México (estado: ${estadoPrueba})\n`);
-  const url = urlEstado(estadoPrueba, 1);
+  console.log(`🔎 MODO MUESTRA — API JSON de México (estado: ${estadoPrueba})\n`);
+  const url = urlEstadoJson(estadoPrueba, 1);
   console.log('   GET', url);
-  const html = await fetchText(url);
-  fs.writeFileSync(path.join(OUT, 'muestra_pagina1.html'), html);
-  const items = parsePagina(html);
+  let data;
+  try { data = await fetchJSON(url); }
+  catch (e) { console.log('   ✗ No devolvió JSON válido: ' + e.message + '\n   Súbeme la salida a Claude.'); return; }
+  fs.writeFileSync(path.join(OUT, 'muestra_api.json'), JSON.stringify((data.results || []).slice(0, 3), null, 1));
 
-  // diagnóstico: ¿dónde están los datos?
-  const nBlobs = blobsJSON(html).length;
-  const hayNext = /__NEXT_DATA__/.test(html);
-  const hayNextFlight = /self\.__next_f/.test(html);
-  const apis = [...new Set([...html.matchAll(/["'](\/(?:api|v1|v2|search|graphql)[^"'\s]{0,60})["']/gi)].map((m) => m[1]))].slice(0, 8);
-  const algolia = /algolia/i.test(html);
-  console.log('\n   Diagnóstico de estructura:');
-  console.log(`   · bloques JSON incrustados: ${nBlobs}${hayNext ? ' (incluye __NEXT_DATA__)' : ''}`);
-  if (hayNextFlight) console.log('   · Next.js App Router (streaming self.__next_f) detectado');
-  if (algolia) console.log('   · usa Algolia (buscador externo)');
-  if (apis.length) console.log('   · rutas tipo API en el HTML: ' + apis.join('  '));
-
-  const tot = html.match(/([\d.,]{4,})\s*(?:propiedades|inmuebles|resultados)/i);
+  const items = (data.results || []).map(mapRep).filter((x) => x.precio && x.precio >= 1000);
   const pct = (k) => Math.round((items.filter((x) => x[k] != null).length / (items.length || 1)) * 100);
-  console.log(`\n   Propiedades detectadas en la página: ${items.length}${items[0] ? ' (vía ' + items[0]._via + ')' : ''}`);
-  if (tot) console.log(`   El sitio menciona un total de: ${tot[1]}`);
-  console.log(`   Campos completos → precio ${pct('precio')}% · ubicación ${pct('ubicacion')}% · m² constr ${pct('m2_construccion')}% · tipo ${pct('tipo')}% · url ${pct('url')}% · imagen ${pct('imagen')}%`);
-  if (items.some((x) => x.pais)) {
-    const paises = {};
-    items.forEach((x) => { const p = x.pais || '¿?'; paises[p] = (paises[p] || 0) + 1; });
-    console.log('   Por país: ' + Object.entries(paises).sort((a, b) => b[1] - a[1]).map(([p, n]) => `${p} ${n}`).join(' · '));
-  }
+  console.log(`\n   Propiedades en la página: ${items.length}`);
+  console.log(`   totalHits del estado: ${data.totalHits || '?'}`);
+  console.log(`   Campos → precio ${pct('precio')}% · ubic ${pct('ubicacion')}% · municipio ${pct('municipio')}% · m²C ${pct('m2_construccion')}% · url ${pct('url')}% · foto ${pct('imagen')}%`);
+  const grupo = (k) => { const g = {}; items.forEach((x) => { const v = x[k] || '?'; g[v] = (g[v] || 0) + 1; }); return Object.entries(g).map(([v, n]) => `${v} ${n}`).join(' · '); };
+  console.log('   Por país: ' + grupo('pais'));
+  console.log('   Por operación: ' + grupo('operacion'));
   console.log('\n   Ejemplos:');
-  for (const x of items.slice(0, 3)) console.log(`   · $${(x.precio || 0).toLocaleString('es-MX')} ${x.moneda} — ${x.tipo || '?'} ${x.operacion || ''} — ${(x.ubicacion || 's/ubic').slice(0, 60)}`);
-  fs.writeFileSync(path.join(OUT, 'muestra_parseado.json'), JSON.stringify(items, null, 1));
+  for (const x of items.slice(0, 3)) console.log(`   · $${(x.precio || 0).toLocaleString('es-MX')} ${x.moneda} — ${x.tipo || '?'} ${x.operacion || ''} — ${x.municipio || ''}, ${x.estado || ''}`);
 
-  // verificar paginación: la página 2 del estado debe traer propiedades nuevas
-  let pagOk = null;
-  if (items.length) {
-    await pausa();
-    try {
-      const items2 = parsePagina(await fetchText(urlEstado(estadoPrueba, 2)));
-      const ids1 = new Set(items.map((x) => x.id));
-      const nuevas2 = items2.filter((x) => !ids1.has(x.id)).length;
-      pagOk = items2.length > 0 && nuevas2 >= items2.length * 0.5;
-      console.log(`   Paginación: pág 2 → ${items2.length} props, ${nuevas2} nuevas ${pagOk ? '→ OK (avanza)' : items2.length === 0 ? '→ estado con ≤100 (no concluyente)' : '→ ⚠️ no avanza'}`);
-    } catch (e) { console.log('   Paginación: no verificada (' + e.message + ')'); }
-  }
-
-  const ok = items.length >= 10 && pct('precio') >= 90 && pct('ubicacion') >= 70 && (items[0] && items[0].pais === 'México');
+  const esMx = items[0] && items[0].pais === 'México';
+  const ok = items.length >= 10 && pct('precio') >= 90 && esMx;
   console.log(ok
     ? '\n✅ LISTO PARA TODO → corre:  node tools/c21-scraper.mjs todo'
-    : items.length && items[0].pais !== 'México'
-      ? '\n⚠️  Trae propiedades pero NO de México (país: ' + (items[0] && items[0].pais) + '). Avísame para ajustar el filtro.'
-      : '\n⚠️  El parseo se ve incompleto. Sube a Claude c21_out/muestra_pagina1.html.');
+    : !esMx && items.length
+      ? '\n⚠️  Trae propiedades pero NO de México (' + (items[0] && items[0].pais) + '). Avísame.'
+      : '\n⚠️  Respuesta incompleta. Súbeme c21_out/muestra_api.json a Claude.');
 }
 
 /* ---------- modo TODO ---------- */
@@ -397,29 +373,28 @@ async function todo() {
   for (let ei = startIdx; ei < estados.length; ei++) {
     const slug = estados[ei];
     const desdeP = ei === startIdx ? startPag : 1;
-    let vacias = 0, nEstado = 0;
+    let vacias = 0, nEstado = 0, totalEstado = null;
     for (let p = desdeP; p <= hastaPag; p++) {
-      let html;
-      try { html = await fetchText(urlEstado(slug, p)); }
+      let data;
+      try { data = await fetchJSON(urlEstadoJson(slug, p)); }
       catch (e) { console.log(`   ✗ ${slug} pág ${p}: ${e.message}`); break; }
-      const items = parsePagina(html);
+      if (totalEstado == null) totalEstado = parseInt(String(data.totalHits || '').replace(/[^\d]/g, '')) || 0;
+      const items = (data.results || []).map(mapRep).filter((x) => x.precio && x.precio >= 1000);
       const nuevas = items.filter((x) => !vistos.has(claveDe(x)));
       nuevas.forEach((x) => { vistos.add(claveDe(x)); nd.write(JSON.stringify({ ...x, _estado: slug, _pagina: p }) + '\n'); });
       nuevasTotal += nuevas.length; nEstado += nuevas.length;
       fs.writeFileSync(stPath, JSON.stringify({ estadoIdx: ei, pagina: p + 1, estado: slug, total: vistos.size, actualizado: new Date().toISOString() }));
-      if (items.length === 0 && html.length > 15000 && debugGuardados < 2) {
-        fs.writeFileSync(path.join(OUT, `debug_${slug}_${p}.html`), html); debugGuardados++;
-      }
-      // fin del estado: 2 páginas seguidas sin propiedades nuevas (vacío o repetido)
-      vacias = nuevas.length === 0 ? vacias + 1 : 0;
+      vacias = items.length === 0 ? vacias + 1 : 0;
       await pausa();
-      if (vacias >= 2) break;
+      if (items.length === 0 && vacias >= 1) break;      // sin resultados → fin del estado
+      if (totalEstado && p * 100 >= totalEstado) break;   // ya cubrimos su total
     }
     const min = ((Date.now() - t0) / 60000).toFixed(1);
-    console.log(`   ✓ ${slug.padEnd(20)} +${nEstado}  ·  total ${vistos.size}  ·  ${min} min`);
+    console.log(`   ✓ ${slug.padEnd(18)} +${nEstado}${totalEstado ? '/' + totalEstado : ''}  ·  total ${vistos.size}  ·  ${min} min`);
     fs.writeFileSync(stPath, JSON.stringify({ estadoIdx: ei + 1, pagina: 1, total: vistos.size, actualizado: new Date().toISOString() }));
   }
   nd.end();
+  void debugGuardados;
 
   // consolidar JSON + CSV
   const todos = fs.readFileSync(ndPath, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
