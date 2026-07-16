@@ -1693,7 +1693,20 @@ function updateNotice(){
     el.innerHTML=`⚠ No se encontró <code>data/estados.json</code>: usando valores incrustados. Publica los archivos (o corre el ETL) para datos SHF reales.`;
   }
 }
-(async()=>{ await Promise.all([loadEstados(),loadMunicipios(),loadComercio(),loadInmuebles(),loadMercado(),loadForecast(),loadSHF()]); applyMercado(); updateNotice(); showCities(); applyMetric(); buildSearch(); maybeOnb(); })();
+// Enlace directo: mapa.html?zona=Monterrey&modo=inmuebles (usado por zona3d y otras herramientas).
+function bbDeepLink(){
+  try{
+    const p=new URLSearchParams(location.search);
+    const qz=p.get('zona'); if(!qz) return;
+    const want=slugZona(qz);
+    const name=Object.keys(CITIES).find(n=>slugZona(n)===want)
+      || Object.keys(CITIES).find(n=>slugZona(n).includes(want)||want.includes(slugZona(n)));
+    if(!name) return;
+    selCity(name, CITIES[name]);
+    if((p.get('modo')||'')==='inmuebles'){ pickMode('prop'); }
+  }catch(e){}
+}
+(async()=>{ await Promise.all([loadEstados(),loadMunicipios(),loadComercio(),loadInmuebles(),loadMercado(),loadForecast(),loadSHF()]); applyMercado(); updateNotice(); showCities(); applyMetric(); buildSearch(); maybeOnb(); bbDeepLink(); })();
 </script>
 <div id="cmp-ov" class="cmp-ov">
   <div class="cmp-modal" role="dialog" aria-modal="true">
