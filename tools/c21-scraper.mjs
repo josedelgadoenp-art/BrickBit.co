@@ -6,8 +6,12 @@
    Uso (PowerShell o Terminal, dentro de la carpeta del proyecto):
      node tools/c21-scraper.mjs muestra          ← prueba con 1 página (30 s)
      node tools/c21-scraper.mjs todo             ← inventario completo (~10-25 min)
-     node tools/c21-scraper.mjs todo --desde 500 ← reanudar manualmente
      node tools/c21-scraper.mjs todo --hasta 50  ← límite de páginas (pruebas)
+     node tools/c21-scraper.mjs profundo         ← rescata estados grandes que
+                                                    topan el buscador (CDMX, Edomex,
+                                                    Q. Roo…): re-barre por municipio.
+     node tools/c21-scraper.mjs profundo --estado ciudad-de-mexico   ← uno solo
+     node tools/c21-scraper.mjs profundo --umbral 400                ← baja el corte
 
    Salidas (carpeta c21_out/):
      listados.ndjson   una propiedad por línea (se va guardando; sirve de respaldo)
@@ -309,6 +313,68 @@ const urlMx = (p) => `${BASE}/v/resultados/en-pais_mexico/pagina_${p}`;
 const urlEstadoJson = (slug, p) => `${urlEstado(slug, p)}?json=true`;
 async function fetchJSON(url) { return JSON.parse(await fetchText(url)); }
 
+/* ---------- sub-filtro por municipio (modo PROFUNDO) ----------
+   El buscador del portal topa los resultados de un estado grande (CDMX, Edomex,
+   Quintana Roo) en ~1,500-2,400 aunque haya más. La respuesta JSON no trae la
+   lista de municipios (aggregations.ubicacion viene vacía), así que:
+     1) tomamos los municipios que YA vimos en el scrapeo plano, y
+     2) volvemos a pedir el estado filtrando por cada municipio. Cada subconjunto
+        cae por debajo del tope, y la suma cubre el estado completo.
+   El segmento de la ruta (en-municipio_ / en-ciudad_ / en-delegacion_ /
+   en-alcaldia_) cambia entre plataformas, así que lo autodetectamos validando
+   que los resultados devueltos caigan en el municipio pedido. */
+const slugMun = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const MUN_SEG_CANDS = ['municipio', 'ciudad', 'delegacion', 'alcaldia', 'municipality', 'localidad'];
+let MUN_SEG_HINT = null; // segmento que funcionó antes: pruébalo primero
+const urlEstadoMunJson = (est, seg, mun, p) =>
+  `${BASE}/v/resultados/en-pais_mexico/en-estado_${est}/en-${seg}_${mun}/pagina_${p}?json=true`;
+
+async function detectMunSeg(est, munSlug) {
+  const orden = MUN_SEG_HINT ? [MUN_SEG_HINT, ...MUN_SEG_CANDS.filter((s) => s !== MUN_SEG_HINT)] : MUN_SEG_CANDS;
+  for (const seg of orden) {
+    try {
+      const d = await fetchJSON(urlEstadoMunJson(est, seg, munSlug, 1));
+      const items = (d.results || []).map(mapRep).filter((x) => x.precio && x.precio >= 1000);
+      if (items.length) {
+        const match = items.filter((x) => slugMun(x.municipio) === munSlug).length;
+        if (match >= Math.min(3, items.length)) { MUN_SEG_HINT = seg; return seg; }
+      }
+    } catch { /* siguiente candidato */ }
+    await pausa();
+  }
+  return null;
+}
+
+/* Barre todos los municipios de un estado; escribe solo las propiedades nuevas
+   (dedup contra `vistos`). Devuelve cuántas nuevas ganó. */
+async function pasadaMunicipios(est, munVistos, nd, vistos, claveDe) {
+  if (!munVistos.size) return 0;
+  const primero = [...munVistos.keys()][0];
+  const seg = await detectMunSeg(est, primero);
+  if (!seg) { console.log(`     ⚠ ${est}: ningún filtro de municipio respondió; lo dejo con la pasada plana.`); return 0; }
+  console.log(`     🔧 filtro activo: en-${seg}_`);
+  let ganadas = 0;
+  for (const [ms, mn] of munVistos) {
+    let nMun = 0, totMun = null;
+    for (let p = 1; p <= 200; p++) {
+      let d;
+      try { d = await fetchJSON(urlEstadoMunJson(est, seg, ms, p)); }
+      catch (e) { console.log(`       ✗ ${mn} pág ${p}: ${e.message}`); break; }
+      if (totMun == null) totMun = parseInt(String(d.totalHits || '').replace(/[^\d]/g, '')) || 0;
+      const items = (d.results || []).map(mapRep).filter((x) => x.precio && x.precio >= 1000);
+      const nuevas = items.filter((x) => !vistos.has(claveDe(x)));
+      nuevas.forEach((x) => { vistos.add(claveDe(x)); nd.write(JSON.stringify({ ...x, _estado: est, _municipio: ms, _profundo: 1 }) + '\n'); });
+      ganadas += nuevas.length; nMun += nuevas.length;
+      await pausa();
+      if (items.length === 0) break;
+      if (totMun && p * 100 >= totMun) break;
+    }
+    if (nMun) console.log(`       · ${mn.padEnd(24)} +${nMun}${totMun ? '/' + totMun : ''}`);
+  }
+  return ganadas;
+}
+
 /* ---------- modo MUESTRA ---------- */
 async function muestra() {
   const iE = args.indexOf('--estado');
@@ -395,8 +461,16 @@ async function todo() {
   }
   nd.end();
   void debugGuardados;
+  consolidar();
+  // Sugerir la pasada profunda si algún estado quedó cerca del tope del buscador.
+  console.log('\n   💡 Para superar el tope en estados grandes (CDMX, Edomex, Q. Roo):');
+  console.log('      node tools/c21-scraper.mjs profundo');
+}
 
-  // consolidar JSON + CSV
+/* Consolida el ndjson en listados.json + listados.csv y resume. Lo usan tanto
+   el modo TODO como el modo PROFUNDO (comparten el mismo respaldo ndjson). */
+function consolidar() {
+  const ndPath = path.join(OUT, 'listados.ndjson');
   const todos = fs.readFileSync(ndPath, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
   fs.writeFileSync(path.join(OUT, 'listados.json'), JSON.stringify(todos));
   const cols = ['id', 'url', 'titulo', 'precio', 'moneda', 'operacion', 'tipo', 'ubicacion', 'colonia', 'municipio', 'estado', 'pais', 'm2_construccion', 'm2_terreno', 'recamaras', 'banos', 'estacionamientos', 'imagen', 'lat', 'lng', 'afiliado'];
@@ -411,11 +485,77 @@ async function todo() {
   console.log(`   · ${conGeo} con coordenadas (${Math.round(conGeo / (todos.length || 1) * 100)}%)`);
   console.log('   Archivos en c21_out/: listados.json · listados.csv');
   console.log('   👉 Sube listados.json a Claude para integrarlo a BrickBit.');
+  return todos.length;
+}
+
+/* ---------- modo PROFUNDO ----------
+   Lee el respaldo listados.ndjson que ya generó `todo`, detecta los estados que
+   toparon el buscador (≥ --umbral propiedades) y los vuelve a barrer municipio
+   por municipio para rescatar las que quedaron fuera del tope. No re-scrapea la
+   pasada plana: solo agrega lo nuevo. */
+async function profundo() {
+  const ndPath = path.join(OUT, 'listados.ndjson');
+  if (!fs.existsSync(ndPath)) {
+    console.log('⚠ No encuentro c21_out/listados.ndjson.\n   Corre primero el inventario base:  node tools/c21-scraper.mjs todo');
+    return;
+  }
+  const umbral = flag('umbral', 900);
+  const iEst = args.indexOf('--estado');
+  const soloEstado = iEst >= 0 ? args[iEst + 1] : null;
+  const claveDe = (x) => (x.id ? 'id:' + x.id : llave(x));
+
+  // Reconstruir lo ya scrapeado: llaves vistas + municipios por estado.
+  const vistos = new Set();
+  const munPorEstado = new Map();   // estadoSlug -> Map(munSlug -> nombre)
+  const countPorEstado = new Map(); // estadoSlug -> nº propiedades ya guardadas
+  for (const l of fs.readFileSync(ndPath, 'utf8').split('\n')) {
+    if (!l.trim()) continue;
+    let x; try { x = JSON.parse(l); } catch { continue; }
+    vistos.add(claveDe(x));
+    const est = x._estado || slugMun(x.estado);
+    if (!est) continue;
+    countPorEstado.set(est, (countPorEstado.get(est) || 0) + 1);
+    if (x.municipio) {
+      if (!munPorEstado.has(est)) munPorEstado.set(est, new Map());
+      const ms = slugMun(x.municipio);
+      if (!munPorEstado.get(est).has(ms)) munPorEstado.get(est).set(ms, x.municipio);
+    }
+  }
+
+  let objetivos = [...munPorEstado.keys()];
+  if (soloEstado) objetivos = objetivos.filter((e) => e === soloEstado);
+  else objetivos = objetivos.filter((e) => (countPorEstado.get(e) || 0) >= umbral);
+  objetivos.sort((a, b) => (countPorEstado.get(b) || 0) - (countPorEstado.get(a) || 0));
+
+  console.log('🔬 MODO PROFUNDO — sub-filtro por municipio para superar el tope del buscador.');
+  console.log(`   Base: ${vistos.size} propiedades ya scrapeadas.`);
+  console.log(`   Estados objetivo (≥${umbral} c/u)${soloEstado ? ` [solo ${soloEstado}]` : ''}: ` +
+    (objetivos.map((e) => `${e}(${countPorEstado.get(e)})`).join(', ') || 'ninguno'));
+  if (!objetivos.length) {
+    console.log('   Nada que profundizar. Prueba --estado <slug> o baja el umbral con --umbral 400.');
+    return;
+  }
+  console.log('   Cortesía: ~1 página/seg. Puedes cortar con Ctrl+C y reanudar con el mismo comando.\n');
+
+  const nd = fs.createWriteStream(ndPath, { flags: 'a' });
+  const t0 = Date.now();
+  let ganadasTotal = 0;
+  for (const est of objetivos) {
+    const munVistos = munPorEstado.get(est) || new Map();
+    console.log(`   ▸ ${est} — ${munVistos.size} municipios a barrer (base ${countPorEstado.get(est)})`);
+    const g = await pasadaMunicipios(est, munVistos, nd, vistos, claveDe);
+    ganadasTotal += g;
+    console.log(`   ✓ ${est}: +${g} nuevas · total ${vistos.size} · ${((Date.now() - t0) / 60000).toFixed(1)} min\n`);
+  }
+  nd.end();
+  consolidar();
+  console.log(`\n🔬 PROFUNDO TERMINADO: +${ganadasTotal} propiedades nuevas · total ${vistos.size}`);
 }
 
 /* ---------- main ---------- */
-(modo === 'todo' ? todo() : muestra()).catch((e) => {
+const runner = modo === 'todo' ? todo : modo === 'profundo' ? profundo : muestra;
+runner().catch((e) => {
   console.error('\n💥 Error:', e.message);
-  console.error('   Puedes reanudar con: node tools/c21-scraper.mjs todo');
+  console.error('   Puedes reanudar con el mismo comando (guarda el progreso en c21_out/).');
   process.exit(1);
 });
