@@ -1,0 +1,106 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BrickBit · Búsqueda inteligente</title>
+<style>
+  :root{--bg:#100c0a;--bg2:#16110e;--sup:#1d1713;--cream:#f5ede3;--muted:#a89a8c;--muted2:#7d7064;
+    --line:rgba(245,237,227,.12);--lime:#cdf25a;--lime2:#a9d23f;--grn:#57c389;--amb:#F5C277;--rojo:#e0745a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--cream);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.55}
+  .wrap{max-width:900px;margin:0 auto;padding:30px 18px 70px}
+  .head{text-align:center;margin-bottom:24px}
+  h1{font-size:1.5rem;margin:0 0 6px;font-weight:700}
+  .sub{color:var(--muted);font-size:.92rem;margin:0}
+  .cfg{font-size:.72rem;color:var(--muted2);margin-top:10px}
+  .cfg input{background:var(--sup);border:1px solid var(--line);color:var(--cream);border-radius:7px;padding:4px 8px;font-size:.72rem;width:340px;max-width:70%}
+  .searchbar{display:flex;gap:8px;background:var(--sup);border:1px solid var(--line);border-radius:16px;padding:8px 8px 8px 18px;box-shadow:0 12px 40px rgba(0,0,0,.35);align-items:center}
+  .searchbar:focus-within{border-color:var(--lime)}
+  .searchbar svg{width:20px;height:20px;flex:none;color:var(--lime)}
+  .searchbar input{flex:1;background:none;border:none;color:var(--cream);font-size:1.02rem;outline:none;padding:10px 0}
+  .searchbar button{background:linear-gradient(120deg,var(--lime),var(--lime2));color:#0e0a07;border:none;font-weight:700;font-size:.95rem;padding:11px 20px;border-radius:11px;cursor:pointer;white-space:nowrap}
+  .searchbar button:disabled{opacity:.5}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 6px;justify-content:center}
+  .chip{background:rgba(245,237,227,.05);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:7px 13px;font-size:.82rem;cursor:pointer}
+  .chip:hover{color:var(--cream);border-color:var(--lime2)}
+  .interp{background:rgba(87,195,137,.08);border:1px solid rgba(87,195,137,.25);border-radius:12px;padding:13px 16px;margin:20px 0 6px;font-size:.95rem}
+  .interp b{color:var(--grn)}
+  .meta{color:var(--muted);font-size:.85rem;margin:14px 0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:8px}
+  .card{background:var(--sup);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+  .card .ph{height:150px;background:#000 center/cover no-repeat;position:relative}
+  .card .badge{position:absolute;top:10px;left:10px;font-family:ui-monospace,monospace;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px}
+  .b-op{background:var(--grn);color:#0e0a07}.b-ju{background:var(--amb);color:#0e0a07}.b-so{background:var(--rojo);color:#0e0a07}
+  .card .body{padding:13px 14px;display:flex;flex-direction:column;gap:5px;flex:1}
+  .card .precio{font-size:1.12rem;font-weight:700}
+  .card .tt{font-size:.82rem;color:var(--muted);line-height:1.35;max-height:2.7em;overflow:hidden}
+  .card .row{display:flex;gap:10px;font-size:.76rem;color:var(--muted);flex-wrap:wrap;margin-top:2px}
+  .card .yld{color:var(--lime2);font-weight:600}
+  .card a{margin-top:auto;color:var(--lime);font-size:.8rem;text-decoration:none;padding-top:8px}
+  .empty{text-align:center;color:var(--muted);padding:30px}
+  .ambernote{font-size:.72rem;color:var(--muted2);text-align:center;margin-top:26px}
+  .ambernote b{color:var(--amb)}
+</style></head><body>
+<div class="wrap">
+  <div class="head">
+    <h1>🔎 BrickBit · Búsqueda inteligente</h1>
+    <p class="sub">Escribe lo que buscas en español natural. La IA lo entiende y BrickBit te dice cuáles convienen.</p>
+    <div class="cfg">Worker: <input id="url" value="https://brickbit-api.jose-delgado-enp.workers.dev"></div>
+  </div>
+
+  <div class="searchbar">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <input id="q" placeholder="Ej: departamento para 4 personas en Monterrey menos de 6 millones" autocomplete="off">
+    <button id="go">Buscar</button>
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <div id="out"></div>
+  <p class="ambernote"><b>●</b> Los veredictos de precio y el rendimiento de la zona son estimaciones (est.) con datos de mercado. Cada propiedad enlaza a su ficha original en Century 21.</p>
+</div>
+<script>
+  const $=id=>document.getElementById(id);
+  const base=()=>($('url').value||'').trim().replace(/\/+$/,'');
+  const fmt=n=>'$'+Math.round(n).toLocaleString('es-MX');
+  const ejemplos=[
+    'departamento para 4 personas en Monterrey menos de 6 millones',
+    'casa que me dé rendimiento anual mayor a 8%',
+    'terreno en Querétaro para invertir',
+    'casa en renta en Guadalajara de 3 recámaras',
+    'lo más barato por metro cuadrado en Cancún',
+  ];
+  $('chips').innerHTML=ejemplos.map(e=>`<span class="chip">${e}</span>`).join('');
+  $('chips').onclick=e=>{ if(e.target.classList.contains('chip')){ $('q').value=e.target.textContent; buscar(); } };
+  $('go').onclick=buscar;
+  $('q').addEventListener('keydown',e=>{ if(e.key==='Enter') buscar(); });
+
+  const badge=v=>v==='oportunidad'?'<span class="badge b-op">OPORTUNIDAD</span>':v==='sobreprecio'?'<span class="badge b-so">SOBREPRECIO</span>':v==='justo'?'<span class="badge b-ju">PRECIO JUSTO</span>':'';
+  function card(x){
+    const img=x.imagen?`style="background-image:url('${x.imagen}')"`:'';
+    const vs=x.vs!=null?` · ${x.vs>0?'+':''}${x.vs}% vs zona`:'';
+    return `<div class="card"><div class="ph" ${img}>${badge(x.veredicto)}</div>
+      <div class="body">
+        <div class="precio">${fmt(x.precio)} <span style="font-size:.6em;color:var(--muted)">${x.moneda||'MXN'}${x.operacion==='renta'?'/mes':''}</span></div>
+        <div class="tt">${x.titulo||x.tipo||''}</div>
+        <div class="row"><span>${x.municipio||''}, ${x.zona||''}</span></div>
+        <div class="row"><span>${x.tipo||''}</span>${x.recamaras?`<span>${x.recamaras} rec</span>`:''}${x.m2_construccion?`<span>${x.m2_construccion} m²</span>`:''}${x.pm2?`<span>${fmt(x.pm2)}/m²</span>`:''}</div>
+        ${x.zona_yield?`<div class="row"><span class="yld">Rendimiento zona ~${x.zona_yield}%${vs}</span></div>`:(vs?`<div class="row"><span class="yld">${vs.replace(' · ','')}</span></div>`:'')}
+        <a href="${x.url||'#'}" target="_blank" rel="noopener">Ver ficha en Century 21 →</a>
+      </div></div>`;
+  }
+  async function buscar(){
+    const q=$('q').value.trim(); if(!q) return;
+    const out=$('out'); const btn=$('go');
+    out.innerHTML='<div class="empty">Pensando…</div>'; btn.disabled=true;
+    try{
+      const r=await fetch(base()+'/api/buscar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({q})});
+      const j=await r.json();
+      if(!r.ok){ out.innerHTML=`<div class="empty">⚠️ ${j.error||('Error '+r.status)}</div>`; return; }
+      const zonas=(j.zonas||[]).join(', ');
+      let h='';
+      if(j.interpretacion) h+=`<div class="interp"><b>Entendí:</b> ${j.interpretacion}</div>`;
+      h+=`<div class="meta">${j.total} resultados${zonas?` en ${zonas}`:''} · mostrando ${Math.min(j.total,(j.resultados||[]).length)}</div>`;
+      h+= j.resultados&&j.resultados.length ? `<div class="grid">${j.resultados.map(card).join('')}</div>` : '<div class="empty">Sin resultados con esos filtros. Prueba otra búsqueda.</div>';
+      out.innerHTML=h;
+    }catch(e){ out.innerHTML=`<div class="empty">✗ No se pudo contactar el Worker: ${e.message}</div>`; }
+    finally{ btn.disabled=false; }
+  }
+</script></body></html>
