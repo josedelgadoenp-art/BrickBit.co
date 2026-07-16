@@ -307,8 +307,12 @@ const urlMx = (p) => `${BASE}/v/resultados/en-pais_mexico/pagina_${p}`;
 
 /* ---------- modo MUESTRA ---------- */
 async function muestra() {
-  console.log('🔎 MODO MUESTRA — 1 página de México (en-pais_mexico)\n');
-  const url = urlMx(1);
+  // el filtro por-país solo no engancha (devuelve la red global); el de
+  // estado sí. Probamos con un estado real para reflejar lo que hace 'todo'.
+  const iE = args.indexOf('--estado');
+  const estadoPrueba = iE >= 0 ? args[iE + 1] : 'nuevo-leon';
+  console.log(`🔎 MODO MUESTRA — 1 página de México (estado: ${estadoPrueba})\n`);
+  const url = urlEstado(estadoPrueba, 1);
   console.log('   GET', url);
   const html = await fetchText(url);
   fs.writeFileSync(path.join(OUT, 'muestra_pagina1.html'), html);
@@ -339,10 +343,26 @@ async function muestra() {
   console.log('\n   Ejemplos:');
   for (const x of items.slice(0, 3)) console.log(`   · $${(x.precio || 0).toLocaleString('es-MX')} ${x.moneda} — ${x.tipo || '?'} ${x.operacion || ''} — ${(x.ubicacion || 's/ubic').slice(0, 60)}`);
   fs.writeFileSync(path.join(OUT, 'muestra_parseado.json'), JSON.stringify(items, null, 1));
-  const ok = items.length >= 10 && pct('precio') >= 90 && pct('ubicacion') >= 70;
+
+  // verificar paginación: la página 2 del estado debe traer propiedades nuevas
+  let pagOk = null;
+  if (items.length) {
+    await pausa();
+    try {
+      const items2 = parsePagina(await fetchText(urlEstado(estadoPrueba, 2)));
+      const ids1 = new Set(items.map((x) => x.id));
+      const nuevas2 = items2.filter((x) => !ids1.has(x.id)).length;
+      pagOk = items2.length > 0 && nuevas2 >= items2.length * 0.5;
+      console.log(`   Paginación: pág 2 → ${items2.length} props, ${nuevas2} nuevas ${pagOk ? '→ OK (avanza)' : items2.length === 0 ? '→ estado con ≤100 (no concluyente)' : '→ ⚠️ no avanza'}`);
+    } catch (e) { console.log('   Paginación: no verificada (' + e.message + ')'); }
+  }
+
+  const ok = items.length >= 10 && pct('precio') >= 90 && pct('ubicacion') >= 70 && (items[0] && items[0].pais === 'México');
   console.log(ok
     ? '\n✅ LISTO PARA TODO → corre:  node tools/c21-scraper.mjs todo'
-    : '\n⚠️  El parseo se ve incompleto. Sube a Claude estos 2 archivos de la carpeta c21_out: muestra_pagina1.html y muestra_parseado.json — ajusto el robot con la estructura real.');
+    : items.length && items[0].pais !== 'México'
+      ? '\n⚠️  Trae propiedades pero NO de México (país: ' + (items[0] && items[0].pais) + '). Avísame para ajustar el filtro.'
+      : '\n⚠️  El parseo se ve incompleto. Sube a Claude c21_out/muestra_pagina1.html.');
 }
 
 /* ---------- modo TODO ---------- */
