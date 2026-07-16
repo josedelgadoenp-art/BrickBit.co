@@ -36,6 +36,10 @@ npx wrangler secret put ANTHROPIC_API_KEY
 #     Crea una llave gratis en https://aistudio.google.com/apikey y guárdala:
 npx wrangler secret put GOOGLE_AI_KEY
 
+# 2c. Búsqueda con IA + inventario. Define una clave secreta (invéntala,
+#     como una contraseña) para poder subir el inventario al Worker:
+npx wrangler secret put INGEST_SECRET
+
 # 3. Despliega
 npx wrangler deploy
 ```
