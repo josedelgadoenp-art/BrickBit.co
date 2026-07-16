@@ -111,6 +111,17 @@ export default {
       return handleDemandGet(request, url, env);
     }
 
+    /* ---- Búsqueda con IA e inventario (Century 21 + BrickBit) ---- */
+    if (url.pathname === '/api/buscar' && request.method === 'POST') {
+      return handleBuscar(request, env);
+    }
+    if (url.pathname === '/api/listados-ingest' && request.method === 'POST') {
+      return handleListadosIngest(request, env);
+    }
+    if (url.pathname === '/api/listados' && (request.method === 'GET' || request.method === 'OPTIONS')) {
+      return handleListadosGet(request, url, env);
+    }
+
     /* ---- Modelos AR temporales (~1h). Scene Viewer (Android) y Quick Look
        (iPhone) no leen blob: URLs; necesitan una URL https real. El gemelo
        sube aquí su GLB/USDZ y model-viewer usa estas URLs. KV SHARES. ---- */
@@ -787,6 +798,126 @@ async function handleTexture(request, env) {
   }
   const mime = inline.mimeType || inline.mime_type || 'image/png';
   return new Response(JSON.stringify({ image: `data:${mime};base64,${inline.data}`, estilo }), { status: 200, headers });
+}
+
+/* --- Búsqueda con IA sobre el inventario (Century 21 + inteligencia BrickBit) --- */
+function slugZona(nombre) {
+  return String(nombre || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().trim().replace(/\s+/g, '-');
+}
+async function askClaudeJSON(env, system, userText, schema) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 1024, system, output_config: { format: { type: 'json_schema', schema } }, messages: [{ role: 'user', content: userText }] }),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error('IA ' + r.status + ': ' + ((data.error && data.error.message) || ''));
+  const texts = (data.content || []).filter((b) => b.type === 'text');
+  if (!texts.length) throw new Error('La IA no devolvió contenido.');
+  return JSON.parse(texts[texts.length - 1].text);
+}
+const BUSCAR_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['interpretacion'],
+  properties: {
+    operacion: { type: ['string', 'null'], description: 'venta o renta' },
+    tipo: { type: ['string', 'null'], description: 'casa, departamento, terreno, local, oficina, bodega...' },
+    zonas: { type: 'array', items: { type: 'string' }, description: 'slugs de zonas BrickBit relevantes (0 a 3)' },
+    recamaras_min: { type: ['number', 'null'] },
+    banos_min: { type: ['number', 'null'] },
+    presupuesto_min: { type: ['number', 'null'] },
+    presupuesto_max: { type: ['number', 'null'] },
+    m2_min: { type: ['number', 'null'] },
+    yield_min: { type: ['number', 'null'], description: 'rendimiento anual mínimo en %' },
+    orden: { type: ['string', 'null'], description: 'precio_justo | yield | precio_asc | precio_desc' },
+    interpretacion: { type: 'string', description: 'frase corta de cómo se entendió la búsqueda' },
+  },
+};
+async function handleBuscar(request, env) {
+  const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
+  let body; try { body = await request.json(); } catch { body = {}; }
+  const q = String(body.q || '').trim().slice(0, 300);
+  if (!q) return json({ error: 'Escribe qué buscas.' }, 400, headers);
+  if (!env.SHARES) return json({ error: 'El backend no tiene el KV SHARES (donde vive el inventario).' }, 501, headers);
+  if (!env.ANTHROPIC_API_KEY) return json({ error: 'Falta ANTHROPIC_API_KEY.' }, 501, headers);
+
+  const { estados } = await loadBBData(env);
+  const zonas = estados.map((e) => ({ nombre: e.nombre, slug: slugZona(e.nombre), yield: e['yield'], plusvalia: e.plusvalia }));
+  const lista = zonas.map((z) => `${z.slug} (${z.nombre}, yield ${z.yield}%)`).join('; ');
+  const system = `Eres el buscador inteligente de BrickBit, proptech de bienes raíces en México. Conviertes una búsqueda en lenguaje natural en filtros estructurados. Zonas válidas (devuelve el slug exacto): ${lista}. Reglas: "para N personas" ⇒ recamaras_min ≈ redondeo(N/2) (mínimo 1). Si piden rendimiento/plusvalía/"que me dé X% anual" ⇒ yield_min y, si no nombran ciudad, deja zonas vacío. Si nombran una colonia/ciudad, mapea a la zona BrickBit más cercana. Presupuestos en pesos MXN (interpreta "2 millones" = 2000000). Devuelve 0-3 zonas. La interpretacion es una frase breve y cálida de cómo entendiste la búsqueda.`;
+
+  let f;
+  try { f = await askClaudeJSON(env, system, q, BUSCAR_SCHEMA); }
+  catch (e) { return json({ error: 'No se pudo interpretar la búsqueda: ' + e.message }, 502, headers); }
+
+  let slugs = (f.zonas || []).map(slugZona).filter((s) => zonas.some((z) => z.slug === s));
+  if (!slugs.length) {
+    const orden = [...zonas].sort((a, b) => (b.yield || 0) - (a.yield || 0));
+    slugs = orden.slice(0, 3).map((z) => z.slug);
+  }
+  slugs = slugs.slice(0, 4);
+
+  const shards = await Promise.all(slugs.map((s) => env.SHARES.get('listados:' + s).then((v) => (v ? JSON.parse(v) : []))));
+  const pool = shards.flat();
+  const yieldByZona = Object.fromEntries(zonas.map((z) => [z.slug, z.yield]));
+
+  // mediana de precio/m² de venta por zona (para el veredicto de precio justo)
+  const medZ = {};
+  for (const s of slugs) {
+    const ps = pool.filter((x) => slugZona(x.zona || '') === s && x.operacion === 'venta' && x.pm2 > 5000 && x.pm2 < 150000).map((x) => x.pm2).sort((a, b) => a - b);
+    if (ps.length) medZ[s] = ps[Math.floor(ps.length / 2)];
+  }
+
+  let res = pool.filter((x) => {
+    if (f.operacion && x.operacion !== f.operacion) return false;
+    if (f.tipo && !String(x.tipo || '').includes(String(f.tipo).toLowerCase())) return false;
+    if (f.recamaras_min && !(x.recamaras >= f.recamaras_min)) return false;
+    if (f.banos_min && !(x.banos >= f.banos_min)) return false;
+    if (f.presupuesto_max && !(x.precio <= f.presupuesto_max)) return false;
+    if (f.presupuesto_min && !(x.precio >= f.presupuesto_min)) return false;
+    if (f.m2_min && !(x.m2_construccion >= f.m2_min)) return false;
+    return true;
+  }).map((x) => {
+    const s = slugZona(x.zona || ''); const med = medZ[s];
+    const vs = (med && x.pm2) ? Math.round((x.pm2 / med - 1) * 100) : null;
+    return { ...x, vs, veredicto: vs == null ? null : vs <= -12 ? 'oportunidad' : vs >= 12 ? 'sobreprecio' : 'justo', zona_yield: yieldByZona[s] ?? null };
+  });
+
+  if (f.yield_min) res = res.filter((x) => (x.zona_yield || 0) >= f.yield_min);
+  const orden = f.orden || (f.yield_min ? 'yield' : 'precio_justo');
+  res.sort((a, b) => {
+    if (orden === 'yield') return (b.zona_yield || 0) - (a.zona_yield || 0);
+    if (orden === 'precio_asc') return a.precio - b.precio;
+    if (orden === 'precio_desc') return b.precio - a.precio;
+    return (a.vs ?? 999) - (b.vs ?? 999); // precio_justo: oportunidades primero
+  });
+
+  return json({ interpretacion: f.interpretacion || '', filtros: f, zonas: slugs, total: res.length, resultados: res.slice(0, 24) }, 200, headers);
+}
+
+/* --- Ingesta y consulta del inventario en KV --- */
+async function handleListadosIngest(request, env) {
+  const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
+  if (!env.SHARES) return json({ error: 'sin KV SHARES' }, 501, headers);
+  if (!env.INGEST_SECRET) return json({ error: 'Configura el secreto INGEST_SECRET en el Worker.' }, 501, headers);
+  if (request.headers.get('x-ingest-key') !== env.INGEST_SECRET) return json({ error: 'clave inválida' }, 403, headers);
+  let body; try { body = await request.json(); } catch { body = null; }
+  if (!body || !body.slug || !Array.isArray(body.items)) return json({ error: 'Se espera { slug, items[] }' }, 400, headers);
+  await env.SHARES.put('listados:' + slugZona(body.slug), JSON.stringify(body.items));
+  // índice
+  let idx = {}; try { idx = JSON.parse(await env.SHARES.get('listados:_index') || '{}'); } catch {}
+  idx[slugZona(body.slug)] = body.items.length; idx._actualizado = new Date().toISOString();
+  await env.SHARES.put('listados:_index', JSON.stringify(idx));
+  return json({ ok: true, slug: slugZona(body.slug), n: body.items.length }, 200, headers);
+}
+async function handleListadosGet(request, url, env) {
+  const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json', 'cache-control': 'public, max-age=300' };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+  if (!env.SHARES) return json({ error: 'sin KV' }, 501, headers);
+  const zona = url.searchParams.get('zona');
+  if (!zona) { const idx = await env.SHARES.get('listados:_index'); return new Response(idx || '{}', { headers }); }
+  const v = await env.SHARES.get('listados:' + slugZona(zona));
+  return new Response(v || '[]', { headers });
 }
 
 /* --- WhatsApp vía Twilio --- */

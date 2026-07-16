@@ -633,6 +633,56 @@
   </div>
 </section>
 
+<!-- ============ BÚSQUEDA CON IA ============ -->
+<style>
+  #buscador{background:var(--bg-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .bsc-head{text-align:center;max-width:640px;margin:0 auto 22px}
+  .bsc-head h2{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(24px,3.4vw,34px);color:var(--cream);margin:0 0 8px;letter-spacing:-.01em}
+  .bsc-head p{color:var(--muted-txt);margin:0}
+  .bsc-bar{display:flex;gap:8px;max-width:720px;margin:0 auto;background:var(--surface);border:1px solid var(--line-strong);border-radius:16px;padding:8px 8px 8px 18px;align-items:center;box-shadow:0 16px 50px rgba(0,0,0,.4)}
+  .bsc-bar:focus-within{border-color:var(--lime)}
+  .bsc-bar svg{width:20px;height:20px;flex:none;color:var(--lime)}
+  .bsc-bar input{flex:1;background:none;border:none;color:var(--cream);font-size:1.02rem;outline:none;padding:12px 0;font-family:inherit}
+  .bsc-bar button{background:linear-gradient(120deg,var(--lime),var(--lime-deep));color:#0e0a07;border:none;font-weight:700;font-size:.95rem;padding:12px 22px;border-radius:11px;cursor:pointer;white-space:nowrap}
+  .bsc-bar button:disabled{opacity:.5}
+  .bsc-chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px auto 0;justify-content:center;max-width:720px}
+  .bsc-chip{background:rgba(245,237,227,.05);border:1px solid var(--line);color:var(--muted-txt);border-radius:999px;padding:7px 13px;font-size:.82rem;cursor:pointer}
+  .bsc-chip:hover{color:var(--cream);border-color:var(--lime-deep)}
+  .bsc-interp{background:rgba(87,195,137,.08);border:1px solid rgba(87,195,137,.25);border-radius:12px;padding:12px 16px;margin:22px auto 0;max-width:720px;font-size:.95rem;color:var(--cream)}
+  .bsc-interp b{color:var(--clay-soft)}
+  .bsc-meta{color:var(--muted-txt);font-size:.85rem;margin:12px auto;max-width:1100px}
+  .bsc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:6px}
+  .bsc-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+  .bsc-card .ph{height:150px;background:#000 center/cover no-repeat;position:relative}
+  .bsc-badge{position:absolute;top:10px;left:10px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px}
+  .bb-op{background:var(--clay-soft);color:#0e0a07}.bb-ju{background:#F5C277;color:#0e0a07}.bb-so{background:#e0745a;color:#0e0a07}
+  .bsc-card .bd{padding:13px 14px;display:flex;flex-direction:column;gap:5px;flex:1}
+  .bsc-card .pr{font-size:1.1rem;font-weight:700;color:var(--cream)}
+  .bsc-card .tt{font-size:.82rem;color:var(--muted-txt);max-height:2.7em;overflow:hidden;line-height:1.35}
+  .bsc-card .rw{display:flex;gap:9px;font-size:.75rem;color:var(--muted-txt);flex-wrap:wrap}
+  .bsc-card .yld{color:var(--lime-deep);font-weight:600}
+  .bsc-card a{margin-top:auto;color:var(--lime);font-size:.8rem;text-decoration:none;padding-top:8px}
+  .bsc-empty{text-align:center;color:var(--muted-txt);padding:26px}
+  .bsc-amber{font-size:.72rem;color:var(--muted);text-align:center;margin-top:20px}
+  .bsc-amber b{color:#F5C277}
+</style>
+<section id="buscador">
+  <div class="wrap">
+    <div class="bsc-head reveal">
+      <span class="kicker">Nuevo · Búsqueda con IA</span>
+      <h2>Dinos qué buscas. En tus palabras.</h2>
+      <p>La IA entiende tu búsqueda y BrickBit te dice cuáles convienen — con precio justo y rendimiento de la zona.</p>
+    </div>
+    <div class="bsc-bar reveal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="bsc-q" placeholder="Ej: departamento para 4 personas en Monterrey menos de 6 millones" autocomplete="off">
+      <button id="bsc-go">Buscar</button>
+    </div>
+    <div class="bsc-chips" id="bsc-chips"></div>
+    <div id="bsc-out"></div>
+  </div>
+</section>
+
 <section class="explorer-section">
   <div class="wrap">
     <div class="hero-grid">
@@ -1251,6 +1301,54 @@
 function ddToggle(btn,ev){ev.stopPropagation();const d=btn.parentElement;document.querySelectorAll('.dd.open').forEach(x=>{if(x!==d)x.classList.remove('open')});d.classList.toggle('open');}
 function mobToggle(ev){ev.stopPropagation();document.getElementById('mob-menu').classList.toggle('open');}
 document.addEventListener('click',()=>{document.querySelectorAll('.dd.open').forEach(x=>x.classList.remove('open'));const m=document.getElementById('mob-menu');if(m)m.classList.remove('open');});
+</script>
+
+<!-- Búsqueda con IA -->
+<script>
+(function(){
+  var BB='https://brickbit-api.jose-delgado-enp.workers.dev';
+  var $=function(id){return document.getElementById(id);};
+  var q=$('bsc-q'),go=$('bsc-go'),out=$('bsc-out'),chips=$('bsc-chips');
+  if(!q) return;
+  var fmt=function(n){return '$'+Math.round(n).toLocaleString('es-MX');};
+  var ej=['departamento para 4 personas en Monterrey menos de 6 millones',
+    'casa que me dé rendimiento anual mayor a 8%','terreno en Querétaro para invertir',
+    'casa en renta en Guadalajara de 3 recámaras','lo más barato por m² en Cancún'];
+  chips.innerHTML=ej.map(function(e){return '<span class="bsc-chip">'+e+'</span>';}).join('');
+  chips.onclick=function(e){ if(e.target.classList.contains('bsc-chip')){ q.value=e.target.textContent; buscar(); } };
+  go.onclick=buscar; q.addEventListener('keydown',function(e){ if(e.key==='Enter') buscar(); });
+  function badge(v){ return v==='oportunidad'?'<span class="bsc-badge bb-op">OPORTUNIDAD</span>':v==='sobreprecio'?'<span class="bsc-badge bb-so">SOBREPRECIO</span>':v==='justo'?'<span class="bsc-badge bb-ju">PRECIO JUSTO</span>':''; }
+  function card(x){
+    var img=x.imagen?' style="background-image:url(\''+x.imagen+'\')"':'';
+    var vs=x.vs!=null?(' · '+(x.vs>0?'+':'')+x.vs+'% vs zona'):'';
+    return '<div class="bsc-card"><div class="ph"'+img+'>'+badge(x.veredicto)+'</div><div class="bd">'+
+      '<div class="pr">'+fmt(x.precio)+' <span style="font-size:.6em;color:var(--muted-txt)">'+(x.moneda||'MXN')+(x.operacion==='renta'?'/mes':'')+'</span></div>'+
+      '<div class="tt">'+(x.titulo||x.tipo||'')+'</div>'+
+      '<div class="rw"><span>'+(x.municipio||'')+', '+(x.zona||'')+'</span></div>'+
+      '<div class="rw"><span>'+(x.tipo||'')+'</span>'+(x.recamaras?'<span>'+x.recamaras+' rec</span>':'')+(x.m2_construccion?'<span>'+x.m2_construccion+' m²</span>':'')+(x.pm2?'<span>'+fmt(x.pm2)+'/m²</span>':'')+'</div>'+
+      (x.zona_yield?'<div class="rw"><span class="yld">Rendimiento zona ~'+x.zona_yield+'%'+vs+'</span></div>':(vs?'<div class="rw"><span class="yld">'+vs.replace(' · ','')+'</span></div>':''))+
+      '<a href="'+(x.url||'#')+'" target="_blank" rel="noopener">Ver ficha en Century 21 →</a></div></div>';
+  }
+  function buscar(){
+    var s=q.value.trim(); if(!s) return;
+    out.innerHTML='<div class="bsc-empty">Pensando…</div>'; go.disabled=true;
+    fetch(BB+'/api/buscar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({q:s})})
+    .then(function(r){return r.json().then(function(j){return {ok:r.ok,st:r.status,j:j};});})
+    .then(function(res){
+      var j=res.j;
+      if(!res.ok){ out.innerHTML='<div class="bsc-empty">⚠️ '+(j.error||('Error '+res.st))+'</div>'; return; }
+      var zonas=(j.zonas||[]).join(', ');
+      var h='';
+      if(j.interpretacion) h+='<div class="bsc-interp"><b>Entendí:</b> '+j.interpretacion+'</div>';
+      h+='<div class="bsc-meta">'+j.total+' resultados'+(zonas?(' en '+zonas):'')+'</div>';
+      h+= (j.resultados&&j.resultados.length)?('<div class="bsc-grid">'+j.resultados.map(card).join('')+'</div>'):'<div class="bsc-empty">Sin resultados con esos filtros. Prueba otra búsqueda.</div>';
+      h+='<p class="bsc-amber"><b>●</b> Veredictos de precio y rendimiento son estimaciones (est.). Cada propiedad enlaza a su ficha original en Century 21.</p>';
+      out.innerHTML=h;
+    })
+    .catch(function(e){ out.innerHTML='<div class="bsc-empty">No se pudo conectar: '+e.message+'</div>'; })
+    .then(function(){ go.disabled=false; });
+  }
+})();
 </script>
   <script defer src="/iris.js"></script>
 </body>

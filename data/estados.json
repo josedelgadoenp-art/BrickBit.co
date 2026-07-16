@@ -26,7 +26,7 @@
       "zoom": 11,
       "precio_m2": 40500,
       "plusvalia": 5.1,
-      "yield": 4.5,
+      "yield": 7.3,
       "dom": 58,
       "ciclo": "Saturación",
       "oportunidad": "Media",
@@ -35,13 +35,15 @@
         "plusvalia": "SHF 1T 2026 (ZM, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 83 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 230 rentas vs 1409 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 1409 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 83.1,
-      "volatilidad_anual": 2.58
+      "volatilidad_anual": 2.58,
+      "precio_m2_c21": 33648
     },
     {
       "clave": "Guadalajara",
@@ -51,7 +53,7 @@
       "zoom": 11,
       "precio_m2": 13400,
       "plusvalia": 12.5,
-      "yield": 6.2,
+      "yield": 6.8,
       "dom": 42,
       "ciclo": "Expansión fuerte",
       "oportunidad": "Alta",
@@ -60,13 +62,15 @@
         "plusvalia": "SHF 1T 2026 (ZM, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 95 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 91 rentas vs 285 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 285 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 95.2,
-      "volatilidad_anual": 3.68
+      "volatilidad_anual": 3.68,
+      "precio_m2_c21": 28144
     },
     {
       "clave": "Monterrey",
@@ -76,7 +80,7 @@
       "zoom": 11,
       "precio_m2": 12700,
       "plusvalia": 9.3,
-      "yield": 6.8,
+      "yield": 5.7,
       "dom": 38,
       "ciclo": "Expansión",
       "oportunidad": "Alta",
@@ -85,13 +89,15 @@
         "plusvalia": "SHF 1T 2026 (ZM, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 97 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 197 rentas vs 466 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 466 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 96.6,
-      "volatilidad_anual": 2.9
+      "volatilidad_anual": 2.9,
+      "precio_m2_c21": 36153
     },
     {
       "clave": "Cancún",
@@ -101,7 +107,7 @@
       "zoom": 12,
       "precio_m2": 17400,
       "plusvalia": 13.4,
-      "yield": 7.8,
+      "yield": 5.9,
       "dom": 32,
       "ciclo": "Expansión fuerte",
       "oportunidad": "Alta",
@@ -110,13 +116,15 @@
         "plusvalia": "SHF 1T 2026 (estatal, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 76 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 81 rentas vs 449 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 449 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 76.0,
-      "volatilidad_anual": 4.47
+      "volatilidad_anual": 4.47,
+      "precio_m2_c21": 35725
     },
     {
       "clave": "Mérida",
@@ -126,7 +134,7 @@
       "zoom": 12,
       "precio_m2": 19200,
       "plusvalia": 10.7,
-      "yield": 7.1,
+      "yield": 5.1,
       "dom": 35,
       "ciclo": "Expansión fuerte",
       "oportunidad": "Alta",
@@ -135,13 +143,15 @@
         "plusvalia": "SHF 1T 2026 (estatal, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 89 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 26 rentas vs 273 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 273 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 88.6,
-      "volatilidad_anual": 2.62
+      "volatilidad_anual": 2.62,
+      "precio_m2_c21": 32689
     },
     {
       "clave": "Querétaro",
@@ -151,7 +161,7 @@
       "zoom": 12,
       "precio_m2": 20000,
       "plusvalia": 6.6,
-      "yield": 6.5,
+      "yield": 7.2,
       "dom": 40,
       "ciclo": "Madurez",
       "oportunidad": "Alta",
@@ -160,13 +170,15 @@
         "plusvalia": "SHF 1T 2026 (ZM, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 94 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 62 rentas vs 201 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 201 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 94.2,
-      "volatilidad_anual": 2.83
+      "volatilidad_anual": 2.83,
+      "precio_m2_c21": 22384
     },
     {
       "clave": "Tijuana",
@@ -176,7 +188,7 @@
       "zoom": 12,
       "precio_m2": 17600,
       "plusvalia": 11.0,
-      "yield": 5.8,
+      "yield": 6.3,
       "dom": 46,
       "ciclo": "Expansión fuerte",
       "oportunidad": "Alta",
@@ -185,13 +197,15 @@
         "plusvalia": "SHF 1T 2026 (ZM, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 91 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 34 rentas vs 231 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 231 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 91.1,
-      "volatilidad_anual": 3.77
+      "volatilidad_anual": 3.77,
+      "precio_m2_c21": 36431
     },
     {
       "clave": "Puebla",
@@ -201,7 +215,7 @@
       "zoom": 12,
       "precio_m2": 17200,
       "plusvalia": 9.2,
-      "yield": 5.9,
+      "yield": 7.1,
       "dom": 49,
       "ciclo": "Expansión",
       "oportunidad": "Alta",
@@ -210,13 +224,15 @@
         "plusvalia": "SHF 1T 2026 (ZM, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 85 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 78 rentas vs 688 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 688 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 85.3,
-      "volatilidad_anual": 2.68
+      "volatilidad_anual": 2.68,
+      "precio_m2_c21": 20729
     },
     {
       "clave": "León",
@@ -238,10 +254,12 @@
         "yield": "estimado (pendiente listados, Fase 3)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 25 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 102.8,
-      "volatilidad_anual": 2.66
+      "volatilidad_anual": 2.66,
+      "precio_m2_c21": 17702
     },
     {
       "clave": "San Luis Potosí",
@@ -251,7 +269,7 @@
       "zoom": 12,
       "precio_m2": 13900,
       "plusvalia": 7.5,
-      "yield": 6.9,
+      "yield": 6.1,
       "dom": 45,
       "ciclo": "Madurez",
       "oportunidad": "Alta",
@@ -260,13 +278,15 @@
         "plusvalia": "SHF 1T 2026 (estatal, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 98 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 50 rentas vs 327 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 327 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 97.8,
-      "volatilidad_anual": 2.44
+      "volatilidad_anual": 2.44,
+      "precio_m2_c21": 19312
     },
     {
       "clave": "Aguascalientes",
@@ -285,13 +305,15 @@
         "plusvalia": "SHF 1T 2026 (estatal, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 107 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 20 rentas vs 101 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 101 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 106.6,
-      "volatilidad_anual": 2.59
+      "volatilidad_anual": 2.59,
+      "precio_m2_c21": 21232
     },
     {
       "clave": "La Paz",
@@ -313,10 +335,12 @@
         "yield": "estimado (pendiente listados, Fase 3)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 11 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 74.1,
-      "volatilidad_anual": 4.21
+      "volatilidad_anual": 4.21,
+      "precio_m2_c21": 26882
     },
     {
       "clave": "Saltillo",
@@ -326,7 +350,7 @@
       "zoom": 12,
       "precio_m2": 10500,
       "plusvalia": 8.4,
-      "yield": 5.4,
+      "yield": 9.6,
       "dom": 57,
       "ciclo": "Expansión",
       "oportunidad": "Alta",
@@ -335,13 +359,15 @@
         "plusvalia": "SHF 1T 2026 (estatal, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 104 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 10 rentas vs 22 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 22 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 104.5,
-      "volatilidad_anual": 2.37
+      "volatilidad_anual": 2.37,
+      "precio_m2_c21": 23041
     },
     {
       "clave": "Chihuahua",
@@ -351,7 +377,7 @@
       "zoom": 12,
       "precio_m2": 14500,
       "plusvalia": 10.2,
-      "yield": 5.6,
+      "yield": 7.6,
       "dom": 56,
       "ciclo": "Expansión fuerte",
       "oportunidad": "Alta",
@@ -360,13 +386,15 @@
         "plusvalia": "SHF 1T 2026 (estatal, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 92 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 114 rentas vs 356 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 356 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 92.5,
-      "volatilidad_anual": 2.49
+      "volatilidad_anual": 2.49,
+      "precio_m2_c21": 22634
     },
     {
       "clave": "Culiacán",
@@ -376,7 +404,7 @@
       "zoom": 12,
       "precio_m2": 14200,
       "plusvalia": 10.7,
-      "yield": 6.6,
+      "yield": 5.9,
       "dom": 48,
       "ciclo": "Expansión fuerte",
       "oportunidad": "Alta",
@@ -385,13 +413,15 @@
         "plusvalia": "SHF 1T 2026 (estatal, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 96 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 57 rentas vs 87 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 87 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 96.1,
-      "volatilidad_anual": 3.24
+      "volatilidad_anual": 3.24,
+      "precio_m2_c21": 22867
     },
     {
       "clave": "Hermosillo",
@@ -413,10 +443,12 @@
         "yield": "estimado (pendiente listados, Fase 3)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 16 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 93.8,
-      "volatilidad_anual": 2.61
+      "volatilidad_anual": 2.61,
+      "precio_m2_c21": 28142
     },
     {
       "clave": "Durango",
@@ -438,10 +470,12 @@
         "yield": "estimado (pendiente listados, Fase 3)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 21 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 102.8,
-      "volatilidad_anual": 2.15
+      "volatilidad_anual": 2.15,
+      "precio_m2_c21": 12960
     },
     {
       "clave": "Tepic",
@@ -476,7 +510,7 @@
       "zoom": 12,
       "precio_m2": 11500,
       "plusvalia": 8.4,
-      "yield": 6.0,
+      "yield": 8.3,
       "dom": 50,
       "ciclo": "Expansión",
       "oportunidad": "Alta",
@@ -485,13 +519,15 @@
         "plusvalia": "SHF 1T 2026 (estatal, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 99 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 22 rentas vs 101 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 101 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 99.1,
-      "volatilidad_anual": 2.84
+      "volatilidad_anual": 2.84,
+      "precio_m2_c21": 13514
     },
     {
       "clave": "Toluca",
@@ -501,7 +537,7 @@
       "zoom": 11,
       "precio_m2": 15200,
       "plusvalia": 5.2,
-      "yield": 5.2,
+      "yield": 6.8,
       "dom": 52,
       "ciclo": "Madurez",
       "oportunidad": "Media",
@@ -510,13 +546,15 @@
         "plusvalia": "SHF 1T 2026 (ZM, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 92 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 25 rentas vs 157 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 157 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 91.8,
-      "volatilidad_anual": 1.82
+      "volatilidad_anual": 1.82,
+      "precio_m2_c21": 19167
     },
     {
       "clave": "Morelia",
@@ -538,10 +576,12 @@
         "yield": "estimado (pendiente listados, Fase 3)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 56 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 102.7,
-      "volatilidad_anual": 3.09
+      "volatilidad_anual": 3.09,
+      "precio_m2_c21": 21517
     },
     {
       "clave": "Cuernavaca",
@@ -551,7 +591,7 @@
       "zoom": 12,
       "precio_m2": 20100,
       "plusvalia": 9.1,
-      "yield": 5.3,
+      "yield": 7.7,
       "dom": 55,
       "ciclo": "Expansión",
       "oportunidad": "Alta",
@@ -560,13 +600,15 @@
         "plusvalia": "SHF 1T 2026 (estatal, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 83 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 31 rentas vs 425 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 425 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 83.3,
-      "volatilidad_anual": 2.43
+      "volatilidad_anual": 2.43,
+      "precio_m2_c21": 21886
     },
     {
       "clave": "Pachuca",
@@ -588,10 +630,12 @@
         "yield": "estimado (pendiente listados, Fase 3)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 32 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 88.0,
-      "volatilidad_anual": 2.22
+      "volatilidad_anual": 2.22,
+      "precio_m2_c21": 17850
     },
     {
       "clave": "Oaxaca",
@@ -601,7 +645,7 @@
       "zoom": 12,
       "precio_m2": 17600,
       "plusvalia": 7.1,
-      "yield": 5.3,
+      "yield": 6.7,
       "dom": 67,
       "ciclo": "Madurez",
       "oportunidad": "Media",
@@ -610,13 +654,15 @@
         "plusvalia": "SHF 1T 2026 (estatal, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 85 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 33 rentas vs 73 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 73 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 85.2,
-      "volatilidad_anual": 2.43
+      "volatilidad_anual": 2.43,
+      "precio_m2_c21": 21186
     },
     {
       "clave": "Tuxtla Gutiérrez",
@@ -651,7 +697,7 @@
       "zoom": 12,
       "precio_m2": 13200,
       "plusvalia": 5.9,
-      "yield": 4.8,
+      "yield": 8.2,
       "dom": 68,
       "ciclo": "Madurez",
       "oportunidad": "Media",
@@ -660,13 +706,15 @@
         "plusvalia": "SHF 1T 2026 (estatal, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 84 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 25 rentas vs 47 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 47 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 84.0,
-      "volatilidad_anual": 2.39
+      "volatilidad_anual": 2.39,
+      "precio_m2_c21": 19278
     },
     {
       "clave": "Campeche",
@@ -688,10 +736,12 @@
         "yield": "estimado (pendiente listados, Fase 3)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 9 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 76.5,
-      "volatilidad_anual": 2.82
+      "volatilidad_anual": 2.82,
+      "precio_m2_c21": 19231
     },
     {
       "clave": "Veracruz",
@@ -713,10 +763,12 @@
         "yield": "estimado (pendiente listados, Fase 3)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 33 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 80.2,
-      "volatilidad_anual": 1.99
+      "volatilidad_anual": 1.99,
+      "precio_m2_c21": 18839
     },
     {
       "clave": "Zacatecas",
@@ -738,10 +790,12 @@
         "yield": "estimado (pendiente listados, Fase 3)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 15 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 112.0,
-      "volatilidad_anual": 2.41
+      "volatilidad_anual": 2.41,
+      "precio_m2_c21": 15833
     },
     {
       "clave": "Tlaxcala",
@@ -751,7 +805,7 @@
       "zoom": 12,
       "precio_m2": 9300,
       "plusvalia": 5.0,
-      "yield": 5.2,
+      "yield": 6.7,
       "dom": 62,
       "ciclo": "Recuperación",
       "oportunidad": "Media",
@@ -760,13 +814,15 @@
         "plusvalia": "SHF 1T 2026 (estatal, var. anual real)",
         "valor_mediano_vivienda_shf": "SHF 1T 2026 (estatal, cuartil 50%)",
         "precio_m2": "derivado: valor mediano SHF ÷ 97 m² (ENVI 2020 (medido, Cuadro 1.8))",
-        "yield": "estimado (pendiente listados, Fase 3)",
+        "yield": "real: 10 rentas vs 25 ventas Century 21 (jul 2026)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 25 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 96.9,
-      "volatilidad_anual": 2.85
+      "volatilidad_anual": 2.85,
+      "precio_m2_c21": 13816
     },
     {
       "clave": "Reynosa",
@@ -813,10 +869,12 @@
         "yield": "estimado (pendiente listados, Fase 3)",
         "dom": "estimado (pendiente listados, Fase 3)",
         "ciclo": "derivado (SHF + reglas)",
-        "oportunidad": "derivado (SHF + reglas)"
+        "oportunidad": "derivado (SHF + reglas)",
+        "precio_m2_c21": "mediana real Century 21, 21 ventas (segmento medio-alto)"
       },
       "superficie_media_m2": 80.6,
-      "volatilidad_anual": 2.62
+      "volatilidad_anual": 2.62,
+      "precio_m2_c21": 14463
     }
   ]
 }
