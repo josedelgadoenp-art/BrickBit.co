@@ -132,6 +132,18 @@
     <div class="btnrow" style="margin-top:8px">
       <button class="b ghost" id="well-btn" onclick="toggleWell()" style="width:100%">🧭 Bienestar y servicios</button>
     </div>
+    <div class="btnrow" style="margin-top:8px">
+      <button class="b ghost" id="inv-btn" onclick="toggleInventario()" style="width:100%">🏢 Inventario real · Century 21</button>
+    </div>
+  </div>
+
+  <!-- tarjeta del inmueble seleccionado (pines del inventario C21) -->
+  <div class="glass" id="pin-card" style="display:none;max-width:300px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <h2 id="pc-precio" style="margin:0"></h2>
+      <button class="b ghost" onclick="hidePinCard()" style="padding:2px 9px">✕</button>
+    </div>
+    <div id="pc-body"></div>
   </div>
 
   <div class="glass" id="vol-panel" style="display:none">
@@ -213,9 +225,10 @@ function showOverlay(html){ $('ov-card').innerHTML=html; $('ov').classList.add('
 function hideOverlay(){ $('ov').classList.remove('on'); }
 
 /* ====== estado ====== */
-let map=null, zona=null, orbiting=false, viewCenter=null, viewHeading=25, Poly3D=null, AltMode=null, volPoly=null, volCenter=null;
-// Fallback (sin ?zona=): Paseo de la Reforma, mirando al Ángel de la Independencia
-const HOME = { lat:19.4270, lng:-99.1677, heading:240, label:'Paseo de la Reforma · CDMX', zona:'Ciudad de México' };
+let map=null, zona=null, orbiting=false, viewCenter=null, viewHeading=25, viewAlt=0, Poly3D=null, AltMode=null, volPoly=null, volCenter=null;
+// Fallback (sin ?zona=): el Ángel de la Independencia, cámara a ~100 m de altura.
+// altura de cámara ≈ alt + range·cos(tilt) → 45 + 230·cos(74°) ≈ 108 m.
+const HOME = { lat:19.42704, lng:-99.16769, alt:45, range:230, tilt:74, heading:240, label:'Ángel de la Independencia · CDMX', zona:'Ciudad de México' };
 // Vista a ras de suelo (~35-40 m de altura, casi horizontal) — afina aquí
 // Vista de reposo: más ALTA y con más picada (tilt menor) = tiles nítidos.
 // El tilt alto/rango corto ponía la cámara casi a ras de piso y borrosa.
@@ -276,6 +289,11 @@ const ZONES = [
   const center = zona ? { lat:zona.lat, lng:zona.lng } : { lat:HOME.lat, lng:HOME.lng };
   viewCenter = center;
   viewHeading = zona ? VIEW.heading : (HOME.heading ?? VIEW.heading);
+  // En la portada (el Ángel) la cámara vuela BAJO (~100 m) alrededor del monumento;
+  // en las zonas se mantiene la vista alta que refina mejor los tiles.
+  viewAlt   = zona ? 0 : HOME.alt;
+  viewRange = zona ? VIEW.range : HOME.range;
+  viewTilt  = zona ? VIEW.tilt  : HOME.tilt;
   const name = zona ? zona.nombre : HOME.label;
   const analyzeZona = zona ? zona.nombre : HOME.zona;
   $('zname').textContent = name;
@@ -317,10 +335,11 @@ const ZONES = [
       volCenter = { lat, lng };
       drawVolume();
     });
-    // entrada cinematográfica: desciende hacia la ciudad (~35 m del suelo)
+    // entrada cinematográfica: desciende hasta la vista de reposo
+    // (en la portada: ~100 m sobre el Ángel de la Independencia)
     if(typeof map.flyCameraTo==='function'){
       map.flyCameraTo({
-        endCamera:{ center:{lat:center.lat,lng:center.lng,altitude:0}, range:VIEW.range, tilt:VIEW.tilt, heading:viewHeading },
+        endCamera:{ center:{lat:center.lat,lng:center.lng,altitude:viewAlt}, range:viewRange, tilt:viewTilt, heading:viewHeading },
         durationMillis: 3500
       });
     }
@@ -357,7 +376,7 @@ function toggleOrbit(){
   const c = viewCenter || map.center || {};
   if(typeof map.flyCameraAround==='function'){
     map.flyCameraAround({
-      camera:{ center:{lat:c.lat,lng:c.lng,altitude:0}, range:viewRange, tilt:viewTilt, heading:viewHeading },
+      camera:{ center:{lat:c.lat,lng:c.lng,altitude:viewAlt}, range:viewRange, tilt:viewTilt, heading:viewHeading },
       durationMillis: 70000, rounds: 1
     });
     orbiting=true; $('orbit-btn').textContent='⏸ Detener';
@@ -365,10 +384,11 @@ function toggleOrbit(){
 }
 function resetView(){
   if(!map || !viewCenter) return;
-  viewRange = VIEW.range; viewTilt = VIEW.tilt;   // vuelve a la altura por defecto
+  viewRange = zona ? VIEW.range : HOME.range;   // vuelve a la altura por defecto
+  viewTilt  = zona ? VIEW.tilt  : HOME.tilt;
   if(map.stopCameraAnimation) map.stopCameraAnimation(); orbiting=false; $('orbit-btn').textContent='▶ Orbitar';
   if(typeof map.flyCameraTo==='function'){
-    map.flyCameraTo({ endCamera:{ center:{lat:viewCenter.lat,lng:viewCenter.lng,altitude:0}, range:viewRange, tilt:viewTilt, heading:viewHeading }, durationMillis:1800 });
+    map.flyCameraTo({ endCamera:{ center:{lat:viewCenter.lat,lng:viewCenter.lng,altitude:viewAlt}, range:viewRange, tilt:viewTilt, heading:viewHeading }, durationMillis:1800 });
   }
 }
 /* Elevar / Bajar la cámara. Subir = más rango y menos tilt (más picada).
@@ -376,13 +396,15 @@ function resetView(){
    la cámara SIEMPRE quede por encima de los edificios (altura ≈ range·cos(tilt),
    ~244 m en el peor caso) y no parezca que entra dentro de ellos. */
 function elevar(dir){
-  viewRange = Math.max(600, Math.min(12000, viewRange * (dir>0 ? 1.35 : 1/1.35)));
-  viewTilt  = Math.max(38, Math.min(66, viewTilt + (dir>0 ? -6 : 6)));
+  // En la portada (vista baja del Ángel) se permite acercarse más (rango mín. 150 m).
+  const minR = zona ? 600 : 150, maxT = zona ? 66 : 78;
+  viewRange = Math.max(minR, Math.min(12000, viewRange * (dir>0 ? 1.35 : 1/1.35)));
+  viewTilt  = Math.max(38, Math.min(maxT, viewTilt + (dir>0 ? -6 : 6)));
   const c = viewCenter || mapCenter(); if(!map || !c) return;
   if(map.stopCameraAnimation) map.stopCameraAnimation();
   orbiting=false; const ob=$('orbit-btn'); if(ob) ob.textContent='▶ Orbitar';
   if(typeof map.flyCameraTo==='function'){
-    map.flyCameraTo({ endCamera:{ center:{lat:c.lat,lng:c.lng,altitude:0}, range:viewRange, tilt:viewTilt, heading:viewHeading }, durationMillis:700 });
+    map.flyCameraTo({ endCamera:{ center:{lat:c.lat,lng:c.lng,altitude:viewAlt}, range:viewRange, tilt:viewTilt, heading:viewHeading }, durationMillis:700 });
   }
 }
 
@@ -600,7 +622,7 @@ function radarSVG(res){
 
 /* ====== inventario real de Century 21 (para anclar el precio de venta) ====== */
 // Mediana real de $/m² en venta de la zona, medida sobre el inventario de Century 21.
-let _c21={loaded:false, med:null, n:0};
+let _c21={loaded:false, med:null, n:0, list:[]};
 async function loadC21Median(nom){
   if(_c21.loaded) return _c21;
   _c21.loaded=true;
@@ -611,13 +633,73 @@ async function loadC21Median(nom){
     const arr=await r.json();
     if(!Array.isArray(arr)||!arr.length) return _c21;
     // Normalizar a MXN ANTES de la mediana (mezclar USD/MXN rompe la comparación).
-    const ps=arr.filter(x=>x.operacion==='venta'&&x.precio>0&&x.m2_construccion>0)
-      .map(x=>{const fx=x.moneda==='USD'?17.5:1; return x.pm2?Math.round(x.pm2*fx):Math.round(x.precio*fx/x.m2_construccion);})
-      .filter(v=>v>5000&&v<150000).sort((a,b)=>a-b);
+    const norm=arr.filter(x=>x.operacion==='venta'&&x.lat!=null&&x.precio>0&&x.m2_construccion>0)
+      .map(x=>{const fx=x.moneda==='USD'?17.5:1;
+        return {...x,_pm:x.pm2?Math.round(x.pm2*fx):Math.round(x.precio*fx/x.m2_construccion),_pr:Math.round(x.precio*fx)};});
+    const ps=norm.map(x=>x._pm).filter(v=>v>5000&&v<150000).sort((a,b)=>a-b);
     if(ps.length>=4){ _c21.med=ps[Math.floor(ps.length/2)]; _c21.n=ps.length; }
+    // lista con veredicto de precio (para los pines 3D del inventario)
+    _c21.list=norm.map(x=>{const vs=(_c21.med&&x._pm)?Math.round((x._pm/_c21.med-1)*100):null;
+      return {lat:x.lat,lng:x.lng,titulo:x.titulo,tipo:x.tipo,url:x.url,imagen:x.imagen,municipio:x.municipio,
+        m2:x.m2_construccion,pm2:x._pm,precio:x._pr,moneda:x.moneda,vs,
+        veredicto:vs==null?null:(vs<=-12?'oportunidad':vs>=12?'sobreprecio':'justo')};});
   }catch(e){}
   return _c21;
 }
+/* ====== pines 3D del inventario real (marcador con el logo de BrickBit) ====== */
+let _pins=[], _pinsOn=false;
+function pinColor(v){return v==='oportunidad'?'#57c389':v==='sobreprecio'?'#e0745a':v==='justo'?'#F5C277':'#9a8f83';}
+async function toggleInventario(){
+  const btn=$('inv-btn'); if(!map||!btn) return;
+  if(_pinsOn){
+    _pins.forEach(m=>{try{m.remove();}catch(e){}}); _pins=[]; _pinsOn=false;
+    hidePinCard(); btn.textContent='🏢 Inventario real · Century 21'; return;
+  }
+  btn.textContent='⏳ Cargando inventario…'; btn.disabled=true;
+  try{
+    const zonaNom = zona ? zona.nombre : HOME.zona;
+    const c=await loadC21Median(zonaNom);
+    const L=c.list||[];
+    if(!L.length){ btn.textContent='🏢 Sin inventario en esta zona'; btn.disabled=false; return; }
+    const lib=await google.maps.importLibrary('maps3d');
+    const Marker3D=lib.Marker3DInteractiveElement||lib.Marker3DElement;
+    const {PinElement}=await google.maps.importLibrary('marker');
+    // los 60 más cercanos a la vista actual (más marcadores satura el render 3D)
+    const cc=viewCenter||mapCenter()||{lat:L[0].lat,lng:L[0].lng};
+    const sel=L.map(x=>({...x,_d:(x.lat-cc.lat)**2+(x.lng-cc.lng)**2})).sort((a,b)=>a._d-b._d).slice(0,60);
+    for(const x of sel){
+      // Pin con el logo de BrickBit; el color del fondo es el veredicto de precio.
+      const img=document.createElement('img');
+      img.src='favicon.png'; img.style.width='18px'; img.style.height='18px'; img.style.borderRadius='50%';
+      const pin=new PinElement({background:pinColor(x.veredicto),borderColor:'#14100c',glyph:img,scale:1.1});
+      const mk=new Marker3D({
+        position:{lat:x.lat,lng:x.lng,altitude:14},
+        altitudeMode:(AltMode&&AltMode.RELATIVE_TO_GROUND)||'RELATIVE_TO_GROUND',
+        extruded:true
+      });
+      mk.append(pin);
+      if(mk.addEventListener) mk.addEventListener('gmp-click',()=>showPinCard(x));
+      map.append(mk); _pins.push(mk);
+    }
+    _pinsOn=true;
+    btn.textContent=`🏢 Inventario (${sel.length} de ${L.length}) · quitar ✕`;
+  }catch(e){ console.error('[inventario 3D]',e); btn.textContent='🏢 Inventario real · Century 21'; }
+  btn.disabled=false;
+}
+function showPinCard(x){
+  const f=n=>Math.round(n).toLocaleString('es-MX');
+  const vTag=x.veredicto?`<b style="color:${pinColor(x.veredicto)}">● ${x.veredicto==='oportunidad'?'Precio de oportunidad':x.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="opacity:.7">${x.vs>0?'+':''}${x.vs}% vs mediana · est.</span>`:'';
+  $('pc-precio').textContent='$'+f(x.precio)+' MXN';
+  $('pc-body').innerHTML=
+    (x.imagen?`<img src="${x.imagen}" alt="" loading="lazy" style="width:100%;height:120px;object-fit:cover;border-radius:10px;margin:8px 0;display:block">`:'')+
+    `<p style="margin:4px 0">${(x.titulo||x.tipo||'Inmueble')}</p>`+
+    `<p style="margin:4px 0;opacity:.8">${x.m2?f(x.m2)+' m² · ':''}${x.pm2?'$'+f(x.pm2)+'/m²':''}${x.municipio?' · '+x.municipio:''}</p>`+
+    (vTag?`<p style="margin:6px 0;font-size:12.5px">${vTag}</p>`:'')+
+    (x.url?`<a class="b primary" href="${x.url}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;margin-top:6px">Ver ficha en Century 21 →</a>`:'');
+  $('pin-card').style.display='block';
+}
+function hidePinCard(){ const p=$('pin-card'); if(p) p.style.display='none'; }
+
 function c21Chip(){
   if(!_c21.med) return '';
   const f=n=>Math.round(n).toLocaleString('es-MX');
