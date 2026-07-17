@@ -638,10 +638,21 @@ const TIPOMAP={
   departamento:{t:"Departamento",cat:"res",ic:"🏬",col:"#1D9E75"},
   local:{t:"Local comercial",cat:"com",ic:"🏪",col:"#EF9F27"},
   oficina:{t:"Oficinas",cat:"com",ic:"🏦",col:"#5B8FF9"},
-  edificio:{t:"Edificio comercial",cat:"com",ic:"🏢",col:"#E0A53A"}
+  edificio:{t:"Edificio comercial",cat:"com",ic:"🏢",col:"#E0A53A"},
+  terreno:{t:"Terreno",cat:"ter",ic:"▦",col:"#cdf25a"}
 };
+function tipoDe(t){
+  const k=String(t||'').toLowerCase();
+  if(/terreno|lote/.test(k)) return TIPOMAP.terreno;
+  if(/casa|residencia|villa/.test(k)) return TIPOMAP.casa;
+  if(/depa|departamento|loft|penthouse/.test(k)) return TIPOMAP.departamento;
+  if(/local|comercial/.test(k)) return TIPOMAP.local;
+  if(/oficina|consultorio/.test(k)) return TIPOMAP.oficina;
+  if(/edificio|bodega|nave|hotel/.test(k)) return TIPOMAP.edificio;
+  return TIPOMAP.departamento;
+}
 function listingToProp(L,c,nom){
-  const ty=TIPOMAP[L.tipo]||TIPOMAP.departamento;
+  const ty=L.ter?TIPOMAP.terreno:tipoDe(L.tipo);
   return {...ty,zona:nom,nom:(L.titulo?(L.titulo.slice(0,42)):`${ty.t} · ${L.m2} m²`),m2:L.m2,pm2:L.pm2,price:L.precio_mxn,
     g:(c.g!=null?c.g:null),yield:(c.yield!=null?c.yield:null),dom:(L.dom!=null?L.dom:(c.dom!=null?c.dom:null)),opp:c.opp,ciclo:c.ciclo,
     lat:L.lat,lng:L.lng,fuente:L.fuente,url:L.url,
@@ -697,7 +708,18 @@ function icon(opp,size){const c=OPP[opp]||"#888",r=size/2;
 function propPinColor(p){return p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':p.veredicto==='justo'?'#F5C277':'#9a8f83';}
 /* Pin de gota coloreado por veredicto con el logo BrickBit (favicon) dentro del
    disco blanco de la cabeza. El color sigue leyéndose de un vistazo. */
-function propIcon(p){const c=propPinColor(p);return L.divIcon({className:"",iconSize:[26,36],iconAnchor:[13,34],html:
+function propIcon(p){const c=propPinColor(p);
+  // Los TERRENOS llevan marcador de parcela: cuadro con borde punteado (lindero)
+  // en lugar de la gota — se distinguen de un vistazo entre lo construido.
+  if(p.cat==='ter') return L.divIcon({className:"",iconSize:[26,32],iconAnchor:[13,30],html:
+    `<div style="position:relative;width:26px;height:32px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.55))">
+      <svg width="26" height="32" viewBox="0 0 26 32" style="position:absolute;inset:0">
+        <rect x="1.5" y="1.5" width="23" height="23" rx="4" fill="${c}" stroke="#fff" stroke-width="1.6" stroke-dasharray="3.5 2.4"/>
+        <path d="M13 31 L8.5 24.5 L17.5 24.5 Z" fill="${c}"/>
+        <circle cx="13" cy="13" r="7" fill="#fff"/></svg>
+      <img src="favicon.png" alt="" width="11" height="11" style="position:absolute;left:7.5px;top:7.5px;border-radius:2px">
+    </div>`});
+  return L.divIcon({className:"",iconSize:[26,36],iconAnchor:[13,34],html:
   `<div style="position:relative;width:26px;height:36px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.55))">
     <svg width="26" height="36" viewBox="0 0 26 36" style="position:absolute;inset:0"><path d="M13 1C6.4 1 1 6.4 1 13c0 8.9 12 22 12 22s12-13.1 12-22C25 6.4 19.6 1 13 1z" fill="${c}" stroke="#fff" stroke-width="1.6"/><circle cx="13" cy="13" r="7.2" fill="#fff"/></svg>
     <img src="favicon.png" alt="" width="11" height="11" style="position:absolute;left:7.5px;top:7.5px;border-radius:2px">
@@ -1302,9 +1324,28 @@ function setHz(h){horizon=h;document.querySelectorAll(".hz-btn").forEach(b=>b.cl
 /* panel de INMUEBLE (nuevo, distinto por tipo) */
 function selProp(p){
   map.flyTo([p.lat,p.lng],16,{duration:0.6});
-  document.getElementById("panel-cap").textContent="Inmueble seleccionado";
+  document.getElementById("panel-cap").textContent=p.cat==="ter"?"Terreno seleccionado":"Inmueble seleccionado";
   document.getElementById("list-sec").style.display="none";
-  p.cat==="res"?renderRes(p):renderCom(p);
+  p.cat==="ter"?renderTer(p):p.cat==="res"?renderRes(p):renderCom(p);
+}
+/* Panel de TERRENO: precio de suelo vs otros terrenos de la zona + los 3
+   lanzadores que cierran el proceso: proyecto óptimo, vibrancia y estilo de vida. */
+function renderTer(p){
+  const zEnc=encodeURIComponent(p.zona||''), nm=String(p.zona||'').replace(/'/g,"\\'");
+  document.getElementById("panel-content").innerHTML=`
+    <div class="sel-name">▦ Terreno</div><div class="sel-tipo">${p.zona} · ${p.m2?p.m2.toLocaleString('es-MX')+' m² de terreno':'superficie s/d'}</div>
+    <div class="sel-price">${fmtM(p.price)}</div>
+    <div class="sel-sub">${p.pm2?fmt(p.pm2)+' /m² de suelo':''}</div>
+    ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
+    ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Suelo en oportunidad':p.veredicto==='sobreprecio'?'Suelo con sobreprecio':'Precio de suelo justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de terrenos de la zona · est.</span></div>`:'<div style="margin-top:8px;font-size:12px;color:#8a9a9e">Sin suficientes terrenos comparables en la zona para un veredicto de precio.</div>'}
+    ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver ficha original</a>`:''}</div>`:''}
+    <div class="ptitle" style="margin-top:18px">🚀 ¿Qué puedo hacer con este terreno?</div>
+    <a href="analizador.html?zona=${zEnc}&dev=1&lote=${Math.round(p.m2||1000)}" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(205,242,90,.35);color:#cdf25a;text-decoration:none;margin-top:8px">🤖 Proyecto óptimo y pro-forma con estos m² →</a>
+    <a href="zona3d.html?zona=${zEnc}&lote=${Math.round(p.m2||1000)}" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(245,194,119,.4);color:#F5C277;text-decoration:none;margin-top:8px">🌆 Simular el volumen en 3D →</a>
+    <a href="zona3d.html?zona=${zEnc}&lat=${p.lat}&lng=${p.lng}&bienestar=1" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(87,195,137,.35);color:#57c389;text-decoration:none;margin-top:8px">🧭 Estilo de vida en este punto →</a>
+    <button class="ia-btn" id="vib-btn" onclick="scanVibrancia(${p.lat},${p.lng},'${nm}')" style="margin-top:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="9"/></svg>Escanear vibrancia aquí</button>
+    <div id="vib-out"></div>
+    <div class="notice" style="margin-top:12px">El proyecto óptimo usa el <b>Modo Desarrollador</b> con la superficie real de este terreno y el precio de venta real de la zona. La vibrancia y el estilo de vida se miden <b>en este punto exacto</b> con Google Places.</div>`;
 }
 function renderRes(p){
   const hasY=(p.yield!=null), hasG=(p.g!=null);
@@ -1651,19 +1692,26 @@ async function loadZoneListings(zone){
     if(!r.ok) throw 0;
     const arr=await r.json();
     if(!Array.isArray(arr)||!arr.length){ REAL_LIST[zone]=[]; return []; }
-    // normalizar a MXN ANTES de comparar (evita mezclar USD costero con MXN)
-    const norm=arr.filter(x=>x.operacion==='venta'&&x.lat!=null&&x.precio>0&&x.m2_construccion>0)
-      .map(x=>{const fx=x.moneda==='USD'?17.5:1; return {...x,_pm:x.pm2?Math.round(x.pm2*fx):null,_pr:Math.round(x.precio*fx)};});
-    const ps=norm.filter(x=>x._pm>5000&&x._pm<150000).map(x=>x._pm).sort((a,b)=>a-b);
-    const med=ps.length?ps[Math.floor(ps.length/2)]:null;
+    // normalizar a MXN ANTES de comparar (evita mezclar USD costero con MXN).
+    // Los TERRENOS entran con su superficie de terreno y se comparan contra la
+    // mediana de $/m² de OTROS terrenos (mezclar suelo con construido rompe el veredicto).
+    const esTer=t=>/terreno|lote/i.test(String(t||''));
+    const norm=arr.filter(x=>x.operacion==='venta'&&x.lat!=null&&x.precio>0&&(x.m2_construccion>0||x.m2_terreno>0))
+      .map(x=>{const fx=x.moneda==='USD'?17.5:1; const ter=esTer(x.tipo);
+        const m2=ter?(x.m2_terreno||x.m2_construccion):(x.m2_construccion||0);
+        return {...x,_ter:ter,_m2:m2,_pm:m2>0?Math.round(x.precio*fx/m2):null,_pr:Math.round(x.precio*fx)};});
+    const medDe=a=>{const s=a.sort((x,y)=>x-y);return s.length>=4?s[Math.floor(s.length/2)]:null;};
+    const medC=medDe(norm.filter(x=>!x._ter&&x._pm>5000&&x._pm<150000).map(x=>x._pm));
+    const medT=medDe(norm.filter(x=>x._ter&&x._pm>300&&x._pm<120000).map(x=>x._pm));
     const L=norm.map(x=>{
+        const med=x._ter?medT:medC;
         const vs=(med&&x._pm)?Math.round((x._pm/med-1)*100):null;
-        return {tipo:x.tipo,m2:x.m2_construccion,pm2:x._pm,precio_mxn:x._pr,
+        return {tipo:x.tipo,ter:x._ter,m2:x._m2,pm2:x._pm,precio_mxn:x._pr,
           lat:x.lat,lng:x.lng,url:x.url,fuente:'Century 21',titulo:x.titulo,imagen:x.imagen,municipio:x.municipio,moneda:x.moneda,
           vs, veredicto: vs==null?null:(vs<=-12?'oportunidad':vs>=12?'sobreprecio':'justo')};
       })
       .sort((a,b)=>(a.vs??999)-(b.vs??999))  // oportunidades primero
-      .slice(0,120);
+      .slice(0,140);
     REAL_LIST[zone]=L; return L;
   }catch(e){ REAL_LIST[zone]=[]; return []; }
 }

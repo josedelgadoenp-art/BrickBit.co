@@ -290,14 +290,17 @@ const ZONES = [
     zona = ZONES.find(z => slug(z.nombre)===qs)
         || ZONES.find(z => slug(z.nombre).includes(qs) || qs.includes(slug(z.nombre)));
   }
-  const center = zona ? { lat:zona.lat, lng:zona.lng } : { lat:HOME.lat, lng:HOME.lng };
+  // Punto exacto opcional (?lat=&lng=): p. ej. un terreno del mapa de Propiedades.
+  const qlat=parseFloat(qparam('lat')), qlng=parseFloat(qparam('lng'));
+  const punto=(isFinite(qlat)&&isFinite(qlng))?{lat:qlat,lng:qlng}:null;
+  const center = punto || (zona ? { lat:zona.lat, lng:zona.lng } : { lat:HOME.lat, lng:HOME.lng });
   viewCenter = center;
   viewHeading = zona ? VIEW.heading : (HOME.heading ?? VIEW.heading);
   // En la portada (el Ángel) la cámara vuela BAJO (~100 m) alrededor del monumento;
   // en las zonas se mantiene la vista alta que refina mejor los tiles.
-  viewAlt   = zona ? 0 : HOME.alt;
-  viewRange = zona ? VIEW.range : HOME.range;
-  viewTilt  = zona ? VIEW.tilt  : HOME.tilt;
+  viewAlt   = (zona||punto) ? 0 : HOME.alt;
+  viewRange = punto ? 700 : (zona ? VIEW.range : HOME.range);
+  viewTilt  = (zona||punto) ? VIEW.tilt  : HOME.tilt;
   const name = zona ? zona.nombre : HOME.label;
   const analyzeZona = zona ? zona.nombre : HOME.zona;
   $('zname').textContent = name;
@@ -350,6 +353,8 @@ const ZONES = [
     }
     hideOverlay();
     $('controls').style.display='flex';
+    // ?bienestar=1 (desde un terreno del mapa): abre directo el índice de vida
+    if(qparam('bienestar')==='1'){ setTimeout(()=>{ try{ toggleWell(); }catch(e){} }, 1200); }
   }catch(err){
     console.error('[BrickBit 3D]', err);
     showError(err);

@@ -426,6 +426,19 @@ function init(){
   if(st){ sel.value=st.zona||'Querétaro'; onZona(); applyState(st); }
   else { const qz=params.get('zona'); const m=qz?ZONAS.find(z=>z.n.toLowerCase()===qz.trim().toLowerCase()):null; sel.value=m?m.n:'Querétaro'; onZona(); }
   planFeasibLoad();   // ?desde=plano → precarga el proyecto del Creador de planos
+  devDeepLink();      // ?dev=1&lote=N → Modo Desarrollador con ese terreno (desde el mapa)
+}
+function devDeepLink(){
+  try{
+    const p=new URLSearchParams(location.search);
+    if(p.get('dev')!=='1') return;
+    const lote=parseFloat(p.get('lote'));
+    if(isFinite(lote)&&lote>0&&$('dv-lote')){ $('dv-lote').value=Math.round(lote); }
+    renderDev();
+    const box=$('dev-plan');
+    if(box&&isFinite(lote)) box.innerHTML=`<div class="note" style="border-left-color:var(--pos);margin:0 0 12px">▦ <b>Terreno recibido del mapa:</b> ${Math.round(lote).toLocaleString('es-MX')} m². La pro-forma de abajo calcula el <b>proyecto óptimo</b> para esta superficie con el precio de venta real de la zona.</div>`;
+    setTimeout(()=>{ const el=$('dev-plan')||$('dev-out'); if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'start'}); },450);
+  }catch(e){}
 }
 function setH(h){H=h;$('hz').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',[1,3,5,10][i]===h));calc();}
 function zona(){return ZONAS.find(z=>z.n===$('zona').value);}
