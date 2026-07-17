@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preventa — BrickBit</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#100c0a;--bg-2:#16110e;--surface:#1d1713;--cream:#f5ede3;--mut:#a89a8c;
+    --clay:#1a7d50;--pos:#57c389;--lime:#cdf25a;--amb:#F5C277;
+    --line:rgba(245,237,227,.10);--line-strong:rgba(245,237,227,.18)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(900px 600px at 78% -8%, rgba(26,125,80,.18), transparent 60%),
+               radial-gradient(700px 500px at 8% 30%, rgba(205,242,90,.05), transparent 60%)}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px;position:relative;z-index:1}
+  header{padding:20px 0;border-bottom:1px solid var(--line)}
+  .brand{font-family:'Fraunces',serif;font-weight:700;font-size:1.1rem;color:var(--cream);text-decoration:none}
+  .brand em{font-style:italic;color:var(--pos);font-weight:500}
+  .hero{padding:52px 0 26px}
+  .eyebrow{display:inline-flex;gap:8px;font-family:'Space Mono',monospace;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--lime);border:1px solid var(--line-strong);border-radius:999px;padding:6px 14px;margin-bottom:20px}
+  h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(1.8rem,4.5vw,2.9rem);line-height:1.12;letter-spacing:-.01em}
+  .zona{color:var(--mut);margin-top:8px;font-size:1.02rem}
+  .badges{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+  .badge{background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;padding:10px 16px;text-align:center;min-width:120px}
+  .badge b{display:block;font-family:'Fraunces',serif;font-size:1.35rem;color:var(--pos)}
+  .badge span{font-size:.7rem;color:var(--mut);letter-spacing:.05em;text-transform:uppercase}
+  section{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:28px;margin:22px 0}
+  h2{font-family:'Fraunces',serif;font-weight:600;font-size:1.35rem;margin-bottom:14px}
+  .uni{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 4px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .uni:last-child{border-bottom:none}
+  .uni b{font-size:1.02rem}
+  .uni .m{color:var(--mut);font-size:.88rem}
+  .uni .pr{font-family:'Space Mono',monospace;color:var(--lime);font-weight:700}
+  .esp{display:flex;flex-wrap:wrap;gap:8px}
+  .esp span{background:var(--bg-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:.82rem;color:var(--mut)}
+  label{display:block;font-size:.8rem;color:var(--mut);margin:12px 0 5px;font-weight:600}
+  input,select{width:100%;background:var(--bg-2);border:1px solid var(--line-strong);border-radius:11px;color:var(--cream);padding:12px 14px;font-size:.95rem;outline:none;font-family:inherit}
+  input:focus,select:focus{border-color:var(--pos)}
+  .btn{display:inline-flex;align-items:center;gap:10px;cursor:pointer;border-radius:12px;padding:14px 26px;font-weight:700;font-size:1rem;border:none;background:var(--lime);color:#0f130a;margin-top:18px;font-family:inherit;transition:background .25s}
+  .btn:hover{background:#a9d23f}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .ok{display:none;background:rgba(87,195,137,.1);border:1px solid rgba(87,195,137,.35);border-radius:12px;padding:16px;margin-top:16px}
+  .amber{font-size:.78rem;color:var(--mut);margin-top:16px}
+  .amber b{color:var(--amb)}
+  footer{padding:30px 0 50px;color:var(--mut);font-size:.8rem;text-align:center}
+  footer a{color:var(--pos);text-decoration:none}
+  .center{min-height:60vh;display:flex;align-items:center;justify-content:center;color:var(--mut)}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a class="brand" href="index.html">Brick<em>Bit</em></a></div></header>
+<div class="wrap" id="app"><div class="center">Cargando el proyecto…</div></div>
+<footer class="wrap">Página generada con <a href="index.html">BrickBit</a> · inteligencia inmobiliaria de México</footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>'$'+Math.round(n||0).toLocaleString('es-MX');
+const fmtM=n=>Math.abs(n)>=1e6?'$'+(n/1e6).toLocaleString('es-MX',{maximumFractionDigits:1})+' M':fmt(n);
+const BB=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').replace(/\/+$/,'');
+let P=null, PID='';
+
+(async function(){
+  PID=new URLSearchParams(location.search).get('p')||'';
+  if(!PID){ $('app').innerHTML='<div class="center">Falta el identificador del proyecto (?p=…)</div>'; return; }
+  try{
+    const r=await fetch(BB+'/api/share/'+encodeURIComponent(PID));
+    if(!r.ok) throw 0;
+    const j=await r.json();
+    if(!j||j.tipo!=='preventa'||!j.proyecto) throw 0;
+    P=j.proyecto; document.title='Preventa · '+P.nombre+' — BrickBit';
+    render();
+  }catch(e){
+    $('app').innerHTML='<div class="center">Este enlace de preventa expiró o no existe.<br>Los enlaces duran 90 días.</div>';
+  }
+})();
+
+function render(){
+  const mix=(P.mix||[]).filter(x=>x.c>0);
+  const desde=mix.length?Math.min(...mix.map(x=>x.precio||Infinity)):null;
+  $('app').innerHTML=`
+  <div class="hero">
+    <span class="eyebrow">🏷️ Preventa</span>
+    <h1>${esc(P.nombre)}</h1>
+    <div class="zona">📍 ${esc(P.zona)} · ${esc(P.tipologia||'')}</div>
+    <div class="badges">
+      ${desde?`<div class="badge"><b>${fmtM(desde)}</b><span>desde</span></div>`:''}
+      <div class="badge"><b>${P.unidades||'—'}</b><span>unidades</span></div>
+      <div class="badge"><b>${P.niveles||'—'}</b><span>niveles</span></div>
+      ${P.plusvalia?`<div class="badge"><b>+${P.plusvalia}%</b><span>plusvalía anual zona</span></div>`:''}
+      ${P.yieldZona?`<div class="badge"><b>${P.yieldZona}%</b><span>rendimiento renta zona</span></div>`:''}
+    </div>
+  </div>
+  <section>
+    <h2>Unidades</h2>
+    ${mix.map((x,i)=>`<div class="uni"><div><b>${esc(x.t)}</b><div class="m">${x.m} m² · ${x.c} disponibles</div></div><div class="pr">${fmtM(x.precio)}</div></div>`).join('')||'<p style="color:var(--mut)">Unidades por definir.</p>'}
+    <div class="amber"><b>●</b> Precios preliminares de preventa (${P.pm2Real?`con base en el mercado real de la zona — mediana de ${fmt(P.pm2)}/m², ${P.pm2N} inmuebles comparables`:`estimados con el índice de la zona, ${fmt(P.pm2)}/m²`}). Sujetos a cambio; no constituyen una oferta vinculante.</div>
+  </section>
+  ${(P.espacios&&P.espacios.length)?`<section><h2>El proyecto por dentro</h2><div class="esp">${P.espacios.map(e=>`<span>${esc(e.nombre)}${e.m2?' · '+Math.round(e.m2)+' m²':''}</span>`).join('')}</div>${P.notas?`<p style="color:var(--mut);font-size:.9rem;margin-top:14px">${esc(P.notas)}</p>`:''}</section>`:''}
+  <section>
+    <h2>Me interesa</h2>
+    <p style="color:var(--mut);font-size:.92rem">Déjanos tus datos y te contactamos con la información completa del proyecto.</p>
+    <form id="frm" onsubmit="return enviar(event)">
+      <label>Nombre</label><input id="f-nombre" required maxlength="80">
+      <label>Teléfono (WhatsApp)</label><input id="f-tel" required inputmode="tel" maxlength="20">
+      <label>Correo (opcional)</label><input id="f-mail" type="email" maxlength="90">
+      <label>Unidad de interés</label>
+      <select id="f-uni"><option value="">Cualquiera</option>${mix.map(x=>`<option>${esc(x.t)} · ${x.m} m² · ${fmtM(x.precio)}</option>`).join('')}</select>
+      <button class="btn" id="f-go" type="submit">Quiero información →</button>
+    </form>
+    <div class="ok" id="f-ok">✅ <b>Listo.</b> Recibimos tu interés; te contactaremos en breve.</div>
+    <div class="amber" id="f-fb" style="display:none"></div>
+  </section>`;
+}
+
+async function enviar(ev){
+  ev.preventDefault();
+  const lead={ fecha:new Date().toISOString(), origen:'preventa', proyecto:P.nombre, zona:P.zona, preventaId:PID,
+    nombre:$('f-nombre').value.trim(), telefono:$('f-tel').value.trim(), email:$('f-mail').value.trim(),
+    unidad:$('f-uni').value||'Cualquiera' };
+  $('f-go').disabled=true;
+  let ok=false;
+  try{ const r=await fetch('/api/lead',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(lead)}); ok=r.ok; }catch(e){ ok=false; }
+  if(ok){ $('frm').style.display='none'; $('f-ok').style.display='block'; }
+  else{
+    // Sin CRM configurado o abierta fuera de brickbit.co: fallback por correo.
+    const cuerpo=`Interés en preventa: ${P.nombre} (${P.zona})%0AUnidad: ${encodeURIComponent($('f-uni').value||'Cualquiera')}%0ANombre: ${encodeURIComponent(lead.nombre)}%0ATel: ${encodeURIComponent(lead.telefono)}%0AEmail: ${encodeURIComponent(lead.email)}`;
+    const fb=$('f-fb'); fb.style.display='block';
+    fb.innerHTML=`No pudimos registrar automáticamente tu interés. <a style="color:var(--pos)" href="mailto:jose.delgado.enp@gmail.com?subject=${encodeURIComponent('Interés preventa: '+P.nombre)}&body=${cuerpo}">Envíalo por correo con un clic →</a>`;
+    $('f-go').disabled=false;
+  }
+  return false;
+}
+</script>
+</body>
+</html>

@@ -232,6 +232,7 @@ a.back:hover{color:var(--tx)}
   <div class="card" style="margin-top:22px">
     <h2>🏗️ Modo Desarrollador<span class="hint" tabindex="0" data-tip="Viabilidad de CONSTRUIR y vender en la zona: usos de suelo estimados (COS/CUS), programa óptimo, pro-forma (ROI/TIR/VPN) y una tesis de inversión con IA.">?</span></h2>
     <p style="font-size:12px;color:var(--mut);margin:-6px 0 14px">Para <b>desarrolladores</b>: evalúa construir y vender en la zona. Ajusta el terreno y los parámetros; el uso de suelo (COS/CUS) viene con valores típicos <span class="amber">estimados</span>.</p>
+    <div id="dev-plan"></div>
     <div class="cgrid">
       <div class="fld"><label>Terreno (m²)</label><input id="dv-lote" type="number" min="60" step="10" value="1000" oninput="renderDev()"></div>
       <div class="fld"><label>COS <span class="tag ex">est.</span></label><input id="dv-cos" type="number" step="0.05" min="0.1" max="1" value="0.5" oninput="renderDev()"></div>
@@ -242,7 +243,9 @@ a.back:hover{color:var(--tx)}
     <div class="cta-row" style="gap:10px;margin:14px 0 0">
       <button class="pdf-btn" onclick="devTesisIA()">✨ Generar tesis con IA</button>
       <button class="pdf-btn" onclick="devPDF()">🖨 Tesis en PDF</button>
+      <button class="pdf-btn" onclick="genPreventa()" style="border-color:rgba(205,242,90,.4);color:var(--lime,#cdf25a)">🏷️ Página de preventa</button>
     </div>
+    <div id="preventa-out"></div>
     <div id="dev-tesis"></div>
   </div>
 
@@ -422,6 +425,20 @@ function init(){
   const st=params.get('a')?decodeState(params.get('a')):null;
   if(st){ sel.value=st.zona||'Querétaro'; onZona(); applyState(st); }
   else { const qz=params.get('zona'); const m=qz?ZONAS.find(z=>z.n.toLowerCase()===qz.trim().toLowerCase()):null; sel.value=m?m.n:'Querétaro'; onZona(); }
+  planFeasibLoad();   // ?desde=plano → precarga el proyecto del Creador de planos
+  devDeepLink();      // ?dev=1&lote=N → Modo Desarrollador con ese terreno (desde el mapa)
+}
+function devDeepLink(){
+  try{
+    const p=new URLSearchParams(location.search);
+    if(p.get('dev')!=='1') return;
+    const lote=parseFloat(p.get('lote'));
+    if(isFinite(lote)&&lote>0&&$('dv-lote')){ $('dv-lote').value=Math.round(lote); }
+    renderDev();
+    const box=$('dev-plan');
+    if(box&&isFinite(lote)) box.innerHTML=`<div class="note" style="border-left-color:var(--pos);margin:0 0 12px">▦ <b>Terreno recibido del mapa:</b> ${Math.round(lote).toLocaleString('es-MX')} m². La pro-forma de abajo calcula el <b>proyecto óptimo</b> para esta superficie con el precio de venta real de la zona.</div>`;
+    setTimeout(()=>{ const el=$('dev-plan')||$('dev-out'); if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'start'}); },450);
+  }catch(e){}
 }
 function setH(h){H=h;$('hz').querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',[1,3,5,10][i]===h));calc();}
 function zona(){return ZONAS.find(z=>z.n===$('zona').value);}
@@ -610,8 +627,23 @@ function devDefaults(z){
   return { cos:premium?0.40:mid?0.45:0.55, cus:premium?5.0:mid?4.0:3.2, constM2:premium?22000:mid?17000:14000 };
 }
 let _devLast=null;
+/* Mediana REAL de $/m² en venta de la zona (inventario Century 21). Cuando está
+   disponible, la pro-forma vende a precio real, no al índice SHF. */
+let _devMed=null,_devMedBusy=false;
+async function devEnsureMed(z){
+  if((_devMed&&_devMed.z===z.n)||_devMedBusy) return;
+  _devMedBusy=true;
+  try{
+    const L=await loadZoneListingsA(z.n);
+    const ps=L.map(x=>x.pm2).filter(v=>v>5000&&v<150000).sort((a,b)=>a-b);
+    _devMed={z:z.n, med:ps.length>=4?ps[Math.floor(ps.length/2)]:null, n:ps.length};
+  }catch(e){ _devMed={z:z.n, med:null, n:0}; }
+  _devMedBusy=false;
+  renderDev();
+}
 function calcDev(z){
-  const sale=z.pm2, premium=sale>=30000, mid=sale>=18000;
+  const mr=(_devMed&&_devMed.z===z.n&&_devMed.med)?_devMed:null;
+  const sale=mr?mr.med:z.pm2, premium=sale>=30000, mid=sale>=18000;
   const lot=_dvn('dv-lote',1000), cos=Math.min(_dvn('dv-cos',0.5),1), cus=_dvn('dv-cus',3), constM2=_dvn('dv-costo',15000);
   const supVend=Math.round(lot*cus), supNeta=Math.round(supVend*0.82), landM2=Math.round(sale*0.45);
   let tipoP,mix;
@@ -624,7 +656,7 @@ function calcDev(z){
   const ing=mix.reduce((s,x)=>s+x.c*x.pu,0), util=ing-cTot, roi=cTot>0?util/cTot*100:0;
   const plazo=niveles<=4?18:niveles<=10?28:40, tir=roi>0?(Math.pow(1+roi/100,12/plazo)-1)*100:0;
   const vpn=Math.round(util/Math.pow(1+0.12/12,plazo)), peq=Math.ceil(cTot/Math.max(ing/Math.max(units,1),1));
-  return {tipoP,lot,cos,cus,constM2,supVend,units,niveles,mix,cT,cC,cI,cTot,ing,util,roi,tir,plazo,vpn,peq,sale};
+  return {tipoP,lot,cos,cus,constM2,supVend,units,niveles,mix,cT,cC,cI,cTot,ing,util,roi,tir,plazo,vpn,peq,sale,saleReal:!!mr,saleN:mr?mr.n:0};
 }
 function devInit(z){
   const dd=devDefaults(z);
@@ -633,8 +665,39 @@ function devInit(z){
   if($('dv-costo')) $('dv-costo').value=dd.constM2;
   renderDev();
 }
+/* ===== Proyecto precargado desde el Creador de planos (?desde=plano) =====
+   Lee bb_plan_feasib (localStorage), deriva COS/CUS del plano real y ancla la
+   pro-forma del Modo Desarrollador a las superficies del proyecto. */
+let _planDraft=null;
+const _escP=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function _fpArea(fp){ if(!Array.isArray(fp)||fp.length<3) return 0;
+  let s=0; for(let i=0;i<fp.length;i++){const a=fp[i],b=fp[(i+1)%fp.length]; s+=a.x*b.y-b.x*a.y;} return Math.abs(s/2); }
+function planFeasibLoad(){
+  try{
+    if(new URLSearchParams(location.search).get('desde')!=='plano') return;
+    const raw=localStorage.getItem('bb_plan_feasib'); if(!raw) return;
+    const d=JSON.parse(raw); if(!d||!d.geometria) return;
+    _planDraft=d;
+    const g=d.geometria;
+    const huella=Math.round(_fpArea(g.footprint)||((g.anchoM||0)*(g.fondoM||0)));
+    const total=Math.round(g.areaTotalM2||(huella*(g.niveles||1)));
+    if(!huella||!total) return;
+    // lote: el del creador si viene; si no, huella/COS típico (0.7) como referencia
+    const lote=d.terrenoM2||Math.max(huella,Math.round(huella/0.7));
+    if($('dv-lote')) $('dv-lote').value=lote;
+    if($('dv-cos')) $('dv-cos').value=Math.min(1,Math.round(huella/lote*100)/100);
+    if($('dv-cus')) $('dv-cus').value=Math.max(0.5,Math.round(total/lote*10)/10);
+    const box=$('dev-plan');
+    if(box){
+      box.innerHTML=`<div class="note" style="border-left-color:var(--pos);margin:0 0 12px">📐 <b>Proyecto recibido del Creador de planos:</b> ${_escP(g.nombreProyecto||d.concepto||'plano')} — ${g.niveles||1} nivel(es) · <b>${total.toLocaleString('es-MX')} m² construidos</b> · huella ${huella.toLocaleString('es-MX')} m²${d.terrenoM2?` · terreno ${(+d.terrenoM2).toLocaleString('es-MX')} m²`:''}. Los campos de abajo ya traen TU proyecto.</div>`;
+    }
+    renderDev();
+    setTimeout(()=>{ const el=$('dev-plan')||$('dev-out'); if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'start'}); },450);
+  }catch(e){}
+}
 function renderDev(){
   const z=zona(), out=$('dev-out'); if(!z||!out) return;
+  devEnsureMed(z);   // trae la mediana real C21 y re-renderiza al llegar
   const p=calcDev(z); _devLast={z,p,tesis:(_devLast&&_devLast.z&&_devLast.z.n===z.n?_devLast.tesis:null)};
   const roi=p.roi, col=roi>=25?'var(--pos)':roi>=15?'var(--amb)':'var(--neg)';
   const verdict=roi>=25?'Muy viable':roi>=15?'Viable':roi>0?'Ajustado':'No viable';
@@ -649,9 +712,45 @@ function renderDev(){
       <div class="kpi"><div class="k">Inversión total</div><div class="v">${_dmM(p.cTot)}</div><div class="s">terreno+obra+indirectos</div></div>
       <div class="kpi"><div class="k">Utilidad</div><div class="v" style="color:${col}">${_dmM(p.util)}</div><div class="s">ingresos ${_dmM(p.ing)}</div></div>
     </div>
-    <div style="margin-top:10px;font-size:12px;color:var(--tx)">Mezcla de producto (a ${_dm(p.sale)}/m²)</div>
+    <div style="margin-top:10px;font-size:12px;color:var(--tx)">Mezcla de producto — a ${_dm(p.sale)}/m² ${p.saleReal?`<b style="color:var(--pos)">precio real Century 21 · ${p.saleN} inmuebles</b>`:'<span class="amber">índice SHF (est.)</span>'}</div>
     <div style="margin-top:4px">${mixRows}</div>
-    <div class="note" style="margin-top:12px">Superficie vendible <b>${p.supVend.toLocaleString('es-MX')} m²</b> · <span class="amber">COS/CUS y costos son estimados</span> — confirma el <b>uso de suelo</b> con el plan de desarrollo urbano municipal. Pro-forma ilustrativa, no asesoría.</div>`;
+    ${_planDraft?`<div class="note" style="margin-top:12px;border-left-color:var(--pos)">📐 Pro-forma calculada con las <b>superficies reales de tu plano</b> (COS/CUS derivados del proyecto). La mezcla de producto es la sugerencia genérica de la zona.</div>`:''}
+    <div class="note" style="margin-top:12px">Superficie vendible <b>${p.supVend.toLocaleString('es-MX')} m²</b> · ${p.saleReal?'precio de venta anclado al <b>inventario real de Century 21</b>':'<span class="amber">precio de venta del índice SHF (est.)</span>'} · <span class="amber">costos de obra estimados</span> — confirma el <b>uso de suelo</b> con el plan de desarrollo urbano municipal. Pro-forma ilustrativa, no asesoría.</div>`;
+}
+/* ===== Del plano a la PREVENTA: publica una página del proyecto con enlace
+   corto (KV del Worker, 90 días) para validar demanda antes de construir. */
+async function genPreventa(){
+  const z=zona(), out=$('preventa-out'); if(!z||!out) return;
+  if(!_devLast||_devLast.z.n!==z.n) renderDev();
+  const p=_devLast&&_devLast.p; if(!p) return;
+  out.innerHTML='<div class="note" style="margin-top:12px">Publicando la página de preventa…</div>';
+  const g=_planDraft&&_planDraft.geometria?_planDraft.geometria:null;
+  const payload={
+    tipo:'preventa', v:1, fecha:new Date().toISOString(),
+    proyecto:{
+      nombre:(g&&g.nombreProyecto)||(p.tipoP+' · '+z.n),
+      zona:z.n, tipologia:p.tipoP, niveles:p.niveles, unidades:p.units,
+      supVendible:p.supVend, pm2:p.sale, pm2Real:!!p.saleReal, pm2N:p.saleN||0,
+      plusvalia:z.g, yieldZona:z.y,
+      mix:p.mix.map(x=>({t:x.t,c:x.c,m:x.m,precio:x.pu})),
+      espacios:g?(g.espacios||[]).map(e=>({nombre:e.nombre,m2:e.areaM2})):null,
+      notas:g&&g.notas?String(g.notas).slice(0,400):''
+    }
+  };
+  try{
+    const r=await fetch(BB_BACKEND_A+'/api/share',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.id) throw new Error((j.error&&j.error.message)||('HTTP '+r.status));
+    const url=location.origin+location.pathname.replace(/[^\/]*$/,'')+'preventa.html?p='+j.id;
+    out.innerHTML=`<div class="note" style="margin-top:12px;border-left-color:var(--pos)">
+      🏷️ <b>Página de preventa publicada</b> (dura 90 días):<br>
+      <input type="text" readonly value="${url}" onclick="this.select()" style="width:100%;margin:8px 0;padding:8px 10px;border-radius:8px;border:0.5px solid rgba(205,242,90,.35);background:#0e0a07;color:#f5ede3;font-size:12px">
+      <a href="${url}" target="_blank" class="pdf-btn" style="text-decoration:none;display:inline-block;margin-right:8px">Abrir →</a>
+      <button class="pdf-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText('${url}').then(()=>this.textContent='✓ Copiado')">Copiar enlace</button>
+      <div style="font-size:11px;color:var(--mut);margin-top:8px">Compártela con prospectos: los interesados dejan sus datos y te llegan como leads. Precios ${p.saleReal?'anclados al mercado real de Century 21':'del índice SHF (est.)'}.</div></div>`;
+  }catch(e){
+    out.innerHTML='<div class="note" style="margin-top:12px;border-left-color:var(--neg,#e0745a)">No se pudo publicar: '+e.message+'. Verifica que el Worker esté desplegado con la versión más reciente.</div>';
+  }
 }
 async function callClaudeA(system,prompt,schema){
   const backend=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').replace(/\/+$/,'');

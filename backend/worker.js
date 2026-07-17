@@ -326,8 +326,11 @@ async function handleShareCreate(request, env, headers) {
   }
   let data;
   try { data = JSON.parse(body); } catch { data = null; }
-  if (!data || typeof data !== 'object' || !data.geometry || !data.engineering) {
-    return json({ error: { message: 'Proyecto inválido: se esperan geometry y engineering.' } }, 400, headers);
+  // Acepta proyectos del gemelo (geometry+engineering) y páginas de preventa.
+  const esGemelo = data && data.geometry && data.engineering;
+  const esPreventa = data && data.tipo === 'preventa' && data.proyecto;
+  if (!data || typeof data !== 'object' || (!esGemelo && !esPreventa)) {
+    return json({ error: { message: 'Proyecto inválido: se esperan geometry y engineering, o un payload de preventa.' } }, 400, headers);
   }
   const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
   const id = [...crypto.getRandomValues(new Uint8Array(8))].map(b => alphabet[b % 36]).join('');
@@ -774,20 +777,32 @@ async function handleTexture(request, env) {
   const estilo = String(body.estilo || 'contemporaneo').toLowerCase();
   const desc = TEX_ESTILOS[estilo] || TEX_ESTILOS.contemporaneo;
   const prompt = `Textura de material arquitectónico SIN COSTURAS (seamless, tileable) para mapear sobre una pared 3D: ${desc}. Vista frontal completamente plana (elevación ortográfica), sin perspectiva, sin cielo ni suelo ni entorno, sin sombras marcadas, iluminación uniforme y difusa, patrón que se repite en mosaico sin bordes visibles, alta resolución, cuadrada.`;
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent';
-  let r;
-  try {
-    r = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GOOGLE_AI_KEY },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
-    });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: 'No se pudo contactar a Google: ' + e.message }), { status: 502, headers });
+  // gemini-2.5-flash-image exige declarar responseModalities (sin eso: 400).
+  // Si el modelo estable no está disponible para la llave, se reintenta el -preview.
+  const payload = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+  });
+  const MODELOS = ['gemini-2.5-flash-image', 'gemini-2.5-flash-image-preview'];
+  let r = null, lastErr = '';
+  for (const modelo of MODELOS) {
+    try {
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GOOGLE_AI_KEY },
+        body: payload,
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: 'No se pudo contactar a Google: ' + e.message }), { status: 502, headers });
+    }
+    if (r.ok) break;
+    lastErr = await r.text().catch(() => '');
+    if (r.status !== 400 && r.status !== 404) break; // otros errores: no reintentar
   }
-  if (!r.ok) {
-    const t = await r.text().catch(() => '');
-    return new Response(JSON.stringify({ error: 'Google respondió ' + r.status, detalle: t.slice(0, 300) }), { status: 502, headers });
+  if (!r || !r.ok) {
+    let msg = '';
+    try { msg = (JSON.parse(lastErr).error || {}).message || ''; } catch { msg = lastErr.slice(0, 200); }
+    return new Response(JSON.stringify({ error: 'Google respondió ' + (r ? r.status : '?') + (msg ? ': ' + msg : '') + '. Revisa que la llave tenga habilitada la Generative Language API y facturación activa.', detalle: lastErr.slice(0, 300) }), { status: 502, headers });
   }
   let data; try { data = await r.json(); } catch { data = null; }
   const parts = (((data || {}).candidates || [])[0] || {}).content?.parts || [];

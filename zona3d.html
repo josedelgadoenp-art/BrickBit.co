@@ -149,6 +149,10 @@
   <div class="glass" id="vol-panel" style="display:none">
     <h2>Volumen edificable</h2>
     <p>Estimado a partir de COS/CUS. Toca el mapa para colocar el lote.</p>
+    <div class="btnrow">
+      <button class="b ghost" id="predio-btn" onclick="togglePredio()" style="width:100%">📐 Dibujar mi predio real</button>
+    </div>
+    <div id="predio-read" style="font-size:12px;color:var(--mut);margin:6px 0 10px"></div>
     <div class="frow"><label>Lote (m²)</label><input id="v-lote" oninput="drawVolume()" type="number" min="1" value="1000"></div>
     <div class="frow"><label>COS</label><input id="v-cos" oninput="drawVolume()" type="number" step="0.05" min="0.05" max="1" value="0.6"></div>
     <div class="frow"><label>CUS</label><input id="v-cus" oninput="drawVolume()" type="number" step="0.1" min="0.1" value="3"></div>
@@ -286,14 +290,17 @@ const ZONES = [
     zona = ZONES.find(z => slug(z.nombre)===qs)
         || ZONES.find(z => slug(z.nombre).includes(qs) || qs.includes(slug(z.nombre)));
   }
-  const center = zona ? { lat:zona.lat, lng:zona.lng } : { lat:HOME.lat, lng:HOME.lng };
+  // Punto exacto opcional (?lat=&lng=): p. ej. un terreno del mapa de Propiedades.
+  const qlat=parseFloat(qparam('lat')), qlng=parseFloat(qparam('lng'));
+  const punto=(isFinite(qlat)&&isFinite(qlng))?{lat:qlat,lng:qlng}:null;
+  const center = punto || (zona ? { lat:zona.lat, lng:zona.lng } : { lat:HOME.lat, lng:HOME.lng });
   viewCenter = center;
   viewHeading = zona ? VIEW.heading : (HOME.heading ?? VIEW.heading);
   // En la portada (el Ángel) la cámara vuela BAJO (~100 m) alrededor del monumento;
   // en las zonas se mantiene la vista alta que refina mejor los tiles.
-  viewAlt   = zona ? 0 : HOME.alt;
-  viewRange = zona ? VIEW.range : HOME.range;
-  viewTilt  = zona ? VIEW.tilt  : HOME.tilt;
+  viewAlt   = (zona||punto) ? 0 : HOME.alt;
+  viewRange = punto ? 700 : (zona ? VIEW.range : HOME.range);
+  viewTilt  = (zona||punto) ? VIEW.tilt  : HOME.tilt;
   const name = zona ? zona.nombre : HOME.label;
   const analyzeZona = zona ? zona.nombre : HOME.zona;
   $('zname').textContent = name;
@@ -332,6 +339,7 @@ const ZONES = [
       const lat = (typeof p.lat==='function')?p.lat():p.lat;
       const lng = (typeof p.lng==='function')?p.lng():p.lng;
       if(lat==null||lng==null) return;
+      if(_predio.on){ predioClick(lat,lng); return; }   // modo dibujo: cada toque es una esquina
       volCenter = { lat, lng };
       drawVolume();
     });
@@ -345,6 +353,8 @@ const ZONES = [
     }
     hideOverlay();
     $('controls').style.display='flex';
+    // ?bienestar=1 (desde un terreno del mapa): abre directo el índice de vida
+    if(qparam('bienestar')==='1'){ setTimeout(()=>{ try{ toggleWell(); }catch(e){} }, 1200); }
   }catch(err){
     console.error('[BrickBit 3D]', err);
     showError(err);
@@ -406,6 +416,58 @@ function elevar(dir){
   if(typeof map.flyCameraTo==='function'){
     map.flyCameraTo({ endCamera:{ center:{lat:c.lat,lng:c.lng,altitude:viewAlt}, range:viewRange, tilt:viewTilt, heading:viewHeading }, durationMillis:700 });
   }
+}
+
+/* ====== predio real: dibuja el polígono de tu terreno sobre el mapa 3D ======
+   Cada toque en el mapa marca una esquina; al terminar se calcula el área real
+   (shoelace en metros) y el polígono viaja al Creador de planos, que diseñará
+   DENTRO de esa forma (no de un rectángulo). */
+let _predio={on:false, pts:[], poly:null};
+function togglePredio(){
+  const b=$('predio-btn');
+  if(_predio.on){ finishPredio(); return; }
+  _predio.on=true; _predio.pts=[];
+  if(_predio.poly){ try{_predio.poly.remove();}catch(e){} _predio.poly=null; }
+  b.textContent='✓ Terminar predio (0 esquinas)';
+  $('predio-read').innerHTML='Toca el mapa en cada <b>esquina de tu terreno</b>, en orden (mínimo 3). Cuando acabes, vuelve a tocar el botón.';
+}
+function predioClick(lat,lng){
+  _predio.pts.push({lat,lng});
+  $('predio-btn').textContent='✓ Terminar predio ('+_predio.pts.length+' esquinas)';
+  drawPredio();
+}
+function drawPredio(){
+  if(!Poly3D||_predio.pts.length<2) return;
+  const ring=[..._predio.pts,_predio.pts[0]].map(p=>({lat:p.lat,lng:p.lng,altitude:1.2})); // el anillo DEBE cerrar
+  if(!_predio.poly){
+    _predio.poly=new Poly3D({altitudeMode:(AltMode&&AltMode.RELATIVE_TO_GROUND)||'RELATIVE_TO_GROUND',
+      extruded:false,drawsOccludedSegments:true,fillColor:'rgba(87,195,137,0.25)',strokeColor:'#57c389',strokeWidth:3});
+    if(map.append) map.append(_predio.poly); else map.appendChild(_predio.poly);
+  }
+  _predio.poly.outerCoordinates=ring;
+}
+function _predioLocal(){
+  const o=_predio.pts[0], k=Math.cos(o.lat*Math.PI/180);
+  return _predio.pts.map(p=>({x:(p.lng-o.lng)*111320*k, y:(p.lat-o.lat)*110540}));
+}
+function finishPredio(){
+  _predio.on=false;
+  const b=$('predio-btn');
+  if(_predio.pts.length<3){ b.textContent='📐 Dibujar mi predio real'; $('predio-read').innerHTML='Se necesitan al menos 3 esquinas. Vuelve a intentarlo.'; return; }
+  const v=_predioLocal();
+  let s=0; for(let i=0;i<v.length;i++){const a=v[i],c2=v[(i+1)%v.length]; s+=a.x*c2.y-c2.x*a.y;}
+  const area=Math.abs(s/2);
+  const xs=v.map(p=>p.x), ys=v.map(p=>p.y);
+  const anchoM=Math.max(...xs)-Math.min(...xs), fondoM=Math.max(...ys)-Math.min(...ys);
+  const f=n=>Math.round(n).toLocaleString('es-MX');
+  b.textContent='📐 Dibujar de nuevo';
+  try{ localStorage.setItem('bb_predio', JSON.stringify({ v:1, fecha:new Date().toISOString(),
+    zona:(zona?zona.nombre:HOME.zona), vertices:_predio.pts,
+    verticesM:v.map(p=>({x:Math.round(p.x*10)/10, y:Math.round(p.y*10)/10})),
+    areaM2:Math.round(area), anchoM:Math.round(anchoM*10)/10, fondoM:Math.round(fondoM*10)/10 })); }catch(e){}
+  $('predio-read').innerHTML='✅ Predio de <b>'+f(area)+' m²</b> · '+_predio.pts.length+' lados · envolvente ~'+f(anchoM)+'×'+f(fondoM)+' m.<br>'+
+    '<a href="crear-plano.html?desde=predio" style="color:var(--sec,#57c389);font-weight:600">✏️ Diseñar un plano en este predio →</a>';
+  $('v-lote').value=Math.round(area); drawVolume();   // el simulador adopta el área real
 }
 
 /* ====== volumen edificable (COS/CUS) ====== */

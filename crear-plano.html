@@ -173,6 +173,7 @@
         <select id="tNum"><option value="1">1 propuesta</option><option value="2" selected>2 propuestas (torneo)</option><option value="3">3 propuestas (torneo)</option></select>
       </div>
     </div>
+    <div id="normBox" style="display:none;margin-top:14px;padding:11px 14px;border:1px solid rgba(245,194,119,.3);border-left:3px solid #F5C277;border-radius:10px;font-size:12.5px;line-height:1.6"></div>
     <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-primary" id="btnGenerate">Diseñar planos con IA →</button>
       <button class="btn btn-ghost" id="btnDemo">Ver ejemplo sin llaves</button>
@@ -194,9 +195,32 @@
   <section class="card hidden" id="secPreview">
     <div class="card-head"><span class="knum">03 /</span><h2 id="prevTitle">Vista 3D</h2></div>
     <canvas id="preview3d"></canvas>
+    <!-- herramientas del visor: corte de sección (dollhouse) + estudio solar real -->
+    <div id="viz-tools" style="margin-top:12px;display:flex;gap:10px 22px;flex-wrap:wrap;align-items:center;font-size:12.5px">
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+        <span style="opacity:.75">✂️ Corte</span>
+        <button class="ed-tool viz-cut active" data-cut="none">Completo</button>
+        <button class="ed-tool viz-cut" data-cut="h" title="Rebana el edificio por altura: mira dentro de cada nivel, como casa de muñecas">Por nivel</button>
+        <button class="ed-tool viz-cut" data-cut="v" title="Corte vertical transversal: la sección clásica de arquitectura">Sección</button>
+        <input id="cutRange" type="range" min="2" max="98" value="55" style="width:120px;accent-color:#cdf25a" disabled>
+      </div>
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+        <span style="opacity:.75">☀️ Sol real</span>
+        <select id="sunSeason" class="ed-tool" style="padding:6px 10px">
+          <option value="off">apagado</option>
+          <option value="172">Verano · 21 jun</option>
+          <option value="80">Equinoccio · 21 mar</option>
+          <option value="355">Invierno · 21 dic</option>
+        </select>
+        <input id="sunHour" type="range" min="7" max="19" step="0.5" value="12" style="width:120px;accent-color:#F5C277" disabled>
+        <span id="sunInfo" style="opacity:.7;font-family:'Space Mono',monospace,monospace;font-size:11px;min-width:110px"></span>
+      </div>
+    </div>
     <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-primary" id="btnToTwin">Enviar al Gemelo Digital → <span class="help" tabindex="0" data-tip="Abre el Gemelo Digital con este plano ya cargado: ahí calculas materiales, varillas, costos, predicción de fallas, simulador 4D e inversión.">?</span></button>
+      <button class="btn btn-primary" id="btnFeasib" style="background:linear-gradient(120deg,#cdf25a,#a9d23f);color:#0e0a07">💰 ¿Conviene construirlo? → <span class="help" tabindex="0" data-tip="Abre el Analizador con TU plano precargado: pro-forma de desarrollo con las superficies reales del proyecto y el precio de venta real de la zona (inventario Century 21).">?</span></button>
       <button class="btn btn-ghost" id="btnEditPlan">✏️ Editar plano <span class="help" tabindex="0" data-tip="Ajusta el plano a mano: mueve muros, puertas, ventanas y espacios; cambia nombres y medidas; agrega o elimina elementos. Los cambios se reflejan en el 3D, el SVG y el Gemelo Digital.">?</span></button>
+      <button class="btn btn-ghost" id="btnRevisor">🔍 Auditar con el Revisor <span class="help" tabindex="0" data-tip="Abre el Revisor Senior con este plano: la IA lo audita (circulaciones, iluminación, accesibilidad, estructura, normativa) y te da un dictamen con semáforo y mejoras priorizadas.">?</span></button>
       <button class="btn btn-ghost" id="btnSvg">⬇ Descargar plano (SVG)</button>
       <button class="btn btn-ghost" id="btnDxf">⬇ DXF (AutoCAD/Revit) <span class="help" tabindex="0" data-tip="Exporta el plano en DXF con capas separadas (muros, muros de carga, ventanas, puertas, columnas, textos) en metros. Se abre en AutoCAD, Revit, LibreCAD, DraftSight…">?</span></button>
       <button class="btn btn-ghost" id="btnLamina">🖨 Lámina PDF <span class="help" tabindex="0" data-tip="Lámina imprimible con el plano, cuadro de áreas, datos del proyecto y pie de plano BrickBit.">?</span></button>
@@ -254,6 +278,48 @@ const state = { variantes: [], veredicto: null, sel: 0 };
 const BB_ZONES = window.BRICKBIT_ZONES || [];
 $('tZona').innerHTML = '<option value="">— Sin zona —</option>' +
   BB_ZONES.map(z => `<option value="${escapeHtml(z.nombre)}">${escapeHtml(z.nombre)}</option>`).join('');
+
+/* Normativa de referencia por municipio (data/normativa.json): al elegir zona,
+   precarga el COS típico y valida los niveles pedidos contra la referencia. */
+let NORMATIVA = null, _normAppliedFor = null;
+fetch('data/normativa.json').then(r => r.ok ? r.json() : null).then(j => { NORMATIVA = j; normUpdate(); }).catch(() => {});
+function normFor(zona) { return (NORMATIVA && NORMATIVA.zonas && NORMATIVA.zonas[zona]) || null; }
+function normUpdate() {
+  const box = $('normBox'); if (!box) return;
+  const zonaSel = $('tZona').value, n = normFor(zonaSel);
+  if (!zonaSel || !n) { box.style.display = 'none'; _normAppliedFor = null; return; }
+  // Precarga el COS de referencia una sola vez por zona (no pisa tus ediciones posteriores).
+  if (_normAppliedFor !== zonaSel) { $('tCos').value = Math.round(n.cos * 100); _normAppliedFor = zonaSel; }
+  const niv = parseInt($('tNiveles').value, 10) || 1;
+  const okNiv = niv <= n.niveles_max;
+  box.style.display = 'block';
+  box.innerHTML = `📋 <b>Normativa de referencia · ${escapeHtml(zonaSel)}:</b> COS ${Math.round(n.cos * 100)}% · CUS ${n.cus} · hasta ${n.niveles_max} niveles · ${n.cajones_viv} cajón(es)/vivienda.
+    ${okNiv ? `<span style="color:#57c389">✓ Tus ${niv} nivel(es) caben en la referencia.</span>` : `<span style="color:#e0745a">⚠ Pides ${niv} niveles y la referencia permite ${n.niveles_max} — verifica la zonificación de tu predio.</span>`}
+    ${n.nota ? `<br><span style="opacity:.8">${escapeHtml(n.nota)}</span>` : ''}
+    <br><span style="opacity:.7">Valores <b style="color:#F5C277">de referencia</b> (zona habitacional media): el dato firme lo da el programa de desarrollo urbano vigente de tu predio.</span>`;
+}
+$('tZona').addEventListener('change', normUpdate);
+$('tNiveles').addEventListener('input', normUpdate);
+
+/* Predio real dibujado en el Simulador 3D (?desde=predio): precarga la
+   envolvente y pasa el polígono exacto a la IA para diseñar dentro de él. */
+let PREDIO = null;
+(function () {
+  try {
+    if (new URLSearchParams(location.search).get('desde') !== 'predio') return;
+    const d = JSON.parse(localStorage.getItem('bb_predio') || 'null');
+    if (!d || !Array.isArray(d.verticesM) || d.verticesM.length < 3) return;
+    PREDIO = d;
+    if (d.anchoM) $('tAncho').value = d.anchoM;
+    if (d.fondoM) $('tFondo').value = d.fondoM;
+    if (d.zona) { const op = [...$('tZona').options].find(o => o.value === d.zona); if (op) { $('tZona').value = d.zona; normUpdate(); } }
+    const f = n => Math.round(n).toLocaleString('es-MX');
+    const div = document.createElement('div');
+    div.style.cssText = 'margin-top:14px;padding:11px 14px;border:1px solid rgba(87,195,137,.3);border-left:3px solid #57c389;border-radius:10px;font-size:12.5px;line-height:1.6';
+    div.innerHTML = `📐 <b>Predio real cargado desde el Simulador 3D:</b> ${f(d.areaM2)} m² · ${d.verticesM.length} lados · envolvente ~${d.anchoM}×${d.fondoM} m. La IA diseñará <b>dentro de tu polígono real</b>, no de un rectángulo.`;
+    $('normBox').insertAdjacentElement('beforebegin', div);
+  } catch (e) {}
+})();
 
 /* =====================================================================
    Esquema de salida: variantes de plano (geometría compatible con el gemelo)
@@ -366,8 +432,9 @@ $('btnGenerate').addEventListener('click', async () => {
       content: [{ type: 'text', text:
 `Diseña ${num} propuesta(s) de plano arquitectónico optimizado, con enfoques distintos entre sí (p. ej. amplitud vs. privacidad vs. costo de obra), para:
 
-TERRENO: ${ancho} m de frente × ${fondo} m de fondo (${(ancho*fondo).toFixed(0)} m²)
-% CONSTRUIBLE (COS): ${cos}% → huella máxima ${(ancho*fondo*cos/100).toFixed(1)} m²
+TERRENO: ${ancho} m de frente × ${fondo} m de fondo (${(ancho*fondo).toFixed(0)} m²)${PREDIO ? `
+FORMA REAL DEL TERRENO (dibujada sobre el mapa): polígono de ${PREDIO.verticesM.length} vértices, en metros desde su esquina origen: ${PREDIO.verticesM.map(p => `(${p.x}, ${p.y})`).join(' ')}. Área real: ${PREDIO.areaM2} m². IMPORTANTE: el footprint del edificio debe caber DENTRO de este polígono (no del rectángulo envolvente) y aprovechar su forma y orientación (el eje +Y del polígono apunta al norte).` : ''}
+% CONSTRUIBLE (COS): ${cos}% → huella máxima ${((PREDIO ? PREDIO.areaM2 : ancho*fondo)*cos/100).toFixed(1)} m²
 NIVELES: ${niveles}
 ${zona ? 'ZONA/CIUDAD: ' + zona + ' (considera clima y orientaciones típicas)' : ''}
 PROGRAMA: ${$('tPrograma').value.trim() || 'vivienda familiar estándar'}
@@ -519,8 +586,62 @@ function initThree() {
   window.addEventListener('resize', resize);
   resize();
   (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
-  return { renderer, scene, camera, controls, resize };
+  return { renderer, scene, camera, controls, resize, sun };
 }
+
+/* =====================================================================
+   Herramientas del visor: corte de sección (dollhouse) + estudio solar
+   El corte usa clipping planes globales del renderer (no toca materiales).
+   El sol usa la posición solar real (declinación + ángulo horario) con la
+   latitud de la zona elegida; norte = -Z del visor.
+===================================================================== */
+const _viz = { cut: 'none', cutT: 0.55, sunDay: null, sunHour: 12 };
+function _vizLat() { const z = BB_ZONES.find(x => x.nombre === $('tZona').value); return z ? z.lat : 19.43; }
+function vizApply() {
+  if (!three) return;
+  const { renderer, scene, sun } = three;
+  const world = scene.getObjectByName('world');
+  if (_viz.cut === 'none' || !world) { renderer.clippingPlanes = []; }
+  else {
+    const box = new THREE.Box3().setFromObject(world);
+    if (_viz.cut === 'h') {
+      const y = box.min.y + (box.max.y - box.min.y) * _viz.cutT;
+      renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, -1, 0), y)];
+    } else {
+      const z = box.min.z + (box.max.z - box.min.z) * _viz.cutT;
+      renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 0, -1), z)];
+    }
+  }
+  if (!sun) return;
+  const info = $('sunInfo');
+  if (_viz.sunDay == null) { sun.position.set(30, 45, 20); sun.intensity = 1.6; if (info) info.textContent = ''; return; }
+  const lat = _vizLat() * Math.PI / 180;
+  const dec = 23.44 * Math.PI / 180 * Math.sin(2 * Math.PI * (284 + _viz.sunDay) / 365);
+  const H = (15 * (_viz.sunHour - 12)) * Math.PI / 180;
+  const sinAlt = Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(H);
+  const alt = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
+  let az = Math.acos(Math.max(-1, Math.min(1, (Math.sin(dec) - sinAlt * Math.sin(lat)) / ((Math.cos(alt) * Math.cos(lat)) || 1e-6))));
+  if (H > 0) az = 2 * Math.PI - az;                     // tarde: el sol cae al poniente
+  const R = 80, ca = Math.cos(alt);
+  sun.position.set(R * Math.sin(az) * ca, Math.max(2, R * Math.sin(alt)), -R * Math.cos(az) * ca);
+  sun.intensity = alt > 0 ? 1.9 : 0.12;
+  if (info) info.textContent = alt > 0
+    ? `☀ altitud ${Math.round(alt * 180 / Math.PI)}° · ${String(Math.floor(_viz.sunHour)).padStart(2, '0')}:${_viz.sunHour % 1 ? '30' : '00'}`
+    : '🌙 bajo el horizonte';
+}
+document.querySelectorAll('.viz-cut').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.viz-cut').forEach(x => x.classList.toggle('active', x === b));
+  _viz.cut = b.dataset.cut;
+  $('cutRange').disabled = (_viz.cut === 'none');
+  vizApply();
+}));
+$('cutRange').addEventListener('input', e => { _viz.cutT = (+e.target.value) / 100; vizApply(); });
+$('sunSeason').addEventListener('change', e => {
+  _viz.sunDay = e.target.value === 'off' ? null : +e.target.value;
+  $('sunHour').disabled = (_viz.sunDay == null);
+  vizApply();
+});
+$('sunHour').addEventListener('input', e => { _viz.sunHour = +e.target.value; vizApply(); });
 
 function selectVariant(i) {
   state.sel = i;
@@ -528,6 +649,7 @@ function selectVariant(i) {
     el.classList.toggle('sel', Number(el.dataset.i) === i));
   const v = state.variantes[i];
   $('prevTitle').textContent = 'Vista 3D — ' + v.concepto;
+  vizApply();   // re-aplica corte de sección y sol al cambiar de variante
   buildPreview(v.geometria);
 }
 
@@ -855,6 +977,32 @@ $('btnToTwin').addEventListener('click', () => {
   location.href = 'gemelo-digital.html?desde=creador' + (zona ? '&zona=' + encodeURIComponent(zona) : '');
 });
 
+/* Auditar con el Revisor Senior: guarda el plano y abre revisor.html. */
+$('btnRevisor').addEventListener('click', () => {
+  const v = state.variantes[state.sel];
+  if (!v) return;
+  try { localStorage.setItem('bb_plan_feasib', JSON.stringify({ v: 1, origen: 'creador', fecha: new Date().toISOString(), zona: $('tZona').value || '', concepto: v.concepto || '', geometria: v.geometria })); } catch {}
+  location.href = 'revisor.html';
+});
+
+/* ¿Conviene construirlo? → Analizador con el plano precargado (Modo Desarrollador).
+   El payload viaja por localStorage (una URL no aguanta la geometría completa). */
+$('btnFeasib').addEventListener('click', () => {
+  const v = state.variantes[state.sel];
+  if (!v) return;
+  const ancho = parseFloat($('tAncho').value) || 0, fondo = parseFloat($('tFondo').value) || 0;
+  const payload = {
+    v: 1, origen: 'creador', fecha: new Date().toISOString(),
+    zona: $('tZona').value || '',
+    terrenoM2: (ancho > 0 && fondo > 0) ? Math.round(ancho * fondo) : null,
+    concepto: v.concepto || '',
+    geometria: v.geometria,
+  };
+  try { localStorage.setItem('bb_plan_feasib', JSON.stringify(payload)); } catch {}
+  const zona = $('tZona').value;
+  location.href = 'analizador.html?desde=plano' + (zona ? '&zona=' + encodeURIComponent(zona) : '');
+});
+
 $('btnSvg').addEventListener('click', () => {
   const v = state.variantes[state.sel];
   if (!v) return;
@@ -936,6 +1084,35 @@ $('btnLamina').addEventListener('click', () => {
   const circ = Math.max(0, huella - sumEsp);
   const filas = esp.map(e => `<tr><td>${escapeHtml(e.nombre)}</td><td class="r">${(+e.areaM2 || 0).toFixed(1)} m²</td></tr>`).join('');
   const fdate = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+  // Presupuesto paramétrico de obra: partidas típicas (% del costo directo) ×
+  // costo base por m² en tres calidades. Referencia, no catálogo de conceptos.
+  const areaP = (+g.areaTotalM2 || huella) || 0;
+  const CALIDADES = [ ['Económico', 14000], ['Medio', 19000], ['Premium', 26000] ];
+  const PARTIDAS = [
+    ['Preliminares y cimentación', 0.12], ['Estructura', 0.23],
+    ['Albañilería y muros', 0.17], ['Instalaciones (hidrosanitaria, eléctrica, gas)', 0.16],
+    ['Acabados', 0.22], ['Cancelería, carpintería y herrería', 0.10],
+  ];
+  const IND = 0.22;
+  const $m = (n) => '$' + Math.round(n).toLocaleString('es-MX');
+  const pFilas = PARTIDAS.map(([nom, pct]) =>
+    `<tr><td>${nom}</td><td class="r">${Math.round(pct * 100)}%</td>` +
+    CALIDADES.map(([, base]) => `<td class="r">${$m(areaP * base * pct)}</td>`).join('') + '</tr>').join('');
+  const pDirecto = CALIDADES.map(([, base]) => areaP * base);
+  const pTotales = pDirecto.map(v => v * (1 + IND));
+  const presupuesto = areaP > 0 ? `
+  <div class="box" style="margin-top:14px">
+    <h3>Presupuesto paramétrico de obra — ${areaP.toFixed(0)} m² construidos <span style="color:#b8860b">· estimado</span></h3>
+    <table>
+      <tr><th>Partida</th><th class="r">%</th>${CALIDADES.map(([n]) => `<th class="r">${n}</th>`).join('')}</tr>
+      ${pFilas}
+      <tr><td>Costo directo</td><td class="r"></td>${pDirecto.map(v => `<td class="r"><b>${$m(v)}</b></td>`).join('')}</tr>
+      <tr><td>Indirectos y utilidad del constructor</td><td class="r">${Math.round(IND * 100)}%</td>${pDirecto.map(v => `<td class="r">${$m(v * IND)}</td>`).join('')}</tr>
+      <tr class="tot"><td>Total estimado</td><td class="r"></td>${pTotales.map(v => `<td class="r">${$m(v)}</td>`).join('')}</tr>
+      <tr><td>Costo por m² (todo incluido)</td><td class="r"></td>${pTotales.map(v => `<td class="r">${$m(v / areaP)}/m²</td>`).join('')}</tr>
+    </table>
+    <div style="font-size:10.5px;color:#8a969c;margin-top:6px">Costos base de referencia (MXN, jul 2026): ${CALIDADES.map(([n, b]) => `${n} ${$m(b)}/m²`).join(' · ')} de costo directo. Presupuesto <b>paramétrico</b>: la distribución por partidas es típica de vivienda en México y varía con el proyecto; no sustituye un catálogo de conceptos ni precios unitarios de tu región.</div>
+  </div>` : '';
   const w = window.open('', '_blank'); if (!w) { alert('Permite las ventanas emergentes para generar la lámina.'); return; }
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Lámina · ${escapeHtml(g.nombreProyecto)}</title>
 <style>
@@ -975,7 +1152,8 @@ $('btnLamina').addEventListener('click', () => {
     ${g.notas ? `<div class="box"><h3>Notas</h3><div style="font-size:12px;line-height:1.5">${escapeHtml(g.notas)}</div></div>` : ''}
   </div>
 </div>
-<div class="foot">Generado con BrickBit Arquitectos (brickbit.co). Anteproyecto conceptual asistido por IA: las dimensiones, estructura e instalaciones requieren validación y firma de un profesional responsable (DRO/perito). No es un plano ejecutivo.</div>
+${presupuesto}
+<div class="foot">Generado con BrickBit Arquitectos (brickbit.co). Anteproyecto conceptual asistido por IA: las dimensiones, estructura, instalaciones y el presupuesto paramétrico requieren validación y firma de un profesional responsable (DRO/perito). No es un plano ejecutivo ni un presupuesto de obra contractual.</div>
 <div class="noprint" style="margin-top:14px"><button onclick="print()" style="padding:10px 22px;border:none;border-radius:8px;background:#1a7d50;color:#fff;font-weight:700;cursor:pointer">🖨 Imprimir / guardar PDF</button></div>
 </body></html>`);
   w.document.close();
