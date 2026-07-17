@@ -803,7 +803,7 @@ async function handleTexture(request, env) {
 /* --- Búsqueda con IA sobre el inventario (Century 21 + inteligencia BrickBit) --- */
 function slugZona(nombre) {
   return String(nombre || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase().trim().replace(/\s+/g, '-');
+    .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 // Pide JSON directo (sin gramática/output_config, que puede tardar en compilar).
 // Opus devuelve JSON limpio con la instrucción; se limpian fences por si acaso.
@@ -831,9 +831,25 @@ async function handleBuscar(request, env) {
 
   const { estados } = await loadBBData(env);
   const zonas = estados.map((e) => ({ nombre: e.nombre, slug: slugZona(e.nombre), yield: e['yield'], plusvalia: e.plusvalia }));
-  const lista = zonas.map((z) => `${z.slug} (${z.nombre}, yield ${z.yield}%)`).join('; ');
+  // Zonas por municipio (inventario fuera de las 32 ciudades ancla). Se publican
+  // desde c21-subir.mjs en listados:_zonas; se fusionan sin duplicar por slug.
+  let muniZonas = [];
+  try {
+    const reg = await env.SHARES.get('listados:_zonas');
+    if (reg) { const rz = JSON.parse(reg); muniZonas = Array.isArray(rz) ? rz : (rz.zonas || []); }
+  } catch { /* sin registro: solo las 32 ancla */ }
+  const yaSlug = new Set(zonas.map((z) => z.slug));
+  for (const z of muniZonas) {
+    const s = slugZona(z.slug || z.nombre);
+    if (!s || yaSlug.has(s)) continue;
+    yaSlug.add(s);
+    zonas.push({ nombre: z.nombre, slug: s, yield: (typeof z.yield === 'number' ? z.yield : null), plusvalia: z.plusvalia ?? null, municipio: true });
+  }
+  const cities = zonas.filter((z) => !z.municipio).map((z) => `${z.slug} (${z.nombre}, yield ${z.yield}%)`).join('; ');
+  const munis = zonas.filter((z) => z.municipio).map((z) => `${z.slug} (${z.nombre}${z.yield != null ? ', yield ' + z.yield + '%' : ''})`).join('; ');
+  const lista = cities + (munis ? '. Municipios adicionales: ' + munis : '');
   const system = `Eres el buscador inteligente de BrickBit, proptech de bienes raíces en México. Conviertes una búsqueda en lenguaje natural en filtros.
-Zonas válidas (usa el slug exacto): ${lista}.
+Ciudades principales (usa el slug exacto): ${lista}.
 Reglas: "para N personas" ⇒ recamaras_min ≈ redondeo(N/2) (mínimo 1). Si piden rendimiento/plusvalía/"que me dé X% anual" ⇒ yield_min y, si no nombran ciudad, deja zonas vacío. Si nombran colonia/ciudad, mapea a la zona BrickBit más cercana. Presupuestos en pesos MXN ("2 millones" = 2000000).
 Responde SOLO con un objeto JSON válido (sin texto extra, sin markdown) con esta forma, omitiendo o poniendo null lo que no aplique:
 {"operacion": "venta"|"renta"|null, "tipo": "casa"|"departamento"|"terreno"|"local"|"oficina"|"bodega"|null, "zonas": ["slug", ...] (0 a 3), "recamaras_min": número|null, "banos_min": número|null, "presupuesto_min": número|null, "presupuesto_max": número|null, "m2_min": número|null, "yield_min": número|null, "orden": "precio_justo"|"yield"|"precio_asc"|"precio_desc"|null, "interpretacion": "frase breve y cálida de cómo entendiste la búsqueda"}`;
