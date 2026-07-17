@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "descripcion": "Parámetros urbanísticos de REFERENCIA por ciudad para zona habitacional media. El COS/CUS/altura reales dependen de la zonificación exacta del predio (programa de desarrollo urbano vigente y, en su caso, el programa parcial de la colonia). Úsalos como punto de partida, nunca como norma definitiva.",
+    "campos": { "cos": "Coeficiente de Ocupación del Suelo (0-1)", "cus": "Coeficiente de Utilización del Suelo (m² construibles / m² de terreno)", "niveles_max": "Altura típica permitida en niveles", "cajones_viv": "Cajones de estacionamiento por vivienda (típico)" },
+    "actualizado": "2026-07",
+    "estado": "referencia"
+  },
+  "zonas": {
+    "Ciudad de México":      { "cos": 0.60, "cus": 3.00, "niveles_max": 5, "cajones_viv": 1, "nota": "Varía fuertemente por alcaldía y colonia (Programas Delegacionales/Parciales). Corredores permiten más altura." },
+    "Guadalajara":           { "cos": 0.70, "cus": 2.80, "niveles_max": 4, "cajones_viv": 2, "nota": "Distritos y corredores del PPDU municipal cambian densidad y altura." },
+    "Monterrey":             { "cos": 0.75, "cus": 3.00, "niveles_max": 4, "cajones_viv": 2, "nota": "Zona metropolitana con reglamentos por municipio (San Pedro, Apodaca, etc. difieren)." },
+    "Cancún":                { "cos": 0.60, "cus": 2.40, "niveles_max": 4, "cajones_viv": 1.5, "nota": "Benito Juárez, QR. La zona hotelera tiene régimen propio." },
+    "Mérida":                { "cos": 0.70, "cus": 2.10, "niveles_max": 3, "cajones_viv": 2, "nota": "Centro histórico con restricciones INAH y de imagen urbana." },
+    "Querétaro":             { "cos": 0.65, "cus": 2.60, "niveles_max": 4, "cajones_viv": 2, "nota": "Corredores urbanos permiten mayor CUS; centro histórico restringido." },
+    "Tijuana":               { "cos": 0.75, "cus": 3.00, "niveles_max": 4, "cajones_viv": 1.5, "nota": "Zonas de ladera con restricciones geotécnicas adicionales." },
+    "Puebla":                { "cos": 0.70, "cus": 2.80, "niveles_max": 4, "cajones_viv": 2, "nota": "Centro histórico (UNESCO) con normativa de conservación." },
+    "León":                  { "cos": 0.75, "cus": 2.25, "niveles_max": 3, "cajones_viv": 2, "nota": "" },
+    "San Luis Potosí":       { "cos": 0.70, "cus": 2.10, "niveles_max": 3, "cajones_viv": 2, "nota": "" },
+    "Aguascalientes":        { "cos": 0.70, "cus": 2.10, "niveles_max": 3, "cajones_viv": 2, "nota": "" },
+    "Toluca":                { "cos": 0.70, "cus": 2.10, "niveles_max": 3, "cajones_viv": 2, "nota": "" },
+    "Cuernavaca":            { "cos": 0.60, "cus": 1.80, "niveles_max": 3, "cajones_viv": 2, "nota": "Fuertes restricciones ambientales y de barrancas." },
+    "Morelia":               { "cos": 0.65, "cus": 1.95, "niveles_max": 3, "cajones_viv": 2, "nota": "Centro histórico (UNESCO) con normativa de conservación." },
+    "Chihuahua":             { "cos": 0.70, "cus": 2.10, "niveles_max": 3, "cajones_viv": 2, "nota": "" },
+    "Culiacán":              { "cos": 0.70, "cus": 2.10, "niveles_max": 3, "cajones_viv": 2, "nota": "" },
+    "Hermosillo":            { "cos": 0.70, "cus": 2.10, "niveles_max": 3, "cajones_viv": 2, "nota": "" },
+    "Saltillo":              { "cos": 0.70, "cus": 2.10, "niveles_max": 3, "cajones_viv": 2, "nota": "" },
+    "Pachuca":               { "cos": 0.70, "cus": 2.10, "niveles_max": 3, "cajones_viv": 2, "nota": "" },
+    "Veracruz":              { "cos": 0.70, "cus": 2.10, "niveles_max": 3, "cajones_viv": 1.5, "nota": "" },
+    "Oaxaca":                { "cos": 0.60, "cus": 1.20, "niveles_max": 2, "cajones_viv": 1, "nota": "Centro histórico (UNESCO) muy restringido en altura e imagen." },
+    "Tulum, Quintana Roo":   { "cos": 0.35, "cus": 1.40, "niveles_max": 3, "cajones_viv": 1, "nota": "Normativa ambiental estricta: alta permeabilidad del suelo y baja altura." },
+    "Solidaridad / Riviera Maya, Quintana Roo": { "cos": 0.60, "cus": 2.40, "niveles_max": 4, "cajones_viv": 1.5, "nota": "Playa del Carmen. Franja costera con régimen propio." },
+    "San Miguel De Allende, Guanajuato": { "cos": 0.60, "cus": 1.20, "niveles_max": 2, "cajones_viv": 1, "nota": "Ciudad patrimonio: INAH e imagen urbana mandan en el centro." },
+    "Puerto Vallarta, Jalisco": { "cos": 0.65, "cus": 2.60, "niveles_max": 4, "cajones_viv": 1.5, "nota": "Franja costera y zonas de montaña con regímenes distintos." },
+    "Los Cabos, Baja California Sur": { "cos": 0.50, "cus": 1.50, "niveles_max": 3, "cajones_viv": 1.5, "nota": "Corredor turístico con densidades bajas y régimen costero." }
+  }
+}

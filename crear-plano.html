@@ -173,6 +173,7 @@
         <select id="tNum"><option value="1">1 propuesta</option><option value="2" selected>2 propuestas (torneo)</option><option value="3">3 propuestas (torneo)</option></select>
       </div>
     </div>
+    <div id="normBox" style="display:none;margin-top:14px;padding:11px 14px;border:1px solid rgba(245,194,119,.3);border-left:3px solid #F5C277;border-radius:10px;font-size:12.5px;line-height:1.6"></div>
     <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-primary" id="btnGenerate">Diseñar planos con IA →</button>
       <button class="btn btn-ghost" id="btnDemo">Ver ejemplo sin llaves</button>
@@ -196,6 +197,7 @@
     <canvas id="preview3d"></canvas>
     <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-primary" id="btnToTwin">Enviar al Gemelo Digital → <span class="help" tabindex="0" data-tip="Abre el Gemelo Digital con este plano ya cargado: ahí calculas materiales, varillas, costos, predicción de fallas, simulador 4D e inversión.">?</span></button>
+      <button class="btn btn-primary" id="btnFeasib" style="background:linear-gradient(120deg,#cdf25a,#a9d23f);color:#0e0a07">💰 ¿Conviene construirlo? → <span class="help" tabindex="0" data-tip="Abre el Analizador con TU plano precargado: pro-forma de desarrollo con las superficies reales del proyecto y el precio de venta real de la zona (inventario Century 21).">?</span></button>
       <button class="btn btn-ghost" id="btnEditPlan">✏️ Editar plano <span class="help" tabindex="0" data-tip="Ajusta el plano a mano: mueve muros, puertas, ventanas y espacios; cambia nombres y medidas; agrega o elimina elementos. Los cambios se reflejan en el 3D, el SVG y el Gemelo Digital.">?</span></button>
       <button class="btn btn-ghost" id="btnSvg">⬇ Descargar plano (SVG)</button>
       <button class="btn btn-ghost" id="btnDxf">⬇ DXF (AutoCAD/Revit) <span class="help" tabindex="0" data-tip="Exporta el plano en DXF con capas separadas (muros, muros de carga, ventanas, puertas, columnas, textos) en metros. Se abre en AutoCAD, Revit, LibreCAD, DraftSight…">?</span></button>
@@ -254,6 +256,28 @@ const state = { variantes: [], veredicto: null, sel: 0 };
 const BB_ZONES = window.BRICKBIT_ZONES || [];
 $('tZona').innerHTML = '<option value="">— Sin zona —</option>' +
   BB_ZONES.map(z => `<option value="${escapeHtml(z.nombre)}">${escapeHtml(z.nombre)}</option>`).join('');
+
+/* Normativa de referencia por municipio (data/normativa.json): al elegir zona,
+   precarga el COS típico y valida los niveles pedidos contra la referencia. */
+let NORMATIVA = null, _normAppliedFor = null;
+fetch('data/normativa.json').then(r => r.ok ? r.json() : null).then(j => { NORMATIVA = j; normUpdate(); }).catch(() => {});
+function normFor(zona) { return (NORMATIVA && NORMATIVA.zonas && NORMATIVA.zonas[zona]) || null; }
+function normUpdate() {
+  const box = $('normBox'); if (!box) return;
+  const zonaSel = $('tZona').value, n = normFor(zonaSel);
+  if (!zonaSel || !n) { box.style.display = 'none'; _normAppliedFor = null; return; }
+  // Precarga el COS de referencia una sola vez por zona (no pisa tus ediciones posteriores).
+  if (_normAppliedFor !== zonaSel) { $('tCos').value = Math.round(n.cos * 100); _normAppliedFor = zonaSel; }
+  const niv = parseInt($('tNiveles').value, 10) || 1;
+  const okNiv = niv <= n.niveles_max;
+  box.style.display = 'block';
+  box.innerHTML = `📋 <b>Normativa de referencia · ${escapeHtml(zonaSel)}:</b> COS ${Math.round(n.cos * 100)}% · CUS ${n.cus} · hasta ${n.niveles_max} niveles · ${n.cajones_viv} cajón(es)/vivienda.
+    ${okNiv ? `<span style="color:#57c389">✓ Tus ${niv} nivel(es) caben en la referencia.</span>` : `<span style="color:#e0745a">⚠ Pides ${niv} niveles y la referencia permite ${n.niveles_max} — verifica la zonificación de tu predio.</span>`}
+    ${n.nota ? `<br><span style="opacity:.8">${escapeHtml(n.nota)}</span>` : ''}
+    <br><span style="opacity:.7">Valores <b style="color:#F5C277">de referencia</b> (zona habitacional media): el dato firme lo da el programa de desarrollo urbano vigente de tu predio.</span>`;
+}
+$('tZona').addEventListener('change', normUpdate);
+$('tNiveles').addEventListener('input', normUpdate);
 
 /* =====================================================================
    Esquema de salida: variantes de plano (geometría compatible con el gemelo)
@@ -855,6 +879,24 @@ $('btnToTwin').addEventListener('click', () => {
   location.href = 'gemelo-digital.html?desde=creador' + (zona ? '&zona=' + encodeURIComponent(zona) : '');
 });
 
+/* ¿Conviene construirlo? → Analizador con el plano precargado (Modo Desarrollador).
+   El payload viaja por localStorage (una URL no aguanta la geometría completa). */
+$('btnFeasib').addEventListener('click', () => {
+  const v = state.variantes[state.sel];
+  if (!v) return;
+  const ancho = parseFloat($('tAncho').value) || 0, fondo = parseFloat($('tFondo').value) || 0;
+  const payload = {
+    v: 1, origen: 'creador', fecha: new Date().toISOString(),
+    zona: $('tZona').value || '',
+    terrenoM2: (ancho > 0 && fondo > 0) ? Math.round(ancho * fondo) : null,
+    concepto: v.concepto || '',
+    geometria: v.geometria,
+  };
+  try { localStorage.setItem('bb_plan_feasib', JSON.stringify(payload)); } catch {}
+  const zona = $('tZona').value;
+  location.href = 'analizador.html?desde=plano' + (zona ? '&zona=' + encodeURIComponent(zona) : '');
+});
+
 $('btnSvg').addEventListener('click', () => {
   const v = state.variantes[state.sel];
   if (!v) return;
@@ -936,6 +978,35 @@ $('btnLamina').addEventListener('click', () => {
   const circ = Math.max(0, huella - sumEsp);
   const filas = esp.map(e => `<tr><td>${escapeHtml(e.nombre)}</td><td class="r">${(+e.areaM2 || 0).toFixed(1)} m²</td></tr>`).join('');
   const fdate = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+  // Presupuesto paramétrico de obra: partidas típicas (% del costo directo) ×
+  // costo base por m² en tres calidades. Referencia, no catálogo de conceptos.
+  const areaP = (+g.areaTotalM2 || huella) || 0;
+  const CALIDADES = [ ['Económico', 14000], ['Medio', 19000], ['Premium', 26000] ];
+  const PARTIDAS = [
+    ['Preliminares y cimentación', 0.12], ['Estructura', 0.23],
+    ['Albañilería y muros', 0.17], ['Instalaciones (hidrosanitaria, eléctrica, gas)', 0.16],
+    ['Acabados', 0.22], ['Cancelería, carpintería y herrería', 0.10],
+  ];
+  const IND = 0.22;
+  const $m = (n) => '$' + Math.round(n).toLocaleString('es-MX');
+  const pFilas = PARTIDAS.map(([nom, pct]) =>
+    `<tr><td>${nom}</td><td class="r">${Math.round(pct * 100)}%</td>` +
+    CALIDADES.map(([, base]) => `<td class="r">${$m(areaP * base * pct)}</td>`).join('') + '</tr>').join('');
+  const pDirecto = CALIDADES.map(([, base]) => areaP * base);
+  const pTotales = pDirecto.map(v => v * (1 + IND));
+  const presupuesto = areaP > 0 ? `
+  <div class="box" style="margin-top:14px">
+    <h3>Presupuesto paramétrico de obra — ${areaP.toFixed(0)} m² construidos <span style="color:#b8860b">· estimado</span></h3>
+    <table>
+      <tr><th>Partida</th><th class="r">%</th>${CALIDADES.map(([n]) => `<th class="r">${n}</th>`).join('')}</tr>
+      ${pFilas}
+      <tr><td>Costo directo</td><td class="r"></td>${pDirecto.map(v => `<td class="r"><b>${$m(v)}</b></td>`).join('')}</tr>
+      <tr><td>Indirectos y utilidad del constructor</td><td class="r">${Math.round(IND * 100)}%</td>${pDirecto.map(v => `<td class="r">${$m(v * IND)}</td>`).join('')}</tr>
+      <tr class="tot"><td>Total estimado</td><td class="r"></td>${pTotales.map(v => `<td class="r">${$m(v)}</td>`).join('')}</tr>
+      <tr><td>Costo por m² (todo incluido)</td><td class="r"></td>${pTotales.map(v => `<td class="r">${$m(v / areaP)}/m²</td>`).join('')}</tr>
+    </table>
+    <div style="font-size:10.5px;color:#8a969c;margin-top:6px">Costos base de referencia (MXN, jul 2026): ${CALIDADES.map(([n, b]) => `${n} ${$m(b)}/m²`).join(' · ')} de costo directo. Presupuesto <b>paramétrico</b>: la distribución por partidas es típica de vivienda en México y varía con el proyecto; no sustituye un catálogo de conceptos ni precios unitarios de tu región.</div>
+  </div>` : '';
   const w = window.open('', '_blank'); if (!w) { alert('Permite las ventanas emergentes para generar la lámina.'); return; }
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Lámina · ${escapeHtml(g.nombreProyecto)}</title>
 <style>
@@ -975,7 +1046,8 @@ $('btnLamina').addEventListener('click', () => {
     ${g.notas ? `<div class="box"><h3>Notas</h3><div style="font-size:12px;line-height:1.5">${escapeHtml(g.notas)}</div></div>` : ''}
   </div>
 </div>
-<div class="foot">Generado con BrickBit Arquitectos (brickbit.co). Anteproyecto conceptual asistido por IA: las dimensiones, estructura e instalaciones requieren validación y firma de un profesional responsable (DRO/perito). No es un plano ejecutivo.</div>
+${presupuesto}
+<div class="foot">Generado con BrickBit Arquitectos (brickbit.co). Anteproyecto conceptual asistido por IA: las dimensiones, estructura, instalaciones y el presupuesto paramétrico requieren validación y firma de un profesional responsable (DRO/perito). No es un plano ejecutivo ni un presupuesto de obra contractual.</div>
 <div class="noprint" style="margin-top:14px"><button onclick="print()" style="padding:10px 22px;border:none;border-radius:8px;background:#1a7d50;color:#fff;font-weight:700;cursor:pointer">🖨 Imprimir / guardar PDF</button></div>
 </body></html>`);
   w.document.close();
