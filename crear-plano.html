@@ -198,6 +198,8 @@
       <button class="btn btn-primary" id="btnToTwin">Enviar al Gemelo Digital → <span class="help" tabindex="0" data-tip="Abre el Gemelo Digital con este plano ya cargado: ahí calculas materiales, varillas, costos, predicción de fallas, simulador 4D e inversión.">?</span></button>
       <button class="btn btn-ghost" id="btnEditPlan">✏️ Editar plano <span class="help" tabindex="0" data-tip="Ajusta el plano a mano: mueve muros, puertas, ventanas y espacios; cambia nombres y medidas; agrega o elimina elementos. Los cambios se reflejan en el 3D, el SVG y el Gemelo Digital.">?</span></button>
       <button class="btn btn-ghost" id="btnSvg">⬇ Descargar plano (SVG)</button>
+      <button class="btn btn-ghost" id="btnDxf">⬇ DXF (AutoCAD/Revit) <span class="help" tabindex="0" data-tip="Exporta el plano en DXF con capas separadas (muros, muros de carga, ventanas, puertas, columnas, textos) en metros. Se abre en AutoCAD, Revit, LibreCAD, DraftSight…">?</span></button>
+      <button class="btn btn-ghost" id="btnLamina">🖨 Lámina PDF <span class="help" tabindex="0" data-tip="Lámina imprimible con el plano, cuadro de áreas, datos del proyecto y pie de plano BrickBit.">?</span></button>
     </div>
   </section>
 
@@ -862,6 +864,121 @@ $('btnSvg').addEventListener('click', () => {
   a.download = slug(v.geometria.nombreProyecto) + '-planta.svg';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+});
+
+/* =====================================================================
+   Export DXF (R12 ASCII) — el puente al flujo real de trabajo CAD.
+   Capas: FOOTPRINT, MUROS, MUROS_CARGA, VENTANAS, PUERTAS, COLUMNAS,
+   ESPACIOS. Unidades: metros (el modelo ya está en metros).
+===================================================================== */
+function dxfPlan(g) {
+  const L = [];
+  const push = (...vals) => { for (const v of vals) L.push(String(v)); };
+  const num = (v) => (+v || 0).toFixed(4);
+  const ascii = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\x20-\x7E]/g, '');
+  // Cabecera mínima R12
+  push(0,'SECTION',2,'HEADER',9,'$ACADVER',1,'AC1009',0,'ENDSEC');
+  // Tabla de capas
+  const LAYERS = [ ['FOOTPRINT',8], ['MUROS',7], ['MUROS_CARGA',1], ['VENTANAS',5], ['PUERTAS',3], ['COLUMNAS',6], ['ESPACIOS',2] ];
+  push(0,'SECTION',2,'TABLES',0,'TABLE',2,'LAYER',70,LAYERS.length);
+  for (const [name,color] of LAYERS) push(0,'LAYER',2,name,70,0,62,color,6,'CONTINUOUS');
+  push(0,'ENDTAB',0,'ENDSEC');
+  push(0,'SECTION',2,'ENTITIES');
+  const line = (layer,x1,y1,x2,y2) => push(0,'LINE',8,layer,10,num(x1),20,num(y1),30,0,11,num(x2),21,num(y2),31,0);
+  // huella del edificio (polilínea cerrada)
+  const fp = g.footprint || [];
+  if (fp.length >= 3) {
+    push(0,'POLYLINE',8,'FOOTPRINT',66,1,70,1);
+    for (const p of fp) push(0,'VERTEX',8,'FOOTPRINT',10,num(p.x),20,num(p.y),30,0);
+    push(0,'SEQEND');
+  }
+  // muros (los de carga en su propia capa, como en obra)
+  for (const m of (g.muros || [])) line(m.carga ? 'MUROS_CARGA' : 'MUROS', m.x1, m.y1, m.x2, m.y2);
+  // ventanas
+  for (const w of (g.ventanas || [])) line('VENTANAS', w.x1, w.y1, w.x2, w.y2);
+  // puertas: hoja + arco de abatimiento (90°)
+  for (const p of (g.puertas || [])) {
+    const a0 = (p.orientacionDeg || 0) * Math.PI / 180, w = p.anchoM || 0.9;
+    line('PUERTAS', p.x, p.y, p.x + w * Math.cos(a0), p.y + w * Math.sin(a0));
+    push(0,'ARC',8,'PUERTAS',10,num(p.x),20,num(p.y),30,0,40,num(w),50,num(p.orientacionDeg || 0),51,num((p.orientacionDeg || 0) + 90));
+  }
+  // columnas
+  for (const c of (g.columnas || [])) push(0,'CIRCLE',8,'COLUMNAS',10,num(c.x),20,num(c.y),30,0,40,num(0.15));
+  // etiquetas de espacios (nombre + área)
+  for (const e of (g.espacios || [])) {
+    push(0,'TEXT',8,'ESPACIOS',10,num(e.x),20,num(e.y),30,0,40,num(0.25),1,ascii(e.nombre));
+    push(0,'TEXT',8,'ESPACIOS',10,num(e.x),20,num(e.y - 0.35),30,0,40,num(0.18),1,ascii((e.areaM2 || 0).toFixed(1) + ' m2'));
+  }
+  push(0,'ENDSEC',0,'EOF');
+  return L.join('\n');
+}
+$('btnDxf').addEventListener('click', () => {
+  const v = state.variantes[state.sel];
+  if (!v) return;
+  const blob = new Blob([dxfPlan(v.geometria)], { type: 'application/dxf' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = slug(v.geometria.nombreProyecto) + '-planta.dxf';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+});
+
+/* =====================================================================
+   Lámina PDF: plano + cuadro de áreas + datos del proyecto + pie de plano
+===================================================================== */
+$('btnLamina').addEventListener('click', () => {
+  const v = state.variantes[state.sel];
+  if (!v) return;
+  const g = v.geometria;
+  const esp = (g.espacios || []);
+  const sumEsp = esp.reduce((s, e) => s + (+e.areaM2 || 0), 0);
+  const huella = footprintArea(g);
+  const circ = Math.max(0, huella - sumEsp);
+  const filas = esp.map(e => `<tr><td>${escapeHtml(e.nombre)}</td><td class="r">${(+e.areaM2 || 0).toFixed(1)} m²</td></tr>`).join('');
+  const fdate = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+  const w = window.open('', '_blank'); if (!w) { alert('Permite las ventanas emergentes para generar la lámina.'); return; }
+  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Lámina · ${escapeHtml(g.nombreProyecto)}</title>
+<style>
+ body{font-family:system-ui,-apple-system,sans-serif;color:#21292f;max-width:960px;margin:20px auto;padding:0 22px}
+ .head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1a7d50;padding-bottom:10px;margin-bottom:14px}
+ .brand{font-size:24px;font-weight:800;letter-spacing:-1px;color:#0F6E56}.brand span{color:#1a7d50}
+ h1{font-size:20px;margin:0}.meta{font-size:12px;color:#6c787d}
+ .grid{display:grid;grid-template-columns:2fr 1fr;gap:18px;align-items:start}
+ .plano svg{width:100%;height:auto;border:1px solid #d8dee2;border-radius:8px;background:#fff}
+ table{width:100%;border-collapse:collapse;font-size:12.5px}
+ td,th{padding:5px 8px;border-bottom:1px solid #e3e8eb;text-align:left}
+ .r{text-align:right;font-variant-numeric:tabular-nums}
+ .tot td{font-weight:700;border-top:2px solid #1a7d50}
+ .box{border:1px solid #d8dee2;border-radius:8px;padding:10px 12px;margin-bottom:12px}
+ .box h3{margin:0 0 6px;font-size:13px;color:#0F6E56}
+ .foot{margin-top:16px;border-top:1px solid #d8dee2;padding-top:8px;font-size:10.5px;color:#8a969c}
+ @media print{body{margin:8mm auto}.noprint{display:none}}
+</style></head><body>
+<div class="head"><div><div class="brand">Brick<span>Bit</span> · Arquitectos</div><div class="meta">Anteproyecto conceptual · ${fdate}</div></div>
+<div style="text-align:right"><h1>${escapeHtml(g.nombreProyecto)}</h1><div class="meta">${escapeHtml(v.concepto || '')}${v.editado ? ' · editado a mano' : ''}</div></div></div>
+<div class="grid">
+  <div class="plano">${planSVG(g)}</div>
+  <div>
+    <div class="box"><h3>Datos del proyecto</h3>
+      <table>
+        <tr><td>Niveles</td><td class="r">${g.niveles}</td></tr>
+        <tr><td>Huella (planta baja)</td><td class="r">${huella.toFixed(1)} m²</td></tr>
+        <tr><td>Área total construida</td><td class="r">${(+g.areaTotalM2 || 0).toFixed(1)} m²</td></tr>
+        <tr><td>Entrepiso</td><td class="r">${g.alturaEntrepisoM} m</td></tr>
+        <tr><td>Sistema estructural</td><td class="r">${escapeHtml(g.sistemaEstructural || '—')}</td></tr>
+      </table></div>
+    <div class="box"><h3>Cuadro de áreas (planta baja)</h3>
+      <table>${filas}
+        <tr><td>Circulaciones / muros</td><td class="r">${circ.toFixed(1)} m²</td></tr>
+        <tr class="tot"><td>Total huella</td><td class="r">${huella.toFixed(1)} m²</td></tr>
+      </table></div>
+    ${g.notas ? `<div class="box"><h3>Notas</h3><div style="font-size:12px;line-height:1.5">${escapeHtml(g.notas)}</div></div>` : ''}
+  </div>
+</div>
+<div class="foot">Generado con BrickBit Arquitectos (brickbit.co). Anteproyecto conceptual asistido por IA: las dimensiones, estructura e instalaciones requieren validación y firma de un profesional responsable (DRO/perito). No es un plano ejecutivo.</div>
+<div class="noprint" style="margin-top:14px"><button onclick="print()" style="padding:10px 22px;border:none;border-radius:8px;background:#1a7d50;color:#fff;font-weight:700;cursor:pointer">🖨 Imprimir / guardar PDF</button></div>
+</body></html>`);
+  w.document.close();
 });
 
 /* =====================================================================
