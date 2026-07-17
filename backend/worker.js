@@ -326,8 +326,11 @@ async function handleShareCreate(request, env, headers) {
   }
   let data;
   try { data = JSON.parse(body); } catch { data = null; }
-  if (!data || typeof data !== 'object' || !data.geometry || !data.engineering) {
-    return json({ error: { message: 'Proyecto inválido: se esperan geometry y engineering.' } }, 400, headers);
+  // Acepta proyectos del gemelo (geometry+engineering) y páginas de preventa.
+  const esGemelo = data && data.geometry && data.engineering;
+  const esPreventa = data && data.tipo === 'preventa' && data.proyecto;
+  if (!data || typeof data !== 'object' || (!esGemelo && !esPreventa)) {
+    return json({ error: { message: 'Proyecto inválido: se esperan geometry y engineering, o un payload de preventa.' } }, 400, headers);
   }
   const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
   const id = [...crypto.getRandomValues(new Uint8Array(8))].map(b => alphabet[b % 36]).join('');

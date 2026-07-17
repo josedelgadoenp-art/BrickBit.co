@@ -243,7 +243,9 @@ a.back:hover{color:var(--tx)}
     <div class="cta-row" style="gap:10px;margin:14px 0 0">
       <button class="pdf-btn" onclick="devTesisIA()">✨ Generar tesis con IA</button>
       <button class="pdf-btn" onclick="devPDF()">🖨 Tesis en PDF</button>
+      <button class="pdf-btn" onclick="genPreventa()" style="border-color:rgba(205,242,90,.4);color:var(--lime,#cdf25a)">🏷️ Página de preventa</button>
     </div>
+    <div id="preventa-out"></div>
     <div id="dev-tesis"></div>
   </div>
 
@@ -701,6 +703,41 @@ function renderDev(){
     <div style="margin-top:4px">${mixRows}</div>
     ${_planDraft?`<div class="note" style="margin-top:12px;border-left-color:var(--pos)">📐 Pro-forma calculada con las <b>superficies reales de tu plano</b> (COS/CUS derivados del proyecto). La mezcla de producto es la sugerencia genérica de la zona.</div>`:''}
     <div class="note" style="margin-top:12px">Superficie vendible <b>${p.supVend.toLocaleString('es-MX')} m²</b> · ${p.saleReal?'precio de venta anclado al <b>inventario real de Century 21</b>':'<span class="amber">precio de venta del índice SHF (est.)</span>'} · <span class="amber">costos de obra estimados</span> — confirma el <b>uso de suelo</b> con el plan de desarrollo urbano municipal. Pro-forma ilustrativa, no asesoría.</div>`;
+}
+/* ===== Del plano a la PREVENTA: publica una página del proyecto con enlace
+   corto (KV del Worker, 90 días) para validar demanda antes de construir. */
+async function genPreventa(){
+  const z=zona(), out=$('preventa-out'); if(!z||!out) return;
+  if(!_devLast||_devLast.z.n!==z.n) renderDev();
+  const p=_devLast&&_devLast.p; if(!p) return;
+  out.innerHTML='<div class="note" style="margin-top:12px">Publicando la página de preventa…</div>';
+  const g=_planDraft&&_planDraft.geometria?_planDraft.geometria:null;
+  const payload={
+    tipo:'preventa', v:1, fecha:new Date().toISOString(),
+    proyecto:{
+      nombre:(g&&g.nombreProyecto)||(p.tipoP+' · '+z.n),
+      zona:z.n, tipologia:p.tipoP, niveles:p.niveles, unidades:p.units,
+      supVendible:p.supVend, pm2:p.sale, pm2Real:!!p.saleReal, pm2N:p.saleN||0,
+      plusvalia:z.g, yieldZona:z.y,
+      mix:p.mix.map(x=>({t:x.t,c:x.c,m:x.m,precio:x.pu})),
+      espacios:g?(g.espacios||[]).map(e=>({nombre:e.nombre,m2:e.areaM2})):null,
+      notas:g&&g.notas?String(g.notas).slice(0,400):''
+    }
+  };
+  try{
+    const r=await fetch(BB_BACKEND_A+'/api/share',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||!j.id) throw new Error((j.error&&j.error.message)||('HTTP '+r.status));
+    const url=location.origin+location.pathname.replace(/[^\/]*$/,'')+'preventa.html?p='+j.id;
+    out.innerHTML=`<div class="note" style="margin-top:12px;border-left-color:var(--pos)">
+      🏷️ <b>Página de preventa publicada</b> (dura 90 días):<br>
+      <input type="text" readonly value="${url}" onclick="this.select()" style="width:100%;margin:8px 0;padding:8px 10px;border-radius:8px;border:0.5px solid rgba(205,242,90,.35);background:#0e0a07;color:#f5ede3;font-size:12px">
+      <a href="${url}" target="_blank" class="pdf-btn" style="text-decoration:none;display:inline-block;margin-right:8px">Abrir →</a>
+      <button class="pdf-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText('${url}').then(()=>this.textContent='✓ Copiado')">Copiar enlace</button>
+      <div style="font-size:11px;color:var(--mut);margin-top:8px">Compártela con prospectos: los interesados dejan sus datos y te llegan como leads. Precios ${p.saleReal?'anclados al mercado real de Century 21':'del índice SHF (est.)'}.</div></div>`;
+  }catch(e){
+    out.innerHTML='<div class="note" style="margin-top:12px;border-left-color:var(--neg,#e0745a)">No se pudo publicar: '+e.message+'. Verifica que el Worker esté desplegado con la versión más reciente.</div>';
+  }
 }
 async function callClaudeA(system,prompt,schema){
   const backend=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').replace(/\/+$/,'');
