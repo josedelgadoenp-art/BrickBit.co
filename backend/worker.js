@@ -803,36 +803,24 @@ async function handleTexture(request, env) {
 /* --- Búsqueda con IA sobre el inventario (Century 21 + inteligencia BrickBit) --- */
 function slugZona(nombre) {
   return String(nombre || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase().trim().replace(/\s+/g, '-');
+    .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
-async function askClaudeJSON(env, system, userText, schema) {
+// Pide JSON directo (sin gramática/output_config, que puede tardar en compilar).
+// Opus devuelve JSON limpio con la instrucción; se limpian fences por si acaso.
+async function askClaudeJSON(env, system, userText) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-    body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 1024, system, output_config: { format: { type: 'json_schema', schema } }, messages: [{ role: 'user', content: userText }] }),
+    body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 800, system, messages: [{ role: 'user', content: userText }] }),
   });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error('IA ' + r.status + ': ' + ((data.error && data.error.message) || ''));
-  const texts = (data.content || []).filter((b) => b.type === 'text');
-  if (!texts.length) throw new Error('La IA no devolvió contenido.');
-  return JSON.parse(texts[texts.length - 1].text);
+  let txt = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+  txt = txt.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
+  if (a >= 0 && b > a) txt = txt.slice(a, b + 1);
+  return JSON.parse(txt);
 }
-const BUSCAR_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['interpretacion'],
-  properties: {
-    operacion: { type: ['string', 'null'], description: 'venta o renta' },
-    tipo: { type: ['string', 'null'], description: 'casa, departamento, terreno, local, oficina, bodega...' },
-    zonas: { type: 'array', items: { type: 'string' }, description: 'slugs de zonas BrickBit relevantes (0 a 3)' },
-    recamaras_min: { type: ['number', 'null'] },
-    banos_min: { type: ['number', 'null'] },
-    presupuesto_min: { type: ['number', 'null'] },
-    presupuesto_max: { type: ['number', 'null'] },
-    m2_min: { type: ['number', 'null'] },
-    yield_min: { type: ['number', 'null'], description: 'rendimiento anual mínimo en %' },
-    orden: { type: ['string', 'null'], description: 'precio_justo | yield | precio_asc | precio_desc' },
-    interpretacion: { type: 'string', description: 'frase corta de cómo se entendió la búsqueda' },
-  },
-};
 async function handleBuscar(request, env) {
   const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
   let body; try { body = await request.json(); } catch { body = {}; }
@@ -843,11 +831,31 @@ async function handleBuscar(request, env) {
 
   const { estados } = await loadBBData(env);
   const zonas = estados.map((e) => ({ nombre: e.nombre, slug: slugZona(e.nombre), yield: e['yield'], plusvalia: e.plusvalia }));
-  const lista = zonas.map((z) => `${z.slug} (${z.nombre}, yield ${z.yield}%)`).join('; ');
-  const system = `Eres el buscador inteligente de BrickBit, proptech de bienes raíces en México. Conviertes una búsqueda en lenguaje natural en filtros estructurados. Zonas válidas (devuelve el slug exacto): ${lista}. Reglas: "para N personas" ⇒ recamaras_min ≈ redondeo(N/2) (mínimo 1). Si piden rendimiento/plusvalía/"que me dé X% anual" ⇒ yield_min y, si no nombran ciudad, deja zonas vacío. Si nombran una colonia/ciudad, mapea a la zona BrickBit más cercana. Presupuestos en pesos MXN (interpreta "2 millones" = 2000000). Devuelve 0-3 zonas. La interpretacion es una frase breve y cálida de cómo entendiste la búsqueda.`;
+  // Zonas por municipio (inventario fuera de las 32 ciudades ancla). Se publican
+  // desde c21-subir.mjs en listados:_zonas; se fusionan sin duplicar por slug.
+  let muniZonas = [];
+  try {
+    const reg = await env.SHARES.get('listados:_zonas');
+    if (reg) { const rz = JSON.parse(reg); muniZonas = Array.isArray(rz) ? rz : (rz.zonas || []); }
+  } catch { /* sin registro: solo las 32 ancla */ }
+  const yaSlug = new Set(zonas.map((z) => z.slug));
+  for (const z of muniZonas) {
+    const s = slugZona(z.slug || z.nombre);
+    if (!s || yaSlug.has(s)) continue;
+    yaSlug.add(s);
+    zonas.push({ nombre: z.nombre, slug: s, yield: (typeof z.yield === 'number' ? z.yield : null), plusvalia: z.plusvalia ?? null, municipio: true });
+  }
+  const cities = zonas.filter((z) => !z.municipio).map((z) => `${z.slug} (${z.nombre}, yield ${z.yield}%)`).join('; ');
+  const munis = zonas.filter((z) => z.municipio).map((z) => `${z.slug} (${z.nombre}${z.yield != null ? ', yield ' + z.yield + '%' : ''})`).join('; ');
+  const lista = cities + (munis ? '. Municipios adicionales: ' + munis : '');
+  const system = `Eres el buscador inteligente de BrickBit, proptech de bienes raíces en México. Conviertes una búsqueda en lenguaje natural en filtros.
+Ciudades principales (usa el slug exacto): ${lista}.
+Reglas: "para N personas" ⇒ recamaras_min ≈ redondeo(N/2) (mínimo 1). Si piden rendimiento/plusvalía/"que me dé X% anual" ⇒ yield_min y, si no nombran ciudad, deja zonas vacío. Si nombran colonia/ciudad, mapea a la zona BrickBit más cercana. Presupuestos en pesos MXN ("2 millones" = 2000000).
+Responde SOLO con un objeto JSON válido (sin texto extra, sin markdown) con esta forma, omitiendo o poniendo null lo que no aplique:
+{"operacion": "venta"|"renta"|null, "tipo": "casa"|"departamento"|"terreno"|"local"|"oficina"|"bodega"|null, "zonas": ["slug", ...] (0 a 3), "recamaras_min": número|null, "banos_min": número|null, "presupuesto_min": número|null, "presupuesto_max": número|null, "m2_min": número|null, "yield_min": número|null, "orden": "precio_justo"|"yield"|"precio_asc"|"precio_desc"|null, "interpretacion": "frase breve y cálida de cómo entendiste la búsqueda"}`;
 
   let f;
-  try { f = await askClaudeJSON(env, system, q, BUSCAR_SCHEMA); }
+  try { f = await askClaudeJSON(env, system, q); }
   catch (e) { return json({ error: 'No se pudo interpretar la búsqueda: ' + e.message }, 502, headers); }
 
   let slugs = (f.zonas || []).map(slugZona).filter((s) => zonas.some((z) => z.slug === s));

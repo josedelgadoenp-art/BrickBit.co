@@ -621,9 +621,10 @@ const TIPOMAP={
 };
 function listingToProp(L,c,nom){
   const ty=TIPOMAP[L.tipo]||TIPOMAP.departamento;
-  return {...ty,zona:nom,nom:`${ty.t} · ${L.m2} m²`,m2:L.m2,pm2:L.pm2,price:L.precio_mxn,
+  return {...ty,zona:nom,nom:(L.titulo?(L.titulo.slice(0,42)):`${ty.t} · ${L.m2} m²`),m2:L.m2,pm2:L.pm2,price:L.precio_mxn,
     g:(c.g||6),yield:(c.yield||5.5),dom:(L.dom!=null?L.dom:(c.dom||50)),opp:c.opp,ciclo:c.ciclo,
-    lat:L.lat,lng:L.lng,fuente:L.fuente,url:L.url};
+    lat:L.lat,lng:L.lng,fuente:L.fuente,url:L.url,
+    vs:(L.vs!=null?L.vs:null),veredicto:L.veredicto||null,titulo:L.titulo,imagen:L.imagen,moneda:L.moneda};
 }
 function giroRecom(c,nom){
   const tour=/Canc|Tulum|Playa|Hotelera|Puerto|Vallarta|Cabos|Paz|Mazat/i.test(nom||"");
@@ -702,17 +703,25 @@ function selCol(c){map.flyTo([c.lat,c.lng],16,{duration:0.6});panel(c.nom,c,"col
   if(propMode)showProps();else document.getElementById("list-sec").style.display="none"}
 
 /* inmuebles en venta */
-function showProps(){
+async function showProps(){
   propM.forEach(m=>map.removeLayer(m));propM=[];
   const center=curMun?curMun:Object.assign({nom:curCity},CITIES[curCity]);
   const nom=curMun?curMun.nom:curCity;
   if(!center||!center.lat){return}
-  const real=(typeof INMUEBLES!=='undefined'&&INMUEBLES[nom]&&INMUEBLES[nom].length)?INMUEBLES[nom]:null;
-  const props=real?real.map(L=>listingToProp(L,center,nom)):genProps(center,nom);
+  document.getElementById("list-sec").style.display="";
+  list("Cargando inmuebles reales…",[],()=>{});
+  // 1º inventario REAL de Century 21 (Worker); si no hay, cae a INMUEBLES estático o generado
+  const realL=await loadZoneListings(curCity);
+  if(curCity!==nom&&(!propMode)) return; // el usuario ya cambió de vista
+  let props, titulo;
+  if(realL&&realL.length){ props=realL.map(L=>listingToProp(L,center,nom)); titulo=`🏢 Inmuebles reales · Century 21 (${props.length})`; }
+  else{ const real=(typeof INMUEBLES!=='undefined'&&INMUEBLES[nom]&&INMUEBLES[nom].length)?INMUEBLES[nom]:null;
+    props=real?real.map(L=>listingToProp(L,center,nom)):genProps(center,nom); titulo="Inmuebles en venta"; }
+  propM.forEach(m=>map.removeLayer(m));propM=[];
   props.forEach(p=>{const m=L.marker([p.lat,p.lng],{icon:propIcon(p)}).addTo(map);
     m.bindTooltip(`<b>${p.t}</b><br>${fmtM(p.price)} · ${p.m2}m²`,{direction:"top",offset:[0,-15]});
     m.on("click",()=>selProp(p));propM.push(m)});
-  list("Inmuebles en venta",props.map(p=>({nom:p.nom,opp:p.opp,g:p.g,yield:p.yield,price:p.price,_p:p})),d=>selProp(d._p||d));
+  list(titulo,props.map(p=>({nom:p.nom,opp:p.opp,g:p.g,yield:p.yield,price:p.price,_p:p})),d=>selProp(d._p||d));
 }
 const VISTA_LABELS={zonas:'🗺 Zonas',prop:'🏢 Inmuebles',shf:'🏛 Muestra SHF',muni:'🏙️ Municipios',asesor:'💡 Asesor'};
 function toggleVista(e){ if(e) e.stopPropagation(); const mu=document.getElementById('vista-menu'); if(mu) mu.classList.toggle('on'); }
@@ -1300,8 +1309,10 @@ function renderRes(p){
     <div class="sel-name">${p.ic} ${p.t}</div><div class="sel-tipo">${p.zona} · ${p.m2} m² · residencial</div>
     <div class="sel-price">${fmtM(p.price)}</div>
     <div class="sel-sub">${fmt(p.pm2)} /m² · ${p.m2} m²</div>
+    ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
     <span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>
-    ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver</a>`:''}</div>`:''}
+    ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de la zona · est.</span></div>`:''}
+    ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver ficha original</a>`:''}</div>`:''}
     <div class="rent-box"><div class="rent-l">Renta mensual estimada</div><div class="rent-v">${fmt(rent)}</div><div class="rent-s">${fmt(Math.round(rent/p.m2))}/m² · yield ${p.yield}%</div></div>
     <div class="ptitle" style="margin-top:16px">📈 Pronóstico precio/m² (IC 90%)</div>
     <div class="fc-grid">${fcCells(p.pm2,p.g,p.zona)}</div>
@@ -1331,8 +1342,10 @@ function renderCom(p){
     <div class="sel-name">${p.ic} ${p.t}</div><div class="sel-tipo">${p.zona} · ${p.m2} m² · comercial</div>
     <div class="sel-price">${fmtM(p.price)}</div>
     <div class="sel-sub">${fmt(p.pm2)} /m² · ${p.m2} m²</div>
+    ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
     <span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>
-    ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver</a>`:''}</div>`:''}
+    ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de la zona · est.</span></div>`:''}
+    ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver ficha original</a>`:''}</div>`:''}
     <div class="ptitle" style="margin-top:16px">📈 Pronóstico precio/m² (IC 90%)</div>
     <div class="fc-grid">${fcCells(p.pm2,p.g,p.zona)}</div>
     <div class="ptitle" style="margin-top:16px">🔄 Ciclo económico</div>
@@ -1617,6 +1630,34 @@ function loadInmuebles(){
     .then(j=>{INMUEBLES=j.zonas||{};return true;})
     .catch(()=>false);
 }
+/* Inmuebles REALES por zona (Century 21 vía Worker). Se cachean por zona.
+   Convierte USD→MXN, calcula el veredicto de precio vs la mediana de la zona. */
+const REAL_LIST={};
+function slugZona(n){return String(n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,'-');}
+async function loadZoneListings(zone){
+  if(REAL_LIST[zone]) return REAL_LIST[zone];
+  try{
+    const base=BB_BACKEND.replace(/\/+$/,'');
+    const r=await fetch(base+'/api/listados?zona='+encodeURIComponent(slugZona(zone)));
+    if(!r.ok) throw 0;
+    const arr=await r.json();
+    if(!Array.isArray(arr)||!arr.length){ REAL_LIST[zone]=[]; return []; }
+    // normalizar a MXN ANTES de comparar (evita mezclar USD costero con MXN)
+    const norm=arr.filter(x=>x.operacion==='venta'&&x.lat!=null&&x.precio>0&&x.m2_construccion>0)
+      .map(x=>{const fx=x.moneda==='USD'?17.5:1; return {...x,_pm:x.pm2?Math.round(x.pm2*fx):null,_pr:Math.round(x.precio*fx)};});
+    const ps=norm.filter(x=>x._pm>5000&&x._pm<150000).map(x=>x._pm).sort((a,b)=>a-b);
+    const med=ps.length?ps[Math.floor(ps.length/2)]:null;
+    const L=norm.map(x=>{
+        const vs=(med&&x._pm)?Math.round((x._pm/med-1)*100):null;
+        return {tipo:x.tipo,m2:x.m2_construccion,pm2:x._pm,precio_mxn:x._pr,
+          lat:x.lat,lng:x.lng,url:x.url,fuente:'Century 21',titulo:x.titulo,imagen:x.imagen,municipio:x.municipio,moneda:x.moneda,
+          vs, veredicto: vs==null?null:(vs<=-12?'oportunidad':vs>=12?'sobreprecio':'justo')};
+      })
+      .sort((a,b)=>(a.vs??999)-(b.vs??999))  // oportunidades primero
+      .slice(0,120);
+    REAL_LIST[zone]=L; return L;
+  }catch(e){ REAL_LIST[zone]=[]; return []; }
+}
 function loadMercado(){
   return fetch('data/mercado.json',{cache:'no-store'})
     .then(r=>{if(!r.ok)throw 0;return r.json();})
@@ -1652,7 +1693,20 @@ function updateNotice(){
     el.innerHTML=`⚠ No se encontró <code>data/estados.json</code>: usando valores incrustados. Publica los archivos (o corre el ETL) para datos SHF reales.`;
   }
 }
-(async()=>{ await Promise.all([loadEstados(),loadMunicipios(),loadComercio(),loadInmuebles(),loadMercado(),loadForecast(),loadSHF()]); applyMercado(); updateNotice(); showCities(); applyMetric(); buildSearch(); maybeOnb(); })();
+// Enlace directo: mapa.html?zona=Monterrey&modo=inmuebles (usado por zona3d y otras herramientas).
+function bbDeepLink(){
+  try{
+    const p=new URLSearchParams(location.search);
+    const qz=p.get('zona'); if(!qz) return;
+    const want=slugZona(qz);
+    const name=Object.keys(CITIES).find(n=>slugZona(n)===want)
+      || Object.keys(CITIES).find(n=>slugZona(n).includes(want)||want.includes(slugZona(n)));
+    if(!name) return;
+    selCity(name, CITIES[name]);
+    if((p.get('modo')||'')==='inmuebles'){ pickMode('prop'); }
+  }catch(e){}
+}
+(async()=>{ await Promise.all([loadEstados(),loadMunicipios(),loadComercio(),loadInmuebles(),loadMercado(),loadForecast(),loadSHF()]); applyMercado(); updateNotice(); showCities(); applyMetric(); buildSearch(); maybeOnb(); bbDeepLink(); })();
 </script>
 <div id="cmp-ov" class="cmp-ov">
   <div class="cmp-modal" role="dialog" aria-modal="true">

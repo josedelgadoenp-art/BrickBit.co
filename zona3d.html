@@ -201,6 +201,8 @@
 // 2) Restríngela por referrer a https://brickbit.co/* y por API.
 const GMAPS_KEY = 'AIzaSyC15vodxaWS_VyFiqlRUwYlTtXyKUkSW5o';
 const GMAPS_VERSION = 'alpha'; // 3D Maps requiere canal 'alpha' (o 'beta')
+// Backend BrickBit (inventario real de Century 21).
+const BB_BACKEND=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').trim();
 
 /* ====== utilidades ====== */
 const $ = id => document.getElementById(id);
@@ -596,18 +598,54 @@ function radarSVG(res){
   return `<svg viewBox="0 0 220 200" class="wradar" aria-label="Radar de servicios">${grid}${axes}<polygon points="${poly}" fill="rgba(205,242,90,.22)" stroke="var(--lim)" stroke-width="2"/>${labels}</svg>`;
 }
 
+/* ====== inventario real de Century 21 (para anclar el precio de venta) ====== */
+// Mediana real de $/m² en venta de la zona, medida sobre el inventario de Century 21.
+let _c21={loaded:false, med:null, n:0};
+async function loadC21Median(nom){
+  if(_c21.loaded) return _c21;
+  _c21.loaded=true;
+  try{
+    const base=BB_BACKEND.replace(/\/+$/,'');
+    const r=await fetch(base+'/api/listados?zona='+encodeURIComponent(slug(nom)));
+    if(!r.ok) throw 0;
+    const arr=await r.json();
+    if(!Array.isArray(arr)||!arr.length) return _c21;
+    // Normalizar a MXN ANTES de la mediana (mezclar USD/MXN rompe la comparación).
+    const ps=arr.filter(x=>x.operacion==='venta'&&x.precio>0&&x.m2_construccion>0)
+      .map(x=>{const fx=x.moneda==='USD'?17.5:1; return x.pm2?Math.round(x.pm2*fx):Math.round(x.precio*fx/x.m2_construccion);})
+      .filter(v=>v>5000&&v<150000).sort((a,b)=>a-b);
+    if(ps.length>=4){ _c21.med=ps[Math.floor(ps.length/2)]; _c21.n=ps.length; }
+  }catch(e){}
+  return _c21;
+}
+function c21Chip(){
+  if(!_c21.med) return '';
+  const f=n=>Math.round(n).toLocaleString('es-MX');
+  return '<span class="chip" title="Mediana de $/m² en venta de los inmuebles reales de Century 21 en la zona">'+
+    '🏢 Mercado real: <b>$'+f(_c21.med)+'/m²</b> · '+_c21.n+' inmuebles '+
+    '<a href="mapa.html?zona='+encodeURIComponent(zona?zona.nombre:'')+'&modo=inmuebles" style="color:inherit;text-decoration:underline">ver</a></span>';
+}
+
 /* ====== simulador de desarrollo (pro-forma en vivo) ====== */
 let simPriceEdited=false;
 function simZona(){ return zona || ZONES.find(z=>z.nombre==='Ciudad de México') || ZONES[0]; }
 function toggleSim(){
   const p=$('sim-panel'); const open=p.style.display==='none';
   p.style.display=open?'block':'none';
-  if(open){ simPrefill(); simulate(); }
+  if(open){
+    simPrefill(); simulate();
+    // Anclar el precio de venta al mercado real de Century 21 (una sola carga).
+    loadC21Median(simZona().nombre).then(()=>{ simPrefill(); simulate(); });
+  }
 }
 function simPrefill(){
   const z=simZona();
-  if(!simPriceEdited && z.precio_m2){ $('s-precio').value=z.precio_m2; $('s-precio-src').textContent=z.nombre; }
-  if(!$('s-terreno').value && z.precio_m2){ $('s-terreno').value=Math.round(z.precio_m2*0.30/500)*500; }
+  if(!simPriceEdited){
+    if(_c21.med){ $('s-precio').value=_c21.med; $('s-precio-src').textContent='C21 real'; }
+    else if(z.precio_m2){ $('s-precio').value=z.precio_m2; $('s-precio-src').textContent=z.nombre; }
+  }
+  const baseT=_c21.med||z.precio_m2;
+  if(!$('s-terreno').value && baseT){ $('s-terreno').value=Math.round(baseT*0.30/500)*500; }
 }
 function simMarkEdited(){ simPriceEdited=true; $('s-precio-src').textContent='manual'; simulate(); }
 function money(n){
@@ -641,6 +679,7 @@ function simulate(){
     '<div class="row"><span>Múltiplo (ventas/inversión)</span><span>'+multiplo.toFixed(2)+'x</span></div>';
   $('s-ctx').innerHTML=
     '<span class="chip">Zona: <b>'+z.nombre+'</b></span>'+
+    c21Chip()+
     (z.plusvalia?'<span class="chip">Plusvalía: <b>'+z.plusvalia+'%/año</b></span>':'')+
     (z.yld?'<span class="chip">Yield renta: <b>'+z.yld+'%</b></span>':'');
   _simLast={ z, m, tM2, cM2, ind, efi, pV, vendible, terreno, constr, inversion, ventas, util, margen, multiplo };
