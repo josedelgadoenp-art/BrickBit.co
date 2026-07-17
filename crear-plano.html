@@ -301,6 +301,26 @@ function normUpdate() {
 $('tZona').addEventListener('change', normUpdate);
 $('tNiveles').addEventListener('input', normUpdate);
 
+/* Predio real dibujado en el Simulador 3D (?desde=predio): precarga la
+   envolvente y pasa el polígono exacto a la IA para diseñar dentro de él. */
+let PREDIO = null;
+(function () {
+  try {
+    if (new URLSearchParams(location.search).get('desde') !== 'predio') return;
+    const d = JSON.parse(localStorage.getItem('bb_predio') || 'null');
+    if (!d || !Array.isArray(d.verticesM) || d.verticesM.length < 3) return;
+    PREDIO = d;
+    if (d.anchoM) $('tAncho').value = d.anchoM;
+    if (d.fondoM) $('tFondo').value = d.fondoM;
+    if (d.zona) { const op = [...$('tZona').options].find(o => o.value === d.zona); if (op) { $('tZona').value = d.zona; normUpdate(); } }
+    const f = n => Math.round(n).toLocaleString('es-MX');
+    const div = document.createElement('div');
+    div.style.cssText = 'margin-top:14px;padding:11px 14px;border:1px solid rgba(87,195,137,.3);border-left:3px solid #57c389;border-radius:10px;font-size:12.5px;line-height:1.6';
+    div.innerHTML = `📐 <b>Predio real cargado desde el Simulador 3D:</b> ${f(d.areaM2)} m² · ${d.verticesM.length} lados · envolvente ~${d.anchoM}×${d.fondoM} m. La IA diseñará <b>dentro de tu polígono real</b>, no de un rectángulo.`;
+    $('normBox').insertAdjacentElement('beforebegin', div);
+  } catch (e) {}
+})();
+
 /* =====================================================================
    Esquema de salida: variantes de plano (geometría compatible con el gemelo)
 ===================================================================== */
@@ -412,8 +432,9 @@ $('btnGenerate').addEventListener('click', async () => {
       content: [{ type: 'text', text:
 `Diseña ${num} propuesta(s) de plano arquitectónico optimizado, con enfoques distintos entre sí (p. ej. amplitud vs. privacidad vs. costo de obra), para:
 
-TERRENO: ${ancho} m de frente × ${fondo} m de fondo (${(ancho*fondo).toFixed(0)} m²)
-% CONSTRUIBLE (COS): ${cos}% → huella máxima ${(ancho*fondo*cos/100).toFixed(1)} m²
+TERRENO: ${ancho} m de frente × ${fondo} m de fondo (${(ancho*fondo).toFixed(0)} m²)${PREDIO ? `
+FORMA REAL DEL TERRENO (dibujada sobre el mapa): polígono de ${PREDIO.verticesM.length} vértices, en metros desde su esquina origen: ${PREDIO.verticesM.map(p => `(${p.x}, ${p.y})`).join(' ')}. Área real: ${PREDIO.areaM2} m². IMPORTANTE: el footprint del edificio debe caber DENTRO de este polígono (no del rectángulo envolvente) y aprovechar su forma y orientación (el eje +Y del polígono apunta al norte).` : ''}
+% CONSTRUIBLE (COS): ${cos}% → huella máxima ${((PREDIO ? PREDIO.areaM2 : ancho*fondo)*cos/100).toFixed(1)} m²
 NIVELES: ${niveles}
 ${zona ? 'ZONA/CIUDAD: ' + zona + ' (considera clima y orientaciones típicas)' : ''}
 PROGRAMA: ${$('tPrograma').value.trim() || 'vivienda familiar estándar'}
