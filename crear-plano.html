@@ -220,6 +220,7 @@
       <button class="btn btn-primary" id="btnToTwin">Enviar al Gemelo Digital → <span class="help" tabindex="0" data-tip="Abre el Gemelo Digital con este plano ya cargado: ahí calculas materiales, varillas, costos, predicción de fallas, simulador 4D e inversión.">?</span></button>
       <button class="btn btn-primary" id="btnFeasib" style="background:linear-gradient(120deg,#cdf25a,#a9d23f);color:#0e0a07">💰 ¿Conviene construirlo? → <span class="help" tabindex="0" data-tip="Abre el Analizador con TU plano precargado: pro-forma de desarrollo con las superficies reales del proyecto y el precio de venta real de la zona (inventario Century 21).">?</span></button>
       <button class="btn btn-ghost" id="btnEditPlan">✏️ Editar plano <span class="help" tabindex="0" data-tip="Ajusta el plano a mano: mueve muros, puertas, ventanas y espacios; cambia nombres y medidas; agrega o elimina elementos. Los cambios se reflejan en el 3D, el SVG y el Gemelo Digital.">?</span></button>
+      <button class="btn btn-ghost" id="btnRevisor">🔍 Auditar con el Revisor <span class="help" tabindex="0" data-tip="Abre el Revisor Senior con este plano: la IA lo audita (circulaciones, iluminación, accesibilidad, estructura, normativa) y te da un dictamen con semáforo y mejoras priorizadas.">?</span></button>
       <button class="btn btn-ghost" id="btnSvg">⬇ Descargar plano (SVG)</button>
       <button class="btn btn-ghost" id="btnDxf">⬇ DXF (AutoCAD/Revit) <span class="help" tabindex="0" data-tip="Exporta el plano en DXF con capas separadas (muros, muros de carga, ventanas, puertas, columnas, textos) en metros. Se abre en AutoCAD, Revit, LibreCAD, DraftSight…">?</span></button>
       <button class="btn btn-ghost" id="btnLamina">🖨 Lámina PDF <span class="help" tabindex="0" data-tip="Lámina imprimible con el plano, cuadro de áreas, datos del proyecto y pie de plano BrickBit.">?</span></button>
@@ -953,6 +954,14 @@ $('btnToTwin').addEventListener('click', () => {
   try { localStorage.setItem('bb_draft', JSON.stringify(draft)); } catch {}
   const zona = $('tZona').value;
   location.href = 'gemelo-digital.html?desde=creador' + (zona ? '&zona=' + encodeURIComponent(zona) : '');
+});
+
+/* Auditar con el Revisor Senior: guarda el plano y abre revisor.html. */
+$('btnRevisor').addEventListener('click', () => {
+  const v = state.variantes[state.sel];
+  if (!v) return;
+  try { localStorage.setItem('bb_plan_feasib', JSON.stringify({ v: 1, origen: 'creador', fecha: new Date().toISOString(), zona: $('tZona').value || '', concepto: v.concepto || '', geometria: v.geometria })); } catch {}
+  location.href = 'revisor.html';
 });
 
 /* ¿Conviene construirlo? → Analizador con el plano precargado (Modo Desarrollador).

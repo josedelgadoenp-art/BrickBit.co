@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="512x512" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BrickBit — Revisor Senior de Planos con IA</title>
+<meta name="description" content="Sube cualquier plano (foto, PDF o el generado en BrickBit) y la IA lo audita como un arquitecto senior: circulaciones, iluminación, accesibilidad, estructura y normativa de tu zona. Dictamen con semáforo e ideas de mejora.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#100c0a; --bg-2:#16110e; --surface:#1d1713; --surface-2:#241c17;
+    --cream:#f5ede3; --muted-txt:#a89a8c;
+    --clay:#1a7d50; --clay-soft:#57c389; --lime:#cdf25a; --lime-deep:#a9d23f;
+    --amb:#F5C277; --rojo:#e0745a;
+    --line:rgba(245,237,227,0.10); --line-strong:rgba(245,237,227,0.18);
+    --max:1080px; --r:18px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(900px 600px at 78% -8%, rgba(26,125,80,0.16), transparent 60%),
+               radial-gradient(700px 500px at 8% 30%, rgba(205,242,90,0.05), transparent 60%);}
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 24px;position:relative;z-index:1}
+  header{position:sticky;top:0;z-index:50;background:rgba(16,12,10,0.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;height:68px}
+  .brand{font-family:'Fraunces',serif;font-weight:700;font-size:1.25rem;color:var(--cream);text-decoration:none}
+  .brand em{font-style:italic;color:var(--clay-soft);font-weight:500}
+  .back{color:var(--muted-txt);text-decoration:none;font-size:.92rem}
+  .back:hover{color:var(--cream)}
+  .hero{padding:56px 0 24px}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--lime);border:1px solid var(--line-strong);border-radius:999px;padding:6px 14px;margin-bottom:22px}
+  h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(1.9rem,4.2vw,3rem);line-height:1.1;letter-spacing:-.01em;max-width:860px}
+  h1 em{font-style:italic;color:var(--clay-soft)}
+  .hero p{color:var(--muted-txt);max-width:700px;margin-top:16px;font-size:1.02rem}
+  section.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:30px;margin:24px 0}
+  .card-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;flex-wrap:wrap}
+  .knum{font-family:'Space Mono',monospace;color:var(--lime);font-size:.8rem;letter-spacing:.1em}
+  h2{font-family:'Fraunces',serif;font-weight:600;font-size:1.45rem;letter-spacing:-.01em}
+  .sub{color:var(--muted-txt);font-size:.94rem;max-width:760px;margin-bottom:18px}
+  label{display:block;font-size:.82rem;color:var(--muted-txt);margin-bottom:6px;font-weight:600}
+  select,textarea{width:100%;background:var(--bg-2);border:1px solid var(--line-strong);border-radius:12px;color:var(--cream);padding:12px 14px;font-family:'Hanken Grotesk',sans-serif;font-size:.92rem;outline:none}
+  textarea{min-height:76px;resize:vertical}
+  select:focus,textarea:focus{border-color:var(--clay-soft)}
+  .btn{display:inline-flex;align-items:center;gap:10px;cursor:pointer;text-decoration:none;border-radius:12px;padding:13px 24px;font-weight:700;font-size:.95rem;border:1px solid transparent;transition:all .25s;font-family:'Hanken Grotesk',sans-serif}
+  .btn-primary{background:var(--lime);color:#0f130a}
+  .btn-primary:hover{background:var(--lime-deep)}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--cream);border-color:var(--line-strong)}
+  .btn-ghost:hover{border-color:var(--clay-soft);color:var(--clay-soft)}
+  /* dropzone */
+  .drop{border:2px dashed var(--line-strong);border-radius:16px;padding:34px 20px;text-align:center;cursor:pointer;transition:all .25s;background:var(--bg-2)}
+  .drop:hover,.drop.on{border-color:var(--clay-soft);background:rgba(87,195,137,.05)}
+  .drop .big{font-size:2rem}
+  .drop p{color:var(--muted-txt);font-size:.9rem;margin-top:6px}
+  .drop b{color:var(--cream)}
+  .filechip{display:none;align-items:center;gap:12px;background:var(--bg-2);border:1px solid var(--line-strong);border-radius:12px;padding:10px 14px;margin-top:12px}
+  .filechip img{height:54px;border-radius:8px;display:block}
+  .filechip .x{margin-left:auto;background:none;border:none;color:var(--muted-txt);cursor:pointer;font-size:16px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+  @media(max-width:760px){.grid-2{grid-template-columns:1fr}}
+  .status{display:none;align-items:center;gap:12px;color:var(--muted-txt);font-size:.9rem;margin-top:16px}
+  .spinner{width:18px;height:18px;border:2px solid var(--line-strong);border-top-color:var(--lime);border-radius:50%;animation:sp 1s linear infinite;flex:none}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .error-box{display:none;background:rgba(224,109,90,.09);border:1px solid rgba(224,109,90,.35);border-radius:12px;padding:12px 16px;font-size:.9rem;margin-top:14px}
+  /* dictamen */
+  .score-row{display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin:6px 0 18px}
+  .score{width:104px;height:104px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none;border:3px solid var(--line-strong)}
+  .score b{font-family:'Fraunces',serif;font-size:2rem;line-height:1}
+  .score span{font-size:.66rem;color:var(--muted-txt);letter-spacing:.08em;text-transform:uppercase}
+  .cat{border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;background:var(--bg-2)}
+  .cat-head{display:flex;align-items:center;gap:10px;font-weight:700}
+  .sem{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:0 0 10px currentColor}
+  .sem.verde{background:var(--clay-soft);color:var(--clay-soft)}
+  .sem.ambar{background:var(--amb);color:var(--amb)}
+  .sem.rojo{background:var(--rojo);color:var(--rojo)}
+  .cat ul{margin:8px 0 0 20px;font-size:.9rem;color:var(--muted-txt)}
+  .cat ul li{margin:4px 0}
+  .mejora{display:flex;gap:12px;border-left:3px solid var(--lime);background:var(--bg-2);border-radius:0 12px 12px 0;padding:12px 14px;margin-bottom:10px}
+  .mejora .imp{font-family:'Space Mono',monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:6px;height:fit-content;flex:none}
+  .imp.alto{background:rgba(224,116,90,.18);color:var(--rojo)}
+  .imp.medio{background:rgba(245,194,119,.15);color:var(--amb)}
+  .imp.bajo{background:rgba(87,195,137,.14);color:var(--clay-soft)}
+  .mejora b{display:block;margin-bottom:2px}
+  .mejora p{font-size:.88rem;color:var(--muted-txt)}
+  .note{background:rgba(245,194,119,.07);border:1px solid rgba(245,194,119,.25);border-radius:12px;padding:12px 16px;font-size:.85rem;color:var(--muted-txt);margin-top:18px}
+  .note b{color:var(--amb)}
+  footer{padding:40px 0 60px;color:var(--muted-txt);font-size:.82rem;text-align:center}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+  <a class="brand" href="index.html">Brick<em>Bit</em> · Arquitectos</a>
+  <nav style="display:flex;gap:18px;align-items:center">
+    <a class="back" href="crear-plano.html">✏️ Creador de planos</a>
+    <a class="back" href="gemelo-digital.html">🏗️ Gemelo Digital</a>
+    <a class="back" href="index.html">← BrickBit</a>
+  </nav>
+</div></header>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="eyebrow">🔍 Nuevo · Auditoría con IA</span>
+    <h1>El <em>revisor senior</em> que le faltaba a tu plano</h1>
+    <p>Sube cualquier plano — una foto, un PDF o el que generaste en BrickBit — y la IA lo audita como lo haría un arquitecto con 30 años de obra: circulaciones, iluminación y ventilación, accesibilidad, coherencia estructural, funcionamiento del programa y la normativa de referencia de tu zona. En un minuto tienes un dictamen accionable.</p>
+  </div>
+
+  <!-- 01: subir -->
+  <section class="card" id="secSubir">
+    <div class="card-head"><span class="knum">01 /</span><h2>Tu plano</h2></div>
+    <p class="sub">Acepta <b>imagen</b> (foto del plano, captura, render de planta) o <b>PDF</b>. Entre más legible el plano — cotas, nombres de espacios, norte — más fino el dictamen.</p>
+    <div class="drop" id="drop">
+      <div class="big">📐</div>
+      <p><b>Arrastra tu plano aquí</b> o haz clic para elegirlo<br>JPG · PNG · WEBP · PDF (máx. 20 MB)</p>
+      <input type="file" id="file" accept="image/*,application/pdf" style="display:none">
+    </div>
+    <div class="filechip" id="filechip">
+      <img id="fileThumb" alt="" style="display:none">
+      <div><b id="fileName"></b><div style="font-size:.78rem;color:var(--muted-txt)" id="fileMeta"></div></div>
+      <button class="x" onclick="clearFile()" title="Quitar">✕</button>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-ghost" id="btnUsarGenerado" style="display:none">📄 Usar el último plano del Creador</button>
+      <span id="genInfo" style="font-size:.82rem;color:var(--muted-txt)"></span>
+    </div>
+    <div class="grid-2">
+      <div>
+        <label for="rvZona">Zona (para contrastar con la normativa de referencia)</label>
+        <select id="rvZona"><option value="">— Sin zona —</option></select>
+      </div>
+      <div>
+        <label for="rvCtx">Contexto (opcional)</label>
+        <textarea id="rvCtx" placeholder="Ej. Casa para pareja mayor (accesibilidad importa), clima caluroso, el norte está hacia arriba del plano, presupuesto ajustado…"></textarea>
+      </div>
+    </div>
+    <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="btnAuditar" disabled>🔍 Auditar mi plano →</button>
+    </div>
+    <div class="status" id="statusAud"><span class="spinner"></span><span>El revisor está estudiando tu plano… (30–60 s)</span></div>
+    <div class="error-box" id="errAud"></div>
+  </section>
+
+  <!-- 02: dictamen -->
+  <section class="card hidden" id="secDictamen">
+    <div class="card-head"><span class="knum">02 /</span><h2>Dictamen</h2></div>
+    <div id="dictamenOut"></div>
+    <div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-ghost" onclick="dictamenPDF()">🖨 Dictamen en PDF</button>
+      <a class="btn btn-ghost" href="crear-plano.html">✏️ Corregir en el Creador de planos</a>
+    </div>
+    <div class="note"><b>▦ Honestidad:</b> este dictamen lo genera una IA a partir de lo visible en el plano; es una <b>revisión preliminar</b>, no un peritaje. Los temas estructurales y normativos requieren validación de un profesional responsable (DRO/perito) con el proyecto completo.</div>
+  </section>
+
+  <footer>BrickBit Arquitectos · el dictamen usa la normativa de referencia de <a href="data/normativa.json" style="color:var(--muted-txt)">data/normativa.json</a> cuando eliges zona.</footer>
+</div>
+
+<script src="zonas.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* zonas + normativa */
+const BB_ZONES=window.BRICKBIT_ZONES||[];
+$('rvZona').innerHTML='<option value="">— Sin zona —</option>'+BB_ZONES.map(z=>`<option value="${esc(z.nombre)}">${esc(z.nombre)}</option>`).join('');
+let NORMATIVA=null;
+fetch('data/normativa.json').then(r=>r.ok?r.json():null).then(j=>{NORMATIVA=j;}).catch(()=>{});
+
+/* archivo */
+let FILE=null;             // {media_type, data(base64), kind:'image'|'document', name, size}
+const drop=$('drop'), fin=$('file');
+drop.addEventListener('click',()=>fin.click());
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('on');});
+drop.addEventListener('dragleave',()=>drop.classList.remove('on'));
+drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('on');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);});
+fin.addEventListener('change',()=>{if(fin.files[0])loadFile(fin.files[0]);});
+function loadFile(f){
+  if(f.size>20*1024*1024){showErr('El archivo pasa de 20 MB. Exporta a menor resolución.');return;}
+  const okImg=/^image\/(png|jpe?g|webp|gif)$/i.test(f.type), okPdf=f.type==='application/pdf';
+  if(!okImg&&!okPdf){showErr('Formato no soportado. Usa JPG, PNG, WEBP o PDF.');return;}
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const data=String(rd.result).split(',')[1];
+    FILE={media_type:okPdf?'application/pdf':f.type,data,kind:okPdf?'document':'image',name:f.name,size:f.size};
+    GEN=null;
+    $('filechip').style.display='flex';
+    $('fileName').textContent=f.name;
+    $('fileMeta').textContent=(okPdf?'PDF':'Imagen')+' · '+(f.size/1024/1024).toFixed(1)+' MB';
+    const th=$('fileThumb');
+    if(okImg){th.src=rd.result;th.style.display='block';}else{th.style.display='none';}
+    $('btnAuditar').disabled=false;
+  };
+  rd.readAsDataURL(f);
+}
+function clearFile(){FILE=null;$('filechip').style.display='none';fin.value='';$('btnAuditar').disabled=!GEN;}
+
+/* plano generado en el Creador (localStorage) */
+let GEN=null;
+(function(){
+  try{
+    const raw=localStorage.getItem('bb_plan_feasib')||localStorage.getItem('bb_draft');
+    if(!raw)return;
+    const d=JSON.parse(raw); const g=d.geometria||d.geometry;
+    if(!g||!g.espacios)return;
+    GEN={g, zona:d.zona||''};
+    const b=$('btnUsarGenerado'); b.style.display='inline-flex';
+    b.onclick=()=>{
+      FILE=null;$('filechip').style.display='none';fin.value='';
+      $('genInfo').textContent='✓ Usando: '+(g.nombreProyecto||'plano generado')+' · '+(g.niveles||1)+' nivel(es) · '+Math.round(g.areaTotalM2||0)+' m²';
+      if(d.zona){$('rvZona').value=d.zona;}
+      $('btnAuditar').disabled=false;
+    };
+  }catch(e){}
+})();
+
+function showErr(m){const e=$('errAud');e.style.display='block';e.textContent=m;}
+function hideErr(){$('errAud').style.display='none';}
+
+/* esquema del dictamen */
+const DICTAMEN_SCHEMA={type:'object',additionalProperties:false,
+ required:['descripcion_plano','puntuacion','resumen','categorias','mejoras'],
+ properties:{
+  descripcion_plano:{type:'string',description:'Qué se ve en el plano, en 1-2 frases'},
+  puntuacion:{type:'number',description:'0-100, calidad global del proyecto'},
+  resumen:{type:'string',description:'Veredicto ejecutivo en 2-3 frases, directo y útil'},
+  categorias:{type:'array',items:{type:'object',additionalProperties:false,
+    required:['nombre','semaforo','hallazgos'],
+    properties:{nombre:{type:'string'},semaforo:{type:'string',enum:['verde','ambar','rojo']},
+      hallazgos:{type:'array',items:{type:'string'}}}}},
+  mejoras:{type:'array',description:'3 a 6 mejoras concretas, priorizadas',
+    items:{type:'object',additionalProperties:false,
+    required:['titulo','detalle','impacto'],
+    properties:{titulo:{type:'string'},detalle:{type:'string'},impacto:{type:'string',enum:['alto','medio','bajo']}}}}
+ }};
+
+async function auditar(){
+  hideErr();
+  if(!FILE&&!GEN){showErr('Sube un plano o usa el último generado.');return;}
+  const zonaSel=$('rvZona').value, ctx=$('rvCtx').value.trim();
+  const norm=(NORMATIVA&&NORMATIVA.zonas&&NORMATIVA.zonas[zonaSel])||null;
+  const system=`Eres un arquitecto senior mexicano con 30 años de experiencia en vivienda y obra, actuando como revisor de proyectos. Auditas el plano que te entregan con ojo crítico pero constructivo, en español claro y directo (nada de relleno). Evalúa EXACTAMENTE estas 6 categorías, en este orden: 1) Circulaciones y flujos, 2) Iluminación y ventilación natural, 3) Accesibilidad y ergonomía, 4) Coherencia estructural aparente, 5) Funcionalidad del programa, 6) Normativa y reglamento. Asigna semáforo por categoría: verde = bien resuelto, ambar = mejorable, rojo = problema serio. Los hallazgos deben citar lo que se VE en el plano (espacios, medidas, posiciones), no generalidades. Si el plano no deja ver algo (p. ej. estructura), dilo honestamente en el hallazgo y no inventes. La puntuación global pondera gravedad, no cantidad.`;
+  const partes=[];
+  if(ctx)partes.push('Contexto del cliente: '+ctx);
+  if(zonaSel)partes.push('Ubicación del proyecto: '+zonaSel+'.');
+  if(norm)partes.push(`Normativa de REFERENCIA de la zona (valores típicos de zona habitacional media; no son la zonificación exacta del predio): COS ${Math.round(norm.cos*100)}%, CUS ${norm.cus}, altura típica ${norm.niveles_max} niveles, ${norm.cajones_viv} cajones/vivienda.${norm.nota?' Nota local: '+norm.nota:''} Contrasta lo que se ve del plano contra estas referencias y dilo en la categoría 6.`);
+  const content=[];
+  if(FILE){
+    content.push({type:FILE.kind,source:{type:'base64',media_type:FILE.media_type,data:FILE.data}});
+    content.push({type:'text',text:(partes.join('\n')||'')+'\nAudita este plano.'});
+  }else{
+    partes.push('El plano viene como GEOMETRÍA JSON generada en BrickBit (coordenadas en metros): '+JSON.stringify(GEN.g).slice(0,60000));
+    content.push({type:'text',text:partes.join('\n')+'\nAudita este proyecto.'});
+  }
+  $('btnAuditar').disabled=true; $('statusAud').style.display='flex';
+  try{
+    const backend=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').replace(/\/+$/,'');
+    const r=await fetch(backend+'/api/claude',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({system,content,schema:DICTAMEN_SCHEMA})});
+    const data=await r.json();
+    if(!r.ok)throw new Error((data.error&&data.error.message)||('HTTP '+r.status));
+    const texts=(data.content||[]).filter(b=>b.type==='text');
+    if(!texts.length)throw new Error('Respuesta vacía de la IA.');
+    _dictamen=JSON.parse(texts[texts.length-1].text);
+    renderDictamen(_dictamen);
+  }catch(e){ showErr('No se pudo auditar: '+e.message); }
+  $('btnAuditar').disabled=false; $('statusAud').style.display='none';
+}
+$('btnAuditar').addEventListener('click',auditar);
+
+let _dictamen=null;
+function scoreCol(s){return s>=75?'var(--clay-soft)':s>=50?'var(--amb)':'var(--rojo)';}
+function renderDictamen(d){
+  const col=scoreCol(d.puntuacion);
+  $('dictamenOut').innerHTML=`
+    <div class="score-row">
+      <div class="score" style="border-color:${col}"><b style="color:${col}">${Math.round(d.puntuacion)}</b><span>/ 100</span></div>
+      <div style="flex:1;min-width:240px">
+        <div style="font-size:.85rem;color:var(--muted-txt);margin-bottom:4px">${esc(d.descripcion_plano)}</div>
+        <div style="font-size:1.02rem">${esc(d.resumen)}</div>
+      </div>
+    </div>
+    ${(d.categorias||[]).map(c=>`
+      <div class="cat">
+        <div class="cat-head"><span class="sem ${c.semaforo}"></span>${esc(c.nombre)}</div>
+        <ul>${(c.hallazgos||[]).map(h=>`<li>${esc(h)}</li>`).join('')}</ul>
+      </div>`).join('')}
+    <h2 style="font-size:1.15rem;margin:22px 0 12px">💡 Mejoras priorizadas</h2>
+    ${(d.mejoras||[]).map(m=>`
+      <div class="mejora"><span class="imp ${m.impacto}">${m.impacto}</span>
+        <div><b>${esc(m.titulo)}</b><p>${esc(m.detalle)}</p></div>
+      </div>`).join('')}`;
+  $('secDictamen').classList.remove('hidden');
+  $('secDictamen').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function dictamenPDF(){
+  if(!_dictamen)return;
+  const d=_dictamen, fdate=new Date().toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'});
+  const semTxt={verde:'● BIEN',ambar:'● MEJORABLE',rojo:'● PROBLEMA'};
+  const semCol={verde:'#1a7d50',ambar:'#b8860b',rojo:'#c0503a'};
+  const w=window.open('','_blank'); if(!w){alert('Permite las ventanas emergentes para el PDF.');return;}
+  w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Dictamen · BrickBit Revisor</title>
+<style>body{font-family:system-ui,-apple-system,sans-serif;color:#21292f;max-width:820px;margin:24px auto;padding:0 22px}
+.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1a7d50;padding-bottom:10px;margin-bottom:16px}
+.brand{font-size:24px;font-weight:800;letter-spacing:-1px;color:#0F6E56}.brand span{color:#1a7d50}
+.meta{font-size:12px;color:#6c787d}
+.score{font-size:42px;font-weight:800}
+.cat{border:1px solid #dfe5e8;border-radius:10px;padding:12px 16px;margin:10px 0}
+.cat b{font-size:14px}
+ul{margin:6px 0 0 20px;font-size:12.5px;color:#4a565c}
+.mj{border-left:3px solid #1a7d50;padding:8px 14px;margin:8px 0;background:#f6f8f7;border-radius:0 8px 8px 0;font-size:12.5px}
+.foot{margin-top:18px;border-top:1px solid #dfe5e8;padding-top:8px;font-size:10.5px;color:#8a969c}
+@media print{body{margin:8mm auto}.noprint{display:none}}</style></head><body>
+<div class="head"><div><div class="brand">Brick<span>Bit</span> · Revisor Senior</div><div class="meta">Dictamen preliminar asistido por IA · ${fdate}</div></div>
+<div class="score" style="color:${d.puntuacion>=75?'#1a7d50':d.puntuacion>=50?'#b8860b':'#c0503a'}">${Math.round(d.puntuacion)}<span style="font-size:16px;color:#8a969c">/100</span></div></div>
+<p style="font-size:13px;color:#4a565c">${esc(d.descripcion_plano)}</p>
+<p style="font-size:14.5px;margin:10px 0 16px"><b>${esc(d.resumen)}</b></p>
+${(d.categorias||[]).map(c=>`<div class="cat"><b style="color:${semCol[c.semaforo]}">${semTxt[c.semaforo]}</b> <b>· ${esc(c.nombre)}</b><ul>${(c.hallazgos||[]).map(h=>`<li>${esc(h)}</li>`).join('')}</ul></div>`).join('')}
+<h3 style="margin:16px 0 6px;font-size:15px">Mejoras priorizadas</h3>
+${(d.mejoras||[]).map(m=>`<div class="mj"><b>[${m.impacto.toUpperCase()}] ${esc(m.titulo)}</b><br>${esc(m.detalle)}</div>`).join('')}
+<div class="foot">Dictamen preliminar generado por la IA de BrickBit a partir de lo visible en el plano. No sustituye la revisión de un profesional responsable (DRO/perito) con el proyecto ejecutivo completo. brickbit.co</div>
+<div class="noprint" style="margin-top:14px"><button onclick="print()" style="padding:10px 22px;border:none;border-radius:8px;background:#1a7d50;color:#fff;font-weight:700;cursor:pointer">🖨 Imprimir / guardar PDF</button></div>
+</body></html>`);
+  w.document.close();
+}
+</script>
+</body>
+</html>
