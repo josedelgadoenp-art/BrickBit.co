@@ -462,6 +462,13 @@
       </div>
     </div>
     <div class="hint" style="margin-top:10px">Arrastra para orbitar · rueda para acercar · clic derecho para desplazar.</div>
+    <div id="gemViz" style="margin-top:12px;display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted-txt,#a89a8c)">
+      <span style="opacity:.8">✂️ Corte de sección</span>
+      <button class="vp-chip gviz-cut" data-cut="none" style="padding:6px 12px">Completo</button>
+      <button class="vp-chip gviz-cut" data-cut="h" title="Rebana por altura: mira dentro de cada nivel, como casa de muñecas" style="padding:6px 12px">Por nivel</button>
+      <button class="vp-chip gviz-cut" data-cut="v" title="Corte vertical transversal (la sección clásica de arquitectura)" style="padding:6px 12px">Sección</button>
+      <input id="gemCut" type="range" min="2" max="98" value="55" style="width:130px;accent-color:#cdf25a" disabled>
+    </div>
     <div class="toolbar" style="margin-top:16px;align-items:center">
       <div class="field" style="min-width:190px;flex:0 1 230px">
         <label>🌞 Asoleamiento — mes: <b id="sunMesLbl" style="color:var(--lime)">jun</b> <span class="help" tabindex="0" data-tip="Simula la posición real del sol según la latitud de la zona elegida (paso 08), el mes y la hora. Observa qué sombras proyecta y recibe tu edificio en solsticios y equinoccios.">?</span></label>
@@ -1251,6 +1258,37 @@ function initThree(canvas) {
   return { renderer, scene, camera, controls, resize, sun, hemi };
 }
 
+/* ===== Corte de sección (dollhouse) — mismo recurso que el Creador de planos.
+   Usa clipping planes globales del renderer sobre el grupo del edificio activo
+   ('building' del plano o 'simWorld' del simulador). No toca materiales. ===== */
+const _gviz = { cut: 'none', t: 0.55 };
+function gemVizApply() {
+  if (!three) return;
+  const { renderer, scene } = three;
+  const world = scene.getObjectByName('building') || scene.getObjectByName('simWorld');
+  if (_gviz.cut === 'none' || !world) { renderer.clippingPlanes = []; renderer.localClippingEnabled = false; return; }
+  const box = new THREE.Box3().setFromObject(world);
+  let plane;
+  if (_gviz.cut === 'h') {
+    const y = box.min.y + (box.max.y - box.min.y) * _gviz.t;
+    plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), y);
+  } else {
+    const z = box.min.z + (box.max.z - box.min.z) * _gviz.t;
+    plane = new THREE.Plane(new THREE.Vector3(0, 0, -1), z);
+  }
+  renderer.localClippingEnabled = true;
+  renderer.clippingPlanes = [plane];
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.gviz-cut').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.gviz-cut').forEach(x => x.classList.toggle('vp-chip-ar', x === b));
+    _gviz.cut = b.dataset.cut;
+    const r = $('gemCut'); if (r) r.disabled = (_gviz.cut === 'none');
+    gemVizApply();
+  }));
+  const r = $('gemCut'); if (r) r.addEventListener('input', e => { _gviz.t = (+e.target.value) / 100; gemVizApply(); });
+});
+
 function buildScene(g) {
   if (!three) three = initThree();
   const { scene, camera, controls } = three;
@@ -1360,6 +1398,7 @@ function buildScene(g) {
   camera.position.set(d, d * 0.75, d);
   controls.target.set(0, totalH / 2, 0);
   three.resize();
+  gemVizApply();   // re-aplica el corte de sección al nuevo modelo
 }
 
 /* =====================================================================
