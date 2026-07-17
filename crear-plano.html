@@ -195,6 +195,27 @@
   <section class="card hidden" id="secPreview">
     <div class="card-head"><span class="knum">03 /</span><h2 id="prevTitle">Vista 3D</h2></div>
     <canvas id="preview3d"></canvas>
+    <!-- herramientas del visor: corte de sección (dollhouse) + estudio solar real -->
+    <div id="viz-tools" style="margin-top:12px;display:flex;gap:10px 22px;flex-wrap:wrap;align-items:center;font-size:12.5px">
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+        <span style="opacity:.75">✂️ Corte</span>
+        <button class="ed-tool viz-cut active" data-cut="none">Completo</button>
+        <button class="ed-tool viz-cut" data-cut="h" title="Rebana el edificio por altura: mira dentro de cada nivel, como casa de muñecas">Por nivel</button>
+        <button class="ed-tool viz-cut" data-cut="v" title="Corte vertical transversal: la sección clásica de arquitectura">Sección</button>
+        <input id="cutRange" type="range" min="2" max="98" value="55" style="width:120px;accent-color:#cdf25a" disabled>
+      </div>
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+        <span style="opacity:.75">☀️ Sol real</span>
+        <select id="sunSeason" class="ed-tool" style="padding:6px 10px">
+          <option value="off">apagado</option>
+          <option value="172">Verano · 21 jun</option>
+          <option value="80">Equinoccio · 21 mar</option>
+          <option value="355">Invierno · 21 dic</option>
+        </select>
+        <input id="sunHour" type="range" min="7" max="19" step="0.5" value="12" style="width:120px;accent-color:#F5C277" disabled>
+        <span id="sunInfo" style="opacity:.7;font-family:'Space Mono',monospace,monospace;font-size:11px;min-width:110px"></span>
+      </div>
+    </div>
     <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">
       <button class="btn btn-primary" id="btnToTwin">Enviar al Gemelo Digital → <span class="help" tabindex="0" data-tip="Abre el Gemelo Digital con este plano ya cargado: ahí calculas materiales, varillas, costos, predicción de fallas, simulador 4D e inversión.">?</span></button>
       <button class="btn btn-primary" id="btnFeasib" style="background:linear-gradient(120deg,#cdf25a,#a9d23f);color:#0e0a07">💰 ¿Conviene construirlo? → <span class="help" tabindex="0" data-tip="Abre el Analizador con TU plano precargado: pro-forma de desarrollo con las superficies reales del proyecto y el precio de venta real de la zona (inventario Century 21).">?</span></button>
@@ -543,8 +564,62 @@ function initThree() {
   window.addEventListener('resize', resize);
   resize();
   (function loop() { requestAnimationFrame(loop); controls.update(); renderer.render(scene, camera); })();
-  return { renderer, scene, camera, controls, resize };
+  return { renderer, scene, camera, controls, resize, sun };
 }
+
+/* =====================================================================
+   Herramientas del visor: corte de sección (dollhouse) + estudio solar
+   El corte usa clipping planes globales del renderer (no toca materiales).
+   El sol usa la posición solar real (declinación + ángulo horario) con la
+   latitud de la zona elegida; norte = -Z del visor.
+===================================================================== */
+const _viz = { cut: 'none', cutT: 0.55, sunDay: null, sunHour: 12 };
+function _vizLat() { const z = BB_ZONES.find(x => x.nombre === $('tZona').value); return z ? z.lat : 19.43; }
+function vizApply() {
+  if (!three) return;
+  const { renderer, scene, sun } = three;
+  const world = scene.getObjectByName('world');
+  if (_viz.cut === 'none' || !world) { renderer.clippingPlanes = []; }
+  else {
+    const box = new THREE.Box3().setFromObject(world);
+    if (_viz.cut === 'h') {
+      const y = box.min.y + (box.max.y - box.min.y) * _viz.cutT;
+      renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, -1, 0), y)];
+    } else {
+      const z = box.min.z + (box.max.z - box.min.z) * _viz.cutT;
+      renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 0, -1), z)];
+    }
+  }
+  if (!sun) return;
+  const info = $('sunInfo');
+  if (_viz.sunDay == null) { sun.position.set(30, 45, 20); sun.intensity = 1.6; if (info) info.textContent = ''; return; }
+  const lat = _vizLat() * Math.PI / 180;
+  const dec = 23.44 * Math.PI / 180 * Math.sin(2 * Math.PI * (284 + _viz.sunDay) / 365);
+  const H = (15 * (_viz.sunHour - 12)) * Math.PI / 180;
+  const sinAlt = Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(H);
+  const alt = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
+  let az = Math.acos(Math.max(-1, Math.min(1, (Math.sin(dec) - sinAlt * Math.sin(lat)) / ((Math.cos(alt) * Math.cos(lat)) || 1e-6))));
+  if (H > 0) az = 2 * Math.PI - az;                     // tarde: el sol cae al poniente
+  const R = 80, ca = Math.cos(alt);
+  sun.position.set(R * Math.sin(az) * ca, Math.max(2, R * Math.sin(alt)), -R * Math.cos(az) * ca);
+  sun.intensity = alt > 0 ? 1.9 : 0.12;
+  if (info) info.textContent = alt > 0
+    ? `☀ altitud ${Math.round(alt * 180 / Math.PI)}° · ${String(Math.floor(_viz.sunHour)).padStart(2, '0')}:${_viz.sunHour % 1 ? '30' : '00'}`
+    : '🌙 bajo el horizonte';
+}
+document.querySelectorAll('.viz-cut').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.viz-cut').forEach(x => x.classList.toggle('active', x === b));
+  _viz.cut = b.dataset.cut;
+  $('cutRange').disabled = (_viz.cut === 'none');
+  vizApply();
+}));
+$('cutRange').addEventListener('input', e => { _viz.cutT = (+e.target.value) / 100; vizApply(); });
+$('sunSeason').addEventListener('change', e => {
+  _viz.sunDay = e.target.value === 'off' ? null : +e.target.value;
+  $('sunHour').disabled = (_viz.sunDay == null);
+  vizApply();
+});
+$('sunHour').addEventListener('input', e => { _viz.sunHour = +e.target.value; vizApply(); });
 
 function selectVariant(i) {
   state.sel = i;
@@ -552,6 +627,7 @@ function selectVariant(i) {
     el.classList.toggle('sel', Number(el.dataset.i) === i));
   const v = state.variantes[i];
   $('prevTitle').textContent = 'Vista 3D — ' + v.concepto;
+  vizApply();   // re-aplica corte de sección y sol al cambiar de variante
   buildPreview(v.geometria);
 }
 
