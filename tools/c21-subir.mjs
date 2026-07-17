@@ -39,7 +39,9 @@ const med = (a) => { const s = a.filter((v) => v > 0).sort((x, y) => x - y); ret
 const KEEP = ['id', 'url', 'titulo', 'precio', 'moneda', 'operacion', 'tipo', 'colonia', 'municipio', 'estado', 'm2_construccion', 'm2_terreno', 'recamaras', 'banos', 'estacionamientos', 'lat', 'lng', 'imagen', 'afiliado'];
 
 // Umbral mínimo de propiedades para que un municipio valga como "zona" propia.
-const MINZ = 5;
+// 3 recupera la cola de municipios chicos (con 3-4 inmuebles) que antes se
+// descartaba; se puede subir con --minz N si se quiere zonas más robustas.
+const MINZ = (() => { const i = args.indexOf('--minz'); const v = i >= 0 ? parseInt(args[i + 1], 10) : 3; return isNaN(v) || v < 2 ? 3 : v; })();
 
 const shards = {};          // zonas ciudad (las 32 ancla, por cercanía de coordenadas)
 const huerfanas = [];       // {x, o} fuera del radio de 40 km de toda ciudad ancla
