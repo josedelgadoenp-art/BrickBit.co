@@ -206,14 +206,13 @@ body{font-family:'Hanken Grotesk',system-ui,-apple-system,sans-serif;background:
   <button class="zlvl" id="zlvl-2" onclick="goLevel(2)" disabled>Municipio</button>
   <button class="zlvl" id="zlvl-3" onclick="goLevel(3)" disabled>Colonia / AGEB</button>
   <span class="menu-wrap" id="vista-wrap">
-    <button class="mt active" id="vista-btn" onclick="toggleVista(event)" style="display:inline-flex;align-items:center;gap:6px">🗺 Zonas ▾</button>
+    <button class="mt active" id="vista-btn" onclick="toggleVista(event)" style="display:inline-flex;align-items:center;gap:6px">🏢 Inmuebles ▾</button>
     <div class="menu" id="vista-menu">
-      <button id="mt-zonas" class="sel" onclick="pickMode('zonas')">🗺 Zonas</button>
-      <button id="mt-prop" onclick="pickMode('prop')">🏢 Inmuebles</button>
-      <button id="mt-shf" onclick="pickMode('shf')">🏛 Muestra SHF</button>
-      <button id="mt-muni" onclick="pickMode('muni')">🏙️ Municipios DENUE</button>
+      <button id="mt-prop" class="sel" onclick="pickMode('prop')">🏢 Inmuebles</button>
+      <button id="mt-zonas" onclick="pickMode('zonas')">🗺 Análisis de zonas</button>
       <button id="mt-asesor" onclick="pickMode('asesor')">💡 Asesor</button>
-      <button id="mt-heat" onclick="toggleHeat();closeVista()">🔥 Calor</button>
+      <button id="mt-muni" onclick="pickMode('muni')">🏙️ Municipios DENUE</button>
+      <button id="mt-heat" onclick="toggleHeat();closeVista()">🔥 Mercado real</button>
       <div style="height:1px;background:rgba(245,237,227,.1);margin:4px 6px"></div>
       <button onclick="openPortafolio();closeVista()">📁 Portafolio</button>
       <button onclick="openCompare()">⚖️ Comparar zonas</button>
@@ -228,7 +227,7 @@ body{font-family:'Hanken Grotesk',system-ui,-apple-system,sans-serif;background:
     <div class="onb-card">
       <button class="onb-x" onclick="closeOnb()" aria-label="Cerrar">✕</button>
       <div class="onb-t">👋 Cómo leer el mapa</div>
-      <div class="onb-b">Toca una <b>ciudad</b> para explorarla. Cambia de <b>capa</b> (precio, plusvalía, riesgo, Valor Futuro…) o activa el <b>🔥 calor</b> municipal. En cada zona podrás <b>analizarla como inversión</b>. Usa el <b>buscador</b> de arriba para saltar a una ciudad.</div>
+      <div class="onb-b">El mapa abre con el <b>inventario real de Century 21</b>: el número de cada marcador son los inmuebles disponibles. Toca una zona y cada propiedad trae su pin: <b style="color:#57c389">verde = oportunidad</b>, <b style="color:#F5C277">ámbar = precio justo</b>, <b style="color:#e0745a">rojo = sobreprecio</b>. Cambia a <b>🗺 Análisis de zonas</b> para plusvalía y pronósticos, o a <b>💡 Asesor</b> para un ranking según tu perfil.</div>
       <button class="onb-go" onclick="closeOnb()">Entendido</button>
     </div>
   </div>
@@ -440,31 +439,51 @@ function buildHeatLayer(){
 function renderHeatLegend(){
   const leg=document.getElementById('legend'),meta=document.getElementById('metric-meta'),tm=document.getElementById('top-metric');
   if(leg){const grad='linear-gradient(90deg,'+VAL_STOPS.map(s=>'rgb('+s.join(',')+')').join(',')+')';
-    leg.innerHTML=`<span class="leg-l">+${MUN_MIN}%</span><div class="leg-bar" style="background:${grad}"></div><span class="leg-l">+${MUN_MAX}%</span>`;}
-  if(meta)meta.textContent='Plusvalía anual por municipio (2,475). ● 74 con dato real SHF · ○ resto = base de su estado (estimado).';
-  if(tm)tm.textContent='Plusvalía (zonas)';
+    const lo=HEAT_LO?('$'+Math.round(HEAT_LO/1000)+'k'):'—', hi=HEAT_HI?('$'+Math.round(HEAT_HI/1000)+'k'):'—';
+    leg.innerHTML=`<span class="leg-l">${lo}/m²</span><div class="leg-bar" style="background:${grad}"></div><span class="leg-l">${hi}/m²</span>`;}
+  if(meta)meta.textContent='Mercado real Century 21: tamaño de burbuja = inmuebles en venta · color = mediana de $/m². 100% datos reales.';
+  if(tm)tm.textContent='Mercado real ($/m²)';
 }
+/* 🔥 Mercado real: burbujas del inventario de Century 21 en las 143 zonas.
+   Tamaño = inmuebles disponibles · color = mediana real de $/m² de venta. */
+let HEAT_LO=null,HEAT_HI=null;
 async function toggleHeat(){
   if(heatLoading)return;
   const mn=document.getElementById('mode-note');
   if(!HEAT_ON){
-    heatLoading=true;if(mn)mn.textContent='Cargando mapa de calor municipal…';
-    const ok=await ensureHeatData();heatLoading=false;
-    if(!ok){if(mn)mn.textContent='⚠ No cargó el calor municipal: '+heatErr+'. Sube data/municipios.geojson y data/municipios_valores.json.';return;}
+    heatLoading=true;if(mn)mn.textContent='Cargando mercado real…';
+    const [idx,reg]=await Promise.all([loadListIndex(),loadZonasReg()]);
+    heatLoading=false;
+    const pts=[];
+    Object.entries(CITIES).forEach(([n,d])=>{const c=idx[slugZona(n)]||0;if(!c)return;
+      pts.push({nom:n,lat:d.lat,lng:d.lng,n:c,pm2:(d._c21!=null?d._c21:null),yld:(d.yield!=null?d.yield:null)});});
+    (reg||[]).forEach(z=>{if(!z||z.lat==null||!z.municipio)return;const c=idx[z.slug]||z.n||0;if(!c)return;
+      pts.push({nom:z.nombre,lat:z.lat,lng:z.lng,n:c,pm2:(z.pm2!=null?z.pm2:null),yld:(z.yield!=null?z.yield:null)});});
+    if(!pts.length){if(mn)mn.textContent='⚠ No se pudo cargar el inventario real (revisa la conexión).';return;}
+    const pms=pts.map(p=>p.pm2).filter(v=>v>0).sort((a,b)=>a-b);
+    HEAT_LO=pms.length?pms[Math.floor(pms.length*0.05)]:null;
+    HEAT_HI=pms.length?pms[Math.floor(pms.length*0.95)]:null;
+    const col=p=>{if(p.pm2==null||HEAT_LO==null||HEAT_HI<=HEAT_LO)return '#8b8177';
+      const t=Math.max(0,Math.min(1,(p.pm2-HEAT_LO)/(HEAT_HI-HEAT_LO)));return _ramp(VAL_STOPS,t);};
+    if(heatLayer)map.removeLayer(heatLayer);
+    heatLayer=L.layerGroup(pts.map(p=>{
+      const r=Math.max(6,Math.min(26,3+Math.sqrt(p.n)*1.5));
+      const cm=L.circleMarker([p.lat,p.lng],{radius:r,color:'rgba(255,255,255,.5)',weight:1,fillColor:col(p),fillOpacity:.78});
+      cm.bindTooltip(`<b>${p.nom}</b><br>${p.n} inmuebles reales${p.pm2?`<br>Mediana venta: <b>${fmt(p.pm2)}/m²</b>`:''}${p.yld!=null?`<br>Yield: ${(+p.yld).toFixed(1)}%`:''}<br><span style="color:#cdf25a">● Century 21 · dato real</span>`,{direction:'top',sticky:true});
+      return cm;}));
     HEAT_ON=true;propMode=shfMode=asesorMode=false;
     document.querySelectorAll('.mt').forEach(b=>b.classList.remove('active'));
     const hb=document.getElementById('mt-heat');if(hb)hb.classList.add('active');
     document.getElementById('list-sec').style.display='none';
     clearAll();
-    if(!heatLayer)buildHeatLayer();
     heatLayer.addTo(map);map.flyTo([23.6,-102],5,{duration:0.8});
     renderHeatLegend();
-    if(mn)mn.textContent='🔥 Calor municipal · plusvalía (74 reales + base estatal)';
+    if(mn)mn.textContent='🔥 Mercado real · Century 21: tamaño = inventario, color = $/m²';
   }else{
     HEAT_ON=false;if(heatLayer)map.removeLayer(heatLayer);
     const hb=document.getElementById('mt-heat');if(hb)hb.classList.remove('active');
     if(mn)mn.textContent='';
-    setMode('zonas');applyMetric();
+    pickMode('prop');
   }
 }
 
@@ -590,28 +609,7 @@ function colsFor(m){
     g:+(m.g*c.gm).toFixed(1),yield:+(m.yield+c.ym).toFixed(1),dom:Math.round(m.dom+c.dm),ciclo:m.ciclo}));
 }
 
-/* ===== INMUEBLES (propiedades construidas) ===== */
-const PTYPES=[
-  {t:"Casa",cat:"res",mn:90,mx:230,pmn:0.85,pmx:1.2,ic:"🏠",col:"#2DD49B"},
-  {t:"Departamento",cat:"res",mn:55,mx:150,pmn:0.9,pmx:1.3,ic:"🏬",col:"#1D9E75"},
-  {t:"Local comercial",cat:"com",mn:40,mx:280,pmn:1.0,pmx:1.6,ic:"🏪",col:"#EF9F27"},
-  {t:"Edificio comercial",cat:"com",mn:300,mx:1300,pmn:0.9,pmx:1.35,ic:"🏢",col:"#E0A53A"},
-  {t:"Oficinas",cat:"com",mn:80,mx:520,pmn:1.0,pmx:1.45,ic:"🏦",col:"#5B8FF9"},
-];
-function genProps(c,nom){
-  const out=[];
-  for(let i=0;i<7;i++){
-    const ty=PTYPES[Math.floor(Math.random()*PTYPES.length)];
-    const m2=Math.round(rnd(ty.mn,ty.mx));
-    const pm2=Math.round(c.price*rnd(ty.pmn,ty.pmx)/500)*500;
-    const price=m2*pm2;
-    out.push({...ty,zona:nom,nom:`${ty.t} · ${m2} m²`,m2,pm2,price,
-      g:+((c.g||6)*rnd(0.9,1.12)).toFixed(1),yield:+((c.yield||5.5)*rnd(0.9,1.12)).toFixed(1),
-      dom:Math.round((c.dom||50)*rnd(0.82,1.18)),opp:c.opp,ciclo:c.ciclo,
-      lat:c.lat+rnd(-0.012,0.012),lng:c.lng+rnd(-0.012,0.012)});
-  }
-  return out;
-}
+/* ===== INMUEBLES (inventario real de Century 21 — sin datos simulados) ===== */
 const TIPOMAP={
   casa:{t:"Casa",cat:"res",ic:"🏠",col:"#2DD49B"},
   departamento:{t:"Departamento",cat:"res",ic:"🏬",col:"#1D9E75"},
@@ -622,7 +620,7 @@ const TIPOMAP={
 function listingToProp(L,c,nom){
   const ty=TIPOMAP[L.tipo]||TIPOMAP.departamento;
   return {...ty,zona:nom,nom:(L.titulo?(L.titulo.slice(0,42)):`${ty.t} · ${L.m2} m²`),m2:L.m2,pm2:L.pm2,price:L.precio_mxn,
-    g:(c.g||6),yield:(c.yield||5.5),dom:(L.dom!=null?L.dom:(c.dom||50)),opp:c.opp,ciclo:c.ciclo,
+    g:(c.g!=null?c.g:null),yield:(c.yield!=null?c.yield:null),dom:(L.dom!=null?L.dom:(c.dom!=null?c.dom:null)),opp:c.opp,ciclo:c.ciclo,
     lat:L.lat,lng:L.lng,fuente:L.fuente,url:L.url,
     vs:(L.vs!=null?L.vs:null),veredicto:L.veredicto||null,titulo:L.titulo,imagen:L.imagen,moneda:L.moneda};
 }
@@ -671,8 +669,11 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,sub
 function icon(opp,size){const c=OPP[opp]||"#888",r=size/2;
   return L.divIcon({className:"",iconSize:[size,size],iconAnchor:[r,r],html:
     `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${c};border:2.5px solid #fff;box-shadow:0 0 12px ${c},0 2px 7px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;color:#fff;font-size:${size*0.4}px;font-weight:700;font-family:system-ui">${opp[0]}</div>`})}
-function propIcon(p){return L.divIcon({className:"",iconSize:[28,28],iconAnchor:[14,14],html:
-  `<div style="width:28px;height:28px;border-radius:8px;background:#111A22;border:2px solid ${p.col};display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 7px rgba(0,0,0,.55)">${p.ic}</div>`})}
+/* Pin de gota coloreado por el veredicto de precio del inmueble (vs mediana real
+   de su zona): verde = oportunidad, ámbar = precio justo, rojo = sobreprecio. */
+function propPinColor(p){return p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':p.veredicto==='justo'?'#F5C277':'#9a8f83';}
+function propIcon(p){const c=propPinColor(p);return L.divIcon({className:"",iconSize:[24,33],iconAnchor:[12,31],html:
+  `<svg width="24" height="33" viewBox="0 0 24 33" style="filter:drop-shadow(0 2px 4px rgba(0,0,0,.55))"><path d="M12 1C5.9 1 1 5.9 1 12c0 8.2 11 20 11 20s11-11.8 11-20C23 5.9 18.1 1 12 1z" fill="${c}" stroke="#fff" stroke-width="1.5"/><circle cx="12" cy="12" r="4.2" fill="rgba(0,0,0,.32)"/></svg>`})}
 function clearAll(){[...cityM,...munM,...colM,...propM,...shfMunM,...muniLayer].forEach(m=>map.removeLayer(m));cityM=[];munM=[];colM=[];propM=[];shfMunM=[];muniLayer=[]}
 
 function showCities(){clearAll();
@@ -713,20 +714,86 @@ async function showProps(){
   // 1º inventario REAL de Century 21 (Worker); si no hay, cae a INMUEBLES estático o generado
   const realL=await loadZoneListings(curCity);
   if(curCity!==nom&&(!propMode)) return; // el usuario ya cambió de vista
-  let props, titulo;
-  if(realL&&realL.length){ props=realL.map(L=>listingToProp(L,center,nom)); titulo=`🏢 Inmuebles reales · Century 21 (${props.length})`; }
-  else{ const real=(typeof INMUEBLES!=='undefined'&&INMUEBLES[nom]&&INMUEBLES[nom].length)?INMUEBLES[nom]:null;
-    props=real?real.map(L=>listingToProp(L,center,nom)):genProps(center,nom); titulo="Inmuebles en venta"; }
+  // SOLO inventario real de Century 21 — sin datos simulados.
+  if(!realL||!realL.length){
+    document.getElementById("list-sec").style.display="";
+    document.getElementById("list-title").textContent="🏢 Inmuebles reales";
+    document.getElementById("zone-list").innerHTML='<div class="hint">Sin inventario de Century 21 en esta zona por ahora. Vuelve a la vista nacional para ver las zonas con inmuebles reales.</div>';
+    return;
+  }
+  const props=realL.map(L=>listingToProp(L,center,nom));
+  const titulo=`🏢 Inmuebles reales · Century 21 (${props.length})`;
   propM.forEach(m=>map.removeLayer(m));propM=[];
   props.forEach(p=>{const m=L.marker([p.lat,p.lng],{icon:propIcon(p)}).addTo(map);
     m.bindTooltip(`<b>${p.t}</b><br>${fmtM(p.price)} · ${p.m2}m²`,{direction:"top",offset:[0,-15]});
     m.on("click",()=>selProp(p));propM.push(m)});
   list(titulo,props.map(p=>({nom:p.nom,opp:p.opp,g:p.g,yield:p.yield,price:p.price,_p:p})),d=>selProp(d._p||d));
 }
-const VISTA_LABELS={zonas:'🗺 Zonas',prop:'🏢 Inmuebles',shf:'🏛 Muestra SHF',muni:'🏙️ Municipios',asesor:'💡 Asesor'};
+/* ===== Vista nacional del inventario real (143 zonas: 32 ciudades + municipios) ===== */
+let LIST_IDX=null, ZREG=null;
+async function loadListIndex(){ if(LIST_IDX) return LIST_IDX;
+  try{ const r=await fetch(BB_BACKEND.replace(/\/+$/,'')+'/api/listados'); LIST_IDX=r.ok?await r.json():{}; }catch(e){ LIST_IDX={}; }
+  return LIST_IDX; }
+async function loadZonasReg(){ if(ZREG) return ZREG;
+  try{ const r=await fetch(BB_BACKEND.replace(/\/+$/,'')+'/api/listados?zona=_zonas'); const j=r.ok?await r.json():[]; ZREG=Array.isArray(j)?j:[]; }catch(e){ ZREG=[]; }
+  return ZREG; }
+function invIcon(n,big){ const s=big?32:21;
+  return L.divIcon({className:"",iconSize:[s,s],iconAnchor:[s/2,s/2],html:
+    `<div style="min-width:${s}px;height:${s}px;padding:0 5px;border-radius:${s/2}px;background:#14100c;border:2px solid ${big?'#cdf25a':'#57c389'};display:flex;align-items:center;justify-content:center;color:#f5ede3;font-size:${big?11.5:9.5}px;font-weight:700;font-family:'Space Mono',monospace;box-shadow:0 2px 8px rgba(0,0,0,.5)">${n>=1000?(Math.round(n/100)/10)+'k':n}</div>`}); }
+async function showPropsNational(){
+  clearAll(); curCity=null; curMun=null;
+  crumbs([]); setLvl(0);
+  note('🏢 Mercado real Century 21 · toca una zona');
+  document.getElementById("list-sec").style.display="";
+  document.getElementById("list-title").textContent="Cargando mercado real…";
+  document.getElementById("zone-list").innerHTML="";
+  const [idx,reg]=await Promise.all([loadListIndex(),loadZonasReg()]);
+  if(!propMode||curCity) return;
+  const items=[];
+  Object.entries(CITIES).forEach(([n,d])=>{ const c=idx[slugZona(n)]||0; if(!c) return;
+    const m=L.marker([d.lat,d.lng],{icon:invIcon(c,true)}).addTo(map);
+    m.bindTooltip(`<b>${n}</b><br>${c} inmuebles reales · yield ${(+d.yield).toFixed(1)}%`,{direction:"top",offset:[0,-14]});
+    m.on("click",()=>selCity(n,d)); cityM.push(m);
+    items.push({nom:n,opp:d.opp,g:d.g,yield:d.yield,price:d._c21||d.price,_sort:c,_go:()=>selCity(n,d),_meta:`${c} inmuebles reales · yield ${(+d.yield).toFixed(1)}%`});
+  });
+  (reg||[]).forEach(z=>{ if(!z||z.lat==null||!z.municipio) return; const c=idx[z.slug]||z.n||0; if(!c) return;
+    const m=L.marker([z.lat,z.lng],{icon:invIcon(c,false)}).addTo(map);
+    m.bindTooltip(`<b>${z.nombre}</b><br>${c} inmuebles reales${z.yield!=null?` · yield ~${z.yield}%`:''}`,{direction:"top",offset:[0,-11]});
+    m.on("click",()=>selMuniZone(z)); cityM.push(m);
+    items.push({nom:z.nombre,opp:'Media',g:null,yield:z.yield,price:z.pm2||null,_sort:c,_go:()=>selMuniZone(z),_meta:`${c} inmuebles reales${z.yield!=null?` · yield ~${z.yield}%`:''}`});
+  });
+  if(!items.length){
+    document.getElementById("list-title").textContent="🏢 Mercado real";
+    document.getElementById("zone-list").innerHTML='<div class="hint">No se pudo cargar el inventario real (revisa tu conexión).</div>';
+    return;
+  }
+  const tot=items.reduce((s,x)=>s+x._sort,0);
+  list(`🏢 Mercado real · ${tot.toLocaleString('es-MX')} inmuebles en ${items.length} zonas`,items,d=>d._go&&d._go());
+  document.getElementById("panel-cap").textContent="Mercado real · Century 21";
+  document.getElementById("panel-content").innerHTML=`<div class="hint">Inventario <b>real</b> en ${items.length} zonas de México (el número del marcador = inmuebles disponibles). Toca una zona para ver cada propiedad con su pin: <b style="color:#57c389">verde = oportunidad</b>, <b style="color:#F5C277">ámbar = precio justo</b>, <b style="color:#e0745a">rojo = sobreprecio</b>, comparado con la mediana real de su zona.</div>`;
+}
+/* Zona por municipio (fuera de las 32 ciudades ancla): solo inventario real. */
+async function selMuniZone(z){
+  curCity=null; curMun=null;
+  map.flyTo([z.lat,z.lng],11,{duration:0.9});
+  crumbs([{l:z.nombre,lv:1}]); setLvl(0);
+  propM.forEach(m=>map.removeLayer(m)); propM=[];
+  document.getElementById("list-sec").style.display="";
+  document.getElementById("list-title").textContent="Cargando inmuebles reales…";
+  document.getElementById("zone-list").innerHTML="";
+  const Ls=await loadZoneListings(z.nombre);
+  if(!propMode) return;
+  const center={nom:z.nombre,lat:z.lat,lng:z.lng,opp:'Media',g:null,yield:(z.yield!=null?z.yield:null),dom:null,ciclo:''};
+  const props=(Ls||[]).map(l=>listingToProp(l,center,z.nombre));
+  props.forEach(p=>{const m=L.marker([p.lat,p.lng],{icon:propIcon(p)}).addTo(map);
+    m.bindTooltip(`<b>${p.t}</b><br>${fmtM(p.price)} · ${p.m2}m²`,{direction:"top",offset:[0,-15]});
+    m.on("click",()=>selProp(p));propM.push(m)});
+  list(`🏢 Inmuebles reales · Century 21 (${props.length})`,props.map(p=>({nom:p.nom,opp:p.opp,g:p.g,yield:p.yield,price:p.price,_p:p})),d=>selProp(d._p||d));
+}
+const VISTA_LABELS={zonas:'🗺 Análisis de zonas',prop:'🏢 Inmuebles',muni:'🏙️ Municipios',asesor:'💡 Asesor'};
 function toggleVista(e){ if(e) e.stopPropagation(); const mu=document.getElementById('vista-menu'); if(mu) mu.classList.toggle('on'); }
 function closeVista(){ const mu=document.getElementById('vista-menu'); if(mu) mu.classList.remove('on'); }
-function pickMode(m){ setMode(m); const b=document.getElementById('vista-btn'); if(b&&VISTA_LABELS[m]) b.innerHTML=VISTA_LABELS[m]+' ▾'; ['zonas','prop','shf','muni','asesor'].forEach(k=>{const el=document.getElementById('mt-'+k); if(el) el.classList.toggle('sel', k===m);}); closeVista(); }
+function pickMode(m){ setMode(m); const b=document.getElementById('vista-btn'); if(b&&VISTA_LABELS[m]) b.innerHTML=VISTA_LABELS[m]+' ▾'; ['zonas','prop','muni','asesor'].forEach(k=>{const el=document.getElementById('mt-'+k); if(el) el.classList.toggle('sel', k===m);}); closeVista(); }
 document.addEventListener('click', e=>{ if(!e.target.closest('#vista-wrap')) closeVista(); });
 /* ----- comparador de zonas ----- */
 function buildCompare(){
@@ -738,7 +805,7 @@ function buildCompare(){
   sa.value=has('Cancún')?'Cancún':names[0];
   sb.value=has('Ciudad de México')?'Ciudad de México':(names[1]||names[0]);
 }
-function openCompare(){ closeVista(); const ov=document.getElementById('cmp-ov'); if(!ov) return; if(!document.getElementById('cmp-a').options.length) buildCompare(); ov.classList.add('on'); renderCompare(); }
+function openCompare(){ closeVista(); const ov=document.getElementById('cmp-ov'); if(!ov) return; if(!document.getElementById('cmp-a').options.length) buildCompare(); ov.classList.add('on'); renderCompare(); if(!LIST_IDX){ loadListIndex().then(()=>{ if(ov.classList.contains('on')) renderCompare(); }); } }
 function closeCompare(){ const ov=document.getElementById('cmp-ov'); if(ov) ov.classList.remove('on'); }
 document.addEventListener('click', e=>{ const ov=document.getElementById('cmp-ov'); if(ov&&ov.classList.contains('on')&&e.target===ov) closeCompare(); });
 function renderCompare(){
@@ -760,16 +827,27 @@ function renderCompare(){
     const star=(k==='vf5'||k==='vf10')?' <span style="color:#F5C277">*</span>':'';
     html+=`<tr><td class="cmp-l">${M.label}${star}</td><td class="${ca}">${fa}</td><td class="${cb}">${fb}</td></tr>`;
   });
-  html+='</table><div class="cmp-note">Verde = mejor en esa fila. <span style="color:#F5C277">*</span> 5 y 10 años son extrapolación (no validados).</div>';
+  // Filas con el mercado REAL de Century 21 (mediana de venta, yield medido, inventario)
+  const realRow=(label,va,vb,fmtV,better)=>{
+    const fa=(va!=null)?fmtV(va):'—', fb=(vb!=null)?fmtV(vb):'—';
+    let ca='',cb='';
+    if(va!=null&&vb!=null&&va!==vb){ const aWin=(better==='low')?(va<vb):(va>vb); if(aWin)ca='cmp-win';else cb='cmp-win'; }
+    return `<tr><td class="cmp-l">${label} <span style="color:#57c389;font-size:10px">real</span></td><td class="${ca}">${fa}</td><td class="${cb}">${fb}</td></tr>`;
+  };
+  const idx=LIST_IDX||{};
+  html+=realRow('Mercado C21 ($/m² venta)', da._c21, db._c21, v=>fmt(v)+'/m²','low');
+  html+=realRow('Yield renta medido', da.yield, db.yield, v=>(+v).toFixed(1)+'%','high');
+  html+=realRow('Inmuebles en venta (C21)', idx[slugZona(na)]||null, idx[slugZona(nb)]||null, v=>v.toLocaleString('es-MX'),'high');
+  html+='</table><div class="cmp-note">Verde = mejor en esa fila. <span style="color:#F5C277">*</span> 5 y 10 años son extrapolación (no validados). Las filas <span style="color:#57c389">real</span> vienen del inventario de Century 21 (jul 2026).</div>';
   document.getElementById('cmp-body').innerHTML=html;
 }
 function setMode(m){
   if(HEAT_ON){HEAT_ON=false;if(heatLayer)map.removeLayer(heatLayer);const _hb=document.getElementById('mt-heat');if(_hb)_hb.classList.remove('active');}
   muniLayer.forEach(x=>map.removeLayer(x)); muniLayer=[];   // la capa DENUE es especial: se limpia siempre al cambiar de modo
-  propMode=(m==='prop');shfMode=(m==='shf');asesorMode=(m==='asesor');muniMode=(m==='muni');
+  propMode=(m==='prop');shfMode=false;asesorMode=(m==='asesor');muniMode=(m==='muni');
   document.getElementById('mt-zonas').classList.toggle('active',m==='zonas');
   document.getElementById('mt-prop').classList.toggle('active',propMode);
-  document.getElementById('mt-shf').classList.toggle('active',shfMode);
+  const _ms=document.getElementById('mt-shf'); if(_ms)_ms.classList.toggle('active',false);
   const _mm=document.getElementById('mt-muni'); if(_mm)_mm.classList.toggle('active',muniMode);
   document.getElementById('mt-asesor').classList.toggle('active',asesorMode);
   if(muniMode){
@@ -784,14 +862,10 @@ function setMode(m){
       mk.on("click",()=>asesorGoto(n));cityM.push(mk)});
     document.getElementById('list-sec').style.display='none';
     setLvl(0);crumbs([]);note('Asesor · ranking según tu perfil');renderAsesor();
-  } else if(shfMode){
-    clearAll();curCity=null;curMun=null;
-    map.flyTo([23.6,-102],5,{duration:1.0});
-    showSHFMun();note('Municipios de la muestra SHF · plusvalía anual real');crumbs([]);setLvl(0);
   } else if(propMode){
-    if(!curCity){propMode=false;document.getElementById('mt-zonas').classList.add('active');document.getElementById('mt-prop').classList.remove('active');note('Entra a una ciudad para ver inmuebles');return}
+    if(!curCity){ showPropsNational(); return; }
     [...munM,...colM,...cityM,...shfMunM].forEach(x=>map.removeLayer(x));munM=[];colM=[];cityM=[];shfMunM=[];
-    showProps();note('Mostrando inmuebles en venta');
+    showProps();note('🏢 Inventario real · Century 21');
   } else {
     [...propM,...shfMunM].forEach(x=>map.removeLayer(x));propM=[];shfMunM=[];note('');
     if(curMun)showCol(curMun);else if(curCity)showMun(curCity);else showCities();
@@ -814,7 +888,8 @@ function recomendar(){
   const nApp=_norm(zs.map(z=>z.g)), nRent=_norm(zs.map(z=>z.rent)), nRisk=_norm(zs.map(z=>z.vol));
   zs.forEach((z,i)=>{z._sc=(A*nApp[i]+(1-A)*nRent[i])-L*nRisk[i];});
   const ns=_norm(zs.map(z=>z._sc)); zs.forEach((z,i)=>z.score=Math.round(ns[i]*100));
-  zs.forEach(z=>{z.afford=perfil.presup?Math.floor(perfil.presup/z.pm2):null;});
+  // Afford con el precio REAL del inventario C21 cuando existe (es lo que de verdad está en venta).
+  zs.forEach(z=>{const pmr=(z.d._c21!=null?z.d._c21:z.pm2);z.afford=perfil.presup?Math.floor(perfil.presup/pmr):null;});
   if(filtros.ciudad){const c=normName(filtros.ciudad);zs=zs.filter(z=>normName(z.n)===c);}
   if(filtros.plusvalia_min!=null){zs=zs.filter(z=>(z.d.g||0)>=filtros.plusvalia_min);}
   zs.sort((a,b)=>b._sc-a._sc);
@@ -850,12 +925,15 @@ function renderAsesor(){
   }
   // aviso si la intención es a nivel propiedad/giro (pendiente de listados)
   const pend = (filtros.tipo&&['casa','departamento','terreno','local','oficina','bodega'].includes(filtros.tipo))||filtros.roi_min||filtros.recamaras_min||filtros.giro;
-  const banner = pend?`<div class="notice" style="margin:8px 0;border-color:rgba(224,161,58,.35)">La búsqueda de <b>propiedades/locales individuales</b> y el <b>ROI por propiedad</b> se activarán al conectar listados reales (Fase 1). Por ahora te muestro las <b>zonas</b> que mejor encajan con tus criterios.</div>`:"";
+  const banner = pend?`<div class="notice" style="margin:8px 0;border-color:rgba(224,161,58,.35)">Para <b>propiedades individuales</b> usa el modo <b style="color:#57c389">🏢 Inmuebles</b> (inventario real de Century 21) o el buscador con IA de la portada. Aquí te muestro las <b>zonas</b> que mejor encajan con tu perfil.</div>`:"";
+  if(!LIST_IDX){ loadListIndex().then(()=>{ if(asesorMode) renderAsesor(); }); }
   const rows=zs.length?zs.map((z,i)=>{
     const aff=z.afford?` · ${z.afford} m² con tu presupuesto`:'';
+    const pmr=(z.d._c21!=null?z.d._c21:null);
+    const nInv=(LIST_IDX&&LIST_IDX[slugZona(z.n)])||null;
     return `<div class="zl-item" onclick="asesorGoto('${z.n}')">
       <div><div class="zl-name"><span style="display:inline-block;width:20px;color:#6b7d79">${i+1}</span><span class="zl-dot" style="background:${OPP[z.d.opp]}"></span>${z.n}</div>
-      <div class="zl-meta">Plusvalía ${h}a +${(z.g*100).toFixed(0)}% [${(z.lo*100).toFixed(0)}–${(z.hi*100).toFixed(0)}%] · Renta est. +${(z.rent*100).toFixed(0)}% · Riesgo ${z.vol.toFixed(1)}% · ${fmt(z.pm2)}/m²${aff}</div></div>
+      <div class="zl-meta">Plusvalía ${h}a +${(z.g*100).toFixed(0)}% [${(z.lo*100).toFixed(0)}–${(z.hi*100).toFixed(0)}%] · Renta ${(+z.d.yield||0).toFixed(1)}%/a · Riesgo ${z.vol.toFixed(1)}% · ${fmt(pmr||z.pm2)}/m²${pmr?' <b style="color:#57c389">real</b>':''}${nInv?` · <b style="color:#cdf25a">${nInv} inmuebles</b>`:''}${aff}</div></div>
       <div class="zl-price" style="color:#cdf25a">${z.score}</div></div>`;}).join(""):`<div class="hint">Sin zonas que cumplan esos criterios. Prueba aflojar el filtro (p. ej. menor plusvalía mínima u otra ciudad).</div>`;
   document.getElementById('panel-cap').textContent='💡 Asesor de inversión';
   document.getElementById('panel-content').innerHTML=`
@@ -873,7 +951,7 @@ function renderAsesor(){
     <div class="asesor-f"><div class="af-l">Presupuesto (MXN, opcional)</div>
       <input type="text" inputmode="numeric" value="${presup}" placeholder="ej. 3,000,000" onchange="setPresup(this.value)"
        style="width:100%;padding:7px 9px;border-radius:8px;border:0.5px solid rgba(245,237,227,.15);background:#0e0a07;color:#f5ede3;font-size:13px"></div>
-    <div class="notice" style="margin:12px 0">Ranking <b>informativo</b>, no asesoría de inversión. Plusvalía y riesgo: datos reales de la SHF (validados a 1–3 años). Renta y liquidez: <b>estimadas</b> hasta conectar listados. El puntaje refleja tu perfil.</div>
+    <div class="notice" style="margin:12px 0">Ranking <b>informativo</b>, no asesoría de inversión. Plusvalía y riesgo: datos reales de la SHF (validados a 1–3 años). Rendimiento de renta: <b>medido con el inventario real de Century 21</b> (rentas vs ventas, jul 2026). Liquidez: estimada. El puntaje refleja tu perfil.</div>
     <div class="ptitle" style="margin-top:6px">Ranking de zonas (${zs.length})</div>
     <div class="zone-list">${rows}</div>`;
 }
@@ -1213,12 +1291,13 @@ function renderPortafolio(){
   bbPortfolio.forEach((x,i)=>{ const d=CITIES[x.n]; if(!d)return; const w=ws[i];
     const vf=_vf3z(x.n,d), vol=(d._vol!=null?d._vol:4.0), sc=bbScore(x.n,d).total;
     vfSum+=w*vf; volSum+=w*vol; scSum+=w*sc; ciclos[d.ciclo]=(ciclos[d.ciclo]||0)+1;
-    rows.push({n:x.n,w,vf,sc}); });
+    rows.push({n:x.n,w,vf,sc,c21:(d._c21!=null?d._c21:null),yld:(d.yield!=null?d.yield:null)}); });
   const scCol=scoreCol(Math.round(scSum));
   const filas=rows.map(r=>{const nm=escapeHtml(r.n).replace(/'/g,"\\'");
+    const real=r.c21?` · ${fmt(r.c21)}/m² <b style="color:#57c389">real</b>`:'';
     return `<div class="zl-item" style="cursor:default">
       <div style="flex:1"><div class="zl-name">${escapeHtml(r.n)} <span style="color:${scoreCol(r.sc)};font-weight:700">${Math.round(r.sc)}</span></div>
-      <div class="zl-meta">VF 3a +${Math.round(r.vf)}% · <input type="number" min="0" step="1" value="${Math.round(r.w*100)}" onchange="setPortWeight('${nm}',this.value)" style="width:50px;padding:3px 5px;border-radius:6px;border:0.5px solid rgba(245,237,227,.18);background:#0e0a07;color:#f5ede3;font-size:11px">% peso</div></div>
+      <div class="zl-meta">VF 3a +${Math.round(r.vf)}%${r.yld!=null?` · renta ${(+r.yld).toFixed(1)}%`:''}${real} · <input type="number" min="0" step="1" value="${Math.round(r.w*100)}" onchange="setPortWeight('${nm}',this.value)" style="width:50px;padding:3px 5px;border-radius:6px;border:0.5px solid rgba(245,237,227,.18);background:#0e0a07;color:#f5ede3;font-size:11px">% peso</div></div>
       <button onclick="removeFromPortfolio('${nm}')" style="background:none;border:none;color:#8FA3A0;cursor:pointer;font-size:15px" title="Quitar">✕</button></div>`;}).join('');
   const nCiclos=Object.keys(ciclos).length;
   const kpi=(v,l,c)=>`<div style="flex:1;text-align:center;background:#0e1116;border:1px solid rgba(245,237,227,.12);border-radius:12px;padding:10px 6px"><div style="font-family:'Fraunces',serif;font-weight:600;font-size:23px;color:${c}">${v}</div><div style="font-size:10px;color:#8FA3A0">${l}</div></div>`;
@@ -1301,10 +1380,11 @@ function selProp(p){
   p.cat==="res"?renderRes(p):renderCom(p);
 }
 function renderRes(p){
-  const rent=Math.round(p.price*p.yield/100/12);
-  const cap=+(p.yield-0.5).toFixed(1);
-  const pr=(p.price/(rent*12)).toFixed(0);
-  const f=fcCalc(p.pm2,p.g),roi5=(((f[5]/p.pm2)-1)*100+p.yield*5).toFixed(0);
+  const hasY=(p.yield!=null), hasG=(p.g!=null);
+  const rent=hasY?Math.round(p.price*p.yield/100/12):null;
+  const cap=hasY?+(p.yield-0.5).toFixed(1):null;
+  const pr=(hasY&&rent)?(p.price/(rent*12)).toFixed(0):null;
+  const roi5=(hasG&&hasY)?((((fcCalc(p.pm2,p.g))[5]/p.pm2)-1)*100+p.yield*5).toFixed(0):null;
   document.getElementById("panel-content").innerHTML=`
     <div class="sel-name">${p.ic} ${p.t}</div><div class="sel-tipo">${p.zona} · ${p.m2} m² · residencial</div>
     <div class="sel-price">${fmtM(p.price)}</div>
@@ -1313,26 +1393,27 @@ function renderRes(p){
     <span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>
     ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de la zona · est.</span></div>`:''}
     ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver ficha original</a>`:''}</div>`:''}
-    <div class="rent-box"><div class="rent-l">Renta mensual estimada</div><div class="rent-v">${fmt(rent)}</div><div class="rent-s">${fmt(Math.round(rent/p.m2))}/m² · yield ${p.yield}%</div></div>
-    <div class="ptitle" style="margin-top:16px">📈 Pronóstico precio/m² (IC 90%)</div>
-    <div class="fc-grid">${fcCells(p.pm2,p.g,p.zona)}</div>
-    <div class="ptitle" style="margin-top:16px">🔄 Ciclo económico</div>
-    <div class="cyc-wrap">${cycleChart(p.ciclo)}</div>
+    ${rent!=null?`<div class="rent-box"><div class="rent-l">Renta mensual estimada</div><div class="rent-v">${fmt(rent)}</div><div class="rent-s">${fmt(Math.round(rent/p.m2))}/m² · yield ${p.yield}%</div></div>`:''}
+    ${hasG?`<div class="ptitle" style="margin-top:16px">📈 Pronóstico precio/m² (IC 90%)</div>
+    <div class="fc-grid">${fcCells(p.pm2,p.g,p.zona)}</div>`:''}
+    ${p.ciclo?`<div class="ptitle" style="margin-top:16px">🔄 Ciclo económico</div>
+    <div class="cyc-wrap">${cycleChart(p.ciclo)}</div>`:''}
     <div class="ptitle" style="margin-top:16px">💼 Datos para el inversionista</div>
     <div class="ind-grid">
-      <div class="ind-c"><div class="ind-l">Plusvalía anual</div><div class="ind-v ${vc(p.g,8,6)}">+${p.g}%</div></div>
-      <div class="ind-c"><div class="ind-l">Yield bruto</div><div class="ind-v ${vc(p.yield,6,5)}">${p.yield}%</div></div>
-      <div class="ind-c"><div class="ind-l">Cap rate</div><div class="ind-v ${vc(cap,5.5,4.5)}">${cap}%</div></div>
-      <div class="ind-c"><div class="ind-l">Precio / renta</div><div class="ind-v ${vc(pr,14,18,true)}">${pr} años</div></div>
-      <div class="ind-c"><div class="ind-l">Recuperación</div><div class="ind-v">${pr} años</div></div>
-      <div class="ind-c"><div class="ind-l">ROI a 5 años</div><div class="ind-v good">+${roi5}%</div></div>
+      <div class="ind-c"><div class="ind-l">Plusvalía anual</div><div class="ind-v ${hasG?vc(p.g,8,6):''}">${hasG?('+'+p.g+'%'):'—'}</div></div>
+      <div class="ind-c"><div class="ind-l">Yield bruto</div><div class="ind-v ${hasY?vc(p.yield,6,5):''}">${hasY?(p.yield+'%'):'—'}</div></div>
+      <div class="ind-c"><div class="ind-l">Cap rate</div><div class="ind-v ${cap!=null?vc(cap,5.5,4.5):''}">${cap!=null?(cap+'%'):'—'}</div></div>
+      <div class="ind-c"><div class="ind-l">Precio / renta</div><div class="ind-v ${pr!=null?vc(pr,14,18,true):''}">${pr!=null?(pr+' años'):'—'}</div></div>
+      <div class="ind-c"><div class="ind-l">Recuperación</div><div class="ind-v">${pr!=null?(pr+' años'):'—'}</div></div>
+      <div class="ind-c"><div class="ind-l">ROI a 5 años</div><div class="ind-v ${roi5!=null?'good':''}">${roi5!=null?('+'+roi5+'%'):'—'}</div></div>
     </div>
-    <div class="notice">Renta estimada con el yield de la zona. El ROI a 5 años combina plusvalía proyectada y flujo de rentas.</div>`;
+    <div class="notice">${hasY?'Renta estimada con el yield real de la zona (Century 21). ':''}${hasG?'El ROI a 5 años combina plusvalía proyectada y flujo de rentas.':'Los indicadores de plusvalía y pronóstico están disponibles en las 32 ciudades ancla (datos SHF).'}</div>`;
 }
 function renderCom(p){
-  const cap=+(p.yield+0.3).toFixed(1);
-  const noi=Math.round(p.price*cap/100);
-  const f=fcCalc(p.pm2,p.g),roi5=(((f[5]/p.pm2)-1)*100+cap*5).toFixed(0);
+  const hasY=(p.yield!=null), hasG=(p.g!=null);
+  const cap=hasY?+(p.yield+0.3).toFixed(1):null;
+  const noi=cap!=null?Math.round(p.price*cap/100):null;
+  const roi5=(hasG&&cap!=null)?((((fcCalc(p.pm2,p.g))[5]/p.pm2)-1)*100+cap*5).toFixed(0):null;
   const com=(typeof COMERCIO!=='undefined'&&COMERCIO[p.zona])?COMERCIO[p.zona]:null;
   const real=com&&com.total!=null;
   const giros=real?com.giros_recomendados.map(g=>[g.giro,g.motivo]):giroRecom(p,p.zona);
@@ -1346,20 +1427,20 @@ function renderCom(p){
     <span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>
     ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de la zona · est.</span></div>`:''}
     ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver ficha original</a>`:''}</div>`:''}
-    <div class="ptitle" style="margin-top:16px">📈 Pronóstico precio/m² (IC 90%)</div>
-    <div class="fc-grid">${fcCells(p.pm2,p.g,p.zona)}</div>
-    <div class="ptitle" style="margin-top:16px">🔄 Ciclo económico</div>
-    <div class="cyc-wrap">${cycleChart(p.ciclo)}</div>
+    ${hasG?`<div class="ptitle" style="margin-top:16px">📈 Pronóstico precio/m² (IC 90%)</div>
+    <div class="fc-grid">${fcCells(p.pm2,p.g,p.zona)}</div>`:''}
+    ${p.ciclo?`<div class="ptitle" style="margin-top:16px">🔄 Ciclo económico</div>
+    <div class="cyc-wrap">${cycleChart(p.ciclo)}</div>`:''}
     <div class="ptitle" style="margin-top:16px">🏪 Giro recomendado · <span style="text-transform:none;color:#57c389">${giroFuente}</span></div>
     ${giros.map(g=>`<div class="giro-chip"><div><div class="giro-n">${g[0]}</div><div class="giro-w">${g[1]}</div></div></div>`).join("")}
     <div class="ptitle" style="margin-top:16px">💼 Datos para el inversionista</div>
     <div class="ind-grid">
-      <div class="ind-c"><div class="ind-l">Plusvalía anual</div><div class="ind-v ${vc(p.g,8,6)}">+${p.g}%</div></div>
-      <div class="ind-c"><div class="ind-l">Cap rate</div><div class="ind-v ${vc(cap,6,5)}">${cap}%</div></div>
-      <div class="ind-c"><div class="ind-l">NOI anual est.</div><div class="ind-v good">${fmtM(noi)}</div></div>
-      <div class="ind-c"><div class="ind-l">Días en mercado</div><div class="ind-v ${vc(p.dom,45,60,true)}">${p.dom}</div></div>
+      <div class="ind-c"><div class="ind-l">Plusvalía anual</div><div class="ind-v ${hasG?vc(p.g,8,6):''}">${hasG?('+'+p.g+'%'):'—'}</div></div>
+      <div class="ind-c"><div class="ind-l">Cap rate</div><div class="ind-v ${cap!=null?vc(cap,6,5):''}">${cap!=null?(cap+'%'):'—'}</div></div>
+      <div class="ind-c"><div class="ind-l">NOI anual est.</div><div class="ind-v ${noi!=null?'good':''}">${noi!=null?fmtM(noi):'—'}</div></div>
+      <div class="ind-c"><div class="ind-l">Días en mercado</div><div class="ind-v ${p.dom!=null?vc(p.dom,45,60,true):''}">${p.dom!=null?p.dom:'—'}</div></div>
       <div class="ind-c"><div class="ind-l">Afluencia</div><div class="ind-v" style="font-size:11px">${afluencia}</div></div>
-      <div class="ind-c"><div class="ind-l">ROI a 5 años</div><div class="ind-v good">+${roi5}%</div></div>
+      <div class="ind-c"><div class="ind-l">ROI a 5 años</div><div class="ind-v ${roi5!=null?'good':''}">${roi5!=null?('+'+roi5+'%'):'—'}</div></div>
     </div>
     <div class="notice">${real?`Giros y afluencia derivados del DENUE (INEGI) en ${com.radio_m} m a la redonda.`:'El giro recomendado se infiere del perfil de la zona (heurística). Conecta DENUE para datos reales.'} NOI = ingreso operativo neto estimado anual.</div>`;
 }
@@ -1368,10 +1449,11 @@ function list(title,arr,onSel){
   const sec=document.getElementById("list-sec");if(!arr||!arr.length){sec.style.display="none";return}
   sec.style.display="block";document.getElementById("list-title").textContent=title;
   const el=document.getElementById("zone-list");el.innerHTML="";
-  arr.slice().sort((a,b)=>b.price-a.price).forEach(d=>{const div=document.createElement("div");div.className="zl-item";
-    div.innerHTML=`<div><div class="zl-name"><span class="zl-dot" style="background:${OPP[d.opp]}"></span>${d.nom}</div><div class="zl-meta">+${(+d.g).toFixed(1)}% · yield ${(+d.yield).toFixed(1)}%</div></div><div class="zl-price">${fmt(d.price)}</div>`;
+  arr.slice().sort((a,b)=>((b._sort!=null?b._sort:(b.price||0))-(a._sort!=null?a._sort:(a.price||0)))).forEach(d=>{const div=document.createElement("div");div.className="zl-item";
+    const meta=(d._meta!=null)?d._meta:((d.g!=null?('+'+(+d.g).toFixed(1)+'%'):'—')+' · yield '+(d.yield!=null?((+d.yield).toFixed(1)+'%'):'—'));
+    div.innerHTML=`<div><div class="zl-name"><span class="zl-dot" style="background:${OPP[d.opp]||'#9a8f83'}"></span>${d.nom}</div><div class="zl-meta">${meta}</div></div><div class="zl-price">${d.price?fmt(d.price):''}</div>`;
     div.onclick=()=>onSel(d);el.appendChild(div)})}
-function hint(){document.getElementById("panel-cap").textContent="Zona seleccionada";document.getElementById("panel-content").innerHTML=`<div class="hint">👆 Haz clic en cualquier marcador del mapa para ver su análisis. Cubrimos los 32 estados. Activa <b style="color:#57c389">Inmuebles</b> para ver propiedades en venta.</div>`;document.getElementById("list-sec").style.display="none"}
+function hint(){document.getElementById("panel-cap").textContent="Zona seleccionada";document.getElementById("panel-content").innerHTML=`<div class="hint">👆 Haz clic en cualquier ciudad para ver su análisis: plusvalía real (SHF), pronóstico y ciclo. Vuelve a <b style="color:#57c389">🏢 Inmuebles</b> para el inventario real de Century 21.</div>`;document.getElementById("list-sec").style.display="none"}
 function crumbs(items){let h=`<span class="bc-item" onclick="goLevel(0)">México</span>`;
   items.forEach((it,i)=>{h+=`<span class="bc-sep">›</span>`;h+=i<items.length-1?`<span class="bc-item" onclick="goLevel(${it.lv})">${it.l}</span>`:`<span style="color:#EAF2EE">${it.l}</span>`});
   document.getElementById("breadcrumb").innerHTML=h}
@@ -1379,7 +1461,7 @@ function setLvl(l){level=l;document.getElementById("zlvl-0").disabled=false;
   document.getElementById("zlvl-1").disabled=!curCity;document.getElementById("zlvl-2").disabled=!curMun;document.getElementById("zlvl-3").disabled=(l<3);
   [0,1,2,3].forEach(i=>document.getElementById("zlvl-"+i).classList.toggle("active",i===l));renderLegend&&renderLegend()}
 function goLevel(l){
-  if(l===0){map.flyTo([23.6,-102],5,{duration:1.0});curCity=null;curMun=null;showCities();return}
+  if(l===0){map.flyTo([23.6,-102],5,{duration:1.0});curCity=null;curMun=null;if(propMode){showPropsNational();}else{showCities();}return}
   if(l===1&&curCity){selCity(curCity,CITIES[curCity]);return}
   if(l===2&&curMun){selMun(curMun);return}
 }
@@ -1605,7 +1687,7 @@ function genPDF(){
 function loadEstados(){
   return fetch('data/estados.json',{cache:'no-store'})
     .then(r=>{if(!r.ok)throw 0;return r.json();})
-    .then(j=>{const m={};(j.estados||[]).forEach(e=>{m[e.nombre]={lat:e.lat,lng:e.lng,z:e.zoom,opp:e.oportunidad,price:e.precio_m2,g:e.plusvalia,yield:e["yield"],dom:e.dom,ciclo:e.ciclo,_src:(e.fuentes&&e.fuentes.plusvalia)||"estimado",_valm:e.valor_mediano_vivienda_shf||null,_supm:e.superficie_media_m2||null,_vol:(e.volatilidad_anual!=null?e.volatilidad_anual:null)};});
+    .then(j=>{const m={};(j.estados||[]).forEach(e=>{m[e.nombre]={lat:e.lat,lng:e.lng,z:e.zoom,opp:e.oportunidad,price:e.precio_m2,g:e.plusvalia,yield:e["yield"],dom:e.dom,ciclo:e.ciclo,_src:(e.fuentes&&e.fuentes.plusvalia)||"estimado",_valm:e.valor_mediano_vivienda_shf||null,_supm:e.superficie_media_m2||null,_vol:(e.volatilidad_anual!=null?e.volatilidad_anual:null),_c21:(e.precio_m2_c21!=null?e.precio_m2_c21:null)};});
       if(Object.keys(m).length){CITIES=m;DATA_META=j.meta||null;}return true;})
     .catch(()=>{Object.values(CITIES).forEach(c=>{c._src="estimado (offline)";});return false;});
 }
@@ -1633,7 +1715,7 @@ function loadInmuebles(){
 /* Inmuebles REALES por zona (Century 21 vía Worker). Se cachean por zona.
    Convierte USD→MXN, calcula el veredicto de precio vs la mediana de la zona. */
 const REAL_LIST={};
-function slugZona(n){return String(n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,'-');}
+function slugZona(n){return String(n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
 async function loadZoneListings(zone){
   if(REAL_LIST[zone]) return REAL_LIST[zone];
   try{
@@ -1697,16 +1779,21 @@ function updateNotice(){
 function bbDeepLink(){
   try{
     const p=new URLSearchParams(location.search);
-    const qz=p.get('zona'); if(!qz) return;
+    const qz=p.get('zona'); if(!qz) return false;
     const want=slugZona(qz);
     const name=Object.keys(CITIES).find(n=>slugZona(n)===want)
       || Object.keys(CITIES).find(n=>slugZona(n).includes(want)||want.includes(slugZona(n)));
-    if(!name) return;
+    if(!name) return false;
+    if((p.get('modo')||'')==='inmuebles'){ propMode=true; }
     selCity(name, CITIES[name]);
-    if((p.get('modo')||'')==='inmuebles'){ pickMode('prop'); }
-  }catch(e){}
+    pickMode(propMode?'prop':'zonas');
+    return true;
+  }catch(e){ return false; }
 }
-(async()=>{ await Promise.all([loadEstados(),loadMunicipios(),loadComercio(),loadInmuebles(),loadMercado(),loadForecast(),loadSHF()]); applyMercado(); updateNotice(); showCities(); applyMetric(); buildSearch(); maybeOnb(); bbDeepLink(); })();
+(async()=>{ await Promise.all([loadEstados(),loadMunicipios(),loadComercio(),loadInmuebles(),loadMercado(),loadForecast(),loadSHF()]); applyMercado(); updateNotice(); applyMetric(); buildSearch(); maybeOnb();
+  // El mapa abre en el inventario REAL (modo Inmuebles); un deep link ?zona= lo sobreescribe.
+  if(!bbDeepLink()) pickMode('prop');
+})();
 </script>
 <div id="cmp-ov" class="cmp-ov">
   <div class="cmp-modal" role="dialog" aria-modal="true">

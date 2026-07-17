@@ -416,6 +416,18 @@
   .hero-vex-right{display:flex;align-items:end;justify-content:flex-start}
   @media(min-width:1024px){.hero-vex-right{justify-content:flex-end}}
   .vex-tag{font-family:'Inter',sans-serif;font-weight:300;color:#fff;font-size:clamp(1.125rem,2vw,1.5rem);padding:.75rem 1.5rem;border-radius:.9rem;border:1px solid rgba(255,255,255,.2)}
+  /* Buscador con IA integrado al hero (mismo lenguaje liquid-glass) */
+  .vex-search{display:flex;align-items:center;gap:10px;margin-top:1.1rem;max-width:560px;border-radius:.9rem;padding:6px 6px 6px 16px;border:1px solid rgba(255,255,255,.2);transition:border-color .25s,background .25s}
+  .vex-search svg{width:19px;height:19px;flex:none;color:rgba(255,255,255,.8)}
+  .vex-search input{flex:1;background:none;border:none;outline:none;color:#fff;font-family:'Inter',sans-serif;font-size:.98rem;padding:10px 0;min-width:0}
+  .vex-search input::placeholder{color:rgba(255,255,255,.5)}
+  .vex-search:focus-within{border-color:rgba(255,255,255,.55);background:rgba(0,0,0,.55)}
+  .vex-search button{font-family:'Inter',sans-serif;background:#fff;color:#000;border:none;font-weight:600;font-size:.9rem;padding:10px 20px;border-radius:.6rem;cursor:pointer;white-space:nowrap;transition:background .25s}
+  .vex-search button:hover{background:#e9e9e9}
+  .vex-search button:disabled{opacity:.5}
+  .vex-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:.8rem;max-width:560px}
+  .vex-chip{font-family:'Inter',sans-serif;background:rgba(0,0,0,.35);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);border-radius:999px;padding:6px 12px;font-size:.78rem;cursor:pointer;transition:all .25s}
+  .vex-chip:hover{color:#fff;border-color:rgba(255,255,255,.5)}
   .fade-up{opacity:0;transform:translateY(10px);transition:opacity 1s ease,transform 1s ease}
   .fade-up.in{opacity:1;transform:translateY(0)}
   .explorer-section{padding:clamp(3rem,8vh,6rem) 0}
@@ -625,6 +637,12 @@
           <a href="mapa.html" data-mapa class="vex-btn vex-btn-white">Explorar el mapa</a>
           <a href="#suite" class="vex-btn liquid-glass">Ver herramientas paso a paso</a>
         </div>
+        <div class="vex-search liquid-glass fade-up" data-delay="1300">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="bsc-q" placeholder="Busca con IA: “depa para 4 en Monterrey, menos de 6 mdp”" autocomplete="off">
+          <button id="bsc-go">Buscar</button>
+        </div>
+        <div class="vex-chips fade-up" data-delay="1450" id="bsc-chips"></div>
       </div>
       <div class="hero-vex-right">
         <div class="vex-tag liquid-glass fade-up" data-delay="1400">Predicción · 3D · IA · Inversión.</div>
@@ -639,15 +657,6 @@
   .bsc-head{text-align:center;max-width:640px;margin:0 auto 22px}
   .bsc-head h2{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(24px,3.4vw,34px);color:var(--cream);margin:0 0 8px;letter-spacing:-.01em}
   .bsc-head p{color:var(--muted-txt);margin:0}
-  .bsc-bar{display:flex;gap:8px;max-width:720px;margin:0 auto;background:var(--surface);border:1px solid var(--line-strong);border-radius:16px;padding:8px 8px 8px 18px;align-items:center;box-shadow:0 16px 50px rgba(0,0,0,.4)}
-  .bsc-bar:focus-within{border-color:var(--lime)}
-  .bsc-bar svg{width:20px;height:20px;flex:none;color:var(--lime)}
-  .bsc-bar input{flex:1;background:none;border:none;color:var(--cream);font-size:1.02rem;outline:none;padding:12px 0;font-family:inherit}
-  .bsc-bar button{background:linear-gradient(120deg,var(--lime),var(--lime-deep));color:#0e0a07;border:none;font-weight:700;font-size:.95rem;padding:12px 22px;border-radius:11px;cursor:pointer;white-space:nowrap}
-  .bsc-bar button:disabled{opacity:.5}
-  .bsc-chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px auto 0;justify-content:center;max-width:720px}
-  .bsc-chip{background:rgba(245,237,227,.05);border:1px solid var(--line);color:var(--muted-txt);border-radius:999px;padding:7px 13px;font-size:.82rem;cursor:pointer}
-  .bsc-chip:hover{color:var(--cream);border-color:var(--lime-deep)}
   .bsc-interp{background:rgba(87,195,137,.08);border:1px solid rgba(87,195,137,.25);border-radius:12px;padding:12px 16px;margin:22px auto 0;max-width:720px;font-size:.95rem;color:var(--cream)}
   .bsc-interp b{color:var(--clay-soft)}
   .bsc-meta{color:var(--muted-txt);font-size:.85rem;margin:12px auto;max-width:1100px}
@@ -666,19 +675,13 @@
   .bsc-amber{font-size:.72rem;color:var(--muted);text-align:center;margin-top:20px}
   .bsc-amber b{color:#F5C277}
 </style>
-<section id="buscador">
+<section id="buscador" style="display:none">
   <div class="wrap">
-    <div class="bsc-head reveal">
-      <span class="kicker">Nuevo · Búsqueda con IA</span>
-      <h2>Dinos qué buscas. En tus palabras.</h2>
-      <p>La IA entiende tu búsqueda y BrickBit te dice cuáles convienen — con precio justo y rendimiento de la zona.</p>
+    <div class="bsc-head">
+      <span class="kicker">Búsqueda con IA · inventario real</span>
+      <h2>Resultados de tu búsqueda</h2>
+      <p>Inmuebles reales de Century 21, con veredicto de precio justo y rendimiento de la zona.</p>
     </div>
-    <div class="bsc-bar reveal">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-      <input id="bsc-q" placeholder="Ej: departamento para 4 personas en Monterrey menos de 6 millones" autocomplete="off">
-      <button id="bsc-go">Buscar</button>
-    </div>
-    <div class="bsc-chips" id="bsc-chips"></div>
     <div id="bsc-out"></div>
   </div>
 </section>
@@ -1308,14 +1311,17 @@ document.addEventListener('click',()=>{document.querySelectorAll('.dd.open').for
 (function(){
   var BB='https://brickbit-api.jose-delgado-enp.workers.dev';
   var $=function(id){return document.getElementById(id);};
-  var q=$('bsc-q'),go=$('bsc-go'),out=$('bsc-out'),chips=$('bsc-chips');
+  var q=$('bsc-q'),go=$('bsc-go'),out=$('bsc-out'),chips=$('bsc-chips'),sec=$('buscador');
   if(!q) return;
   var fmt=function(n){return '$'+Math.round(n).toLocaleString('es-MX');};
-  var ej=['departamento para 4 personas en Monterrey menos de 6 millones',
-    'casa que me dé rendimiento anual mayor a 8%','terreno en Querétaro para invertir',
-    'casa en renta en Guadalajara de 3 recámaras','lo más barato por m² en Cancún'];
-  chips.innerHTML=ej.map(function(e){return '<span class="bsc-chip">'+e+'</span>';}).join('');
-  chips.onclick=function(e){ if(e.target.classList.contains('bsc-chip')){ q.value=e.target.textContent; buscar(); } };
+  var ej=[
+    {t:'🏙 Depa para 4 en Monterrey',q:'departamento para 4 personas en Monterrey menos de 6 millones'},
+    {t:'📈 Rendimiento >8% anual',q:'casa que me dé rendimiento anual mayor a 8%'},
+    {t:'🌊 Casa en Playa del Carmen',q:'casa en venta en Playa del Carmen'},
+    {t:'🌵 Terreno en Querétaro',q:'terreno en Querétaro para invertir'},
+    {t:'🏖 Lo más barato por m² en Cancún',q:'lo más barato por m² en Cancún'}];
+  chips.innerHTML=ej.map(function(e){return '<span class="vex-chip" data-q="'+e.q.replace(/"/g,'&quot;')+'">'+e.t+'</span>';}).join('');
+  chips.onclick=function(e){ if(e.target.classList.contains('vex-chip')){ q.value=e.target.getAttribute('data-q'); buscar(); } };
   go.onclick=buscar; q.addEventListener('keydown',function(e){ if(e.key==='Enter') buscar(); });
   function badge(v){ return v==='oportunidad'?'<span class="bsc-badge bb-op">OPORTUNIDAD</span>':v==='sobreprecio'?'<span class="bsc-badge bb-so">SOBREPRECIO</span>':v==='justo'?'<span class="bsc-badge bb-ju">PRECIO JUSTO</span>':''; }
   function card(x){
@@ -1331,6 +1337,7 @@ document.addEventListener('click',()=>{document.querySelectorAll('.dd.open').for
   }
   function buscar(){
     var s=q.value.trim(); if(!s) return;
+    if(sec){ sec.style.display='block'; sec.scrollIntoView({behavior:'smooth',block:'start'}); }
     out.innerHTML='<div class="bsc-empty">Pensando…</div>'; go.disabled=true;
     fetch(BB+'/api/buscar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({q:s})})
     .then(function(r){return r.json().then(function(j){return {ok:r.ok,st:r.status,j:j};});})

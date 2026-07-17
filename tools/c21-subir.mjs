@@ -85,7 +85,8 @@ for (const g of Object.values(grupos)) {
     ? Math.round((rPm * 12 / vPm) * 1000) / 10 : null;   // yield bruto anual = renta_mensual·12 / venta
   const lat = g.lats.length ? +(g.lats.reduce((a, b) => a + b, 0) / g.lats.length).toFixed(4) : null;
   const lng = g.lngs.length ? +(g.lngs.reduce((a, b) => a + b, 0) / g.lngs.length).toFixed(4) : null;
-  registro.push({ slug: g.slug, nombre: g.nombre, yield: yld, n: g.items.length, lat, lng, municipio: true });
+  // pm2 = mediana real de $/m² de venta (MXN); la usa el mapa de "Mercado real".
+  registro.push({ slug: g.slug, nombre: g.nombre, yield: yld, n: g.items.length, lat, lng, pm2: vPm ? Math.round(vPm) : null, municipio: true });
 }
 registro.sort((a, b) => b.n - a.n);
 

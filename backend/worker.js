@@ -911,12 +911,15 @@ async function handleListadosIngest(request, env) {
   if (request.headers.get('x-ingest-key') !== env.INGEST_SECRET) return json({ error: 'clave inválida' }, 403, headers);
   let body; try { body = await request.json(); } catch { body = null; }
   if (!body || !body.slug || !Array.isArray(body.items)) return json({ error: 'Se espera { slug, items[] }' }, 400, headers);
-  await env.SHARES.put('listados:' + slugZona(body.slug), JSON.stringify(body.items));
+  // Los slugs que empiezan con "_" son reservados (p. ej. _zonas, el registro de
+  // municipios) y se guardan literales: slugZona() les quitaría el guion bajo.
+  const key = String(body.slug).startsWith('_') ? String(body.slug) : slugZona(body.slug);
+  await env.SHARES.put('listados:' + key, JSON.stringify(body.items));
   // índice
   let idx = {}; try { idx = JSON.parse(await env.SHARES.get('listados:_index') || '{}'); } catch {}
-  idx[slugZona(body.slug)] = body.items.length; idx._actualizado = new Date().toISOString();
+  idx[key] = body.items.length; idx._actualizado = new Date().toISOString();
   await env.SHARES.put('listados:_index', JSON.stringify(idx));
-  return json({ ok: true, slug: slugZona(body.slug), n: body.items.length }, 200, headers);
+  return json({ ok: true, slug: key, n: body.items.length }, 200, headers);
 }
 async function handleListadosGet(request, url, env) {
   const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json', 'cache-control': 'public, max-age=300' };
@@ -924,7 +927,8 @@ async function handleListadosGet(request, url, env) {
   if (!env.SHARES) return json({ error: 'sin KV' }, 501, headers);
   const zona = url.searchParams.get('zona');
   if (!zona) { const idx = await env.SHARES.get('listados:_index'); return new Response(idx || '{}', { headers }); }
-  const v = await env.SHARES.get('listados:' + slugZona(zona));
+  const key = zona.startsWith('_') ? zona : slugZona(zona);
+  const v = await env.SHARES.get('listados:' + key);
   return new Response(v || '[]', { headers });
 }
 
