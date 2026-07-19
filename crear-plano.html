@@ -603,7 +603,11 @@ function vizApply() {
   const world = scene.getObjectByName('world');
   if (_viz.cut === 'none' || !world) { renderer.clippingPlanes = []; }
   else {
-    const box = new THREE.Box3().setFromObject(world);
+    // Caja SOLO del edificio (excluye piso y grid, marcados env) para que el
+    // slider de "Sección" recorra el edificio y no metros de suelo vacío.
+    const box = new THREE.Box3();
+    world.traverse(o => { if (o.isMesh && !o.userData.env) box.expandByObject(o); });
+    if (box.isEmpty()) { renderer.clippingPlanes = []; return; }
     if (_viz.cut === 'h') {
       const y = box.min.y + (box.max.y - box.min.y) * _viz.cutT;
       renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, -1, 0), y)];
@@ -649,8 +653,8 @@ function selectVariant(i) {
     el.classList.toggle('sel', Number(el.dataset.i) === i));
   const v = state.variantes[i];
   $('prevTitle').textContent = 'Vista 3D — ' + v.concepto;
-  vizApply();   // re-aplica corte de sección y sol al cambiar de variante
   buildPreview(v.geometria);
+  vizApply();   // corte de sección y sol DESPUÉS de construir el nuevo modelo
 }
 
 function buildPreview(g) {
@@ -684,14 +688,16 @@ function buildPreview(g) {
       const len = Math.hypot(dx, dy);
       if (len < 0.05) continue;
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, h - slabT, wallT), w.carga ? matWallC : matWallP);
-      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, (w.y1 + w.y2) / 2 - cy);
-      mesh.rotation.y = -Math.atan2(dy, dx);
+      // Z NEGADO para alinear con la losa (rotateX(-π/2) mapea y→ -y); antes los
+      // muros quedaban espejeados respecto al piso e invertían el estudio solar.
+      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, cy - (w.y1 + w.y2) / 2);
+      mesh.rotation.y = Math.atan2(dy, dx);
       mesh.castShadow = mesh.receiveShadow = true;
       world.add(mesh);
     }
     for (const c of (g.columnas || [])) {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, h, 0.3), matCol);
-      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
+      mesh.position.set(c.x - cx, lvl * h + h / 2, cy - c.y);
       mesh.castShadow = true;
       world.add(mesh);
     }
@@ -702,9 +708,11 @@ function buildPreview(g) {
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.01;
   ground.receiveShadow = true;
+  ground.userData.env = true;              // entorno: excluido del corte de sección
   world.add(ground);
   const grid = new THREE.GridHelper(groundSize, 32, 0x2c3a30, 0x22291f);
   grid.position.y = 0.001;
+  grid.userData.env = true;
   world.add(grid);
   scene.add(world);
   const totalH = g.niveles * h;

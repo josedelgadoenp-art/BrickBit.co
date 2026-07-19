@@ -419,14 +419,14 @@ function makeBuilding(g, edgeColorHex) {
       const len = Math.hypot(dx, dy);
       if (len < 0.05) continue;
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, h - slabT, wallT), w.carga ? matWallC : matWallP);
-      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, (w.y1 + w.y2) / 2 - cy);
-      mesh.rotation.y = -Math.atan2(dy, dx);
+      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, cy - (w.y1 + w.y2) / 2);
+      mesh.rotation.y = Math.atan2(dy, dx);
       mesh.castShadow = mesh.receiveShadow = true;
       group.add(mesh);
     }
     for (const c of g.columnas) {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, h, 0.3), matCol);
-      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
+      mesh.position.set(c.x - cx, lvl * h + h / 2, cy - c.y);
       mesh.castShadow = true;
       group.add(mesh);
     }

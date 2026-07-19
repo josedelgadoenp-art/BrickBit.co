@@ -1354,9 +1354,9 @@ function buildScene(g) {
       mesh.position.set(
         (w.x1 + w.x2) / 2 - cx,
         lvl * h + slabT + (h - slabT) / 2,
-        (w.y1 + w.y2) / 2 - cy
+        cy - (w.y1 + w.y2) / 2                       // Z negado: alinea con la losa (rotateX(-π/2))
       );
-      mesh.rotation.y = -Math.atan2(dy, dx);
+      mesh.rotation.y = Math.atan2(dy, dx);
       mesh.castShadow = mesh.receiveShadow = true;
       mesh.userData.wall = true;                    // objetivo de la textura de fachada
       mesh.userData.wlen = len; mesh.userData.wh = h - slabT;
@@ -1367,7 +1367,7 @@ function buildScene(g) {
     for (const c of g.columnas) {
       const geo = new THREE.BoxGeometry(0.3, h, 0.3);
       const mesh = new THREE.Mesh(geo, matCol);
-      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
+      mesh.position.set(c.x - cx, lvl * h + h / 2, cy - c.y);
       mesh.castShadow = true;
       group.add(mesh);
     }
@@ -1634,14 +1634,14 @@ function makeSimBuilding(g) {
       const len = Math.hypot(dx, dy);
       if (len < 0.05) continue;
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, h - slabT, wallT), w.carga ? matWallC : matWallP);
-      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, (w.y1 + w.y2) / 2 - cy);
-      mesh.rotation.y = -Math.atan2(dy, dx);
+      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, cy - (w.y1 + w.y2) / 2);
+      mesh.rotation.y = Math.atan2(dy, dx);
       mesh.castShadow = mesh.receiveShadow = true;
       group.add(mesh);
     }
     for (const c of g.columnas) {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, h, 0.3), matCol);
-      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
+      mesh.position.set(c.x - cx, lvl * h + h / 2, cy - c.y);
       mesh.castShadow = true;
       group.add(mesh);
     }
@@ -2128,7 +2128,7 @@ function buildFurniture(g) {
     const tipo = roomKit(e.nombre); if (!tipo) continue;
     const kit = buildKit(tipo);
     if (e.areaM2 && e.areaM2 < 8) kit.scale.setScalar(0.85);
-    kit.position.set((+e.x || 0) - cx, 0.152, (+e.y || 0) - cy); // sobre la losa de PB
+    kit.position.set((+e.x || 0) - cx, 0.152, cy - (+e.y || 0)); // sobre la losa de PB (Z negado como muros/losa)
     grp.add(kit);
   }
   return grp;
