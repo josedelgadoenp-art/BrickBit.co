@@ -56,6 +56,7 @@ summary::-webkit-details-marker{display:none}
 .appr .big{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--grn)}
 .tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle}
 .tag.ok{background:rgba(205,242,90,.15);color:var(--lim)} .tag.ex{background:rgba(224,161,58,.16);color:var(--amb)}
+.amber{color:var(--amb)}  /* marca inline de dato estimado (honestidad de datos) */
 .note{font-size:11.5px;color:var(--mut);background:var(--p2);border:1px solid var(--bd);border-left:2px solid var(--amb);border-radius:8px;padding:10px 12px;margin-top:14px}
 .prov{font-size:11px;color:var(--mut);margin-top:9px;line-height:1.6}
 .prov b{color:var(--tx)} .pos{color:var(--pos)} .neg{color:var(--neg)} .lim{color:var(--lim)}
@@ -827,7 +828,10 @@ let _estBusy=false;
 /* Inventario real por zona (Century 21 vía Worker), para comparables */
 const _ZL={};
 function _slugZ(n){return String(n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,'-');}
-function _havA(a,b,c,d){const R=6371,p=Math.PI/180;const x=(c-a)*p,y=(d-b)*p;const h=Math.sin(x/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+// haversine en KM (4 escalares). Nombre propio para NO colisionar con _havA
+// (metros, 2 objetos) que usan scanNear/buscarLugar — la colisión rompía en
+// silencio el buscador, el BrickBit Estimate y los Desiertos de oportunidad.
+function _havKm(a,b,c,d){const R=6371,p=Math.PI/180;const x=(c-a)*p,y=(d-b)*p;const h=Math.sin(x/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
 async function loadZoneListingsA(zone){
   if(_ZL[zone])return _ZL[zone];
   try{
@@ -868,8 +872,8 @@ async function brickbitEstimate(){
     let compsHTML='';
     try{
       const zl=await loadZoneListingsA(z.n);
-      const comps=zl.filter(c=>c.pm2>3000&&c.pm2<200000&&_havA(center.lat,center.lng,c.lat,c.lng)<=6&&c.m2>=m2*0.5&&c.m2<=m2*2.2)
-        .map(c=>({...c,d:_havA(center.lat,center.lng,c.lat,c.lng)})).sort((a,b)=>a.d-b.d);
+      const comps=zl.filter(c=>c.pm2>3000&&c.pm2<200000&&_havKm(center.lat,center.lng,c.lat,c.lng)<=6&&c.m2>=m2*0.5&&c.m2<=m2*2.2)
+        .map(c=>({...c,d:_havKm(center.lat,center.lng,c.lat,c.lng)})).sort((a,b)=>a.d-b.d);
       if(comps.length>=3){
         const pm=comps.map(c=>c.pm2).sort((a,b)=>a-b), medC=pm[Math.floor(pm.length/2)];
         const valC=Math.round(m2*medC), diff=Math.round((ppm2/medC-1)*100);

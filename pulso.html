@@ -163,8 +163,26 @@ function heightTiempo(z){
   const v=idxAt(z,year); return v==null?1:Math.max(1,v)*2600; /* índice ~45-260 → 0.1-0.7M m */
 }
 
+// Sincroniza yield/plusvalía/precio/oportunidad/ciclo con la fuente canónica
+// (data/estados.json, recalibrada con datos reales de C21) para no mostrar cifras
+// desincronizadas. La serie histórica y el pronóstico se quedan del DATA embebido
+// (no viven en estados.json). Idempotente y silencioso si falla.
+async function syncCanon(){
+  try{
+    const j=await fetch('data/estados.json',{cache:'no-store'}).then(r=>r.json());
+    const canon={}; (j.estados||j).forEach(e=>canon[e.nombre]=e);
+    DATA.forEach(d=>{ const c=canon[d.n]; if(!c) return;
+      if(c['yield']!=null) d.y=c['yield'];
+      if(c.plusvalia!=null) d.pl=c.plusvalia;
+      if(c.precio_m2!=null) d.p=c.precio_m2;
+      if(c.oportunidad) d.op=c.oportunidad;
+      if(c.ciclo) d.ci=c.ciclo;
+    });
+  }catch(e){/* offline: se usa el snapshot embebido */}
+}
 async function init(){
   try{
+    await syncCanon();   // cifras canónicas ANTES de dibujar torres y fichas
     if(!GMAPS_KEY || GMAPS_KEY.length<20) throw new Error('key');
     await new Promise((res,rej)=>{
       const s=document.createElement('script');
@@ -237,7 +255,7 @@ function togglePlay(){
 function showCard(z){
   $('c-n').textContent=z.n;
   const f=n=>Math.round(n).toLocaleString('es-MX');
-  let rows='<div class="kv"><span>Precio</span><b>$'+f(z.p)+' /m²</b></div>'+
+  let rows='<div class="kv"><span>Precio <span style="color:#F5C277;font-size:9px">est.</span></span><b>$'+f(z.p)+' /m²</b></div>'+
     '<div class="kv"><span>Plusvalía</span><b>'+z.pl+'%/año</b></div>'+
     '<div class="kv"><span>Yield renta</span><b>'+z.y+'%</b></div>'+
     (z.ci?'<div class="kv"><span>Ciclo</span><b>'+z.ci+'</b></div>':'')+
@@ -255,7 +273,7 @@ function renderLegend(){
   let h;
   if(mode==='tiempo') h='Altura = Índice SHF (mismo eje para todas) · <i style="background:#F5C277"></i>2027+ es proyección';
   else if(metric==='pl') h='Altura = plusvalía anual · color: <i style="background:#2DD49B"></i>≥8% <i style="background:#cdf25a"></i>≥5% <i style="background:#F5C277"></i>≥3% <i style="background:#F08886"></i>&lt;3%';
-  else if(metric==='p') h='Altura = precio $/m² (SHF) · color por plusvalía';
+  else if(metric==='p') h='Altura = precio $/m² <i style="background:#F5C277"></i>est. (derivado del valor SHF ÷ 83 m²) · color por plusvalía';
   else h='Altura = yield bruto de renta · color por plusvalía';
   $('legend').innerHTML=h;
 }
