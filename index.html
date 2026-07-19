@@ -428,6 +428,8 @@
   .vex-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:.8rem;max-width:560px}
   .vex-chip{font-family:'Inter',sans-serif;background:rgba(0,0,0,.35);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);border-radius:999px;padding:6px 12px;font-size:.78rem;cursor:pointer;transition:all .25s}
   .vex-chip:hover{color:#fff;border-color:rgba(255,255,255,.5)}
+  @keyframes vexShake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
+  .vex-shake{animation:vexShake .5s}
   .fade-up{opacity:0;transform:translateY(10px);transition:opacity 1s ease,transform 1s ease}
   .fade-up.in{opacity:1;transform:translateY(0)}
   .explorer-section{padding:clamp(3rem,8vh,6rem) 0}
@@ -697,7 +699,7 @@
         <p class="lead">Precio por m², plusvalía y pronóstico validado por backtest. Elige una ciudad y observa hacia dónde va su valor.</p>
         <div class="hero-meta">
           <div class="stat"><span class="num" data-count="32" data-suffix="">0</span><span class="lbl">Ciudades con datos reales</span></div>
-          <div class="stat"><span class="num" data-count="14" data-suffix="">0</span><span class="lbl">Años de historia SHF</span></div>
+          <div class="stat"><span class="num" data-count="21" data-suffix="">0</span><span class="lbl">Años de historia SHF</span></div>
           <div class="stat"><span class="num" data-count="91" data-suffix="%">0%</span><span class="lbl">Cobertura IC · 1 año</span></div>
         </div>
       </div>
@@ -863,7 +865,7 @@
         </div>
         <div class="metrics">
           <div class="metric"><span class="k">Precio actual · m² (real)</span><span class="v">$17,400 MXN</span></div>
-          <div class="metric"><span class="k">Plusvalía esperada (real)</span><span class="v up">+13.4% anual</span></div>
+          <div class="metric"><span class="k">Plusvalía histórica (real)</span><span class="v up">+13.4% anual</span></div>
           <div class="metric"><span class="k">Valor proyectado · m² · 5 años</span><span class="v">$30,184 MXN</span></div>
           <div class="metric"><span class="k">Apreciación a 5 años</span><span class="v up">+73%</span></div>
           <div class="metric"><span class="k">Riesgo · volatilidad</span><span class="v">4.5% anual</span></div>
@@ -1336,10 +1338,11 @@ document.addEventListener('click',()=>{document.querySelectorAll('.dd.open').for
       '<div class="rw"><span>'+(x.municipio||'')+', '+(x.zona||'')+'</span></div>'+
       '<div class="rw"><span>'+(x.tipo||'')+'</span>'+(x.recamaras?'<span>'+x.recamaras+' rec</span>':'')+(x.m2_construccion?'<span>'+x.m2_construccion+' m²</span>':'')+(x.pm2?'<span>'+fmt(x.pm2)+'/m²</span>':'')+'</div>'+
       (x.zona_yield?'<div class="rw"><span class="yld">Rendimiento zona ~'+x.zona_yield+'%'+vs+'</span></div>':(vs?'<div class="rw"><span class="yld">'+vs.replace(' · ','')+'</span></div>':''))+
-      '<a href="'+(x.url||'#')+'" target="_blank" rel="noopener">Ver ficha en Century 21 →</a></div></div>';
+      (x.url?'<a href="'+x.url+'" target="_blank" rel="noopener">Ver ficha en Century 21 →</a>':'')+'</div></div>';
   }
   function buscar(){
-    var s=q.value.trim(); if(!s) return;
+    var s=q.value.trim();
+    if(!s){ if(q.focus)q.focus(); q.classList.add('vex-shake'); setTimeout(function(){q.classList.remove('vex-shake');},500); return; }
     if(sec){ sec.style.display='block'; sec.scrollIntoView({behavior:'smooth',block:'start'}); }
     out.innerHTML='<div class="bsc-empty">Pensando…</div>'; go.disabled=true;
     fetch(BB+'/api/buscar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({q:s})})

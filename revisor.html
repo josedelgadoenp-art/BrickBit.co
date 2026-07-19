@@ -260,8 +260,17 @@ async function auditar(){
   $('btnAuditar').disabled=true; $('statusAud').style.display='flex';
   try{
     const backend=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').replace(/\/+$/,'');
-    const r=await fetch(backend+'/api/claude',{method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({system,content,schema:DICTAMEN_SCHEMA})});
+    const apiKey=(localStorage.getItem('bb_anthropic_key')||'').trim();
+    let r;
+    if(backend){
+      r=await fetch(backend+'/api/claude',{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({system,content,schema:DICTAMEN_SCHEMA})});
+    }else if(apiKey){
+      // Fallback: llave de Anthropic directa (la misma que configura el Gemelo Digital).
+      r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+        headers:{'content-type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-opus-4-8',max_tokens:4000,system,output_config:{format:{type:'json_schema',schema:DICTAMEN_SCHEMA}},messages:[{role:'user',content}]})});
+    }else{ throw new Error('Configura la URL del backend o la llave de Anthropic en el Gemelo Digital (sección 00).'); }
     const data=await r.json();
     if(!r.ok)throw new Error((data.error&&data.error.message)||('HTTP '+r.status));
     const texts=(data.content||[]).filter(b=>b.type==='text');

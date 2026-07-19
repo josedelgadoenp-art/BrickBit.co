@@ -769,7 +769,7 @@ async function devTesisIA(){
   out.innerHTML='<div class="note" style="margin-top:12px">✨ Generando la tesis de inversión con IA…</div>';
   const e=(typeof ECON!=='undefined'&&ECON[z.n])?ECON[z.n]:null;
   const system='Eres un analista senior de desarrollo inmobiliario en México. Escribe una tesis de inversión BREVE, concreta y honesta para un desarrollador. Sin relleno.';
-  const prompt=`Zona: ${z.n}. Precio de venta ${_dm(z.pm2)}/m². Plusvalía ${z.g}% anual. Proyecto: ${p.tipoP}, ${p.units} unidades en ${p.niveles} niveles, ${p.supVend} m² vendibles. Inversión ${_dmM(p.cTot)}, ingresos ${_dmM(p.ing)}, utilidad ${_dmM(p.util)}, ROI ${Math.round(p.roi)}%, TIR ${Math.round(p.tir)}% en ${p.plazo} meses.${e?` Economía DENUE: ${_mmex(e.neg)} negocios, ${_mmex(e.emp)} empleos, ${e.altas} aperturas recientes.`:''} Devuelve: tesis (2-3 frases), viabilidad (1 frase), 3 riesgos y una recomendación (1 frase).`;
+  const prompt=`Zona: ${z.n}. Precio de venta ${_dm(p.sale)}/m² (${p.saleReal?'real Century 21':'índice SHF, estimado'}). Plusvalía ${z.g}% anual. Proyecto: ${p.tipoP}, ${p.units} unidades en ${p.niveles} niveles, ${p.supVend} m² vendibles. Inversión ${_dmM(p.cTot)}, ingresos ${_dmM(p.ing)}, utilidad ${_dmM(p.util)}, ROI ${Math.round(p.roi)}%, TIR ${Math.round(p.tir)}% en ${p.plazo} meses.${e?` Economía DENUE: ${_mmex(e.neg)} negocios, ${_mmex(e.emp)} empleos, ${e.altas} aperturas recientes.`:''} Devuelve: tesis (2-3 frases), viabilidad (1 frase), 3 riesgos y una recomendación (1 frase).`;
   const schema={type:'object',additionalProperties:false,properties:{tesis:{type:'string'},viabilidad:{type:'string'},riesgos:{type:'array',items:{type:'string'}},recomendacion:{type:'string'}},required:['tesis','viabilidad','riesgos','recomendacion']};
   try{
     const t=await callClaudeA(system,prompt,schema);
@@ -803,7 +803,7 @@ function devPDF(){
   'ul{font-size:13px}p{font-size:13px;line-height:1.55}.foot{margin-top:22px;border-top:1px solid #d8e0dd;padding-top:10px;font-size:10.5px;color:#7a878c}@media print{@page{margin:16mm}}</style></head><body>'+
   '<div class="head"><div><div class="brand">brick<span>bit</span></div><div class="meta">Modo Desarrollador · viabilidad de proyecto</div></div><div class="meta">'+fdate+'</div></div>'+
   '<h1>'+escA(z.n)+'</h1>'+
-  '<div class="meta">Precio de venta '+_dm(z.pm2)+'/m² · Plusvalía +'+(+z.g||0).toFixed(1)+'% · '+escA(p.tipoP)+'</div>'+
+  '<div class="meta">Precio de venta '+_dm(p.sale)+'/m² '+(p.saleReal?'(real C21)':'(SHF est.)')+' · Plusvalía +'+(+z.g||0).toFixed(1)+'% · '+escA(p.tipoP)+'</div>'+
   '<h2>Programa</h2><p>'+p.units+' unidades · '+p.niveles+' niveles · '+p.supVend.toLocaleString('es-MX')+' m² vendibles · terreno '+p.lot+' m² (COS '+p.cos+', CUS '+p.cus+')</p>'+
   '<table>'+mixRows+'</table>'+
   '<h2>Pro-forma financiera</h2><table>'+finRows+'</table>'+
@@ -931,6 +931,8 @@ function irr(cf){let lo=-0.95,hi=3;const npv=r=>cf.reduce((a,c,t)=>a+c/Math.pow(
 function calc(){
   const z=zona();if(!z)return;
   const precio=num('precio'), rentaM=num('renta'), eng=num('eng')/100;
+  // Sin precio válido no hay pro-forma: evita NaN/Infinity en cap rate y CoC.
+  if(!(precio>0)){ const o=$('out'); if(o) o.innerHTML='<div class="note" style="border-left-color:var(--amb)">Escribe el <b>precio de compra</b> para calcular el retorno.</div>'; return; }
   const isai=num('isai'),notar=num('notar'),avaluo=num('avaluo');
   const costoAdqPct=(isai+notar+avaluo)/100, costoAdq=precio*costoAdqPct;
   const inicial=precio*eng+costoAdq;

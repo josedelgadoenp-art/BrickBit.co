@@ -301,28 +301,32 @@ $('btnCompare').addEventListener('click', () => {
 
 /* ---------- métricas ---------- */
 function stats(p) {
-  const g = p.geometry, e = p.engineering;
-  const aceroKg = e.varillas.reduce((s, v) => s + (v.cantidadKg || 0), 0);
+  // Guardas: un proyecto viejo/parcial en bb_projects podría no traer engineering
+  // completo; con defaults la tabla no revienta.
+  const g = p.geometry || {}, e = p.engineering || {};
+  const varillas = e.varillas || [], materiales = e.materiales || [], fallas = e.fallas || [];
+  const costo = e.costoEstimadoMXN || {}, ff = e.primeraFalla || {};
+  const aceroKg = varillas.reduce((s, v) => s + (v.cantidadKg || 0), 0);
   let concretoM3 = 0;
-  for (const cat of e.materiales) {
-    for (const it of cat.items) {
-      if (/m³|m3/i.test(it.unidad) && /concreto/i.test(cat.categoria + ' ' + it.concepto)) concretoM3 += it.cantidad || 0;
+  for (const cat of materiales) {
+    for (const it of (cat.items || [])) {
+      if (/m³|m3/i.test(it.unidad) && /concreto/i.test((cat.categoria || '') + ' ' + (it.concepto || ''))) concretoM3 += it.cantidad || 0;
     }
   }
-  const graves = e.fallas.filter(f => ['alta', 'crítica'].includes(f.severidad)).length;
+  const graves = fallas.filter(f => ['alta', 'crítica'].includes(f.severidad)).length;
   return {
-    niveles: g.niveles,
-    area: g.areaTotalM2,
-    huella: `${g.anchoM}×${g.fondoM} m`,
-    sistema: g.sistemaEstructural,
+    niveles: g.niveles ?? '—',
+    area: g.areaTotalM2 ?? 0,
+    huella: `${g.anchoM ?? '?'}×${g.fondoM ?? '?'} m`,
+    sistema: g.sistemaEstructural || '—',
     concretoM3, aceroKg,
-    costoMin: e.costoEstimadoMXN.minimo,
-    costoMax: e.costoEstimadoMXN.maximo,
-    costoM2: g.areaTotalM2 ? (e.costoEstimadoMXN.minimo + e.costoEstimadoMXN.maximo) / 2 / g.areaTotalM2 : 0,
-    ffNombre: e.primeraFalla.nombre,
-    ffAnios: e.primeraFalla.aniosEstimados,
+    costoMin: costo.minimo ?? 0,
+    costoMax: costo.maximo ?? 0,
+    costoM2: g.areaTotalM2 ? ((costo.minimo ?? 0) + (costo.maximo ?? 0)) / 2 / g.areaTotalM2 : 0,
+    ffNombre: ff.nombre || '—',
+    ffAnios: ff.aniosEstimados ?? '—',
     graves,
-    fallas: e.fallas.length,
+    fallas: fallas.length,
   };
 }
 
