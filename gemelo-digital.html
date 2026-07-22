@@ -642,6 +642,7 @@
 </div>
 
 <script src="zonas.js"></script>
+<script src="edificio3d.js"></script>
 
 <!-- Three.js via import map.
      IMPORTANTE: el importmap DEBE ir antes que cualquier <script type="module">.
@@ -1262,22 +1263,33 @@ function initThree(canvas) {
    Usa clipping planes globales del renderer sobre el grupo del edificio activo
    ('building' del plano o 'simWorld' del simulador). No toca materiales. ===== */
 const _gviz = { cut: 'none', t: 0.55 };
+const _gvizPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e9);
+let _gemCap = null;
+function _gvizClip(world, on) {
+  world.traverse(o => {
+    if (o.userData.env || !o.material) return;
+    o.material.clippingPlanes = on ? [_gvizPlane] : null;
+    o.material.clipShadows = on;
+  });
+}
 function gemVizApply() {
   if (!three) return;
   const { renderer, scene } = three;
-  const world = scene.getObjectByName('building') || scene.getObjectByName('simWorld');
-  if (_gviz.cut === 'none' || !world) { renderer.clippingPlanes = []; renderer.localClippingEnabled = false; return; }
+  const world = scene.getObjectByName('building');
+  const apagar = () => { renderer.localClippingEnabled = false; if (world) _gvizClip(world, false); if (_gemCap) { _gemCap.dispose(); _gemCap = null; } };
+  if (_gviz.cut === 'none' || !world) { apagar(); return; }
   const box = new THREE.Box3().setFromObject(world);
-  let plane;
   if (_gviz.cut === 'h') {
     const y = box.min.y + (box.max.y - box.min.y) * _gviz.t;
-    plane = new THREE.Plane(new THREE.Vector3(0, -1, 0), y);
+    _gvizPlane.normal.set(0, -1, 0); _gvizPlane.constant = y;
   } else {
     const z = box.min.z + (box.max.z - box.min.z) * _gviz.t;
-    plane = new THREE.Plane(new THREE.Vector3(0, 0, -1), z);
+    _gvizPlane.normal.set(0, 0, -1); _gvizPlane.constant = z;
   }
   renderer.localClippingEnabled = true;
-  renderer.clippingPlanes = [plane];
+  _gvizClip(world, true);
+  if (!_gemCap) _gemCap = bbSeccionCap(THREE, scene, world, _gvizPlane, 0x9a9186);
+  _gemCap.update(_gvizPlane);
 }
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.gviz-cut').forEach(b => b.addEventListener('click', () => {
@@ -1294,6 +1306,7 @@ function buildScene(g) {
   const { scene, camera, controls } = three;
 
   // limpiar edificio previo
+  if (_gemCap) { _gemCap.dispose(); _gemCap = null; }   // la tapa referencia geometrías del modelo anterior
   const prev = scene.getObjectByName('building');
   if (prev) scene.remove(prev);
   const prevGround = scene.getObjectByName('ground');
@@ -1328,50 +1341,9 @@ function buildScene(g) {
   const matEdge   = new THREE.LineBasicMaterial({ color: 0xcdf25a, transparent: true, opacity: 0.5 });
 
   // forma del footprint (plano XY → XZ de three)
-  const shape = new THREE.Shape();
-  g.footprint.forEach((p, i) => i === 0 ? shape.moveTo(p.x - cx, p.y - cy) : shape.lineTo(p.x - cx, p.y - cy));
-  shape.closePath();
-
-  for (let lvl = 0; lvl <= g.niveles; lvl++) {
-    // losa (incluye la de azotea en lvl = niveles)
-    const slabGeo = new THREE.ExtrudeGeometry(shape, { depth: slabT, bevelEnabled: false });
-    slabGeo.rotateX(-Math.PI / 2);
-    const slab = new THREE.Mesh(slabGeo, matSlab);
-    slab.position.y = lvl * h;
-    slab.castShadow = slab.receiveShadow = true;
-    group.add(slab);
-    group.add(new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), matEdge).translateY(lvl * h));
-
-    if (lvl === g.niveles) break;
-
-    // muros del nivel
-    for (const w of g.muros) {
-      const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
-      const len = Math.hypot(dx, dy);
-      if (len < 0.05) continue;
-      const geo = new THREE.BoxGeometry(len, h - slabT, wallT);
-      const mesh = new THREE.Mesh(geo, w.carga ? matWallC : matWallP);
-      mesh.position.set(
-        (w.x1 + w.x2) / 2 - cx,
-        lvl * h + slabT + (h - slabT) / 2,
-        cy - (w.y1 + w.y2) / 2                       // Z negado: alinea con la losa (rotateX(-π/2))
-      );
-      mesh.rotation.y = Math.atan2(dy, dx);
-      mesh.castShadow = mesh.receiveShadow = true;
-      mesh.userData.wall = true;                    // objetivo de la textura de fachada
-      mesh.userData.wlen = len; mesh.userData.wh = h - slabT;
-      group.add(mesh);
-    }
-
-    // columnas
-    for (const c of g.columnas) {
-      const geo = new THREE.BoxGeometry(0.3, h, 0.3);
-      const mesh = new THREE.Mesh(geo, matCol);
-      mesh.position.set(c.x - cx, lvl * h + h / 2, cy - c.y);
-      mesh.castShadow = true;
-      group.add(mesh);
-    }
-  }
+  // Constructor COMPARTIDO (edificio3d.js): misma implementación que el
+  // Creador y el Comparador; tagWalls marca los muros para la textura IA.
+  bbEdificio(THREE, g, { mats: { slab: matSlab, wallP: matWallP, wallC: matWallC, col: matCol, edge: matEdge }, group, tagWalls: true });
 
   scene.add(group);
 
