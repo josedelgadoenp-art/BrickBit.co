@@ -79,7 +79,8 @@ for (const g of Object.values(grupos)) {
   if (g.items.length < MINZ) { colaProps += g.items.length; continue; }
   muniProps += g.items.length;
   muniShards[g.slug] = g.items;
-  const norm = (i) => (i.moneda === 'USD' ? i.pm2 * 17.5 : i.pm2);
+  const USD_MXN = 17.5; // TC de referencia (jul 2026); actualiza si el peso se mueve
+  const norm = (i) => (i.moneda === 'USD' ? i.pm2 * USD_MXN : i.pm2);
   const ventas = g.items.filter((i) => i.operacion === 'venta');
   const rentas = g.items.filter((i) => i.operacion === 'renta');
   const vPm = med(ventas.map(norm)), rPm = med(rentas.map(norm));

@@ -279,6 +279,7 @@ function fcModel(zona,pm2){
    Devuelve JSON validado contra el esquema; si algo falla, quien llama cae a
    su motor local. ===== */
 const BB_BACKEND=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').trim();
+const USD_MXN=17.5; // tipo de cambio de referencia (jul 2026) para normalizar precios USD->MXN; actualiza si el peso se mueve
 /* Registro de DEMANDA (anónimo): qué zonas/presupuestos/tipos busca la gente.
    Best-effort; si el Worker no está, no pasa nada. */
 function bbDemand(evento,zona,meta){
@@ -1257,7 +1258,7 @@ function panel(name,d,tipo){
     <div class="sel-sub">Precio promedio estimado</div>
     <span class="badge b-${d.opp.toLowerCase()}">${d.opp} oportunidad</span>
     ${real?scoreHTML(name,d):'<div class="notice" style="margin-top:10px;border-color:rgba(224,161,58,.35)">⚠ <b style="color:#F5C277">Zona derivada (est.):</b> no es una de las 32 zonas ancla con dato SHF. Los números de abajo son una <b>proyección compuesta</b> a partir del promedio de su ciudad, no el modelo validado. Úsalos solo como referencia.</div>'}
-    <div class="model-tag">⚙ Pronóstico: <b>${real&&d._fcm?'ensamble VECM + espacial + XGBoost':'proyección compuesta (sin modelo validado)'}</b></div>
+    <div class="model-tag">⚙ Pronóstico: <b>${real&&d._fcm?'modelo espacial SAR + Moran (validado por backtest SHF)':'proyección compuesta (sin modelo validado)'}</b></div>
     <div class="model-tag">📊 Datos: <b>${real?(d._src||'estimado (modelo)'):'estimado a partir del promedio de la ciudad'}</b></div>
     ${d._valm?`<div class="model-tag">🏠 Valor mediano vivienda (SHF): <b>${fmtM(d._valm)}</b></div>`:''}
     ${d._supm?`<div class="model-tag">📐 Superficie media vivienda (ENVI): <b>${d._supm} m²</b></div>`:''}
@@ -1621,11 +1622,11 @@ function genPDF(){
       <ol>${just}</ol>
       <h2>Metodología</h2>
       <div class="method">
-        <p><b>Pronóstico de precios</b> — Ensamble de tres modelos complementarios:</p>
-        <p>• <b>VECM</b> (Vector Error Correction Model): relaciones de largo plazo y cointegración entre precio, tasas de interés, inflación y actividad económica local.</p>
-        <p>• <b>Econometría espacial</b> (SAR/SEM): dependencia espacial entre zonas vecinas y efecto contagio de plusvalía.</p>
-        <p>• <b>XGBoost</b>: patrones no lineales sobre variables socioeconómicas, de oferta y demanda.</p>
-        <p>Los tres modelos se combinan en un ensamble ponderado; el intervalo de confianza al 90% refleja la dispersión entre modelos y el horizonte de proyección.</p>
+        <p><b>Pronóstico de precios</b> — Modelo espacial autorregresivo (SAR) sobre el índice SHF:</p>
+        <p>• <b>Econometría espacial (SAR)</b>: cada zona crece por su propio impulso más el <b>contagio</b> de sus zonas vecinas (matriz de contigüidad W), con reversión a la media.</p>
+        <p>• <b>Índice de Moran</b>: mide y confirma la autocorrelación espacial (que la plusvalía "se contagia" entre vecinos), justificando el término espacial del modelo.</p>
+        <p>• <b>Calibración por backtest</b>: los parámetros se ajustan con validación walk-forward contra el histórico real de la SHF (2005–2026), sin fuga de información. El intervalo al 90% está calibrado a la cobertura empírica real (~90%).</p>
+        <p>El modelo supera a la persistencia y al promedio nacional en el backtest a 1 y 3 años. Reproducible con <b>scripts/backtest_shf.py</b>.</p>
         <p><b>Indicadores de inversión</b> — Plusvalía anual, yield bruto, cap rate, precio/renta y días en mercado se derivan de los precios proyectados.</p>
         <p><b>Proyecto óptimo</b> — A partir del precio de venta de la zona se estima el lote tipo, el coeficiente de uso de suelo (CUS), la superficie vendible, la tipología más rentable y el mix de unidades.</p>
         <p><b>Análisis financiero</b> — Costo de terreno, obra e indirectos contra ingresos por venta para obtener utilidad, ROI, TIR, VPN y punto de equilibrio.</p>
@@ -1680,7 +1681,7 @@ async function loadZoneListings(zone){
     // mediana de $/m² de OTROS terrenos (mezclar suelo con construido rompe el veredicto).
     const esTer=t=>/terreno|lote/i.test(String(t||''));
     const norm=arr.filter(x=>x.operacion==='venta'&&x.lat!=null&&x.precio>0&&(x.m2_construccion>0||x.m2_terreno>0))
-      .map(x=>{const fx=x.moneda==='USD'?17.5:1; const ter=esTer(x.tipo);
+      .map(x=>{const fx=x.moneda==='USD'?USD_MXN:1; const ter=esTer(x.tipo);
         const m2=ter?(x.m2_terreno||x.m2_construccion):(x.m2_construccion||0);
         return {...x,_ter:ter,_m2:m2,_pm:m2>0?Math.round(x.precio*fx/m2):null,_pr:Math.round(x.precio*fx)};});
     const medDe=a=>{const s=a.sort((x,y)=>x-y);return s.length>=4?s[Math.floor(s.length/2)]:null;};

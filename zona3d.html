@@ -219,6 +219,7 @@ const GMAPS_KEY = 'AIzaSyC15vodxaWS_VyFiqlRUwYlTtXyKUkSW5o';
 const GMAPS_VERSION = 'alpha'; // 3D Maps requiere canal 'alpha' (o 'beta')
 // Backend BrickBit (inventario real de Century 21).
 const BB_BACKEND=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').trim();
+const USD_MXN=17.5; // TC de referencia (jul 2026); actualiza si cambia
 
 /* ====== utilidades ====== */
 const $ = id => document.getElementById(id);
@@ -697,7 +698,7 @@ async function _loadC21(nom){
     if(!Array.isArray(arr)||!arr.length) return _c21;
     // Normalizar a MXN ANTES de la mediana (mezclar USD/MXN rompe la comparación).
     const norm=arr.filter(x=>x.operacion==='venta'&&x.lat!=null&&x.precio>0&&x.m2_construccion>0)
-      .map(x=>{const fx=x.moneda==='USD'?17.5:1;
+      .map(x=>{const fx=x.moneda==='USD'?USD_MXN:1;
         return {...x,_pm:x.pm2?Math.round(x.pm2*fx):Math.round(x.precio*fx/x.m2_construccion),_pr:Math.round(x.precio*fx)};});
     const ps=norm.map(x=>x._pm).filter(v=>v>5000&&v<150000).sort((a,b)=>a-b);
     if(ps.length>=4){ _c21.med=ps[Math.floor(ps.length/2)]; _c21.n=ps.length; }

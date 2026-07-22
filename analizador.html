@@ -503,6 +503,7 @@ function bbPlacesBump(n){ try{ localStorage.setItem(_bbKey(), String((parseInt(l
 const BB_CAP_MSG_A='<div class="note" style="border-left-color:var(--amb)">Alcanzaste el <b>límite diario</b> de consultas de ubicación en este navegador (protección de costo). Se reinicia mañana.</div>';
 /* Registro de DEMANDA (anónimo) — mismo Worker que la IA. */
 const BB_BACKEND_A=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').replace(/\/+$/,'');
+const USD_MXN=17.5; // TC de referencia (jul 2026); actualiza si cambia
 function bbDemand(evento,zona,meta){ try{ fetch(BB_BACKEND_A+'/api/demand-log',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({evento,zona:zona||'',meta:meta||{}}),keepalive:true}).catch(()=>{}); }catch(e){} }
 async function scanNear(center,types,radius,fields){
   const lib=await loadPlacesA();
@@ -838,7 +839,7 @@ async function loadZoneListingsA(zone){
     const r=await fetch(BB_BACKEND_A+'/api/listados?zona='+encodeURIComponent(_slugZ(zone)));
     if(!r.ok)throw 0; const arr=await r.json();
     const L=(Array.isArray(arr)?arr:[]).filter(x=>x.operacion==='venta'&&x.lat!=null&&x.precio>0&&x.m2_construccion>0)
-      .map(x=>{const fx=x.moneda==='USD'?17.5:1;return {tipo:x.tipo,m2:x.m2_construccion,pm2:x.pm2?Math.round(x.pm2*fx):null,precio:Math.round(x.precio*fx),lat:x.lat,lng:x.lng,url:x.url,titulo:x.titulo,municipio:x.municipio};});
+      .map(x=>{const fx=x.moneda==='USD'?USD_MXN:1;return {tipo:x.tipo,m2:x.m2_construccion,pm2:x.pm2?Math.round(x.pm2*fx):null,precio:Math.round(x.precio*fx),lat:x.lat,lng:x.lng,url:x.url,titulo:x.titulo,municipio:x.municipio};});
     _ZL[zone]=L; return L;
   }catch(e){_ZL[zone]=[];return[];}
 }
@@ -983,7 +984,7 @@ function calc(){
     <div class="appr">
       <div>Apreciación del inmueble ${tip('apreciacion')} ${valTag}</div>
       <div class="big">${fmtM(precio)} → ${fmtM(valorFut)}</div>
-      <div class="vs" style="color:var(--mut);font-size:12px">${pct((facTot-1)*100)} acumulado en ${H} años · pronóstico SHF (ensamble validado)</div>
+      <div class="vs" style="color:var(--mut);font-size:12px">${pct((facTot-1)*100)} acumulado en ${H} años · pronóstico SHF (modelo espacial validado)</div>
     </div>
 
     <div class="sec-t">Inversión inicial</div>
@@ -1006,7 +1007,7 @@ function calc(){
     <div class="row"><span class="l"><b>= Neto de venta</b></span><span class="r">${fmt(netoVenta)}</span></div>
 
     <div class="prov">
-      <b>Procedencia de los datos.</b> <span class="lim">Real:</span> la apreciación viene del pronóstico de la SHF (ensamble validado a 1–3 años; ${H>3?'<span class="neg">a '+H+' años es extrapolado</span>':'validado'}). <span class="amb" style="color:var(--amb)">Estimado:</span> la renta usa el yield típico de la zona (pendiente de listados reales). <span class="amb" style="color:var(--amb)">Supuestos:</span> los costos fiscales son valores mexicanos típicos, editables arriba.
+      <b>Procedencia de los datos.</b> <span class="lim">Real:</span> la apreciación viene del pronóstico de la SHF (modelo espacial SAR validado a 1–3 años; ${H>3?'<span class="neg">a '+H+' años es extrapolado</span>':'validado'}). <span class="amb" style="color:var(--amb)">Estimado:</span> la renta usa el yield típico de la zona (pendiente de listados reales). <span class="amb" style="color:var(--amb)">Supuestos:</span> los costos fiscales son valores mexicanos típicos, editables arriba.
     </div>
     ${(monto>0&&num('tasa')/100>capRate/100)?`<div class="note" style="border-left-color:var(--amb)">Apalancamiento negativo: la tasa de crédito (${num('tasa')}%) supera al cap rate (${capRate.toFixed(1)}%), así que financiar <b>resta</b> flujo. En México las rentas residenciales suelen rendir menos que el crédito, por lo que el retorno se apoya en la apreciación o en comprar de contado.</div>`:''}
     <div class="note">Herramienta informativa de análisis, <b>no asesoría de inversión ni fiscal</b>. El ISR de ganancia de capital en México admite ajuste por inflación del costo y posibles exenciones (casa-habitación); este cálculo es una estimación simplificada. Confirma con un contador antes de decidir.</div>`;
