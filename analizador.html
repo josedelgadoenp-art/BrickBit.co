@@ -428,6 +428,16 @@ function init(){
   else { const qz=params.get('zona'); const m=qz?ZONAS.find(z=>z.n.toLowerCase()===qz.trim().toLowerCase()):null; sel.value=m?m.n:'Querétaro'; onZona(); }
   planFeasibLoad();   // ?desde=plano → precarga el proyecto del Creador de planos
   devDeepLink();      // ?dev=1&lote=N → Modo Desarrollador con ese terreno (desde el mapa)
+  // Sincroniza los multiplicadores embebidos con data/forecast.json (modelo v2):
+  // una sola fuente de verdad; el snapshot embebido queda solo como fallback offline.
+  fetch('data/forecast.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{
+    const Z=j.zonas||{};
+    ZONAS.forEach(z=>{const c=Z[z.n]; if(!c)return;
+      [['1','f1','lo1','hi1'],['3','f3','lo3','hi3'],['5','f5','lo5','hi5'],['10','f10','lo10','hi10']]
+        .forEach(([h,fk,lk,hk])=>{ if(c[h]){ z[fk]=c[h].f; z[lk]=c[h].lo; z[hk]=c[h].hi; } });
+    });
+    calc(); if(typeof renderDev==='function') renderDev();
+  }).catch(()=>{});
 }
 function devDeepLink(){
   try{

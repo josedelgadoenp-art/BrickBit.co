@@ -802,19 +802,19 @@
     <div class="sec-head reveal">
       <span class="kicker">Validación, no promesas</span>
       <h2>El pronóstico está <em>probado contra la realidad</em>.</h2>
-      <p>Predecir es fácil; acertar hay que demostrarlo. Validamos el modelo con <b>walk-forward</b> sobre el histórico real de la SHF (2005–2026), sin fuga de información: en cada punto del pasado pronosticamos a futuro y medimos el error contra lo que de verdad ocurrió. Todo es reproducible con <code style="font-size:.85em">scripts/backtest_shf.py</code>.</p>
+      <p>Predecir es fácil; acertar hay que demostrarlo. Validamos el modelo — un ensamble de momentum, tendencia y <b>contagio espacial</b> entre zonas vecinas — con <b>walk-forward</b> sobre el histórico real de la SHF (2005–2026), sin fuga de información: en cada punto del pasado pronosticamos a futuro y medimos el error contra lo que de verdad ocurrió. Todo es reproducible con <code style="font-size:.85em">scripts/backtest_shf.py</code>.</p>
     </div>
     <div class="vstats reveal">
       <div class="vcard">
         <div class="vh">Error a 1 año <span class="vtag">menos es mejor</span></div>
-        <div class="vbar-row"><span class="vbl">BrickBit</span><div class="vbar"><i style="width:92%;background:linear-gradient(90deg,var(--clay),var(--lime))"></i></div><span class="vbv">1.84</span></div>
+        <div class="vbar-row"><span class="vbl">BrickBit</span><div class="vbar"><i style="width:92%;background:linear-gradient(90deg,var(--clay),var(--lime))"></i></div><span class="vbv">1.82</span></div>
         <div class="vbar-row"><span class="vbl">Persistencia</span><div class="vbar"><i style="width:100%;background:#6b5f54"></i></div><span class="vbv">1.99</span></div>
         <div class="vbar-row"><span class="vbl">Prom. nacional</span><div class="vbar"><i style="width:97%;background:#6b5f54"></i></div><span class="vbv">1.94</span></div>
         <div class="vsub">Puntos % de error en la plusvalía · 480 evaluaciones. El modelo le gana a suponer que el futuro repite el pasado y al promedio nacional.</div>
       </div>
       <div class="vcard">
         <div class="vh">Error a 3 años <span class="vtag">menos es mejor</span></div>
-        <div class="vbar-row"><span class="vbl">BrickBit</span><div class="vbar"><i style="width:91%;background:linear-gradient(90deg,var(--clay),var(--lime))"></i></div><span class="vbv">5.67</span></div>
+        <div class="vbar-row"><span class="vbl">BrickBit</span><div class="vbar"><i style="width:91%;background:linear-gradient(90deg,var(--clay),var(--lime))"></i></div><span class="vbv">5.56</span></div>
         <div class="vbar-row"><span class="vbl">Persistencia</span><div class="vbar"><i style="width:100%;background:#6b5f54"></i></div><span class="vbv">6.20</span></div>
         <div class="vbar-row"><span class="vbl">Prom. nacional</span><div class="vbar"><i style="width:93%;background:#6b5f54"></i></div><span class="vbv">5.78</span></div>
         <div class="vsub">A horizonte más largo el modelo mantiene la ventaja · 416 evaluaciones.</div>
@@ -822,7 +822,7 @@
       <div class="vcard vcard-cov">
         <div class="vbig">90%</div>
         <div class="vh">Cobertura del intervalo de confianza</div>
-        <p class="vsub" style="margin-top:10px">Cuando decimos "90% de confianza", el valor real cae dentro del rango el <b>90.4%</b> de las veces (89.8% a 3 años). El rango no es decorativo: está calibrado a la cobertura empírica real.</p>
+        <p class="vsub" style="margin-top:10px">Cuando decimos "90% de confianza", el valor real cae dentro del rango el <b>91.5%</b> de las veces (89.6% a 3 años). El rango no es decorativo: está calibrado a la cobertura empírica real.</p>
       </div>
     </div>
     <p class="exp-note" style="text-align:center;max-width:660px;margin:24px auto 0">Validado a <b>1 y 3 años</b> con el histórico SHF; <b>5 y 10 años son extrapolación</b> y aparecen marcados como tal en todo el producto. Método walk-forward sin fuga de información (15 y 13 orígenes de evaluación); cifras reproducibles con <code style="font-size:.9em">scripts/backtest_shf.py</code>.</p>

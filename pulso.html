@@ -178,6 +178,10 @@ async function syncCanon(){
       if(c.oportunidad) d.op=c.oportunidad;
       if(c.ciclo) d.ci=c.ciclo;
     });
+    // pronóstico canónico (modelo v2) para el viaje al futuro de las torres
+    const fj=await fetch('data/forecast.json',{cache:'no-store'}).then(r=>r.json());
+    const FZ=fj.zonas||{};
+    DATA.forEach(d=>{ if(FZ[d.n]) d.f=FZ[d.n]; });
   }catch(e){/* offline: se usa el snapshot embebido */}
 }
 async function init(){
