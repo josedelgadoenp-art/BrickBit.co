@@ -219,6 +219,7 @@ const GMAPS_KEY = 'AIzaSyC15vodxaWS_VyFiqlRUwYlTtXyKUkSW5o';
 const GMAPS_VERSION = 'alpha'; // 3D Maps requiere canal 'alpha' (o 'beta')
 // Backend BrickBit (inventario real de Century 21).
 const BB_BACKEND=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').trim();
+const USD_MXN=17.5; // TC de referencia (jul 2026); actualiza si cambia
 
 /* ====== utilidades ====== */
 const $ = id => document.getElementById(id);
@@ -684,10 +685,11 @@ function radarSVG(res){
 
 /* ====== inventario real de Century 21 (para anclar el precio de venta) ====== */
 // Mediana real de $/m² en venta de la zona, medida sobre el inventario de Century 21.
-let _c21={loaded:false, med:null, n:0, list:[]};
-async function loadC21Median(nom){
-  if(_c21.loaded) return _c21;
-  _c21.loaded=true;
+let _c21={med:null, n:0, list:[]}, _c21Promise=null;
+// Cachea la PROMESA en curso (no un flag): así una segunda llamada mientras el
+// fetch sigue abierto espera el mismo resultado en vez de recibir la lista vacía.
+function loadC21Median(nom){ if(!_c21Promise) _c21Promise=_loadC21(nom); return _c21Promise; }
+async function _loadC21(nom){
   try{
     const base=BB_BACKEND.replace(/\/+$/,'');
     const r=await fetch(base+'/api/listados?zona='+encodeURIComponent(slug(nom)));
@@ -696,7 +698,7 @@ async function loadC21Median(nom){
     if(!Array.isArray(arr)||!arr.length) return _c21;
     // Normalizar a MXN ANTES de la mediana (mezclar USD/MXN rompe la comparación).
     const norm=arr.filter(x=>x.operacion==='venta'&&x.lat!=null&&x.precio>0&&x.m2_construccion>0)
-      .map(x=>{const fx=x.moneda==='USD'?17.5:1;
+      .map(x=>{const fx=x.moneda==='USD'?USD_MXN:1;
         return {...x,_pm:x.pm2?Math.round(x.pm2*fx):Math.round(x.precio*fx/x.m2_construccion),_pr:Math.round(x.precio*fx)};});
     const ps=norm.map(x=>x._pm).filter(v=>v>5000&&v<150000).sort((a,b)=>a-b);
     if(ps.length>=4){ _c21.med=ps[Math.floor(ps.length/2)]; _c21.n=ps.length; }
@@ -730,22 +732,24 @@ async function toggleInventario(){
     const cc=viewCenter||mapCenter()||{lat:L[0].lat,lng:L[0].lng};
     const sel=L.map(x=>({...x,_d:(x.lat-cc.lat)**2+(x.lng-cc.lng)**2})).sort((a,b)=>a._d-b._d).slice(0,60);
     for(const x of sel){
-      // Pin con el logo de BrickBit; el color del fondo es el veredicto de precio.
-      const img=document.createElement('img');
-      img.src='favicon.png'; img.style.width='18px'; img.style.height='18px'; img.style.borderRadius='50%';
-      const pin=new PinElement({background:pinColor(x.veredicto),borderColor:'#14100c',glyph:img,scale:1.1});
-      const mk=new Marker3D({
-        position:{lat:x.lat,lng:x.lng,altitude:14},
-        altitudeMode:(AltMode&&AltMode.RELATIVE_TO_GROUND)||'RELATIVE_TO_GROUND',
-        extruded:true
-      });
-      mk.append(pin);
-      if(mk.addEventListener) mk.addEventListener('gmp-click',()=>showPinCard(x));
-      map.append(mk); _pins.push(mk);
+      // try por-marcador: un pin malo no debe abortar los otros 59.
+      try{
+        const img=document.createElement('img');
+        img.src='favicon.png'; img.style.width='18px'; img.style.height='18px'; img.style.borderRadius='50%';
+        const pin=new PinElement({background:pinColor(x.veredicto),borderColor:'#14100c',glyph:img,scale:1.1});
+        const mk=new Marker3D({
+          position:{lat:x.lat,lng:x.lng,altitude:14},
+          altitudeMode:(AltMode&&AltMode.RELATIVE_TO_GROUND)||'RELATIVE_TO_GROUND',
+          extruded:true
+        });
+        mk.append(pin);
+        if(mk.addEventListener) mk.addEventListener('gmp-click',()=>showPinCard(x));
+        map.append(mk); _pins.push(mk);
+      }catch(err){ /* pin individual falló; continuar */ }
     }
     _pinsOn=true;
-    btn.textContent=`🏢 Inventario (${sel.length} de ${L.length}) · quitar ✕`;
-  }catch(e){ console.error('[inventario 3D]',e); btn.textContent='🏢 Inventario real · Century 21'; }
+    btn.textContent=`🏢 Inventario (${_pins.length} de ${L.length}) · quitar ✕`;
+  }catch(e){ console.error('[inventario 3D]',e); btn.textContent='⚠ No se pudo cargar · reintentar'; }
   btn.disabled=false;
 }
 function showPinCard(x){
@@ -784,9 +788,10 @@ function toggleSim(){
 }
 function simPrefill(){
   const z=simZona();
+  const pill=$('s-precio-src');
   if(!simPriceEdited){
-    if(_c21.med){ $('s-precio').value=_c21.med; $('s-precio-src').textContent='C21 real'; }
-    else if(z.precio_m2){ $('s-precio').value=z.precio_m2; $('s-precio-src').textContent=z.nombre; }
+    if(_c21.med){ $('s-precio').value=_c21.med; pill.textContent='C21 real'; pill.style.color='var(--grn)'; pill.style.borderColor='rgba(87,195,137,.4)'; }
+    else if(z.precio_m2){ $('s-precio').value=z.precio_m2; pill.textContent='SHF est.'; pill.style.color='var(--amb)'; pill.style.borderColor='rgba(245,194,119,.5)'; }
   }
   const baseT=_c21.med||z.precio_m2;
   if(!$('s-terreno').value && baseT){ $('s-terreno').value=Math.round(baseT*0.30/500)*500; }
