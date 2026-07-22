@@ -724,12 +724,57 @@ function showMun(city){munM.forEach(m=>map.removeLayer(m));munM=[];
   list("Municipios / Alcaldías",arr,selMun)}
 function selMun(mn){curMun=mn;map.flyTo([mn.lat,mn.lng],14,{duration:0.8});
   panel(mn.nom,mn,"municipio");crumbs([{l:curCity,lv:1},{l:mn.nom,lv:2}]);setLvl(2);setTimeout(()=>{propMode?showProps():showCol(mn)},550)}
-function showCol(mn){colM.forEach(m=>map.removeLayer(m));colM=[];
+/* Colonias REALES: agrupa el inventario de Century 21 del municipio por el campo
+   colonia del listado (≥3 inmuebles) y muestra la mediana real de $/m². Si no hay
+   suficiente inventario, cae a las colonias sintéticas (marcadas como estimación). */
+function _havKm2(a,b,c,d){const R=6371,p=Math.PI/180;const x=(c-a)*p,y=(d-b)*p;const h=Math.sin(x/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+function colIconReal(c){return L.divIcon({className:"",iconSize:[24,24],iconAnchor:[12,12],html:
+  `<div style="min-width:24px;height:24px;padding:0 5px;border-radius:12px;background:#14100c;border:2px solid #57c389;display:flex;align-items:center;justify-content:center;color:#f5ede3;font-size:10px;font-weight:700;font-family:'Space Mono',monospace;box-shadow:0 2px 8px rgba(0,0,0,.5)">${c.n}</div>`})}
+async function showCol(mn){
+  colM.forEach(m=>map.removeLayer(m));colM=[];
+  const Ls=await loadZoneListings(curCity);
+  const near=(Ls||[]).filter(l=>l.colonia&&l.lat!=null&&_havKm2(mn.lat,mn.lng,l.lat,l.lng)<=8);
+  const by={};
+  near.forEach(l=>{(by[l.colonia]=by[l.colonia]||[]).push(l);});
+  const cols=Object.entries(by).filter(([,a])=>a.length>=3).map(([nom,a])=>{
+    const lat=a.reduce((s,x)=>s+x.lat,0)/a.length, lng=a.reduce((s,x)=>s+x.lng,0)/a.length;
+    const ps=a.filter(x=>!x.ter&&x.pm2>0).map(x=>x.pm2).sort((x,y)=>x-y);
+    const med=ps.length>=3?ps[Math.floor(ps.length/2)]:null;
+    return {nom,lat,lng,n:a.length,med,items:a};
+  }).sort((a,b)=>b.n-a.n).slice(0,40);
+  if(cols.length>=2){
+    cols.forEach(c=>{const m=L.marker([c.lat,c.lng],{icon:colIconReal(c)}).addTo(map);
+      m.bindTooltip(`<b>${c.nom}</b><br>${c.n} inmuebles reales${c.med?`<br>mediana ${fmt(c.med)}/m²`:''}<br><span style="color:#cdf25a">● Century 21 · toca para verlos</span>`,{direction:"top",offset:[0,-10]});
+      m.on("click",()=>selColReal(c));colM.push(m)});
+    list(`Colonias con inventario real (${cols.length})`,
+      cols.map(c=>({nom:c.nom,opp:'Media',price:c.med,_sort:c.n,_meta:`${c.n} inmuebles reales${c.med?` · mediana ${fmt(c.med)}/m²`:''}`,_c:c})),
+      d=>selColReal(d._c));
+    note('Colonias con inventario real de Century 21 · mediana de $/m² por colonia');
+    return;
+  }
+  // fallback sintético (el panel ya lo marca como "zona derivada, est.")
   const arr=colsFor(mn);
   arr.forEach(c=>{const m=L.marker([c.lat,c.lng],{icon:icon(c.opp,22)}).addTo(map);
-    m.bindTooltip(`<b>${c.nom}</b><br>${fmt(c.price)}/m²`,{direction:"top",offset:[0,-12]});
+    m.bindTooltip(`<b>${c.nom}</b><br>${fmt(c.price)}/m² <span style="color:#F5C277">est.</span>`,{direction:"top",offset:[0,-12]});
     m.on("click",()=>selCol(c));colM.push(m)});
-  list("Colonias / AGEBs",arr,selCol)}
+  list("Colonias / AGEBs (est.)",arr,selCol)}
+function selColReal(c){
+  map.flyTo([c.lat,c.lng],16,{duration:0.6});
+  crumbs([{l:curCity,lv:1},{l:(curMun&&curMun.nom)||'',lv:2},{l:c.nom,lv:3}]);setLvl(3);
+  propM.forEach(m=>map.removeLayer(m));propM=[];
+  const center=Object.assign({nom:c.nom},CITIES[curCity]||{});
+  const props=c.items.map(l=>listingToProp(l,center,c.nom));
+  props.forEach(p=>{const m=L.marker([p.lat,p.lng],{icon:propIcon(p)}).addTo(map);
+    m.bindTooltip(`<b>${p.t}</b><br>${fmtM(p.price)} · ${p.m2}m²`,{direction:"top",offset:[0,-15]});
+    m.on("click",()=>selProp(p));propM.push(m)});
+  list(`🏢 ${c.nom} · inmuebles reales (${props.length})`,props.map(p=>({nom:p.nom,opp:p.opp,g:p.g,yield:p.yield,price:p.price,_p:p})),d=>selProp(d._p||d));
+  document.getElementById('panel-cap').textContent='Colonia · inventario real';
+  document.getElementById('panel-content').innerHTML=`
+    <div class="sel-name">${c.nom}</div><div class="sel-tipo">${curCity} · colonia con inventario real</div>
+    ${c.med?`<div class="sel-price">${fmt(c.med)}<span style="font-size:13px;color:#8FA3A0"> /m² mediana real</span></div>`:''}
+    <div class="sel-sub">${c.n} inmuebles de Century 21 en venta aquí</div>
+    <div class="notice" style="margin-top:10px">El precio por m² es la <b>mediana real</b> de lo que está en venta en esta colonia (Century 21). Toca cualquier pin para ver la propiedad, su veredicto de precio y su ficha original.</div>`;
+}
 function selCol(c){map.flyTo([c.lat,c.lng],16,{duration:0.6});panel(c.nom,c,"colonia / AGEB");
   crumbs([{l:curCity,lv:1},{l:curMun?.nom||"",lv:2},{l:c.nom,lv:3}]);setLvl(3);
   if(propMode)showProps();else document.getElementById("list-sec").style.display="none"}
@@ -1690,7 +1735,7 @@ async function loadZoneListings(zone){
     const L=norm.map(x=>{
         const med=x._ter?medT:medC;
         const vs=(med&&x._pm)?Math.round((x._pm/med-1)*100):null;
-        return {tipo:x.tipo,ter:x._ter,m2:x._m2,pm2:x._pm,precio_mxn:x._pr,
+        return {tipo:x.tipo,ter:x._ter,m2:x._m2,pm2:x._pm,precio_mxn:x._pr,colonia:x.colonia||null,
           lat:x.lat,lng:x.lng,url:x.url,fuente:'Century 21',titulo:x.titulo,imagen:x.imagen,municipio:x.municipio,moneda:x.moneda,
           vs, veredicto: vs==null?null:(vs<=-12?'oportunidad':vs>=12?'sobreprecio':'justo')};
       })
