@@ -1,0 +1,59 @@
+# =============================================================================
+# BrickBit · Actualización AUTOMÁTICA del inventario Century 21 (mensual)
+#
+# Replica tools/actualizar-inventario.bat pero en la nube, sin tocar tu PC:
+#   1) scraper 'todo'      → inventario base
+#   2) scraper 'profundo'  → exprime los estados grandes por municipio
+#   3) c21-subir           → limpia PII y sube al Worker (y con ello alimenta
+#      el seguimiento _seg, las _metricas y el Índice BrickBit _hist)
+#
+# REQUISITO (una sola vez): en GitHub → Settings → Secrets and variables →
+# Actions → "New repository secret" → Name: INGEST_SECRET, Value: tu clave
+# de ingesta del Worker.
+#
+# Corre solo el día 1 de cada mes a las 09:00 UTC (~03:00 CDMX) y también se
+# puede lanzar a mano: pestaña Actions → "Inventario C21 mensual" → Run workflow.
+#
+# Si Century 21 llegara a bloquear las IPs de GitHub (como hace el gobierno con
+# INEGI/SESNSP), este job fallará: en ese caso el respaldo es programarlo en tu
+# PC con el Programador de tareas de Windows (ver CLAUDE.md / instrucciones).
+# =============================================================================
+name: Inventario C21 mensual
+
+on:
+  schedule:
+    - cron: '0 9 1 * *'
+  workflow_dispatch: {}
+
+jobs:
+  inventario:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Verificar secreto
+        run: |
+          if [ -z "${{ secrets.INGEST_SECRET }}" ]; then
+            echo "::error::Falta el secreto INGEST_SECRET (Settings → Secrets → Actions)."
+            exit 1
+          fi
+
+      - name: 1/3 Inventario base (scraper 'todo')
+        run: node tools/c21-scraper.mjs todo
+
+      - name: 2/3 Estados grandes (scraper 'profundo')
+        run: node tools/c21-scraper.mjs profundo
+
+      - name: 3/3 Subir al Worker (sin datos personales)
+        run: node tools/c21-subir.mjs --key "${{ secrets.INGEST_SECRET }}"
+
+      - name: Resumen
+        run: |
+          echo "Inventario actualizado en el Worker. El sitio lo refleja al instante:" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Mapa / Analizador / Buscador IA / Simulador 3D / Cinema" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Seguimiento (_seg), métricas (_metricas) e Índice BrickBit (_hist) acumulados un mes más." >> "$GITHUB_STEP_SUMMARY"
