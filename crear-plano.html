@@ -258,6 +258,7 @@
 </div>
 
 <script src="zonas.js"></script>
+<script src="edificio3d.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -596,20 +597,41 @@ function initThree() {
    latitud de la zona elegida; norte = -Z del visor.
 ===================================================================== */
 const _viz = { cut: 'none', cutT: 0.55, sunDay: null, sunHour: 12 };
+const _vizPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e9);   // plano persistente (los materiales lo comparten)
+let _cap = null;                                                        // tapa sólida del corte (stencil)
+function _vizClip(world, on) {
+  world.traverse(o => {
+    if (o.userData.env || !o.material) return;
+    o.material.clippingPlanes = on ? [_vizPlane] : null;
+    o.material.clipShadows = on;
+  });
+}
 function _vizLat() { const z = BB_ZONES.find(x => x.nombre === $('tZona').value); return z ? z.lat : 19.43; }
 function vizApply() {
   if (!three) return;
   const { renderer, scene, sun } = three;
   const world = scene.getObjectByName('world');
-  if (_viz.cut === 'none' || !world) { renderer.clippingPlanes = []; }
+  const apagar = () => { renderer.localClippingEnabled = false; if (world) _vizClip(world, false); if (_cap) { _cap.dispose(); _cap = null; } };
+  if (_viz.cut === 'none' || !world) { apagar(); }
   else {
-    const box = new THREE.Box3().setFromObject(world);
-    if (_viz.cut === 'h') {
-      const y = box.min.y + (box.max.y - box.min.y) * _viz.cutT;
-      renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, -1, 0), y)];
-    } else {
-      const z = box.min.z + (box.max.z - box.min.z) * _viz.cutT;
-      renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, 0, -1), z)];
+    // Caja SOLO del edificio (excluye piso y grid, marcados env) para que el
+    // slider de "Sección" recorra el edificio y no metros de suelo vacío.
+    const box = new THREE.Box3();
+    world.traverse(o => { if (o.isMesh && !o.userData.env) box.expandByObject(o); });
+    if (box.isEmpty()) { apagar(); }
+    else {
+      if (_viz.cut === 'h') {
+        const y = box.min.y + (box.max.y - box.min.y) * _viz.cutT;
+        _vizPlane.normal.set(0, -1, 0); _vizPlane.constant = y;
+      } else {
+        const z = box.min.z + (box.max.z - box.min.z) * _viz.cutT;
+        _vizPlane.normal.set(0, 0, -1); _vizPlane.constant = z;
+      }
+      renderer.localClippingEnabled = true;
+      _vizClip(world, true);
+      // Tapa sólida en la cara del corte: casa de muñecas real, no cascarón.
+      if (!_cap) _cap = bbSeccionCap(THREE, scene, world, _vizPlane, 0x9a9186);
+      _cap.update(_vizPlane);
     }
   }
   if (!sun) return;
@@ -649,8 +671,8 @@ function selectVariant(i) {
     el.classList.toggle('sel', Number(el.dataset.i) === i));
   const v = state.variantes[i];
   $('prevTitle').textContent = 'Vista 3D — ' + v.concepto;
-  vizApply();   // re-aplica corte de sección y sol al cambiar de variante
   buildPreview(v.geometria);
+  vizApply();   // corte de sección y sol DESPUÉS de construir el nuevo modelo
 }
 
 function buildPreview(g) {
@@ -658,6 +680,7 @@ function buildPreview(g) {
   const { scene, camera, controls } = three;
   const prev = scene.getObjectByName('world');
   if (prev) scene.remove(prev);
+  if (_cap) { _cap.dispose(); _cap = null; }   // la tapa referencia geometrías del modelo anterior
   const world = new THREE.Group();
   world.name = 'world';
   const h = g.alturaEntrepisoM, slabT = 0.15, wallT = 0.15;
@@ -667,44 +690,20 @@ function buildPreview(g) {
   const matWallP = new THREE.MeshStandardMaterial({ color: 0xd8cfc0, roughness: 0.85 });
   const matCol   = new THREE.MeshStandardMaterial({ color: 0x8f8779, roughness: 0.7 });
   const matEdge  = new THREE.LineBasicMaterial({ color: 0xcdf25a, transparent: true, opacity: 0.5 });
-  const shape = new THREE.Shape();
-  g.footprint.forEach((p, i) => i === 0 ? shape.moveTo(p.x - cx, p.y - cy) : shape.lineTo(p.x - cx, p.y - cy));
-  shape.closePath();
-  for (let lvl = 0; lvl <= g.niveles; lvl++) {
-    const slabGeo = new THREE.ExtrudeGeometry(shape, { depth: slabT, bevelEnabled: false });
-    slabGeo.rotateX(-Math.PI / 2);
-    const slab = new THREE.Mesh(slabGeo, matSlab);
-    slab.position.y = lvl * h;
-    slab.castShadow = slab.receiveShadow = true;
-    world.add(slab);
-    world.add(new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), matEdge).translateY(lvl * h));
-    if (lvl === g.niveles) break;
-    for (const w of (g.muros || [])) {
-      const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
-      const len = Math.hypot(dx, dy);
-      if (len < 0.05) continue;
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, h - slabT, wallT), w.carga ? matWallC : matWallP);
-      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, (w.y1 + w.y2) / 2 - cy);
-      mesh.rotation.y = -Math.atan2(dy, dx);
-      mesh.castShadow = mesh.receiveShadow = true;
-      world.add(mesh);
-    }
-    for (const c of (g.columnas || [])) {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, h, 0.3), matCol);
-      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
-      mesh.castShadow = true;
-      world.add(mesh);
-    }
-  }
+  // Constructor COMPARTIDO (edificio3d.js): una sola implementación para
+  // Creador, Gemelo y Comparador — misma convención de ejes y sin bugs x4.
+  bbEdificio(THREE, g, { mats: { slab: matSlab, wallP: matWallP, wallC: matWallC, col: matCol, edge: matEdge }, group: world });
   const groundSize = Math.max(g.anchoM, g.fondoM) * 4;
   const ground = new THREE.Mesh(new THREE.CircleGeometry(groundSize, 48),
     new THREE.MeshStandardMaterial({ color: 0x1c2420, roughness: 1 }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.01;
   ground.receiveShadow = true;
+  ground.userData.env = true;              // entorno: excluido del corte de sección
   world.add(ground);
   const grid = new THREE.GridHelper(groundSize, 32, 0x2c3a30, 0x22291f);
   grid.position.y = 0.001;
+  grid.userData.env = true;
   world.add(grid);
   scene.add(world);
   const totalH = g.niveles * h;

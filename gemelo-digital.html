@@ -462,6 +462,13 @@
       </div>
     </div>
     <div class="hint" style="margin-top:10px">Arrastra para orbitar · rueda para acercar · clic derecho para desplazar.</div>
+    <div id="gemViz" style="margin-top:12px;display:flex;gap:8px 16px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted-txt,#a89a8c)">
+      <span style="opacity:.8">✂️ Corte de sección</span>
+      <button class="vp-chip gviz-cut" data-cut="none" style="padding:6px 12px">Completo</button>
+      <button class="vp-chip gviz-cut" data-cut="h" title="Rebana por altura: mira dentro de cada nivel, como casa de muñecas" style="padding:6px 12px">Por nivel</button>
+      <button class="vp-chip gviz-cut" data-cut="v" title="Corte vertical transversal (la sección clásica de arquitectura)" style="padding:6px 12px">Sección</button>
+      <input id="gemCut" type="range" min="2" max="98" value="55" style="width:130px;accent-color:#cdf25a" disabled>
+    </div>
     <div class="toolbar" style="margin-top:16px;align-items:center">
       <div class="field" style="min-width:190px;flex:0 1 230px">
         <label>🌞 Asoleamiento — mes: <b id="sunMesLbl" style="color:var(--lime)">jun</b> <span class="help" tabindex="0" data-tip="Simula la posición real del sol según la latitud de la zona elegida (paso 08), el mes y la hora. Observa qué sombras proyecta y recibe tu edificio en solsticios y equinoccios.">?</span></label>
@@ -635,6 +642,7 @@
 </div>
 
 <script src="zonas.js"></script>
+<script src="edificio3d.js"></script>
 
 <!-- Three.js via import map.
      IMPORTANTE: el importmap DEBE ir antes que cualquier <script type="module">.
@@ -1251,11 +1259,54 @@ function initThree(canvas) {
   return { renderer, scene, camera, controls, resize, sun, hemi };
 }
 
+/* ===== Corte de sección (dollhouse) — mismo recurso que el Creador de planos.
+   Usa clipping planes globales del renderer sobre el grupo del edificio activo
+   ('building' del plano o 'simWorld' del simulador). No toca materiales. ===== */
+const _gviz = { cut: 'none', t: 0.55 };
+const _gvizPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e9);
+let _gemCap = null;
+function _gvizClip(world, on) {
+  world.traverse(o => {
+    if (o.userData.env || !o.material) return;
+    o.material.clippingPlanes = on ? [_gvizPlane] : null;
+    o.material.clipShadows = on;
+  });
+}
+function gemVizApply() {
+  if (!three) return;
+  const { renderer, scene } = three;
+  const world = scene.getObjectByName('building');
+  const apagar = () => { renderer.localClippingEnabled = false; if (world) _gvizClip(world, false); if (_gemCap) { _gemCap.dispose(); _gemCap = null; } };
+  if (_gviz.cut === 'none' || !world) { apagar(); return; }
+  const box = new THREE.Box3().setFromObject(world);
+  if (_gviz.cut === 'h') {
+    const y = box.min.y + (box.max.y - box.min.y) * _gviz.t;
+    _gvizPlane.normal.set(0, -1, 0); _gvizPlane.constant = y;
+  } else {
+    const z = box.min.z + (box.max.z - box.min.z) * _gviz.t;
+    _gvizPlane.normal.set(0, 0, -1); _gvizPlane.constant = z;
+  }
+  renderer.localClippingEnabled = true;
+  _gvizClip(world, true);
+  if (!_gemCap) _gemCap = bbSeccionCap(THREE, scene, world, _gvizPlane, 0x9a9186);
+  _gemCap.update(_gvizPlane);
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.gviz-cut').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.gviz-cut').forEach(x => x.classList.toggle('vp-chip-ar', x === b));
+    _gviz.cut = b.dataset.cut;
+    const r = $('gemCut'); if (r) r.disabled = (_gviz.cut === 'none');
+    gemVizApply();
+  }));
+  const r = $('gemCut'); if (r) r.addEventListener('input', e => { _gviz.t = (+e.target.value) / 100; gemVizApply(); });
+});
+
 function buildScene(g) {
   if (!three) three = initThree();
   const { scene, camera, controls } = three;
 
   // limpiar edificio previo
+  if (_gemCap) { _gemCap.dispose(); _gemCap = null; }   // la tapa referencia geometrías del modelo anterior
   const prev = scene.getObjectByName('building');
   if (prev) scene.remove(prev);
   const prevGround = scene.getObjectByName('ground');
@@ -1290,50 +1341,9 @@ function buildScene(g) {
   const matEdge   = new THREE.LineBasicMaterial({ color: 0xcdf25a, transparent: true, opacity: 0.5 });
 
   // forma del footprint (plano XY → XZ de three)
-  const shape = new THREE.Shape();
-  g.footprint.forEach((p, i) => i === 0 ? shape.moveTo(p.x - cx, p.y - cy) : shape.lineTo(p.x - cx, p.y - cy));
-  shape.closePath();
-
-  for (let lvl = 0; lvl <= g.niveles; lvl++) {
-    // losa (incluye la de azotea en lvl = niveles)
-    const slabGeo = new THREE.ExtrudeGeometry(shape, { depth: slabT, bevelEnabled: false });
-    slabGeo.rotateX(-Math.PI / 2);
-    const slab = new THREE.Mesh(slabGeo, matSlab);
-    slab.position.y = lvl * h;
-    slab.castShadow = slab.receiveShadow = true;
-    group.add(slab);
-    group.add(new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), matEdge).translateY(lvl * h));
-
-    if (lvl === g.niveles) break;
-
-    // muros del nivel
-    for (const w of g.muros) {
-      const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
-      const len = Math.hypot(dx, dy);
-      if (len < 0.05) continue;
-      const geo = new THREE.BoxGeometry(len, h - slabT, wallT);
-      const mesh = new THREE.Mesh(geo, w.carga ? matWallC : matWallP);
-      mesh.position.set(
-        (w.x1 + w.x2) / 2 - cx,
-        lvl * h + slabT + (h - slabT) / 2,
-        (w.y1 + w.y2) / 2 - cy
-      );
-      mesh.rotation.y = -Math.atan2(dy, dx);
-      mesh.castShadow = mesh.receiveShadow = true;
-      mesh.userData.wall = true;                    // objetivo de la textura de fachada
-      mesh.userData.wlen = len; mesh.userData.wh = h - slabT;
-      group.add(mesh);
-    }
-
-    // columnas
-    for (const c of g.columnas) {
-      const geo = new THREE.BoxGeometry(0.3, h, 0.3);
-      const mesh = new THREE.Mesh(geo, matCol);
-      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
-      mesh.castShadow = true;
-      group.add(mesh);
-    }
-  }
+  // Constructor COMPARTIDO (edificio3d.js): misma implementación que el
+  // Creador y el Comparador; tagWalls marca los muros para la textura IA.
+  bbEdificio(THREE, g, { mats: { slab: matSlab, wallP: matWallP, wallC: matWallC, col: matCol, edge: matEdge }, group, tagWalls: true });
 
   scene.add(group);
 
@@ -1360,6 +1370,7 @@ function buildScene(g) {
   camera.position.set(d, d * 0.75, d);
   controls.target.set(0, totalH / 2, 0);
   three.resize();
+  gemVizApply();   // re-aplica el corte de sección al nuevo modelo
 }
 
 /* =====================================================================
@@ -1595,14 +1606,14 @@ function makeSimBuilding(g) {
       const len = Math.hypot(dx, dy);
       if (len < 0.05) continue;
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, h - slabT, wallT), w.carga ? matWallC : matWallP);
-      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, (w.y1 + w.y2) / 2 - cy);
-      mesh.rotation.y = -Math.atan2(dy, dx);
+      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, cy - (w.y1 + w.y2) / 2);
+      mesh.rotation.y = Math.atan2(dy, dx);
       mesh.castShadow = mesh.receiveShadow = true;
       group.add(mesh);
     }
     for (const c of g.columnas) {
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, h, 0.3), matCol);
-      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
+      mesh.position.set(c.x - cx, lvl * h + h / 2, cy - c.y);
       mesh.castShadow = true;
       group.add(mesh);
     }
@@ -1892,6 +1903,7 @@ function renderInvestment() {
     'ROI del desarrollo': 'Retorno de inversión del desarrollador: la ganancia comparada con lo que costó construir. Ej. 90% = casi duplicas lo invertido.',
     'Equilibrio vía renta': 'Cuántos años de renta se necesitan para recuperar el costo de la obra.',
   };
+  const _est = '<span style="font-size:.5em;color:#F5C277;vertical-align:super;font-weight:700"> est.</span>';
   $('invStats').innerHTML = [
     ['$' + fmt(prom), 'Valor al terminar (prom.)'],
     [fmt(v.plusvaliaAnualPct) + '%', 'Plusvalía anual'],
@@ -1899,7 +1911,8 @@ function renderInvestment() {
     [fmt(v.capRatePct) + '%', 'Cap rate'],
     [fmt(v.roiDesarrolloPct) + '%', 'ROI del desarrollo'],
     [fmt(v.puntoEquilibrioAnios) + ' años', 'Equilibrio vía renta'],
-  ].map(([val, k]) => `<div class="geo-stat"><div class="v">${val}</div><div class="k">${k}<span class="help" tabindex="0" data-tip="${TIP[k]}">?</span></div></div>`).join('');
+  ].map(([val, k]) => `<div class="geo-stat"><div class="v">${val}${_est}</div><div class="k">${k.replace(' est.','')}<span class="help" tabindex="0" data-tip="${TIP[k]}">?</span></div></div>`).join('')
+   + '<div class="geo-stat" style="grid-column:1/-1;background:none;border:none;padding:2px 0"><div style="font-size:10.5px;color:var(--muted-txt)">▦ Todas las cifras de inversión son <b style="color:#F5C277">estimaciones</b> de la IA sobre supuestos de mercado; no son asesoría.</div></div>';
 
   const costoProm = (state.engineering.costoEstimadoMXN.minimo + state.engineering.costoEstimadoMXN.maximo) / 2;
   const rows = [
@@ -2089,7 +2102,7 @@ function buildFurniture(g) {
     const tipo = roomKit(e.nombre); if (!tipo) continue;
     const kit = buildKit(tipo);
     if (e.areaM2 && e.areaM2 < 8) kit.scale.setScalar(0.85);
-    kit.position.set((+e.x || 0) - cx, 0.152, (+e.y || 0) - cy); // sobre la losa de PB
+    kit.position.set((+e.x || 0) - cx, 0.152, cy - (+e.y || 0)); // sobre la losa de PB (Z negado como muros/losa)
     grp.add(kit);
   }
   return grp;

@@ -41,6 +41,11 @@
   status = 200
 
 [[redirects]]
+  from = "/aviso-de-privacidad"
+  to = "/aviso-de-privacidad.html"
+  status = 200
+
+[[redirects]]
   from = "/morfogenesis"
   to = "/morfogenesis.html"
   status = 200

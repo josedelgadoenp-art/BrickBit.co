@@ -223,6 +223,7 @@
 
 </div>
 
+<script src="edificio3d.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -301,28 +302,32 @@ $('btnCompare').addEventListener('click', () => {
 
 /* ---------- métricas ---------- */
 function stats(p) {
-  const g = p.geometry, e = p.engineering;
-  const aceroKg = e.varillas.reduce((s, v) => s + (v.cantidadKg || 0), 0);
+  // Guardas: un proyecto viejo/parcial en bb_projects podría no traer engineering
+  // completo; con defaults la tabla no revienta.
+  const g = p.geometry || {}, e = p.engineering || {};
+  const varillas = e.varillas || [], materiales = e.materiales || [], fallas = e.fallas || [];
+  const costo = e.costoEstimadoMXN || {}, ff = e.primeraFalla || {};
+  const aceroKg = varillas.reduce((s, v) => s + (v.cantidadKg || 0), 0);
   let concretoM3 = 0;
-  for (const cat of e.materiales) {
-    for (const it of cat.items) {
-      if (/m³|m3/i.test(it.unidad) && /concreto/i.test(cat.categoria + ' ' + it.concepto)) concretoM3 += it.cantidad || 0;
+  for (const cat of materiales) {
+    for (const it of (cat.items || [])) {
+      if (/m³|m3/i.test(it.unidad) && /concreto/i.test((cat.categoria || '') + ' ' + (it.concepto || ''))) concretoM3 += it.cantidad || 0;
     }
   }
-  const graves = e.fallas.filter(f => ['alta', 'crítica'].includes(f.severidad)).length;
+  const graves = fallas.filter(f => ['alta', 'crítica'].includes(f.severidad)).length;
   return {
-    niveles: g.niveles,
-    area: g.areaTotalM2,
-    huella: `${g.anchoM}×${g.fondoM} m`,
-    sistema: g.sistemaEstructural,
+    niveles: g.niveles ?? '—',
+    area: g.areaTotalM2 ?? 0,
+    huella: `${g.anchoM ?? '?'}×${g.fondoM ?? '?'} m`,
+    sistema: g.sistemaEstructural || '—',
     concretoM3, aceroKg,
-    costoMin: e.costoEstimadoMXN.minimo,
-    costoMax: e.costoEstimadoMXN.maximo,
-    costoM2: g.areaTotalM2 ? (e.costoEstimadoMXN.minimo + e.costoEstimadoMXN.maximo) / 2 / g.areaTotalM2 : 0,
-    ffNombre: e.primeraFalla.nombre,
-    ffAnios: e.primeraFalla.aniosEstimados,
+    costoMin: costo.minimo ?? 0,
+    costoMax: costo.maximo ?? 0,
+    costoM2: g.areaTotalM2 ? ((costo.minimo ?? 0) + (costo.maximo ?? 0)) / 2 / g.areaTotalM2 : 0,
+    ffNombre: ff.nombre || '—',
+    ffAnios: ff.aniosEstimados ?? '—',
     graves,
-    fallas: e.fallas.length,
+    fallas: fallas.length,
   };
 }
 
@@ -401,36 +406,8 @@ function makeBuilding(g, edgeColorHex) {
   const matCol   = new THREE.MeshStandardMaterial({ color: 0x8f8779, roughness: 0.7 });
   const matEdge  = new THREE.LineBasicMaterial({ color: edgeColorHex, transparent: true, opacity: 0.65 });
 
-  const shape = new THREE.Shape();
-  g.footprint.forEach((p, i) => i === 0 ? shape.moveTo(p.x - cx, p.y - cy) : shape.lineTo(p.x - cx, p.y - cy));
-  shape.closePath();
-
-  for (let lvl = 0; lvl <= g.niveles; lvl++) {
-    const slabGeo = new THREE.ExtrudeGeometry(shape, { depth: slabT, bevelEnabled: false });
-    slabGeo.rotateX(-Math.PI / 2);
-    const slab = new THREE.Mesh(slabGeo, matSlab);
-    slab.position.y = lvl * h;
-    slab.castShadow = slab.receiveShadow = true;
-    group.add(slab);
-    group.add(new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), matEdge).translateY(lvl * h));
-    if (lvl === g.niveles) break;
-    for (const w of g.muros) {
-      const dx = w.x2 - w.x1, dy = w.y2 - w.y1;
-      const len = Math.hypot(dx, dy);
-      if (len < 0.05) continue;
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, h - slabT, wallT), w.carga ? matWallC : matWallP);
-      mesh.position.set((w.x1 + w.x2) / 2 - cx, lvl * h + slabT + (h - slabT) / 2, (w.y1 + w.y2) / 2 - cy);
-      mesh.rotation.y = -Math.atan2(dy, dx);
-      mesh.castShadow = mesh.receiveShadow = true;
-      group.add(mesh);
-    }
-    for (const c of g.columnas) {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, h, 0.3), matCol);
-      mesh.position.set(c.x - cx, lvl * h + h / 2, c.y - cy);
-      mesh.castShadow = true;
-      group.add(mesh);
-    }
-  }
+  // Constructor COMPARTIDO (edificio3d.js).
+  bbEdificio(THREE, g, { mats: { slab: matSlab, wallP: matWallP, wallC: matWallC, col: matCol, edge: matEdge }, group });
   return group;
 }
 

@@ -56,6 +56,7 @@ summary::-webkit-details-marker{display:none}
 .appr .big{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--grn)}
 .tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle}
 .tag.ok{background:rgba(205,242,90,.15);color:var(--lim)} .tag.ex{background:rgba(224,161,58,.16);color:var(--amb)}
+.amber{color:var(--amb)}  /* marca inline de dato estimado (honestidad de datos) */
 .note{font-size:11.5px;color:var(--mut);background:var(--p2);border:1px solid var(--bd);border-left:2px solid var(--amb);border-radius:8px;padding:10px 12px;margin-top:14px}
 .prov{font-size:11px;color:var(--mut);margin-top:9px;line-height:1.6}
 .prov b{color:var(--tx)} .pos{color:var(--pos)} .neg{color:var(--neg)} .lim{color:var(--lim)}
@@ -427,6 +428,16 @@ function init(){
   else { const qz=params.get('zona'); const m=qz?ZONAS.find(z=>z.n.toLowerCase()===qz.trim().toLowerCase()):null; sel.value=m?m.n:'Querétaro'; onZona(); }
   planFeasibLoad();   // ?desde=plano → precarga el proyecto del Creador de planos
   devDeepLink();      // ?dev=1&lote=N → Modo Desarrollador con ese terreno (desde el mapa)
+  // Sincroniza los multiplicadores embebidos con data/forecast.json (modelo v2):
+  // una sola fuente de verdad; el snapshot embebido queda solo como fallback offline.
+  fetch('data/forecast.json',{cache:'no-store'}).then(r=>r.json()).then(j=>{
+    const Z=j.zonas||{};
+    ZONAS.forEach(z=>{const c=Z[z.n]; if(!c)return;
+      [['1','f1','lo1','hi1'],['3','f3','lo3','hi3'],['5','f5','lo5','hi5'],['10','f10','lo10','hi10']]
+        .forEach(([h,fk,lk,hk])=>{ if(c[h]){ z[fk]=c[h].f; z[lk]=c[h].lo; z[hk]=c[h].hi; } });
+    });
+    calc(); if(typeof renderDev==='function') renderDev();
+  }).catch(()=>{});
 }
 function devDeepLink(){
   try{
@@ -502,6 +513,7 @@ function bbPlacesBump(n){ try{ localStorage.setItem(_bbKey(), String((parseInt(l
 const BB_CAP_MSG_A='<div class="note" style="border-left-color:var(--amb)">Alcanzaste el <b>límite diario</b> de consultas de ubicación en este navegador (protección de costo). Se reinicia mañana.</div>';
 /* Registro de DEMANDA (anónimo) — mismo Worker que la IA. */
 const BB_BACKEND_A=(localStorage.getItem('bb_backend_url')||'https://brickbit-api.jose-delgado-enp.workers.dev').replace(/\/+$/,'');
+const USD_MXN=17.5; // TC de referencia (jul 2026); actualiza si cambia
 function bbDemand(evento,zona,meta){ try{ fetch(BB_BACKEND_A+'/api/demand-log',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({evento,zona:zona||'',meta:meta||{}}),keepalive:true}).catch(()=>{}); }catch(e){} }
 async function scanNear(center,types,radius,fields){
   const lib=await loadPlacesA();
@@ -768,7 +780,7 @@ async function devTesisIA(){
   out.innerHTML='<div class="note" style="margin-top:12px">✨ Generando la tesis de inversión con IA…</div>';
   const e=(typeof ECON!=='undefined'&&ECON[z.n])?ECON[z.n]:null;
   const system='Eres un analista senior de desarrollo inmobiliario en México. Escribe una tesis de inversión BREVE, concreta y honesta para un desarrollador. Sin relleno.';
-  const prompt=`Zona: ${z.n}. Precio de venta ${_dm(z.pm2)}/m². Plusvalía ${z.g}% anual. Proyecto: ${p.tipoP}, ${p.units} unidades en ${p.niveles} niveles, ${p.supVend} m² vendibles. Inversión ${_dmM(p.cTot)}, ingresos ${_dmM(p.ing)}, utilidad ${_dmM(p.util)}, ROI ${Math.round(p.roi)}%, TIR ${Math.round(p.tir)}% en ${p.plazo} meses.${e?` Economía DENUE: ${_mmex(e.neg)} negocios, ${_mmex(e.emp)} empleos, ${e.altas} aperturas recientes.`:''} Devuelve: tesis (2-3 frases), viabilidad (1 frase), 3 riesgos y una recomendación (1 frase).`;
+  const prompt=`Zona: ${z.n}. Precio de venta ${_dm(p.sale)}/m² (${p.saleReal?'real Century 21':'índice SHF, estimado'}). Plusvalía ${z.g}% anual. Proyecto: ${p.tipoP}, ${p.units} unidades en ${p.niveles} niveles, ${p.supVend} m² vendibles. Inversión ${_dmM(p.cTot)}, ingresos ${_dmM(p.ing)}, utilidad ${_dmM(p.util)}, ROI ${Math.round(p.roi)}%, TIR ${Math.round(p.tir)}% en ${p.plazo} meses.${e?` Economía DENUE: ${_mmex(e.neg)} negocios, ${_mmex(e.emp)} empleos, ${e.altas} aperturas recientes.`:''} Devuelve: tesis (2-3 frases), viabilidad (1 frase), 3 riesgos y una recomendación (1 frase).`;
   const schema={type:'object',additionalProperties:false,properties:{tesis:{type:'string'},viabilidad:{type:'string'},riesgos:{type:'array',items:{type:'string'}},recomendacion:{type:'string'}},required:['tesis','viabilidad','riesgos','recomendacion']};
   try{
     const t=await callClaudeA(system,prompt,schema);
@@ -802,7 +814,7 @@ function devPDF(){
   'ul{font-size:13px}p{font-size:13px;line-height:1.55}.foot{margin-top:22px;border-top:1px solid #d8e0dd;padding-top:10px;font-size:10.5px;color:#7a878c}@media print{@page{margin:16mm}}</style></head><body>'+
   '<div class="head"><div><div class="brand">brick<span>bit</span></div><div class="meta">Modo Desarrollador · viabilidad de proyecto</div></div><div class="meta">'+fdate+'</div></div>'+
   '<h1>'+escA(z.n)+'</h1>'+
-  '<div class="meta">Precio de venta '+_dm(z.pm2)+'/m² · Plusvalía +'+(+z.g||0).toFixed(1)+'% · '+escA(p.tipoP)+'</div>'+
+  '<div class="meta">Precio de venta '+_dm(p.sale)+'/m² '+(p.saleReal?'(real C21)':'(SHF est.)')+' · Plusvalía +'+(+z.g||0).toFixed(1)+'% · '+escA(p.tipoP)+'</div>'+
   '<h2>Programa</h2><p>'+p.units+' unidades · '+p.niveles+' niveles · '+p.supVend.toLocaleString('es-MX')+' m² vendibles · terreno '+p.lot+' m² (COS '+p.cos+', CUS '+p.cus+')</p>'+
   '<table>'+mixRows+'</table>'+
   '<h2>Pro-forma financiera</h2><table>'+finRows+'</table>'+
@@ -827,14 +839,17 @@ let _estBusy=false;
 /* Inventario real por zona (Century 21 vía Worker), para comparables */
 const _ZL={};
 function _slugZ(n){return String(n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,'-');}
-function _havA(a,b,c,d){const R=6371,p=Math.PI/180;const x=(c-a)*p,y=(d-b)*p;const h=Math.sin(x/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+// haversine en KM (4 escalares). Nombre propio para NO colisionar con _havA
+// (metros, 2 objetos) que usan scanNear/buscarLugar — la colisión rompía en
+// silencio el buscador, el BrickBit Estimate y los Desiertos de oportunidad.
+function _havKm(a,b,c,d){const R=6371,p=Math.PI/180;const x=(c-a)*p,y=(d-b)*p;const h=Math.sin(x/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
 async function loadZoneListingsA(zone){
   if(_ZL[zone])return _ZL[zone];
   try{
     const r=await fetch(BB_BACKEND_A+'/api/listados?zona='+encodeURIComponent(_slugZ(zone)));
     if(!r.ok)throw 0; const arr=await r.json();
     const L=(Array.isArray(arr)?arr:[]).filter(x=>x.operacion==='venta'&&x.lat!=null&&x.precio>0&&x.m2_construccion>0)
-      .map(x=>{const fx=x.moneda==='USD'?17.5:1;return {tipo:x.tipo,m2:x.m2_construccion,pm2:x.pm2?Math.round(x.pm2*fx):null,precio:Math.round(x.precio*fx),lat:x.lat,lng:x.lng,url:x.url,titulo:x.titulo,municipio:x.municipio};});
+      .map(x=>{const fx=x.moneda==='USD'?USD_MXN:1;return {tipo:x.tipo,m2:x.m2_construccion,pm2:x.pm2?Math.round(x.pm2*fx):null,precio:Math.round(x.precio*fx),lat:x.lat,lng:x.lng,url:x.url,titulo:x.titulo,municipio:x.municipio};});
     _ZL[zone]=L; return L;
   }catch(e){_ZL[zone]=[];return[];}
 }
@@ -868,8 +883,8 @@ async function brickbitEstimate(){
     let compsHTML='';
     try{
       const zl=await loadZoneListingsA(z.n);
-      const comps=zl.filter(c=>c.pm2>3000&&c.pm2<200000&&_havA(center.lat,center.lng,c.lat,c.lng)<=6&&c.m2>=m2*0.5&&c.m2<=m2*2.2)
-        .map(c=>({...c,d:_havA(center.lat,center.lng,c.lat,c.lng)})).sort((a,b)=>a.d-b.d);
+      const comps=zl.filter(c=>c.pm2>3000&&c.pm2<200000&&_havKm(center.lat,center.lng,c.lat,c.lng)<=6&&c.m2>=m2*0.5&&c.m2<=m2*2.2)
+        .map(c=>({...c,d:_havKm(center.lat,center.lng,c.lat,c.lng)})).sort((a,b)=>a.d-b.d);
       if(comps.length>=3){
         const pm=comps.map(c=>c.pm2).sort((a,b)=>a-b), medC=pm[Math.floor(pm.length/2)];
         const valC=Math.round(m2*medC), diff=Math.round((ppm2/medC-1)*100);
@@ -927,6 +942,8 @@ function irr(cf){let lo=-0.95,hi=3;const npv=r=>cf.reduce((a,c,t)=>a+c/Math.pow(
 function calc(){
   const z=zona();if(!z)return;
   const precio=num('precio'), rentaM=num('renta'), eng=num('eng')/100;
+  // Sin precio válido no hay pro-forma: evita NaN/Infinity en cap rate y CoC.
+  if(!(precio>0)){ const o=$('out'); if(o) o.innerHTML='<div class="note" style="border-left-color:var(--amb)">Escribe el <b>precio de compra</b> para calcular el retorno.</div>'; return; }
   const isai=num('isai'),notar=num('notar'),avaluo=num('avaluo');
   const costoAdqPct=(isai+notar+avaluo)/100, costoAdq=precio*costoAdqPct;
   const inicial=precio*eng+costoAdq;
@@ -977,7 +994,7 @@ function calc(){
     <div class="appr">
       <div>Apreciación del inmueble ${tip('apreciacion')} ${valTag}</div>
       <div class="big">${fmtM(precio)} → ${fmtM(valorFut)}</div>
-      <div class="vs" style="color:var(--mut);font-size:12px">${pct((facTot-1)*100)} acumulado en ${H} años · pronóstico SHF (ensamble validado)</div>
+      <div class="vs" style="color:var(--mut);font-size:12px">${pct((facTot-1)*100)} acumulado en ${H} años · pronóstico SHF (modelo espacial validado)</div>
     </div>
 
     <div class="sec-t">Inversión inicial</div>
@@ -1000,7 +1017,7 @@ function calc(){
     <div class="row"><span class="l"><b>= Neto de venta</b></span><span class="r">${fmt(netoVenta)}</span></div>
 
     <div class="prov">
-      <b>Procedencia de los datos.</b> <span class="lim">Real:</span> la apreciación viene del pronóstico de la SHF (ensamble validado a 1–3 años; ${H>3?'<span class="neg">a '+H+' años es extrapolado</span>':'validado'}). <span class="amb" style="color:var(--amb)">Estimado:</span> la renta usa el yield típico de la zona (pendiente de listados reales). <span class="amb" style="color:var(--amb)">Supuestos:</span> los costos fiscales son valores mexicanos típicos, editables arriba.
+      <b>Procedencia de los datos.</b> <span class="lim">Real:</span> la apreciación viene del pronóstico de la SHF (modelo espacial SAR validado a 1–3 años; ${H>3?'<span class="neg">a '+H+' años es extrapolado</span>':'validado'}). <span class="amb" style="color:var(--amb)">Estimado:</span> la renta usa el yield típico de la zona (pendiente de listados reales). <span class="amb" style="color:var(--amb)">Supuestos:</span> los costos fiscales son valores mexicanos típicos, editables arriba.
     </div>
     ${(monto>0&&num('tasa')/100>capRate/100)?`<div class="note" style="border-left-color:var(--amb)">Apalancamiento negativo: la tasa de crédito (${num('tasa')}%) supera al cap rate (${capRate.toFixed(1)}%), así que financiar <b>resta</b> flujo. En México las rentas residenciales suelen rendir menos que el crédito, por lo que el retorno se apoya en la apreciación o en comprar de contado.</div>`:''}
     <div class="note">Herramienta informativa de análisis, <b>no asesoría de inversión ni fiscal</b>. El ISR de ganancia de capital en México admite ajuste por inflación del costo y posibles exenciones (casa-habitación); este cálculo es una estimación simplificada. Confirma con un contador antes de decidir.</div>`;

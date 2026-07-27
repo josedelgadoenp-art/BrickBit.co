@@ -428,6 +428,8 @@
   .vex-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:.8rem;max-width:560px}
   .vex-chip{font-family:'Inter',sans-serif;background:rgba(0,0,0,.35);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.8);border-radius:999px;padding:6px 12px;font-size:.78rem;cursor:pointer;transition:all .25s}
   .vex-chip:hover{color:#fff;border-color:rgba(255,255,255,.5)}
+  @keyframes vexShake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(2px)}30%,50%,70%{transform:translateX(-4px)}40%,60%{transform:translateX(4px)}}
+  .vex-shake{animation:vexShake .5s}
   .fade-up{opacity:0;transform:translateY(10px);transition:opacity 1s ease,transform 1s ease}
   .fade-up.in{opacity:1;transform:translateY(0)}
   .explorer-section{padding:clamp(3rem,8vh,6rem) 0}
@@ -697,7 +699,7 @@
         <p class="lead">Precio por m², plusvalía y pronóstico validado por backtest. Elige una ciudad y observa hacia dónde va su valor.</p>
         <div class="hero-meta">
           <div class="stat"><span class="num" data-count="32" data-suffix="">0</span><span class="lbl">Ciudades con datos reales</span></div>
-          <div class="stat"><span class="num" data-count="14" data-suffix="">0</span><span class="lbl">Años de historia SHF</span></div>
+          <div class="stat"><span class="num" data-count="21" data-suffix="">0</span><span class="lbl">Años de historia SHF</span></div>
           <div class="stat"><span class="num" data-count="91" data-suffix="%">0%</span><span class="lbl">Cobertura IC · 1 año</span></div>
         </div>
       </div>
@@ -800,30 +802,30 @@
     <div class="sec-head reveal">
       <span class="kicker">Validación, no promesas</span>
       <h2>El pronóstico está <em>probado contra la realidad</em>.</h2>
-      <p>Predecir es fácil; acertar hay que demostrarlo. Validamos el modelo con <b>walk-forward</b> sobre el histórico real de la SHF (2012–2026), sin fuga de información: en cada punto del pasado pronosticamos a futuro y medimos el error contra lo que de verdad ocurrió.</p>
+      <p>Predecir es fácil; acertar hay que demostrarlo. Validamos el modelo — un ensamble de momentum, tendencia y <b>contagio espacial</b> entre zonas vecinas — con <b>walk-forward</b> sobre el histórico real de la SHF (2005–2026), sin fuga de información: en cada punto del pasado pronosticamos a futuro y medimos el error contra lo que de verdad ocurrió. Todo es reproducible con <code style="font-size:.85em">scripts/backtest_shf.py</code>.</p>
     </div>
     <div class="vstats reveal">
       <div class="vcard">
         <div class="vh">Error a 1 año <span class="vtag">menos es mejor</span></div>
-        <div class="vbar-row"><span class="vbl">BrickBit</span><div class="vbar"><i style="width:91%;background:linear-gradient(90deg,var(--clay),var(--lime))"></i></div><span class="vbv">1.93</span></div>
-        <div class="vbar-row"><span class="vbl">Persistencia</span><div class="vbar"><i style="width:96%;background:#6b5f54"></i></div><span class="vbv">2.04</span></div>
-        <div class="vbar-row"><span class="vbl">Prom. nacional</span><div class="vbar"><i style="width:100%;background:#6b5f54"></i></div><span class="vbv">2.12</span></div>
-        <div class="vsub">Puntos % de error en la plusvalía · 1,216 evaluaciones. El modelo le gana a suponer que el futuro repite el pasado y al promedio nacional.</div>
+        <div class="vbar-row"><span class="vbl">BrickBit</span><div class="vbar"><i style="width:92%;background:linear-gradient(90deg,var(--clay),var(--lime))"></i></div><span class="vbv">1.82</span></div>
+        <div class="vbar-row"><span class="vbl">Persistencia</span><div class="vbar"><i style="width:100%;background:#6b5f54"></i></div><span class="vbv">1.99</span></div>
+        <div class="vbar-row"><span class="vbl">Prom. nacional</span><div class="vbar"><i style="width:97%;background:#6b5f54"></i></div><span class="vbv">1.94</span></div>
+        <div class="vsub">Puntos % de error en la plusvalía · 480 evaluaciones. El modelo le gana a suponer que el futuro repite el pasado y al promedio nacional.</div>
       </div>
       <div class="vcard">
         <div class="vh">Error a 3 años <span class="vtag">menos es mejor</span></div>
-        <div class="vbar-row"><span class="vbl">BrickBit</span><div class="vbar"><i style="width:79%;background:linear-gradient(90deg,var(--clay),var(--lime))"></i></div><span class="vbv">5.42</span></div>
-        <div class="vbar-row"><span class="vbl">Persistencia</span><div class="vbar"><i style="width:90%;background:#6b5f54"></i></div><span class="vbv">6.19</span></div>
-        <div class="vbar-row"><span class="vbl">Prom. nacional</span><div class="vbar"><i style="width:100%;background:#6b5f54"></i></div><span class="vbv">6.87</span></div>
-        <div class="vsub">A horizonte más largo el modelo mantiene la ventaja · 960 evaluaciones.</div>
+        <div class="vbar-row"><span class="vbl">BrickBit</span><div class="vbar"><i style="width:91%;background:linear-gradient(90deg,var(--clay),var(--lime))"></i></div><span class="vbv">5.56</span></div>
+        <div class="vbar-row"><span class="vbl">Persistencia</span><div class="vbar"><i style="width:100%;background:#6b5f54"></i></div><span class="vbv">6.20</span></div>
+        <div class="vbar-row"><span class="vbl">Prom. nacional</span><div class="vbar"><i style="width:93%;background:#6b5f54"></i></div><span class="vbv">5.78</span></div>
+        <div class="vsub">A horizonte más largo el modelo mantiene la ventaja · 416 evaluaciones.</div>
       </div>
       <div class="vcard vcard-cov">
-        <div class="vbig">91%</div>
+        <div class="vbig">90%</div>
         <div class="vh">Cobertura del intervalo de confianza</div>
-        <p class="vsub" style="margin-top:10px">Cuando decimos "90% de confianza", el valor real cae dentro del rango el <b>91%</b> de las veces (90.5% a 3 años). El rango no es decorativo: está calibrado.</p>
+        <p class="vsub" style="margin-top:10px">Cuando decimos "90% de confianza", el valor real cae dentro del rango el <b>91.5%</b> de las veces (89.6% a 3 años). El rango no es decorativo: está calibrado a la cobertura empírica real.</p>
       </div>
     </div>
-    <p class="exp-note" style="text-align:center;max-width:660px;margin:24px auto 0">Validado a <b>1 y 3 años</b> con el histórico SHF; <b>5 y 10 años son extrapolación</b> y aparecen marcados como tal en todo el producto. 38 orígenes de evaluación, método walk-forward sin fuga de información.</p>
+    <p class="exp-note" style="text-align:center;max-width:660px;margin:24px auto 0">Validado a <b>1 y 3 años</b> con el histórico SHF; <b>5 y 10 años son extrapolación</b> y aparecen marcados como tal en todo el producto. Método walk-forward sin fuga de información (15 y 13 orígenes de evaluación); cifras reproducibles con <code style="font-size:.9em">scripts/backtest_shf.py</code>.</p>
   </div>
 </section>
 
@@ -863,7 +865,7 @@
         </div>
         <div class="metrics">
           <div class="metric"><span class="k">Precio actual · m² (real)</span><span class="v">$17,400 MXN</span></div>
-          <div class="metric"><span class="k">Plusvalía esperada (real)</span><span class="v up">+13.4% anual</span></div>
+          <div class="metric"><span class="k">Plusvalía histórica (real)</span><span class="v up">+13.4% anual</span></div>
           <div class="metric"><span class="k">Valor proyectado · m² · 5 años</span><span class="v">$30,184 MXN</span></div>
           <div class="metric"><span class="k">Apreciación a 5 años</span><span class="v up">+73%</span></div>
           <div class="metric"><span class="k">Riesgo · volatilidad</span><span class="v">4.5% anual</span></div>
@@ -1336,10 +1338,11 @@ document.addEventListener('click',()=>{document.querySelectorAll('.dd.open').for
       '<div class="rw"><span>'+(x.municipio||'')+', '+(x.zona||'')+'</span></div>'+
       '<div class="rw"><span>'+(x.tipo||'')+'</span>'+(x.recamaras?'<span>'+x.recamaras+' rec</span>':'')+(x.m2_construccion?'<span>'+x.m2_construccion+' m²</span>':'')+(x.pm2?'<span>'+fmt(x.pm2)+'/m²</span>':'')+'</div>'+
       (x.zona_yield?'<div class="rw"><span class="yld">Rendimiento zona ~'+x.zona_yield+'%'+vs+'</span></div>':(vs?'<div class="rw"><span class="yld">'+vs.replace(' · ','')+'</span></div>':''))+
-      '<a href="'+(x.url||'#')+'" target="_blank" rel="noopener">Ver ficha en Century 21 →</a></div></div>';
+      (x.url?'<a href="'+x.url+'" target="_blank" rel="noopener">Ver ficha en Century 21 →</a>':'')+'</div></div>';
   }
   function buscar(){
-    var s=q.value.trim(); if(!s) return;
+    var s=q.value.trim();
+    if(!s){ if(q.focus)q.focus(); q.classList.add('vex-shake'); setTimeout(function(){q.classList.remove('vex-shake');},500); return; }
     if(sec){ sec.style.display='block'; sec.scrollIntoView({behavior:'smooth',block:'start'}); }
     out.innerHTML='<div class="bsc-empty">Pensando…</div>'; go.disabled=true;
     fetch(BB+'/api/buscar',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({q:s})})

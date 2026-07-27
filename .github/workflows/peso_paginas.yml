@@ -1,0 +1,34 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# BrickBit · Guardián de peso de páginas
+# ═══════════════════════════════════════════════════════════════════════════
+# Falla el build si alguna página HTML supera el límite, para que un blob de
+# datos muerto no vuelva a inflar el sitio (el mapa llegó a pesar 1.5 MB por un
+# GeoJSON embebido que nadie usaba). Datos grandes → data/*.json servidos por
+# fetch, nunca embebidos en el HTML.
+name: Peso de páginas
+on:
+  push:
+    paths: ['**/*.html']
+  pull_request:
+    paths: ['**/*.html']
+jobs:
+  tamano:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Revisar que ningún HTML supere 400 KB
+        run: |
+          LIMITE=$((400 * 1024))
+          FALLO=0
+          # Excluye la carpeta zona/ (páginas SEO) y node_modules
+          while IFS= read -r f; do
+            bytes=$(wc -c < "$f")
+            kb=$((bytes / 1024))
+            if [ "$bytes" -gt "$LIMITE" ]; then
+              echo "::error file=$f::$f pesa ${kb} KB (límite 400 KB). ¿Datos embebidos? Muévelos a data/*.json y léelos con fetch."
+              FALLO=1
+            else
+              echo "ok  ${kb} KB  $f"
+            fi
+          done < <(find . -maxdepth 1 -name '*.html' -not -path './node_modules/*')
+          exit $FALLO
