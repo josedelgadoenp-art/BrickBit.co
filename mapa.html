@@ -637,7 +637,19 @@ function listingToProp(L,c,nom){
   return {...ty,zona:nom,nom:(L.titulo?(L.titulo.slice(0,42)):`${ty.t} · ${L.m2} m²`),m2:L.m2,pm2:L.pm2,price:L.precio_mxn,
     g:(c.g!=null?c.g:null),yield:(c.yield!=null?c.yield:null),dom:(L.dom!=null?L.dom:(c.dom!=null?c.dom:null)),opp:c.opp,ciclo:c.ciclo,
     lat:L.lat,lng:L.lng,fuente:L.fuente,url:L.url,
-    vs:(L.vs!=null?L.vs:null),veredicto:L.veredicto||null,titulo:L.titulo,imagen:L.imagen,moneda:L.moneda};
+    vs:(L.vs!=null?L.vs:null),veredicto:L.veredicto||null,titulo:L.titulo,imagen:L.imagen,moneda:L.moneda,
+    dias:(L.dias!=null?L.dias:null),diasCens:!!L.diasCens,rec:(L.rec!=null?L.rec:null)};
+}
+/* Línea de seguimiento (memoria del mercado) para el panel de una propiedad:
+   recorte de precio acumulado y días publicada. Solo aparece cuando hay
+   seguimiento real; nunca se estima. */
+function segHTML(p){
+  const parts=[];
+  if(p.rec!=null&&p.rec<0) parts.push(`<b style="color:#57c389">▼ Bajó ${Math.abs(p.rec)}% de precio</b> desde su publicación`);
+  if(p.rec!=null&&p.rec>0) parts.push(`<b style="color:#e0745a">▲ Subió ${p.rec}%</b> desde su publicación`);
+  if(p.dias!=null&&p.dias>=1) parts.push(`${p.diasCens?'≥ ':''}${p.dias} días publicada`);
+  if(!parts.length) return '';
+  return `<div style="margin-top:8px;font-size:12.5px;color:#c8bfae">📡 ${parts.join(' · ')} <span style="color:#8a9a9e">· seguimiento BrickBit del inventario</span></div>`;
 }
 function giroRecom(c,nom){
   const tour=/Canc|Tulum|Playa|Hotelera|Puerto|Vallarta|Cabos|Paz|Mazat/i.test(nom||"");
@@ -797,14 +809,39 @@ async function showProps(){
     document.getElementById("zone-list").innerHTML='<div class="hint">Sin inventario de Century 21 en esta zona por ahora. Vuelve a la vista nacional para ver las zonas con inmuebles reales.</div>';
     return;
   }
-  const props=realL.map(L=>listingToProp(L,center,nom));
-  const titulo=`🏢 Inmuebles reales · Century 21 (${props.length})`;
+  const todas=realL.map(L=>listingToProp(L,center,nom));
+  // 🎯 Radar de Oportunidades: filtra a los inmuebles ≥12% debajo de la mediana
+  // real de su zona; los recortes de precio y días publicada (seguimiento) se
+  // muestran como señal extra. Siempre sobre precios de LISTA, y se dice.
+  const nOpp=todas.filter(p=>p.veredicto==='oportunidad').length;
+  const props=oppOnly?todas.filter(p=>p.veredicto==='oportunidad'):todas;
   propM.forEach(m=>map.removeLayer(m));propM=[];
   props.forEach(p=>{const m=L.marker([p.lat,p.lng],{icon:propIcon(p)}).addTo(map);
-    m.bindTooltip(`<b>${p.t}</b><br>${fmtM(p.price)} · ${p.m2}m²`,{direction:"top",offset:[0,-15]});
+    m.bindTooltip(`<b>${p.t}</b><br>${fmtM(p.price)} · ${p.m2}m²${p.rec!=null&&p.rec<0?`<br>▼ bajó ${Math.abs(p.rec)}%`:''}`,{direction:"top",offset:[0,-15]});
     m.on("click",()=>selProp(p));propM.push(m)});
-  list(titulo,props.map(p=>({nom:p.nom,opp:p.opp,g:p.g,yield:p.yield,price:p.price,_p:p})),d=>selProp(d._p||d));
+  list(`🏢 Inmuebles reales · Century 21 (${props.length})`,
+    props.map(p=>({nom:p.nom,opp:p.opp,g:p.g,yield:p.yield,price:p.price,_p:p,
+      _meta:(p.rec!=null&&p.rec<0)?`▼ recorte de ${Math.abs(p.rec)}%${p.dias>=1?` · ${p.diasCens?'≥':''}${p.dias} días publicada`:''}`
+           :(p.dias!=null&&p.dias>=1?`${p.diasCens?'≥':''}${p.dias} días publicada · ${p.vs!=null?(p.vs>0?'+':'')+p.vs+'% vs mediana':''}`:undefined)})),
+    d=>selProp(d._p||d));
+  // chips de filtro sobre la lista (🎯 = veredicto de oportunidad)
+  const lt=document.getElementById('list-title');
+  lt.innerHTML=`🏢 Inmuebles reales · C21 (${props.length})
+    <span style="float:right;display:inline-flex;gap:5px">
+      <button onclick="setOppOnly(false)" style="all:unset;cursor:pointer;font-size:10.5px;padding:2px 8px;border-radius:9px;border:1px solid ${oppOnly?'rgba(245,237,227,.25)':'#57c389'};color:${oppOnly?'#8a9a9e':'#57c389'}">Todas</button>
+      <button onclick="setOppOnly(true)" style="all:unset;cursor:pointer;font-size:10.5px;padding:2px 8px;border-radius:9px;border:1px solid ${oppOnly?'#57c389':'rgba(245,237,227,.25)'};color:${oppOnly?'#57c389':'#8a9a9e'}">🎯 Oportunidades (${nOpp})</button>
+    </span>`;
+  if(oppOnly){
+    document.getElementById('list-sec').style.display='block';   // aun con 0 resultados: que se pueda volver a "Todas"
+    const el=document.getElementById('zone-list');
+    if(!props.length) el.innerHTML='';
+    const nota=document.createElement('div'); nota.className='hint';
+    nota.innerHTML=nOpp?'Inmuebles <b style="color:#57c389">≥12% debajo de la mediana real</b> de su zona (precios de lista de Century 21). Verifica siempre el estado físico y legal: un precio bajo también puede tener causa.':'Ninguna propiedad de esta zona está ≥12% debajo de su mediana ahora mismo.';
+    el.prepend(nota);
+  }
 }
+let oppOnly=false;
+function setOppOnly(v){ if(oppOnly===v) return; oppOnly=v; showProps(); }
 /* ===== Vista nacional del inventario real (143 zonas: 32 ciudades + municipios) ===== */
 let LIST_IDX=null, ZREG=null;
 async function loadListIndex(){ if(LIST_IDX) return LIST_IDX;
@@ -1290,6 +1327,25 @@ function renderPortafolio(){
 }
 
 /* panel de ZONA (intacto) */
+/* ==== Capa de seguridad (SESNSP, datos oficiales ESTATALES) ====
+   data/riesgos.json lo genera tools/riesgos_local.py con el CSV del SESNSP
+   (el gobierno bloquea IPs de nube, igual que el DENUE). Si el archivo no
+   existe todavía, el bloque simplemente no se muestra. */
+let RIESGOS=null;
+fetch('data/riesgos.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{RIESGOS=j;}).catch(()=>{});
+function riesgoHTML(name){
+  const z=RIESGOS&&RIESGOS.zonas&&RIESGOS.zonas[name]; if(!z) return '';
+  const L={homicidio:'Homicidio doloso',robo_casa:'Robo a casa hab.',robo_vehiculo:'Robo de vehículo',extorsion:'Extorsión'};
+  const col=p=>p==null?'#9a8f83':p<33?'#57c389':p<66?'#F5C277':'#e0745a';
+  const celdas=Object.keys(L).filter(k=>z.tasas[k]!=null).map(k=>{
+    const p=(z.percentil||{})[k];
+    return `<div class="ind-c"><div class="ind-l">${L[k]}</div><div class="ind-v" style="color:${col(p)}">${z.tasas[k]}</div><div style="font-size:9.5px;color:#8a9a9e">por 100 mil hab.${p!=null?` · P${p} nacional`:''}</div></div>`;
+  }).join('');
+  if(!celdas) return '';
+  return `<div class="ptitle" style="margin-top:18px">🛡️ Seguridad · ${z.entidad} (estatal)</div>
+    <div class="ind-grid">${celdas}</div>
+    <div class="notice" style="margin-top:8px;font-size:11px">Incidencia oficial del <b>SESNSP</b> (carpetas de investigación, últimos 12 meses${RIESGOS.meta&&RIESGOS.meta.corte?` al corte ${RIESGOS.meta.corte}`:''}), tasa por 100 mil hab. (Censo 2020). <b>Es dato estatal</b>: el riesgo varía mucho por colonia; úsalo como contexto, no como medición del punto. P0 = la entidad más segura del país.</div>`;
+}
 function panel(name,d,tipo){
   curData=d;curTipo=tipo;const f=fcCalc(d.price,d.g);d._fc=f;d._fcm=fcModel(name,d.price);
   // real = una de las 32 zonas ancla con datos SHF. Municipios generados y colonias
@@ -1319,6 +1375,7 @@ function panel(name,d,tipo){
       <div class="ind-c"><div class="ind-l">Días en mercado</div><div class="ind-v ${vc(d.dom,45,60,true)}">${Math.round(d.dom)}</div></div>
       <div class="ind-c"><div class="ind-l">Ciclo económico</div><div class="ind-v" style="font-size:11px">${d.ciclo}</div></div>
     </div>
+    ${real?riesgoHTML(name):''}
     <div class="ptitle" style="margin-top:18px">🤖 Análisis de desarrollo (IA)</div>
     <button class="ia-btn" id="ia-btn" onclick="runIA()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4 12H1M23 12h-3M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2"/></svg>Proyecto óptimo para esta zona</button>
     ${(CITIES[name]&&window.bbConfigured)?`<button class="ia-btn" id="fav-btn" data-zona="${escapeHtml(name)}" onclick="toggleFav(this)" style="background:#0C1218;border:0.5px solid rgba(245,237,227,.18);color:#f5ede3;margin-top:8px">☆ Guardar zona en favoritos</button>`:''}
@@ -1367,6 +1424,7 @@ function renderTer(p){
     <div class="sel-sub">${p.pm2?fmt(p.pm2)+' /m² de suelo':''}</div>
     ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
     ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Suelo en oportunidad':p.veredicto==='sobreprecio'?'Suelo con sobreprecio':'Precio de suelo justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de terrenos de la zona · est.</span></div>`:'<div style="margin-top:8px;font-size:12px;color:#8a9a9e">Sin suficientes terrenos comparables en la zona para un veredicto de precio.</div>'}
+    ${segHTML(p)}
     ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver ficha original</a>`:''}</div>`:''}
     <div class="ptitle" style="margin-top:18px">🚀 ¿Qué puedo hacer con este terreno?</div>
     <a href="analizador.html?zona=${zEnc}&dev=1&lote=${Math.round(p.m2||1000)}" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(205,242,90,.35);color:#cdf25a;text-decoration:none;margin-top:8px">🤖 Proyecto óptimo y pro-forma con estos m² →</a>
@@ -1389,6 +1447,7 @@ function renderRes(p){
     ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
     <span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>
     ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de la zona · est.</span></div>`:''}
+    ${segHTML(p)}
     ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver ficha original</a>`:''}</div>`:''}
     ${rent!=null?`<div class="rent-box"><div class="rent-l">Renta mensual estimada</div><div class="rent-v">${fmt(rent)}</div><div class="rent-s">${fmt(Math.round(rent/p.m2))}/m² · yield ${p.yield}%</div></div>`:''}
     ${hasG?`<div class="ptitle" style="margin-top:16px">📈 Pronóstico precio/m² (IC 90%)</div>
@@ -1423,6 +1482,7 @@ function renderCom(p){
     ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
     <span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>
     ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de la zona · est.</span></div>`:''}
+    ${segHTML(p)}
     ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver ficha original</a>`:''}</div>`:''}
     ${hasG?`<div class="ptitle" style="margin-top:16px">📈 Pronóstico precio/m² (IC 90%)</div>
     <div class="fc-grid">${fcCells(p.pm2,p.g,p.zona)}</div>`:''}
@@ -1713,11 +1773,39 @@ function loadInmuebles(){
    Convierte USD→MXN, calcula el veredicto de precio vs la mediana de la zona. */
 const REAL_LIST={};
 function slugZona(n){return String(n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+/* Seguimiento BrickBit (memoria del mercado): _seg-<slug> guarda, por propiedad,
+   su fecha de alta, recortes de precio y bajas. Lo genera c21-subir.mjs en cada
+   corrida del inventario; aquí solo se lee y se une por id. */
+const SEG_CACHE={};
+async function loadZoneSeg(zone){
+  const k=slugZona(zone);
+  if(SEG_CACHE[k]!==undefined) return SEG_CACHE[k];
+  try{
+    const r=await fetch(BB_BACKEND.replace(/\/+$/,'')+'/api/listados?zona=_seg-'+encodeURIComponent(k));
+    const j=r.ok?await r.json():null;
+    SEG_CACHE[k]=(Array.isArray(j)&&j[0]&&j[0].items)?j[0]:null;
+  }catch(e){ SEG_CACHE[k]=null; }
+  return SEG_CACHE[k];
+}
+function segInfo(seg,id){
+  if(!seg||id==null) return {};
+  const s=seg.items&&seg.items[String(id)]; if(!s) return {};
+  const dias=Math.max(0,Math.round((new Date(seg.act)-new Date(s.alta))/864e5));
+  const o={dias,diasCens:s.alta===seg.base};       // censurado: ya estaba al iniciar el seguimiento
+  if(s.cambios&&s.cambios.length){
+    const p0=s.cambios[0].de;
+    if(p0>0) o.rec=Math.round((s.p/p0-1)*100);     // % desde el primer precio visto
+  }
+  return o;
+}
 async function loadZoneListings(zone){
   if(REAL_LIST[zone]) return REAL_LIST[zone];
   try{
     const base=BB_BACKEND.replace(/\/+$/,'');
-    const r=await fetch(base+'/api/listados?zona='+encodeURIComponent(slugZona(zone)));
+    const [r,seg]=await Promise.all([
+      fetch(base+'/api/listados?zona='+encodeURIComponent(slugZona(zone))),
+      loadZoneSeg(zone)
+    ]);
     if(!r.ok) throw 0;
     const arr=await r.json();
     if(!Array.isArray(arr)||!arr.length){ REAL_LIST[zone]=[]; return []; }
@@ -1735,9 +1823,10 @@ async function loadZoneListings(zone){
     const L=norm.map(x=>{
         const med=x._ter?medT:medC;
         const vs=(med&&x._pm)?Math.round((x._pm/med-1)*100):null;
-        return {tipo:x.tipo,ter:x._ter,m2:x._m2,pm2:x._pm,precio_mxn:x._pr,colonia:x.colonia||null,
+        return {id:x.id,tipo:x.tipo,ter:x._ter,m2:x._m2,pm2:x._pm,precio_mxn:x._pr,colonia:x.colonia||null,
           lat:x.lat,lng:x.lng,url:x.url,fuente:'Century 21',titulo:x.titulo,imagen:x.imagen,municipio:x.municipio,moneda:x.moneda,
-          vs, veredicto: vs==null?null:(vs<=-12?'oportunidad':vs>=12?'sobreprecio':'justo')};
+          vs, veredicto: vs==null?null:(vs<=-12?'oportunidad':vs>=12?'sobreprecio':'justo'),
+          ...segInfo(seg,x.id)};
       })
       .sort((a,b)=>(a.vs??999)-(b.vs??999))  // oportunidades primero
       .slice(0,140);
