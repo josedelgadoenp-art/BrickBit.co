@@ -206,15 +206,15 @@ body{font-family:'Hanken Grotesk',system-ui,-apple-system,sans-serif;background:
   <button class="zlvl" id="zlvl-2" onclick="goLevel(2)" disabled>Municipio</button>
   <button class="zlvl" id="zlvl-3" onclick="goLevel(3)" disabled>Colonia / AGEB</button>
   <span class="menu-wrap" id="vista-wrap">
-    <button class="mt active" id="vista-btn" onclick="toggleVista(event)" style="display:inline-flex;align-items:center;gap:6px">🏢 Propiedades ▾</button>
+    <button class="mt active" id="vista-btn" onclick="toggleVista(event)" style="display:inline-flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M4 22V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v19M4 22h16M16 8h3a1 1 0 0 1 1 1v13M8 6h.01M12 6h.01M8 10h.01M12 10h.01M8 14h.01M12 14h.01M10 22v-4"/></svg>Propiedades ▾</button>
     <div class="menu" id="vista-menu">
-      <button id="mt-prop" class="sel" onclick="pickMode('prop')">🏢 Propiedades</button>
-      <button id="mt-zonas" onclick="pickMode('zonas')">🗺 Análisis de zonas</button>
-      <button id="mt-muni" onclick="pickMode('muni')">🏙️ Municipios DENUE</button>
-      <button id="mt-heat" onclick="toggleHeat();closeVista()">🔥 Mercado real</button>
+      <button id="mt-prop" class="sel" onclick="pickMode('prop')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M4 22V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v19M4 22h16M16 8h3a1 1 0 0 1 1 1v13M8 6h.01M12 6h.01M8 10h.01M12 10h.01M8 14h.01M12 14h.01M10 22v-4"/></svg>Propiedades</button>
+      <button id="mt-zonas" onclick="pickMode('zonas')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M9 2 3 5v17l6-3 6 3 6-3V2l-6 3-6-3z"/><path d="M9 2v17M15 5v17"/></svg>Análisis de zonas</button>
+      <button id="mt-muni" onclick="pickMode('muni')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5M2 17l10 5 10-5"/></svg>Municipios DENUE</button>
+      <button id="mt-heat" onclick="toggleHeat();closeVista()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M12 22c4.4 0 7-2.8 7-6.8 0-3-1.9-5.2-3.4-6.7C14 6.9 13 4.7 13 2c-3 2-4.7 5-4.6 7.6C7.2 8.7 6.6 8 6 7c-1.2 1.7-2 3.8-2 6 0 4.5 3.6 9 8 9z"/></svg>Mercado real</button>
       <div style="height:1px;background:rgba(245,237,227,.1);margin:4px 6px"></div>
-      <button onclick="openPortafolio();closeVista()">📁 Portafolio</button>
-      <button onclick="openCompare()">⚖️ Comparar zonas</button>
+      <button onclick="openPortafolio();closeVista()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M2 13h20"/></svg>Portafolio</button>
+      <button onclick="openCompare()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M12 3v18M8 21h8"/><path d="m5 7 3.5 6h-7L5 7zM19 7l3.5 6h-7L19 7z"/><path d="M5 7h14"/></svg>Comparar zonas</button>
     </div>
   </span>
   <span id="mode-note"></span>
@@ -406,7 +406,7 @@ function buildSearch(){const dl=document.getElementById('zsearch-list');if(!dl)r
 function zsearchGo(){const el=document.getElementById('zsearch-in');if(!el)return;const v=el.value.trim();if(!v)return;const name=Object.keys(CITIES).find(n=>n.toLowerCase()===v.toLowerCase());if(name){topGoto(name);el.blur();}}
 function closeOnb(){const o=document.getElementById('onb');if(o)o.style.display='none';try{localStorage.setItem('bb_onb_v1','1')}catch(e){}}
 function maybeOnb(){let seen=false;try{seen=localStorage.getItem('bb_onb_v1')==='1'}catch(e){}if(!seen){const o=document.getElementById('onb');if(o)o.style.display='flex';}}
-function setFavBtn(btn,on){ btn.innerHTML = on?'★ En tus favoritos':'☆ Guardar zona en favoritos'; btn.style.color = on?'#cdf25a':'#f5ede3'; btn.style.borderColor = on?'rgba(205,242,90,.5)':'rgba(245,237,227,.18)'; }
+function setFavBtn(btn,on){ btn.innerHTML = on?'<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>En tus favoritos':'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>Guardar zona en favoritos'; btn.style.color = on?'#cdf25a':'#f5ede3'; btn.style.borderColor = on?'rgba(205,242,90,.5)':'rgba(245,237,227,.18)'; }
 async function toggleFav(btn){ if(!window.bbConfigured) return; const u=await bbUser(); if(!u){ openAuthModal('in'); return; } const z=btn.dataset.zona; const now=await bbFavToggle(z); setFavBtn(btn,now); }
 async function initFavBtn(name){ const b=document.getElementById('fav-btn'); if(!b||typeof bbUser!=='function') return; const u=await bbUser(); if(!u) return; setFavBtn(b, await bbIsFav(name)); }
 function applyMetric(){if(HEAT_ON){renderHeatLegend();return;}computeRange();cityM.forEach(m=>{if(m._zn){m.setIcon(cityIcon(m._zn,m._zd));if(m.getTooltip())m.setTooltipContent(cityTip(m._zn,m._zd));}});munM.forEach(m=>{if(m._mn){m.setIcon(munIcon(m._mn));if(m.getTooltip())m.setTooltipContent(munTip(m._mn));}});shfMunM.forEach(m=>{if(m._shf)m.setIcon(shfIcon(m._shf));});renderLegend();renderTopZonas();}
@@ -637,7 +637,19 @@ function listingToProp(L,c,nom){
   return {...ty,zona:nom,nom:(L.titulo?(L.titulo.slice(0,42)):`${ty.t} · ${L.m2} m²`),m2:L.m2,pm2:L.pm2,price:L.precio_mxn,
     g:(c.g!=null?c.g:null),yield:(c.yield!=null?c.yield:null),dom:(L.dom!=null?L.dom:(c.dom!=null?c.dom:null)),opp:c.opp,ciclo:c.ciclo,
     lat:L.lat,lng:L.lng,fuente:L.fuente,url:L.url,
-    vs:(L.vs!=null?L.vs:null),veredicto:L.veredicto||null,titulo:L.titulo,imagen:L.imagen,moneda:L.moneda};
+    vs:(L.vs!=null?L.vs:null),veredicto:L.veredicto||null,titulo:L.titulo,imagen:L.imagen,moneda:L.moneda,
+    dias:(L.dias!=null?L.dias:null),diasCens:!!L.diasCens,rec:(L.rec!=null?L.rec:null)};
+}
+/* Línea de seguimiento (memoria del mercado) para el panel de una propiedad:
+   recorte de precio acumulado y días publicada. Solo aparece cuando hay
+   seguimiento real; nunca se estima. */
+function segHTML(p){
+  const parts=[];
+  if(p.rec!=null&&p.rec<0) parts.push(`<b style="color:#57c389">▼ Bajó ${Math.abs(p.rec)}% de precio</b> desde su publicación`);
+  if(p.rec!=null&&p.rec>0) parts.push(`<b style="color:#e0745a">▲ Subió ${p.rec}%</b> desde su publicación`);
+  if(p.dias!=null&&p.dias>=1) parts.push(`${p.diasCens?'≥ ':''}${p.dias} días publicada`);
+  if(!parts.length) return '';
+  return `<div style="margin-top:8px;font-size:12.5px;color:#c8bfae">📡 ${parts.join(' · ')} <span style="color:#8a9a9e">· seguimiento BrickBit del inventario</span></div>`;
 }
 function giroRecom(c,nom){
   const tour=/Canc|Tulum|Playa|Hotelera|Puerto|Vallarta|Cabos|Paz|Mazat/i.test(nom||"");
@@ -797,14 +809,39 @@ async function showProps(){
     document.getElementById("zone-list").innerHTML='<div class="hint">Sin inventario de Century 21 en esta zona por ahora. Vuelve a la vista nacional para ver las zonas con inmuebles reales.</div>';
     return;
   }
-  const props=realL.map(L=>listingToProp(L,center,nom));
-  const titulo=`🏢 Inmuebles reales · Century 21 (${props.length})`;
+  const todas=realL.map(L=>listingToProp(L,center,nom));
+  // 🎯 Radar de Oportunidades: filtra a los inmuebles ≥12% debajo de la mediana
+  // real de su zona; los recortes de precio y días publicada (seguimiento) se
+  // muestran como señal extra. Siempre sobre precios de LISTA, y se dice.
+  const nOpp=todas.filter(p=>p.veredicto==='oportunidad').length;
+  const props=oppOnly?todas.filter(p=>p.veredicto==='oportunidad'):todas;
   propM.forEach(m=>map.removeLayer(m));propM=[];
   props.forEach(p=>{const m=L.marker([p.lat,p.lng],{icon:propIcon(p)}).addTo(map);
-    m.bindTooltip(`<b>${p.t}</b><br>${fmtM(p.price)} · ${p.m2}m²`,{direction:"top",offset:[0,-15]});
+    m.bindTooltip(`<b>${p.t}</b><br>${fmtM(p.price)} · ${p.m2}m²${p.rec!=null&&p.rec<0?`<br>▼ bajó ${Math.abs(p.rec)}%`:''}`,{direction:"top",offset:[0,-15]});
     m.on("click",()=>selProp(p));propM.push(m)});
-  list(titulo,props.map(p=>({nom:p.nom,opp:p.opp,g:p.g,yield:p.yield,price:p.price,_p:p})),d=>selProp(d._p||d));
+  list(`🏢 Inmuebles reales · Century 21 (${props.length})`,
+    props.map(p=>({nom:p.nom,opp:p.opp,g:p.g,yield:p.yield,price:p.price,_p:p,
+      _meta:(p.rec!=null&&p.rec<0)?`▼ recorte de ${Math.abs(p.rec)}%${p.dias>=1?` · ${p.diasCens?'≥':''}${p.dias} días publicada`:''}`
+           :(p.dias!=null&&p.dias>=1?`${p.diasCens?'≥':''}${p.dias} días publicada · ${p.vs!=null?(p.vs>0?'+':'')+p.vs+'% vs mediana':''}`:undefined)})),
+    d=>selProp(d._p||d));
+  // chips de filtro sobre la lista (🎯 = veredicto de oportunidad)
+  const lt=document.getElementById('list-title');
+  lt.innerHTML=`🏢 Inmuebles reales · C21 (${props.length})
+    <span style="float:right;display:inline-flex;gap:5px">
+      <button onclick="setOppOnly(false)" style="all:unset;cursor:pointer;font-size:10.5px;padding:2px 8px;border-radius:9px;border:1px solid ${oppOnly?'rgba(245,237,227,.25)':'#57c389'};color:${oppOnly?'#8a9a9e':'#57c389'}">Todas</button>
+      <button onclick="setOppOnly(true)" style="all:unset;cursor:pointer;font-size:10.5px;padding:2px 8px;border-radius:9px;border:1px solid ${oppOnly?'#57c389':'rgba(245,237,227,.25)'};color:${oppOnly?'#57c389':'#8a9a9e'}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".5"/></svg>Oportunidades (${nOpp})</button>
+    </span>`;
+  if(oppOnly){
+    document.getElementById('list-sec').style.display='block';   // aun con 0 resultados: que se pueda volver a "Todas"
+    const el=document.getElementById('zone-list');
+    if(!props.length) el.innerHTML='';
+    const nota=document.createElement('div'); nota.className='hint';
+    nota.innerHTML=nOpp?'Inmuebles <b style="color:#57c389">≥12% debajo de la mediana real</b> de su zona (precios de lista de Century 21). Verifica siempre el estado físico y legal: un precio bajo también puede tener causa.':'Ninguna propiedad de esta zona está ≥12% debajo de su mediana ahora mismo.';
+    el.prepend(nota);
+  }
 }
+let oppOnly=false;
+function setOppOnly(v){ if(oppOnly===v) return; oppOnly=v; showProps(); }
 /* ===== Vista nacional del inventario real (143 zonas: 32 ciudades + municipios) ===== */
 let LIST_IDX=null, ZREG=null;
 async function loadListIndex(){ if(LIST_IDX) return LIST_IDX;
@@ -866,7 +903,7 @@ async function selMuniZone(z){
     m.on("click",()=>selProp(p));propM.push(m)});
   list(`🏢 Inmuebles reales · Century 21 (${props.length})`,props.map(p=>({nom:p.nom,opp:p.opp,g:p.g,yield:p.yield,price:p.price,_p:p})),d=>selProp(d._p||d));
 }
-const VISTA_LABELS={zonas:'🗺 Análisis de zonas',prop:'🏢 Propiedades',muni:'🏙️ Municipios'};
+const VISTA_LABELS={zonas:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M9 2 3 5v17l6-3 6 3 6-3V2l-6 3-6-3z"/><path d="M9 2v17M15 5v17"/></svg>Análisis de zonas',prop:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M4 22V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v19M4 22h16M16 8h3a1 1 0 0 1 1 1v13M8 6h.01M12 6h.01M8 10h.01M12 10h.01M8 14h.01M12 14h.01M10 22v-4"/></svg>Propiedades',muni:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 12 10 5 10-5M2 17l10 5 10-5"/></svg>Municipios'};
 function toggleVista(e){ if(e) e.stopPropagation(); const mu=document.getElementById('vista-menu'); if(mu) mu.classList.toggle('on'); }
 function closeVista(){ const mu=document.getElementById('vista-menu'); if(mu) mu.classList.remove('on'); }
 function pickMode(m){ setMode(m); const b=document.getElementById('vista-btn'); if(b&&VISTA_LABELS[m]) b.innerHTML=VISTA_LABELS[m]+' ▾'; ['zonas','prop','muni'].forEach(k=>{const el=document.getElementById('mt-'+k); if(el) el.classList.toggle('sel', k===m);}); closeVista(); }
@@ -1008,7 +1045,7 @@ function panelMuniDenue(mn){
     '</div>'+
     plTag+
     '<div class="model-tag">🧬 Giros indicadores (gentrificación): <b>'+mn.ind+'</b></div>'+
-    '<a href="zona3d.html?zona='+encodeURIComponent(mn.m)+'" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(245,194,119,.4);color:#F5C277;text-decoration:none;margin-top:12px">🌆 Ver en 3D →</a>'+
+    '<a href="zona3d.html?zona='+encodeURIComponent(mn.m)+'" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(245,194,119,.4);color:#F5C277;text-decoration:none;margin-top:12px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m21 16.5-9 5-9-5v-9l9-5 9 5z"/><path d="m3 7.5 9 5 9-5M12 22.5v-10"/></svg>Ver en 3D →</a>'+
     '<div class="notice" style="margin-top:10px">Dinamismo = índice compuesto DENUE (aperturas, giros indicadores, diversificación, tamaño). Dato real INEGI. Plusvalía SHF solo donde la SHF la publica.</div>';
 }
 function showSHFMun(){
@@ -1210,7 +1247,7 @@ function addToPortfolio(name){
   if(inPortfolio(name)) bbPortfolio=bbPortfolio.filter(x=>x.n!==name);
   else bbPortfolio.push({n:name,w:0});
   _savePort();
-  const b=document.getElementById('port-add-btn'); if(b) b.textContent=inPortfolio(name)?'✓ En tu portafolio':'➕ Añadir al portafolio';
+  const b=document.getElementById('port-add-btn'); if(b) b.textContent=inPortfolio(name)?'✓ En tu portafolio':'Añadir al portafolio';
 }
 function _portWeights(){
   const anyW=bbPortfolio.some(x=>x.w>0);
@@ -1237,7 +1274,7 @@ function portPicker(){
   const opts=disp.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
   return `<div style="display:flex;gap:6px;margin:0 0 12px">
     <select id="port-pick" style="flex:1;min-width:0;padding:8px 9px;border-radius:9px;border:0.5px solid rgba(205,242,90,.3);background:#0e0a07;color:#f5ede3;font-size:13px">
-      <option value="">➕ Agregar una zona…</option>${opts}
+      <option value="">+ Agregar una zona…</option>${opts}
     </select>
     <button onclick="portAddPick()" class="hz-btn active" style="flex:0 0 auto;padding:0 14px">Agregar</button></div>`;
 }
@@ -1282,7 +1319,7 @@ function renderPortafolio(){
     ${portPicker()}
     <div style="display:flex;justify-content:space-between;align-items:center;margin:2px 0 6px">
       <div class="ptitle" style="margin:0">Composición · arrastra para ajustar</div>
-      <button onclick="portEqualize()" style="background:none;border:0.5px solid rgba(245,237,227,.2);color:#cdf25a;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer">⚖️ Repartir igual</button>
+      <button onclick="portEqualize()" style="background:none;border:0.5px solid rgba(245,237,227,.2);color:#cdf25a;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M12 3v18M8 21h8"/><path d="m5 7 3.5 6h-7L5 7zM19 7l3.5 6h-7L19 7z"/><path d="M5 7h14"/></svg>Repartir igual</button>
     </div>
     ${filas}
     <div class="notice" style="margin-top:8px">Los pesos se normalizan a 100%. El riesgo es el promedio ponderado de la volatilidad (diversificar lo reduce más). Informativo, no asesoría.</div>`;
@@ -1290,6 +1327,25 @@ function renderPortafolio(){
 }
 
 /* panel de ZONA (intacto) */
+/* ==== Capa de seguridad (SESNSP, datos oficiales ESTATALES) ====
+   data/riesgos.json lo genera tools/riesgos_local.py con el CSV del SESNSP
+   (el gobierno bloquea IPs de nube, igual que el DENUE). Si el archivo no
+   existe todavía, el bloque simplemente no se muestra. */
+let RIESGOS=null;
+fetch('data/riesgos.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{RIESGOS=j;}).catch(()=>{});
+function riesgoHTML(name){
+  const z=RIESGOS&&RIESGOS.zonas&&RIESGOS.zonas[name]; if(!z) return '';
+  const L={homicidio:'Homicidio doloso',robo_casa:'Robo a casa hab.',robo_vehiculo:'Robo de vehículo',extorsion:'Extorsión'};
+  const col=p=>p==null?'#9a8f83':p<33?'#57c389':p<66?'#F5C277':'#e0745a';
+  const celdas=Object.keys(L).filter(k=>z.tasas[k]!=null).map(k=>{
+    const p=(z.percentil||{})[k];
+    return `<div class="ind-c"><div class="ind-l">${L[k]}</div><div class="ind-v" style="color:${col(p)}">${z.tasas[k]}</div><div style="font-size:9.5px;color:#8a9a9e">por 100 mil hab.${p!=null?` · P${p} nacional`:''}</div></div>`;
+  }).join('');
+  if(!celdas) return '';
+  return `<div class="ptitle" style="margin-top:18px">🛡️ Seguridad · ${z.entidad} (estatal)</div>
+    <div class="ind-grid">${celdas}</div>
+    <div class="notice" style="margin-top:8px;font-size:11px">Incidencia oficial del <b>SESNSP</b> (carpetas de investigación, últimos 12 meses${RIESGOS.meta&&RIESGOS.meta.corte?` al corte ${RIESGOS.meta.corte}`:''}), tasa por 100 mil hab. (Censo 2020). <b>Es dato estatal</b>: el riesgo varía mucho por colonia; úsalo como contexto, no como medición del punto. P0 = la entidad más segura del país.</div>`;
+}
 function panel(name,d,tipo){
   curData=d;curTipo=tipo;const f=fcCalc(d.price,d.g);d._fc=f;d._fcm=fcModel(name,d.price);
   // real = una de las 32 zonas ancla con datos SHF. Municipios generados y colonias
@@ -1319,13 +1375,14 @@ function panel(name,d,tipo){
       <div class="ind-c"><div class="ind-l">Días en mercado</div><div class="ind-v ${vc(d.dom,45,60,true)}">${Math.round(d.dom)}</div></div>
       <div class="ind-c"><div class="ind-l">Ciclo económico</div><div class="ind-v" style="font-size:11px">${d.ciclo}</div></div>
     </div>
+    ${real?riesgoHTML(name):''}
     <div class="ptitle" style="margin-top:18px">🤖 Análisis de desarrollo (IA)</div>
     <button class="ia-btn" id="ia-btn" onclick="runIA()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4 12H1M23 12h-3M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2"/></svg>Proyecto óptimo para esta zona</button>
-    ${(CITIES[name]&&window.bbConfigured)?`<button class="ia-btn" id="fav-btn" data-zona="${escapeHtml(name)}" onclick="toggleFav(this)" style="background:#0C1218;border:0.5px solid rgba(245,237,227,.18);color:#f5ede3;margin-top:8px">☆ Guardar zona en favoritos</button>`:''}
-    ${CITIES[name]?`<a href="analizador.html?zona=${encodeURIComponent(name)}" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(45,212,155,.35);color:#2DD49B;text-decoration:none;margin-top:8px">📊 Analizar esta zona como inversión →</a>`:''}
-    ${CITIES[name]?`<a href="zona3d.html?zona=${encodeURIComponent(name)}" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(245,194,119,.4);color:#F5C277;text-decoration:none;margin-top:8px">🌆 Ver en 3D →</a>`:''}
-    ${CITIES[name]?`<button class="ia-btn" onclick="zonaPDF()" style="background:#0C1218;border:0.5px solid rgba(245,237,227,.18);color:#f5ede3;margin-top:8px">🖨 Reporte de zona (PDF)</button>`:''}
-    ${CITIES[name]?`<button class="ia-btn" id="port-add-btn" onclick="addToPortfolio('${escapeHtml(name).replace(/'/g,"\\'")}')" style="background:#0C1218;border:0.5px solid rgba(205,242,90,.3);color:#cdf25a;margin-top:8px">${inPortfolio(name)?'✓ En tu portafolio':'➕ Añadir al portafolio'}</button>`:''}
+    ${(CITIES[name]&&window.bbConfigured)?`<button class="ia-btn" id="fav-btn" data-zona="${escapeHtml(name)}" onclick="toggleFav(this)" style="background:#0C1218;border:0.5px solid rgba(245,237,227,.18);color:#f5ede3;margin-top:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>Guardar zona en favoritos</button>`:''}
+    ${CITIES[name]?`<a href="analizador.html?zona=${encodeURIComponent(name)}" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(45,212,155,.35);color:#2DD49B;text-decoration:none;margin-top:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M3 3v18h18"/><path d="M7 14l4-5 4 3 5-7"/></svg>Analizar esta zona como inversión →</a>`:''}
+    ${CITIES[name]?`<a href="zona3d.html?zona=${encodeURIComponent(name)}" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(245,194,119,.4);color:#F5C277;text-decoration:none;margin-top:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m21 16.5-9 5-9-5v-9l9-5 9 5z"/><path d="m3 7.5 9 5 9-5M12 22.5v-10"/></svg>Ver en 3D →</a>`:''}
+    ${CITIES[name]?`<button class="ia-btn" onclick="zonaPDF()" style="background:#0C1218;border:0.5px solid rgba(245,237,227,.18);color:#f5ede3;margin-top:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>Reporte de zona (PDF)</button>`:''}
+    ${CITIES[name]?`<button class="ia-btn" id="port-add-btn" onclick="addToPortfolio('${escapeHtml(name).replace(/'/g,"\\'")}')" style="background:#0C1218;border:0.5px solid rgba(205,242,90,.3);color:#cdf25a;margin-top:8px">${inPortfolio(name)?'✓ En tu portafolio':'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M12 5v14M5 12h14"/></svg>Añadir al portafolio'}</button>`:''}
     <div id="ia-out"></div>
     ${(d.lat&&d.lng)?`<div class="ptitle" style="margin-top:18px">🔬 Radar de plusvalía silenciosa</div>
     <div class="notice" style="margin:6px 0;line-height:1.55">
@@ -1367,11 +1424,12 @@ function renderTer(p){
     <div class="sel-sub">${p.pm2?fmt(p.pm2)+' /m² de suelo':''}</div>
     ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
     ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Suelo en oportunidad':p.veredicto==='sobreprecio'?'Suelo con sobreprecio':'Precio de suelo justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de terrenos de la zona · est.</span></div>`:'<div style="margin-top:8px;font-size:12px;color:#8a9a9e">Sin suficientes terrenos comparables en la zona para un veredicto de precio.</div>'}
+    ${segHTML(p)}
     ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver ficha original</a>`:''}</div>`:''}
     <div class="ptitle" style="margin-top:18px">🚀 ¿Qué puedo hacer con este terreno?</div>
-    <a href="analizador.html?zona=${zEnc}&dev=1&lote=${Math.round(p.m2||1000)}" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(205,242,90,.35);color:#cdf25a;text-decoration:none;margin-top:8px">🤖 Proyecto óptimo y pro-forma con estos m² →</a>
-    <a href="zona3d.html?zona=${zEnc}&lote=${Math.round(p.m2||1000)}" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(245,194,119,.4);color:#F5C277;text-decoration:none;margin-top:8px">🌆 Simular el volumen en 3D →</a>
-    <a href="zona3d.html?zona=${zEnc}&lat=${p.lat}&lng=${p.lng}&bienestar=1" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(87,195,137,.35);color:#57c389;text-decoration:none;margin-top:8px">🧭 Estilo de vida en este punto →</a>
+    <a href="analizador.html?zona=${zEnc}&dev=1&lote=${Math.round(p.m2||1000)}" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(205,242,90,.35);color:#cdf25a;text-decoration:none;margin-top:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>Proyecto óptimo y pro-forma con estos m² →</a>
+    <a href="zona3d.html?zona=${zEnc}&lote=${Math.round(p.m2||1000)}" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(245,194,119,.4);color:#F5C277;text-decoration:none;margin-top:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m21 16.5-9 5-9-5v-9l9-5 9 5z"/><path d="m3 7.5 9 5 9-5M12 22.5v-10"/></svg>Simular el volumen en 3D →</a>
+    <a href="zona3d.html?zona=${zEnc}&lat=${p.lat}&lng=${p.lng}&bienestar=1" target="_blank" class="ia-btn" style="background:#0C1218;border:0.5px solid rgba(87,195,137,.35);color:#57c389;text-decoration:none;margin-top:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><circle cx="12" cy="12" r="10"/><path d="m16.2 7.8-2.1 6.3-6.3 2.1 2.1-6.3z"/></svg>Estilo de vida en este punto →</a>
     <button class="ia-btn" id="vib-btn" onclick="scanVibrancia(${p.lat},${p.lng},'${nm}')" style="margin-top:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="9"/></svg>Escanear vibrancia aquí</button>
     <div id="vib-out"></div>
     <div class="notice" style="margin-top:12px">El proyecto óptimo usa el <b>Modo Desarrollador</b> con la superficie real de este terreno y el precio de venta real de la zona. La vibrancia y el estilo de vida se miden <b>en este punto exacto</b> con Google Places.</div>`;
@@ -1389,6 +1447,7 @@ function renderRes(p){
     ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
     <span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>
     ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de la zona · est.</span></div>`:''}
+    ${segHTML(p)}
     ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver ficha original</a>`:''}</div>`:''}
     ${rent!=null?`<div class="rent-box"><div class="rent-l">Renta mensual estimada</div><div class="rent-v">${fmt(rent)}</div><div class="rent-s">${fmt(Math.round(rent/p.m2))}/m² · yield ${p.yield}%</div></div>`:''}
     ${hasG?`<div class="ptitle" style="margin-top:16px">📈 Pronóstico precio/m² (IC 90%)</div>
@@ -1423,6 +1482,7 @@ function renderCom(p){
     ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
     <span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>
     ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#57c389':p.veredicto==='sobreprecio'?'#e0745a':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de la zona · est.</span></div>`:''}
+    ${segHTML(p)}
     ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#57c389">ver ficha original</a>`:''}</div>`:''}
     ${hasG?`<div class="ptitle" style="margin-top:16px">📈 Pronóstico precio/m² (IC 90%)</div>
     <div class="fc-grid">${fcCells(p.pm2,p.g,p.zona)}</div>`:''}
@@ -1713,11 +1773,39 @@ function loadInmuebles(){
    Convierte USD→MXN, calcula el veredicto de precio vs la mediana de la zona. */
 const REAL_LIST={};
 function slugZona(n){return String(n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');}
+/* Seguimiento BrickBit (memoria del mercado): _seg-<slug> guarda, por propiedad,
+   su fecha de alta, recortes de precio y bajas. Lo genera c21-subir.mjs en cada
+   corrida del inventario; aquí solo se lee y se une por id. */
+const SEG_CACHE={};
+async function loadZoneSeg(zone){
+  const k=slugZona(zone);
+  if(SEG_CACHE[k]!==undefined) return SEG_CACHE[k];
+  try{
+    const r=await fetch(BB_BACKEND.replace(/\/+$/,'')+'/api/listados?zona=_seg-'+encodeURIComponent(k));
+    const j=r.ok?await r.json():null;
+    SEG_CACHE[k]=(Array.isArray(j)&&j[0]&&j[0].items)?j[0]:null;
+  }catch(e){ SEG_CACHE[k]=null; }
+  return SEG_CACHE[k];
+}
+function segInfo(seg,id){
+  if(!seg||id==null) return {};
+  const s=seg.items&&seg.items[String(id)]; if(!s) return {};
+  const dias=Math.max(0,Math.round((new Date(seg.act)-new Date(s.alta))/864e5));
+  const o={dias,diasCens:s.alta===seg.base};       // censurado: ya estaba al iniciar el seguimiento
+  if(s.cambios&&s.cambios.length){
+    const p0=s.cambios[0].de;
+    if(p0>0) o.rec=Math.round((s.p/p0-1)*100);     // % desde el primer precio visto
+  }
+  return o;
+}
 async function loadZoneListings(zone){
   if(REAL_LIST[zone]) return REAL_LIST[zone];
   try{
     const base=BB_BACKEND.replace(/\/+$/,'');
-    const r=await fetch(base+'/api/listados?zona='+encodeURIComponent(slugZona(zone)));
+    const [r,seg]=await Promise.all([
+      fetch(base+'/api/listados?zona='+encodeURIComponent(slugZona(zone))),
+      loadZoneSeg(zone)
+    ]);
     if(!r.ok) throw 0;
     const arr=await r.json();
     if(!Array.isArray(arr)||!arr.length){ REAL_LIST[zone]=[]; return []; }
@@ -1735,9 +1823,10 @@ async function loadZoneListings(zone){
     const L=norm.map(x=>{
         const med=x._ter?medT:medC;
         const vs=(med&&x._pm)?Math.round((x._pm/med-1)*100):null;
-        return {tipo:x.tipo,ter:x._ter,m2:x._m2,pm2:x._pm,precio_mxn:x._pr,colonia:x.colonia||null,
+        return {id:x.id,tipo:x.tipo,ter:x._ter,m2:x._m2,pm2:x._pm,precio_mxn:x._pr,colonia:x.colonia||null,
           lat:x.lat,lng:x.lng,url:x.url,fuente:'Century 21',titulo:x.titulo,imagen:x.imagen,municipio:x.municipio,moneda:x.moneda,
-          vs, veredicto: vs==null?null:(vs<=-12?'oportunidad':vs>=12?'sobreprecio':'justo')};
+          vs, veredicto: vs==null?null:(vs<=-12?'oportunidad':vs>=12?'sobreprecio':'justo'),
+          ...segInfo(seg,x.id)};
       })
       .sort((a,b)=>(a.vs??999)-(b.vs??999))  // oportunidades primero
       .slice(0,140);

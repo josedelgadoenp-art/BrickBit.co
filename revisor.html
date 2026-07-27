@@ -99,8 +99,8 @@
 <header><div class="wrap">
   <a class="brand" href="index.html">Brick<em>Bit</em> · Arquitectos</a>
   <nav style="display:flex;gap:18px;align-items:center">
-    <a class="back" href="crear-plano.html">✏️ Creador de planos</a>
-    <a class="back" href="gemelo-digital.html">🏗️ Gemelo Digital</a>
+    <a class="back" href="crear-plano.html"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg> Creador de planos</a>
+    <a class="back" href="gemelo-digital.html"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m21 16.5-9 5-9-5v-9l9-5 9 5z"/><path d="m3 7.5 9 5 9-5M12 22.5v-10"/></svg> Gemelo Digital</a>
     <a class="back" href="index.html">← BrickBit</a>
   </nav>
 </div></header>
@@ -127,7 +127,7 @@
       <button class="x" onclick="clearFile()" title="Quitar">✕</button>
     </div>
     <div style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-      <button class="btn btn-ghost" id="btnUsarGenerado" style="display:none">📄 Usar el último plano del Creador</button>
+      <button class="btn btn-ghost" id="btnUsarGenerado" style="display:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg> Usar el último plano del Creador</button>
       <span id="genInfo" style="font-size:.82rem;color:var(--muted-txt)"></span>
     </div>
     <div class="grid-2">
@@ -141,7 +141,7 @@
       </div>
     </div>
     <div style="margin-top:22px;display:flex;gap:12px;flex-wrap:wrap">
-      <button class="btn btn-primary" id="btnAuditar" disabled>🔍 Auditar mi plano →</button>
+      <button class="btn btn-primary" id="btnAuditar" disabled><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg> Auditar mi plano →</button>
     </div>
     <div class="status" id="statusAud"><span class="spinner"></span><span>El revisor está estudiando tu plano… (30–60 s)</span></div>
     <div class="error-box" id="errAud"></div>
@@ -152,8 +152,8 @@
     <div class="card-head"><span class="knum">02 /</span><h2>Dictamen</h2></div>
     <div id="dictamenOut"></div>
     <div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap">
-      <button class="btn btn-ghost" onclick="dictamenPDF()">🖨 Dictamen en PDF</button>
-      <a class="btn btn-ghost" href="crear-plano.html">✏️ Corregir en el Creador de planos</a>
+      <button class="btn btn-ghost" onclick="dictamenPDF()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg> Dictamen en PDF</button>
+      <a class="btn btn-ghost" href="crear-plano.html"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg> Corregir en el Creador de planos</a>
     </div>
     <div class="note"><b>▦ Honestidad:</b> este dictamen lo genera una IA a partir de lo visible en el plano; es una <b>revisión preliminar</b>, no un peritaje. Los temas estructurales y normativos requieren validación de un profesional responsable (DRO/perito) con el proyecto completo.</div>
   </section>
@@ -334,7 +334,7 @@ ${(d.categorias||[]).map(c=>`<div class="cat"><b style="color:${semCol[c.semafor
 <h3 style="margin:16px 0 6px;font-size:15px">Mejoras priorizadas</h3>
 ${(d.mejoras||[]).map(m=>`<div class="mj"><b>[${m.impacto.toUpperCase()}] ${esc(m.titulo)}</b><br>${esc(m.detalle)}</div>`).join('')}
 <div class="foot">Dictamen preliminar generado por la IA de BrickBit a partir de lo visible en el plano. No sustituye la revisión de un profesional responsable (DRO/perito) con el proyecto ejecutivo completo. brickbit.co</div>
-<div class="noprint" style="margin-top:14px"><button onclick="print()" style="padding:10px 22px;border:none;border-radius:8px;background:#1a7d50;color:#fff;font-weight:700;cursor:pointer">🖨 Imprimir / guardar PDF</button></div>
+<div class="noprint" style="margin-top:14px"><button onclick="print()" style="padding:10px 22px;border:none;border-radius:8px;background:#1a7d50;color:#fff;font-weight:700;cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg> Imprimir / guardar PDF</button></div>
 </body></html>`);
   w.document.close();
 }

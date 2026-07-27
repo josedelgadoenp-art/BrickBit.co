@@ -60,6 +60,8 @@ backend/              Cloudflare Worker para la IA de Arquitectos (NO va a Netli
 - **Google Places / Location Scoring**: "Bienestar y servicios" ya integrado en `zona3d.html` (usa la key de Maps embebida). Para que funcione en vivo: habilitar **Places API (New)** + **facturación** en el proyecto de Google Cloud de esa key, y permitir Places en las restricciones del key (referrer brickbit.co). Ideas B2B pendientes (Índice de Vibrancia/gentrificación, Búsqueda inversa por estilo de vida, Desiertos de oportunidad) usan la misma API.
 - **CRM de Financial**: crear el Google Sheet + Apps Script y setear en Netlify las vars `SHEETS_WEBHOOK_URL`, `LEAD_SECRET`, `ALLOWED_ORIGIN`.
 - **IA de Arquitectos**: desplegar `backend/` en Cloudflare (`wrangler secret put ANTHROPIC_API_KEY` + `wrangler deploy`) y pegar la URL del worker en la config de cada herramienta.
+- **Memoria del mercado**: `c21-subir.mjs` ya genera seguimiento (`_seg-<slug>`: altas/recortes/bajas/días), `_metricas` (medianas + yield real) y `_hist` (serie mensual → Índice BrickBit en pulso). Se activa corriendo el flujo normal `c21-scraper` → `c21-subir`; la historia crece con cada corrida (ideal: mensual, `tools/actualizar-inventario.bat`). Sin cambios de worker.
+- **Capa de seguridad (SESNSP)**: descargar el CSV "Incidencia Delictiva Estatal" (nueva metodología) y correr `python tools/riesgos_local.py <csv>` → `data/riesgos.json` (el gobierno bloquea IPs de nube). El mapa la muestra sola cuando el archivo existe.
 
 ## Despliegue rápido
 1. Subir todo (menos `backend/`) a Netlify.

@@ -113,14 +113,134 @@ async function subir(slugZona, items, etiqueta) {
   } catch (e) { console.log(`  ✗ ${etiqueta.padEnd(30)} ${e.message}`); return 0; }
 }
 
+/* =============================================================================
+   MEMORIA DEL MERCADO — cada corrida deja de ser una foto y se vuelve película.
+   Por zona se mantiene en el KV (vía el mismo API, slugs reservados "_"):
+     _seg-<slug>   seguimiento por propiedad: fecha de alta, recortes de precio,
+                   bajas (¿vendida/retirada?) y días en mercado.
+     _metricas     medianas reales del mes por zona: $/m² venta, $/m² renta,
+                   $/m² terreno y yield bruto (renta·12/venta) con sus n.
+     _hist         serie mensual de _metricas → el Índice BrickBit (pulso.html).
+   Todo se calcula AQUÍ (local); el Worker solo guarda. Sin redeploy.
+============================================================================= */
+const HOY = new Date().toISOString().slice(0, 10);
+const MES = HOY.slice(0, 7);
+const USD_MXN = 17.5; // TC de referencia (jul 2026); actualiza si el peso se mueve
+const normPm2 = (i) => (i.moneda === 'USD' ? (i.pm2 || 0) * USD_MXN : (i.pm2 || 0));
+const esTerreno = (i) => (i.m2_terreno > 0 && (!i.m2_construccion || i.m2_construccion <= 0));
+
+async function getKV(zonaKey) {
+  try {
+    const r = await fetch(`${BACKEND}/api/listados?zona=${encodeURIComponent(zonaKey)}`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+function metricasDe(slugZ, nombre, items) {
+  const ventas = items.filter((i) => i.operacion === 'venta' && !esTerreno(i));
+  const rentas = items.filter((i) => i.operacion === 'renta' && !esTerreno(i));
+  const terrenos = items.filter((i) => esTerreno(i) && i.operacion !== 'renta');
+  const pm2v = med(ventas.map(normPm2));
+  const pm2r = med(rentas.map(normPm2));
+  const pm2t = med(terrenos.map((i) => {
+    const p = i.moneda === 'USD' ? (i.precio || 0) * USD_MXN : (i.precio || 0);
+    return i.m2_terreno > 0 ? p / i.m2_terreno : 0;
+  }));
+  // yield bruto solo con muestra suficiente en AMBOS lados (honestidad de datos)
+  const yld = (pm2v && pm2r && ventas.length >= 5 && rentas.length >= 5)
+    ? Math.round((pm2r * 12 / pm2v) * 1000) / 10 : null;
+  return {
+    slug: slugZ, nombre, f: HOY,
+    pm2v: pm2v ? Math.round(pm2v) : null, nV: ventas.length,
+    pm2r: pm2r ? Math.round(pm2r) : null, nR: rentas.length,
+    pm2t: pm2t ? Math.round(pm2t) : null, nT: terrenos.length,
+    yield: yld,
+  };
+}
+
+// Diff del inventario nuevo contra el seguimiento previo del KV.
+async function actualizarSeg(slugZ, items) {
+  const prevArr = await getKV('_seg-' + slugZ);
+  const prev = (Array.isArray(prevArr) && prevArr[0] && prevArr[0].items) ? prevArr[0] : null;
+  const seg = { v: 1, base: prev ? prev.base : HOY, act: HOY, items: {}, bajas: prev ? (prev.bajas || {}) : {} };
+  const va = prev ? prev.items : {};
+  let altas = 0, recortes = 0, bajas = 0;
+  for (const it of items) {
+    if (!it.id || !(it.precio > 0)) continue;
+    const id = String(it.id);
+    const p = prevSafe(va[id]);
+    if (p && p.m === (it.moneda || 'MXN')) {
+      const reg = { alta: p.alta, p: it.precio, m: p.m, cambios: p.cambios || [] };
+      if (it.precio !== p.p) {
+        reg.cambios = reg.cambios.concat([{ f: HOY, de: p.p, a: it.precio }]).slice(-10);
+        if (it.precio < p.p) recortes++;
+      }
+      seg.items[id] = reg;
+    } else {
+      seg.items[id] = { alta: HOY, p: it.precio, m: it.moneda || 'MXN', cambios: [] };
+      if (prev) altas++;
+      delete seg.bajas[id]; // si reaparece, deja de contar como baja
+    }
+  }
+  // lo que estaba y ya no está → baja (vendida o retirada; no podemos saber cuál)
+  for (const [id, p] of Object.entries(va)) {
+    if (seg.items[id]) continue;
+    const dias = Math.max(0, Math.round((new Date(HOY) - new Date(p.alta)) / 864e5));
+    seg.bajas[id] = { baja: HOY, p: p.p, dias };
+    bajas++;
+  }
+  // cap de bajas: conserva las 500 más recientes
+  const bk = Object.entries(seg.bajas).sort((a, b) => (b[1].baja || '').localeCompare(a[1].baja || '')).slice(0, 500);
+  seg.bajas = Object.fromEntries(bk);
+  await subirSilencioso('_seg-' + slugZ, [seg]);
+  return { altas, recortes, bajas, seguidas: Object.keys(seg.items).length };
+}
+function prevSafe(x) { return (x && typeof x === 'object' && x.alta && x.p > 0) ? x : null; }
+
+async function subirSilencioso(slugZona, items) {
+  try {
+    const r = await fetch(BACKEND + '/api/listados-ingest', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-ingest-key': KEY },
+      body: JSON.stringify({ slug: slugZona, items }),
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
 let okN = 0, total = 0;
-for (const [zona, items] of entries) { const n = await subir(slug(zona), items, zona); if (n) { okN++; total += n; } }
+const metricas = [];
+const segTot = { altas: 0, recortes: 0, bajas: 0, seguidas: 0 };
+async function procesarZona(slugZ, nombre, items) {
+  const n = await subir(slugZ, items, nombre);
+  if (n) { okN++; total += n; }
+  metricas.push(metricasDe(slugZ, nombre, items));
+  const s = await actualizarSeg(slugZ, items);
+  for (const k of Object.keys(segTot)) segTot[k] += s[k];
+}
+
+for (const [zona, items] of entries) await procesarZona(slug(zona), zona, items);
 console.log('  — municipios —');
-for (const g of registro) { const n = await subir(g.slug, muniShards[g.slug], g.nombre); if (n) { okN++; total += n; } }
+for (const g of registro) await procesarZona(g.slug, g.nombre, muniShards[g.slug]);
 
 // Publicar el registro de zonas por municipio para que el buscador con IA las conozca.
 await subir('_zonas', registro, '_zonas (registro de municipios)');
 
+// Métricas del mes (medianas reales por zona) + serie histórica mensual.
+await subir('_metricas', metricas, '_metricas (medianas y yield)');
+const histPrev = await getKV('_hist');
+let hist = Array.isArray(histPrev) ? histPrev.filter((h) => h && h.f) : [];
+const entradaMes = {
+  f: MES,
+  zonas: Object.fromEntries(metricas.map((m) => [m.slug,
+    { pm2v: m.pm2v, nV: m.nV, pm2r: m.pm2r, nR: m.nR, pm2t: m.pm2t, yield: m.yield }])),
+};
+hist = hist.filter((h) => h.f !== MES).concat([entradaMes]).slice(-60); // re-corridas del mes: se reemplaza
+await subir('_hist', hist, `_hist (índice mensual, ${hist.length} mes${hist.length === 1 ? '' : 'es'})`);
+
 console.log(`\n✅ Subidas ${okN} zonas · ${total} propiedades en el buscador.`);
 console.log(`   Cobertura: ${entries.length} ciudades + ${registro.length} municipios.`);
+console.log(`   Seguimiento: ${segTot.seguidas} propiedades en memoria · ${segTot.altas} altas nuevas · ${segTot.recortes} recortes de precio · ${segTot.bajas} bajas detectadas.`);
+console.log(`   Índice BrickBit: mes ${MES} registrado (${hist.length} mes${hist.length === 1 ? '' : 'es'} acumulados).`);
 console.log('   La búsqueda con IA (/api/buscar) ya puede encontrar inmuebles fuera de las 32 capitales.');

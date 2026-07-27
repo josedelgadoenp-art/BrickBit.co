@@ -139,14 +139,14 @@ a.back:hover{color:var(--tx)}
   <div class="sub">Underwriting con costos fiscales mexicanos reales y apreciación del pronóstico validado.</div>
   <div class="actions no-print">
     <div class="menu-wrap">
-      <button class="pdf-btn menu-btn" onclick="toggleActions(event)" aria-haspopup="true">⚙ Acciones ▾</button>
+      <button class="pdf-btn menu-btn" onclick="toggleActions(event)" aria-haspopup="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg> Acciones ▾</button>
       <div class="menu" id="act-menu">
-        <button onclick="ver3D();closeActions()">🌆 Ver en 3D</button>
-        <button onclick="exportPDF();closeActions()">🖨 Exportar a PDF</button>
-        <button onclick="shareAnalysis();closeActions()">🔗 Compartir análisis</button>
+        <button onclick="ver3D();closeActions()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m21 16.5-9 5-9-5v-9l9-5 9 5z"/><path d="m3 7.5 9 5 9-5M12 22.5v-10"/></svg> Ver en 3D</button>
+        <button onclick="exportPDF();closeActions()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg> Exportar a PDF</button>
+        <button onclick="shareAnalysis();closeActions()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg> Compartir análisis</button>
         <span id="save-actions">
-          <button onclick="saveAnalysis();closeActions()">💾 Guardar análisis</button>
-          <button onclick="openMyAnalyses();closeActions()">📁 Mis análisis</button>
+          <button onclick="saveAnalysis();closeActions()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg> Guardar análisis</button>
+          <button onclick="openMyAnalyses();closeActions()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg> Mis análisis</button>
         </span>
       </div>
     </div>
@@ -158,7 +158,7 @@ a.back:hover{color:var(--tx)}
     <h2>📋 Tu operación</h2>
     <div class="fld"><label>Buscar por lugar específico (calle, colonia o ciudad)</label>
       <input id="lugar-q" type="text" placeholder="Ej. Polanco, CDMX · o Av. Chapultepec 100, Guadalajara" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarLugar();}">
-      <button class="pdf-btn" onclick="buscarLugar()" style="width:100%;margin-top:6px">🔎 Buscar lugar</button>
+      <button class="pdf-btn" onclick="buscarLugar()" style="width:100%;margin-top:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg> Buscar lugar</button>
       <div id="lugar-msg" style="font-size:11.5px;color:var(--mut);margin-top:6px;line-height:1.45"></div>
     </div>
     <div class="fld"><label>Zona <span style="font-size:10.5px;color:var(--mut)">(o elígela a mano)</span></label><select id="zona" onchange="onZona()"></select></div>
@@ -217,7 +217,7 @@ a.back:hover{color:var(--tx)}
       <div class="fld"><label>Dirección de la propiedad</label><input id="est-addr" type="text" placeholder="Ej. Av. Universidad 500, Del Valle" onkeydown="if(event.key==='Enter'){event.preventDefault();brickbitEstimate();}"></div>
       <div class="fld"><label>Superficie (m²)</label><input id="est-m2" type="number" min="20" step="5"></div>
     </div>
-    <button class="pdf-btn" onclick="brickbitEstimate()" style="margin-top:4px">🏠 Calcular BrickBit Estimate</button>
+    <button class="pdf-btn" onclick="brickbitEstimate()" style="margin-top:4px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg> Calcular BrickBit Estimate</button>
     <div id="est-out"></div>
   </div>
 
@@ -226,7 +226,7 @@ a.back:hover{color:var(--tx)}
     <p style="font-size:12px;color:var(--mut);margin:-6px 0 14px">Inteligencia para <b>desarrolladores</b>: en vez de ver qué hay, mapeamos <b>lo que falta</b>. Los servicios esenciales lejanos revelan dónde una torre de usos mixtos tendría el <b>monopolio de proximidad</b>.</p>
     <div class="fld" style="margin-bottom:9px"><label>Calle, colonia o punto específico (dentro de la zona)</label>
       <input id="des-addr" type="text" placeholder="Ej. Av. Universidad 500, colonia Del Valle" onkeydown="if(event.key==='Enter')scanDesiertos()"></div>
-    <button class="pdf-btn" id="des-btn" onclick="scanDesiertos()" style="margin-bottom:4px">🛰 Escanear alrededor de este punto</button>
+    <button class="pdf-btn" id="des-btn" onclick="scanDesiertos()" style="margin-bottom:4px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg> Escanear alrededor de este punto</button>
     <div id="deserts-out"></div>
   </div>
 
@@ -242,9 +242,9 @@ a.back:hover{color:var(--tx)}
     </div>
     <div id="dev-out"></div>
     <div class="cta-row" style="gap:10px;margin:14px 0 0">
-      <button class="pdf-btn" onclick="devTesisIA()">✨ Generar tesis con IA</button>
-      <button class="pdf-btn" onclick="devPDF()">🖨 Tesis en PDF</button>
-      <button class="pdf-btn" onclick="genPreventa()" style="border-color:rgba(205,242,90,.4);color:var(--lime,#cdf25a)">🏷️ Página de preventa</button>
+      <button class="pdf-btn" onclick="devTesisIA()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg> Generar tesis con IA</button>
+      <button class="pdf-btn" onclick="devPDF()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg> Tesis en PDF</button>
+      <button class="pdf-btn" onclick="genPreventa()" style="border-color:rgba(205,242,90,.4);color:var(--lime,#cdf25a)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z"/><path d="M7 7h.01"/></svg> Página de preventa</button>
     </div>
     <div id="preventa-out"></div>
     <div id="dev-tesis"></div>
@@ -273,6 +273,18 @@ a.back:hover{color:var(--tx)}
     </div>
     <div id="cmp-body"></div>
     <div class="note">Para cada zona: precio = valor/m² × superficie típica, renta = precio × yield, apreciación = pronóstico al horizonte elegido. Los demás supuestos (enganche, tasa, costos, impuestos) son los que tengas arriba, iguales para las tres.</div>
+  </div>
+
+  <div class="card" style="margin-top:22px">
+    <h2>🏦 ¿Cuánto puedo comprar?<span class="hint" tabindex="0" data-tip="De tu ingreso mensual a propiedades REALES: estima tu capacidad de crédito hipotecario y busca en el inventario vivo de Century 21 qué puedes pagar en la zona seleccionada.">?</span></h2>
+    <p style="font-size:12px;color:var(--mut);margin:-6px 0 14px">Estima tu presupuesto con la regla bancaria del 30% del ingreso y encuentra <b>propiedades reales</b> dentro de él en la zona seleccionada. Cálculo orientativo: <b>no es una oferta de crédito</b>; tu banco define monto y tasa finales.</p>
+    <div class="cgrid">
+      <div class="fld"><label>Ingreso mensual neto ($)</label><input id="af-ing" type="number" min="0" step="1000" value="35000" oninput="afCalc()"></div>
+      <div class="fld"><label>Enganche disponible ($)</label><input id="af-eng" type="number" min="0" step="10000" value="300000" oninput="afCalc()"></div>
+      <div class="fld"><label>Tasa hipotecaria anual (%) <span class="tag ex">est.</span></label><input id="af-tasa" type="number" min="1" step="0.1" value="10.5" oninput="afCalc()"></div>
+      <div class="fld"><label>Plazo (años)</label><input id="af-plazo" type="number" min="5" max="30" step="5" value="20" oninput="afCalc()"></div>
+    </div>
+    <div id="af-out" style="margin-top:12px"><div class="note">Escribe tu ingreso y te muestro tu presupuesto y las propiedades de Century 21 que entran en él.</div></div>
   </div>
 
   <div class="card" style="margin-top:22px">
@@ -435,6 +447,18 @@ function init(){
     ZONAS.forEach(z=>{const c=Z[z.n]; if(!c)return;
       [['1','f1','lo1','hi1'],['3','f3','lo3','hi3'],['5','f5','lo5','hi5'],['10','f10','lo10','hi10']]
         .forEach(([h,fk,lk,hk])=>{ if(c[h]){ z[fk]=c[h].f; z[lk]=c[h].lo; z[hk]=c[h].hi; } });
+    });
+    calc(); if(typeof renderDev==='function') renderDev();
+  }).catch(()=>{});
+  // Yield REAL por zona (_metricas, lo genera c21-subir.mjs): mediana de renta
+  // C21 ×12 / mediana de venta C21. Cuando hay muestra suficiente sustituye al
+  // yield estimado y se etiqueta como real; si no, se queda el est.
+  fetch(BB_BACKEND_A+'/api/listados?zona=_metricas').then(r=>r.ok?r.json():[]).then(ms=>{
+    if(!Array.isArray(ms)||!ms.length) return;
+    const bySlug={}; ms.forEach(m=>bySlug[m.slug]=m);
+    ZONAS.forEach(z=>{const m=bySlug[_slugZ(z.n)]; if(!m) return;
+      if(m.yield!=null){ z.y=m.yield; z._yReal=true; }
+      if(m.pm2v!=null) z._pm2v=m.pm2v;      // mediana real de venta (accesibilidad)
     });
     calc(); if(typeof renderDev==='function') renderDev();
   }).catch(()=>{});
@@ -843,6 +867,44 @@ function _slugZ(n){return String(n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').
 // (metros, 2 objetos) que usan scanNear/buscarLugar — la colisión rompía en
 // silencio el buscador, el BrickBit Estimate y los Desiertos de oportunidad.
 function _havKm(a,b,c,d){const R=6371,p=Math.PI/180;const x=(c-a)*p,y=(d-b)*p;const h=Math.sin(x/2)**2+Math.cos(a*p)*Math.cos(c*p)*Math.sin(y/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+/* ============ ¿Cuánto puedo comprar? — accesibilidad con inventario real ============
+   Regla bancaria estándar: pago hipotecario ≤ 30% del ingreso neto. El monto de
+   crédito sale de la anualidad a la tasa/plazo elegidos (editables; la tasa
+   precargada es una referencia del mercado hipotecario, no una oferta). Con el
+   presupuesto se filtra el inventario VIVO de Century 21 de la zona. */
+let _afT=null;
+function afCalc(){ clearTimeout(_afT); _afT=setTimeout(_afRun,250); }
+async function _afRun(){
+  const out=$('af-out'); if(!out) return;
+  const z=zona(); if(!z) return;
+  const ing=+($('af-ing').value)||0, eng=+($('af-eng').value)||0;
+  const tasa=(+($('af-tasa').value)||10.5)/100, anios=Math.min(30,Math.max(5,+($('af-plazo').value)||20));
+  if(ing<=0){ out.innerHTML='<div class="note">Escribe tu ingreso mensual para calcular.</div>'; return; }
+  const pago=ing*0.30, i=tasa/12, n=anios*12;
+  const credito=Math.round(pago*(1-Math.pow(1+i,-n))/i);
+  const presupuesto=credito+eng;
+  const kpi=(l,v,s)=>`<div style="flex:1;min-width:120px;background:var(--p2,rgba(255,255,255,.03));border:1px solid var(--bd);border-radius:12px;padding:10px 12px"><div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em">${l}</div><div style="font-family:'Space Mono',monospace;font-size:15px;color:var(--lim,#cdf25a);margin-top:2px">${v}</div>${s?`<div style="font-size:10px;color:var(--mut)">${s}</div>`:''}</div>`;
+  let html=`<div style="display:flex;gap:9px;flex-wrap:wrap">
+    ${kpi('Pago mensual máx.',fmt(Math.round(pago)),'30% de tu ingreso')}
+    ${kpi('Crédito estimado',fmt(credito),`${(tasa*100).toFixed(1)}% · ${anios} años`)}
+    ${kpi('Presupuesto total',fmt(presupuesto),'crédito + enganche')}
+  </div>`;
+  out.innerHTML=html+'<div class="note" style="margin-top:10px">Buscando propiedades reales dentro de tu presupuesto…</div>';
+  const L=await loadZoneListingsA(z.n);
+  const caben=L.filter(x=>x.precio>0&&x.precio<=presupuesto).sort((a,b)=>b.precio-a.precio);
+  const top=caben.slice(0,5);
+  html+=`<div class="note" style="margin-top:10px;border-left-color:${caben.length?'var(--pos,#57c389)':'var(--amb)'}">${caben.length
+    ?`<b>${caben.length} propiedad${caben.length===1?'':'es'} reales</b> de Century 21 en ${z.n} entran en tu presupuesto.`
+    :`Ninguna propiedad del inventario actual de ${z.n} entra en este presupuesto. Prueba otra zona en el selector de arriba o ajusta enganche/plazo.`}</div>`;
+  if(top.length){
+    html+=top.map(x=>`<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;padding:7px 2px;border-top:1px dashed var(--bd);font-size:12.5px">
+      <span style="color:var(--tx,#f5ede3)">${(x.titulo||x.tipo||'Propiedad').slice(0,44)}${x.m2?` · ${x.m2} m²`:''}</span>
+      <span style="white-space:nowrap;font-family:'Space Mono',monospace;color:var(--lim,#cdf25a)">${fmt(x.precio)}${x.url?` <a href="${x.url}" target="_blank" rel="noopener" style="color:var(--pos,#57c389)">ver →</a>`:''}</span></div>`).join('');
+    html+=`<a href="mapa.html?zona=${encodeURIComponent(z.n)}&modo=inmuebles" style="display:inline-block;margin-top:10px;font-size:12.5px;color:var(--pos,#57c389)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M9 2 3 5v17l6-3 6 3 6-3V2l-6 3-6-3z"/><path d="M9 2v17M15 5v17"/></svg> Ver todas en el mapa →</a>`;
+  }
+  html+=`<div class="note" style="margin-top:10px">Siguiente paso inteligente: un crédito de ${anios} años se protege. <a href="/financial" style="color:var(--pos,#57c389)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Revisa tu protección (vida y hogar) gratis →</a></div>`;
+  out.innerHTML=html;
+}
 async function loadZoneListingsA(zone){
   if(_ZL[zone])return _ZL[zone];
   try{
@@ -928,6 +990,8 @@ function onZona(){const z=zona();if(!z)return;
   const h=$('estHint');if(h)h.style.display='block';
   devInit(z);
   calc();
+  // si el usuario ya calculó su accesibilidad, re-calcula con la nueva zona
+  if($('af-out')&&!$('af-out').innerHTML.includes('Escribe tu ingreso')) afCalc();
 }
 // Cuando el usuario edita un valor autocompletado, deja de ser estimación de zona.
 function marcarReal(id){const t=$('tag-'+id);if(t)t.style.display='none';
@@ -1017,7 +1081,7 @@ function calc(){
     <div class="row"><span class="l"><b>= Neto de venta</b></span><span class="r">${fmt(netoVenta)}</span></div>
 
     <div class="prov">
-      <b>Procedencia de los datos.</b> <span class="lim">Real:</span> la apreciación viene del pronóstico de la SHF (modelo espacial SAR validado a 1–3 años; ${H>3?'<span class="neg">a '+H+' años es extrapolado</span>':'validado'}). <span class="amb" style="color:var(--amb)">Estimado:</span> la renta usa el yield típico de la zona (pendiente de listados reales). <span class="amb" style="color:var(--amb)">Supuestos:</span> los costos fiscales son valores mexicanos típicos, editables arriba.
+      <b>Procedencia de los datos.</b> <span class="lim">Real:</span> la apreciación viene del pronóstico de la SHF (modelo espacial SAR validado a 1–3 años; ${H>3?'<span class="neg">a '+H+' años es extrapolado</span>':'validado'}). ${z._yReal?`<span class="lim">Real:</span> el yield de renta (${z.y}%) está <b>medido</b> con el inventario vivo de Century 21 (mediana de renta ×12 ÷ mediana de venta de la zona).`:`<span class="amb" style="color:var(--amb)">Estimado:</span> la renta usa el yield típico de la zona (pendiente de listados reales).`} <span class="amb" style="color:var(--amb)">Supuestos:</span> los costos fiscales son valores mexicanos típicos, editables arriba.
     </div>
     ${(monto>0&&num('tasa')/100>capRate/100)?`<div class="note" style="border-left-color:var(--amb)">Apalancamiento negativo: la tasa de crédito (${num('tasa')}%) supera al cap rate (${capRate.toFixed(1)}%), así que financiar <b>resta</b> flujo. En México las rentas residenciales suelen rendir menos que el crédito, por lo que el retorno se apoya en la apreciación o en comprar de contado.</div>`:''}
     <div class="note">Herramienta informativa de análisis, <b>no asesoría de inversión ni fiscal</b>. El ISR de ganancia de capital en México admite ajuste por inflación del costo y posibles exenciones (casa-habitación); este cálculo es una estimación simplificada. Confirma con un contador antes de decidir.</div>`;

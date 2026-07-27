@@ -74,7 +74,7 @@ input[type=range]{flex:1;accent-color:var(--amb);cursor:pointer}
     <p class="sub">32 ciudades como torres de datos · fuente SHF + modelo BrickBit</p>
     <div class="tabs">
       <button class="tab on" id="tab-hoy" onclick="setMode('hoy')">Hoy</button>
-      <button class="tab" id="tab-tiempo" onclick="setMode('tiempo')">⏳ Viaje en el tiempo</button>
+      <button class="tab" id="tab-tiempo" onclick="setMode('tiempo')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> Viaje en el tiempo</button>
     </div>
     <select id="ficha" onchange="if(this.value){showCard(DATA.find(z=>z.n===this.value))}" style="margin-top:10px;width:100%;background:var(--surface2);color:var(--tx);border:1px solid var(--line-strong);border-radius:12px;padding:8px 10px;font-family:inherit;font-size:12px;outline:none">
       <option value="">Ver ficha de una ciudad…</option>
@@ -90,7 +90,7 @@ input[type=range]{flex:1;accent-color:var(--amb);cursor:pointer}
 
 <div class="hud bottom glass" id="timeline" style="display:none">
   <div class="brow">
-    <button class="play" id="play" onclick="togglePlay()">▶</button>
+    <button class="play" id="play" onclick="togglePlay()" title="Reproducir"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M6 4l14 8-14 8z" fill="currentColor" stroke="none"/></svg></button>
     <span class="yr" id="yr">2005</span>
     <input type="range" id="slider" min="2005" max="2036" step="1" value="2005" oninput="setYear(+this.value)">
   </div>
@@ -101,7 +101,7 @@ input[type=range]{flex:1;accent-color:var(--amb);cursor:pointer}
   <button class="x" onclick="hideCard()">✕</button>
   <h2 id="c-n"></h2>
   <div id="c-body"></div>
-  <a id="c-go" href="#">🌆 Explorar en 3D →</a>
+  <a id="c-go" href="#"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m21 16.5-9 5-9-5v-9l9-5 9 5z"/><path d="m3 7.5 9 5 9-5M12 22.5v-10"/></svg> Explorar en 3D →</a>
 </div>
 
 <div class="legend" id="legend"></div>
@@ -183,6 +183,30 @@ async function syncCanon(){
     const FZ=fj.zonas||{};
     DATA.forEach(d=>{ if(FZ[d.n]) d.f=FZ[d.n]; });
   }catch(e){/* offline: se usa el snapshot embebido */}
+  // Índice BrickBit (beta): serie MENSUAL de la mediana de precios de lista de
+  // Century 21 por zona (_hist, la genera c21-subir.mjs en cada corrida del
+  // inventario). Es el único índice del sitio medido de oferta viva, no de SHF.
+  try{
+    const r=await fetch(BB_BACKEND+'/api/listados?zona=_hist');
+    const j=r.ok?await r.json():[];
+    HIST=Array.isArray(j)?j.filter(h=>h&&h.f&&h.zonas):[];
+  }catch(e){ HIST=[]; }
+}
+const BB_BACKEND='https://brickbit-api.jose-delgado-enp.workers.dev';
+let HIST=[];
+const slugZona=n=>String(n).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+/* Serie del Índice BrickBit para una zona: [{f:'YYYY-MM',pm2v,nV,yield}] con muestra suficiente */
+function serieBB(nombre){
+  const s=slugZona(nombre);
+  return HIST.map(h=>{const z=h.zonas[s]; return z&&z.pm2v&&z.nV>=8?{f:h.f,pm2v:z.pm2v,nV:z.nV,yield:z.yield??null}:null;})
+             .filter(Boolean);
+}
+function sparkBB(serie){
+  const pts=serie.slice(-12).map(x=>x.pm2v);
+  if(pts.length<2) return '';
+  const w=110,h=26,mn=Math.min(...pts),mx=Math.max(...pts),rg=(mx-mn)||1;
+  const xy=pts.map((v,i)=>`${(i/(pts.length-1)*w).toFixed(1)},${(h-3-(v-mn)/rg*(h-6)).toFixed(1)}`);
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block"><polyline points="${xy.join(' ')}" fill="none" stroke="#cdf25a" stroke-width="1.6"/><circle cx="${xy[xy.length-1].split(',')[0]}" cy="${xy[xy.length-1].split(',')[1]}" r="2.3" fill="#cdf25a"/></svg>`;
 }
 async function init(){
   try{
@@ -247,7 +271,7 @@ function setYear(y){
   refresh();
 }
 function togglePlay(){
-  playing=!playing; $('play').textContent=playing?'⏸':'▶';
+  playing=!playing; $('play').innerHTML=playing?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M7 4h3v16H7zM14 4h3v16h-3z" fill="currentColor" stroke="none"/></svg>':'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M6 4l14 8-14 8z" fill="currentColor" stroke="none"/></svg>';
   if(playing){
     if(year>=2036) setYear(2005);
     playT=setInterval(()=>{
@@ -267,6 +291,25 @@ function showCard(z){
   if(mode==='tiempo'){
     const v=idxAt(z,year);
     if(v!=null) rows+='<div class="kv"><span>Índice SHF '+year+(year>2026?' (proy.)':'')+'</span><b>'+v.toFixed(1)+'</b></div>';
+  }
+  // Índice BrickBit (beta): mediana MEDIDA de la oferta viva C21, mes a mes.
+  const sBB=serieBB(z.n);
+  if(sBB.length){
+    const u=sBB[sBB.length-1];
+    rows+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(245,237,227,.12)">'+
+      '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#cdf25a;font-weight:700">Índice BrickBit · beta</div>';
+    if(sBB.length>=2){
+      const prev=sBB[sBB.length-2];
+      const d=Math.round((u.pm2v/prev.pm2v-1)*1000)/10;
+      rows+='<div class="kv"><span>Mediana de lista C21</span><b>$'+f(u.pm2v)+' /m²</b></div>'+
+        '<div class="kv"><span>vs mes anterior</span><b style="color:'+(d>=0?'#2DD49B':'#F08886')+'">'+(d>0?'+':'')+d+'%</b></div>'+
+        sparkBB(sBB)+
+        '<div style="font-size:10px;color:#8a9a9e;margin-top:3px">'+sBB.length+' meses medidos · '+u.nV+' inmuebles en venta este mes</div>';
+    }else{
+      rows+='<div class="kv"><span>Mediana de lista C21</span><b>$'+f(u.pm2v)+' /m²</b></div>'+
+        '<div style="font-size:10px;color:#8a9a9e;margin-top:3px">Recopilando historia: 1 mes medido ('+u.f+'). La serie crece con cada corrida mensual del inventario.</div>';
+    }
+    rows+='</div>';
   }
   $('c-body').innerHTML=rows;
   $('c-go').href='zona3d.html?zona='+encodeURIComponent(z.n);

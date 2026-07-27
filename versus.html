@@ -58,7 +58,7 @@ select:focus{border-color:var(--grn)}
 <div class="load" id="load"><div style="text-align:center"><div style="font-size:34px">⚔️</div><p class="sub">Preparando el duelo…</p></div></div>
 <div class="back glass"><a href="index.html">← BrickBit</a></div>
 <div class="vs">VS</div>
-<button id="orb" onclick="toggleOrbit()" title="Órbita (puede bajar la nitidez)" style="position:fixed;z-index:30;top:66px;left:50%;transform:translateX(-50%);width:38px;height:38px;border-radius:999px;border:1px solid var(--line-strong);background:rgba(16,12,10,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:var(--tx);font-size:14px;cursor:pointer">🎥</button>
+<button id="orb" onclick="toggleOrbit()" title="Órbita (puede bajar la nitidez)" style="position:fixed;z-index:30;top:66px;left:50%;transform:translateX(-50%);width:38px;height:38px;border-radius:999px;border:1px solid var(--line-strong);background:rgba(16,12,10,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);color:var(--tx);font-size:14px;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></button>
 <div class="split">
   <div class="pane" id="paneA">
     <div class="m3d" id="mapA"></div>
@@ -165,7 +165,7 @@ function renderTable(){
     row('Aperturas recientes',a.alt,b.alt,n0,true)+
     '<div class="trow"><span class="va" style="font-size:11px;color:var(--mut)">'+a.edo+'</span><span class="lab">estado</span><span class="vb" style="font-size:11px;color:var(--mut)">'+b.edo+'</span></div>'+
     verdict+
-    '<div class="note">Verde = mejor · <span class="amb">Dinamismo = índice DENUE de actividad económica</span> · Plusvalía SHF solo donde existe · fuente INEGI/SHF. <button onclick="versusPDF()" style="margin-top:8px;background:none;border:1px solid var(--line-strong);color:var(--tx);border-radius:8px;padding:6px 11px;cursor:pointer;font-size:11px">🖨 Comparar en PDF</button></div>';
+    '<div class="note">Verde = mejor · <span class="amb">Dinamismo = índice DENUE de actividad económica</span> · Plusvalía SHF solo donde existe · fuente INEGI/SHF. <button onclick="versusPDF()" style="margin-top:8px;background:none;border:1px solid var(--line-strong);color:var(--tx);border-radius:8px;padding:6px 11px;cursor:pointer;font-size:11px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg> Comparar en PDF</button></div>';
 }
 function versusPDF(){
   const a=Z(cur.A), b=Z(cur.B); if(!a||!b) return;

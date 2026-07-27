@@ -7,7 +7,7 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BrickBit · Cinema</title>
-<meta name="description" content="Tour cinematográfico en 3D por las 32 ciudades de México con sus métricas inmobiliarias.">
+<meta name="description" content="Reel cinematográfico en 3D con las mejores oportunidades inmobiliarias reales de México, detectadas sobre el inventario vivo de Century 21.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -45,6 +45,8 @@ h1 .accent{color:var(--grn);font-style:italic}
 .load{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:50;transition:opacity .5s}
 .load.off{opacity:0;pointer-events:none}
 .sub{font-size:12px;color:var(--mut)}
+.spinlogo{width:34px;height:34px;margin:0 auto 10px;border-radius:50%;border:3px solid var(--line-strong);border-top-color:var(--grn);animation:spl 1s linear infinite}
+@keyframes spl{to{transform:rotate(360deg)}}
 .ov-cta{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px}
 .cbtn{text-decoration:none;font-size:12.5px;font-weight:700;padding:9px 15px;border-radius:999px;border:1px solid var(--line-strong);color:var(--tx);background:rgba(16,12,10,.6);transition:border-color .2s,transform .15s}
 .cbtn:hover{border-color:var(--grn);transform:translateY(-1px)}
@@ -53,24 +55,26 @@ h1 .accent{color:var(--grn);font-style:italic}
 </style>
 </head>
 <body>
-<div class="load" id="load"><div style="text-align:center"><div style="font-size:34px">🎬</div><p class="sub">Preparando el tour por México…</p></div></div>
+<div class="load" id="load"><div style="text-align:center"><div class="spinlogo"></div><p class="sub">Buscando las mejores oportunidades de México…</p></div></div>
 <div id="map3d"></div>
 <div class="top">
-  <div class="glass"><h1>BrickBit <span class="accent">Cinema</span></h1><span class="sub">Municipios más dinámicos de México · DENUE (2,436)</span></div>
+  <div class="glass"><h1>BrickBit <span class="accent">Cinema</span></h1><span class="sub" id="cine-sub">Reel de oportunidades reales · Century 21</span></div>
   <div class="glass"><a class="back" href="index.html">← BrickBit</a></div>
 </div>
 <div class="overlay hide glass" id="ov">
+  <img id="ov-img" alt="" loading="lazy" style="display:none;width:100%;max-height:150px;object-fit:cover;border-radius:12px;margin-bottom:10px">
   <p class="ov-sub" id="ov-sub"></p>
   <h2 class="ov-n" id="ov-n"></h2>
   <div class="ov-m" id="ov-m"></div>
   <div class="ov-cta" id="ov-cta"></div>
+  <p class="sub" id="ov-note" style="margin:10px 0 0;font-size:10.5px"></p>
 </div>
 <div class="bar">
-  <button class="b" onclick="prev()">⏮</button>
-  <button class="b play" id="play" onclick="togglePlay()">⏸</button>
-  <button class="b" onclick="next()">⏭</button>
-  <button class="b" id="orb" onclick="toggleOrbit()" title="Órbita (puede bajar la nitidez)">🎥</button>
-  <span class="cnt" id="cnt">1/32</span>
+  <button class="b" onclick="prev()" title="Anterior" aria-label="Anterior"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 20 9 12l10-8v16z"/><rect x="4" y="4" width="2.4" height="16" rx="1"/></svg></button>
+  <button class="b play" id="play" onclick="togglePlay()" title="Pausar" aria-label="Pausar"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4h3.4v16H7zM13.6 4H17v16h-3.4z"/></svg></button>
+  <button class="b" onclick="next()" title="Siguiente" aria-label="Siguiente"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m5 4 10 8-10 8V4z"/><rect x="17.6" y="4" width="2.4" height="16" rx="1"/></svg></button>
+  <button class="b" id="orb" onclick="toggleOrbit()" title="Órbita (puede bajar la nitidez)" aria-label="Órbita"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m23 7-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></button>
+  <span class="cnt" id="cnt">1/1</span>
 </div>
 <div class="prog"><i id="prog"></i></div>
 
@@ -88,21 +92,56 @@ function _vf3(z){ return (z.f&&z.f['3'])?(z.f['3'].f-1)*100:(z.pl||0)*3; }
   const nz=(v,a)=>{const mn=Math.min(...a),mx=Math.max(...a);return mx===mn?50:(v-mn)/(mx-mn)*100;};
   DATA.forEach((z,k)=>{ z._vf3=vf[k]; z._opp=Math.round(nz(vf[k],vf)*.55 + nz(ys[k],ys)*.25 + nz(ops[k],ops)*.20); });
 })();
-/* El reel recorre los MUNICIPIOS ganadores a nivel NACIONAL (no una ciudad por
-   estado). Se cargan de municipios_shf.json y se rankean por índice de oportunidad. */
-let TOUR=[];
-async function loadMuniReel(){
+/* ============ BrickBit Cinema · Reel de OPORTUNIDADES REALES ============
+   Cinema ya no repite métricas que viven en otras herramientas: vuela, una a
+   una, a las mejores oportunidades del inventario VIVO de Century 21 —
+   propiedades >=15% debajo de la mediana real de $/m² de su zona — con su
+   foto, ficha y seguimiento (recortes de precio, días publicada). Pensado
+   como sala de presentación: pantalla frente al cliente y a dejar correr.
+   Si el inventario no responde, cae al tour clásico por las 32 ciudades. */
+const BB_BACKEND='https://brickbit-api.jose-delgado-enp.workers.dev';
+const USD_MXN=17.5; // TC de referencia (jul 2026)
+let TOUR=[], MODE='opp';
+async function jget(u){ const r=await fetch(u); if(!r.ok) throw 0; return r.json(); }
+async function loadTour(){
   try{
-    const r=await fetch('data/municipios_full.json'); const j=await r.json();
-    const muni=(j.municipios||[]).map(m=>({ n:m.m, edo:m.e, lat:m.lat, lng:m.lng, di:m.di,
-      pl:(m.pl!=null?m.pl:null), ci:(m.ci||null), op:(m.op||null), neg:m.neg, emp:m.emp, alt:m.alt }));
-    muni.sort((a,b)=>b.di-a.di);       // los más dinámicos de todo México primero
-    TOUR=muni.slice(0,50);             // top 50 municipios a nivel nacional (de 2,436)
+    const idx=await jget(BB_BACKEND+'/api/listados');
+    const zs=Object.entries(idx).filter(([k,v])=>!String(k).startsWith('_')&&v>=15)
+      .sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k])=>k);
+    const packs=await Promise.all(zs.map(async s=>{
+      try{
+        const arr=await jget(BB_BACKEND+'/api/listados?zona='+encodeURIComponent(s));
+        let seg=null;
+        try{ const sj=await jget(BB_BACKEND+'/api/listados?zona=_seg-'+encodeURIComponent(s));
+             seg=(Array.isArray(sj)&&sj[0]&&sj[0].items)?sj[0]:null; }catch(e){}
+        const norm=(Array.isArray(arr)?arr:[]).filter(x=>x.operacion==='venta'&&x.lat!=null&&x.precio>0&&x.m2_construccion>0)
+          .map(x=>{const fx=x.moneda==='USD'?USD_MXN:1;
+            return {...x,_pm:Math.round(x.precio*fx/x.m2_construccion),_pr:Math.round(x.precio*fx)};})
+          .filter(x=>x._pm>5000&&x._pm<150000);
+        if(norm.length<8) return [];
+        const ps=norm.map(x=>x._pm).sort((a,b)=>a-b), med=ps[Math.floor(ps.length/2)];
+        return norm.map(x=>{
+          const vs=Math.round((x._pm/med-1)*100);
+          const st={zonaN:x.zona||x.municipio||s, lat:x.lat, lng:x.lng, titulo:x.titulo, url:x.url,
+                    imagen:x.imagen, m2:x.m2_construccion, pm2:x._pm, precio:x._pr, vs, med};
+          const sg=(seg&&x.id!=null)?seg.items[String(x.id)]:null;
+          if(sg&&sg.alta){
+            st.dias=Math.max(0,Math.round((new Date(seg.act)-new Date(sg.alta))/864e5));
+            st.cens=sg.alta===seg.base;
+            if(sg.cambios&&sg.cambios.length&&sg.cambios[0].de>0) st.rec=Math.round((sg.p/sg.cambios[0].de-1)*100);
+          }
+          return st;
+        }).filter(x=>x.vs<=-15).sort((a,b)=>a.vs-b.vs).slice(0,3);
+      }catch(e){ return []; }
+    }));
+    TOUR=packs.flat().sort((a,b)=>a.vs-b.vs).slice(0,24);
   }catch(e){ TOUR=[]; }
-  if(!TOUR.length) TOUR=[...DATA].sort((a,b)=>b._opp-a._opp); // respaldo: ciudades
+  if(TOUR.length>=5){ MODE='opp'; return; }
+  MODE='city'; TOUR=[...DATA].sort((a,b)=>b._opp-a._opp);   // respaldo: tour clásico de ciudades
 }
-const VIEW={range:640,tilt:76};
-const STAY=18000; /* ms por ciudad (vuelo+órbita) */
+const VIEW ={range:640,tilt:76};   // toma de ciudad (tour clásico)
+const VIEWP={range:430,tilt:66};   // toma de propiedad: cerca, pero sobre los techos
+const STAY=16000; /* ms por parada */
 let map=null,i=0,playing=true,timer=null,orbit=false;
 
 async function init(){
@@ -114,7 +153,10 @@ async function init(){
     });
     const lib=await google.maps.importLibrary('maps3d');
     const Map3D=lib.Map3DElement;
-    await loadMuniReel();
+    await loadTour();
+    $('cine-sub').textContent = MODE==='opp'
+      ? 'Reel de oportunidades reales · Century 21 · '+TOUR.length+' propiedades'
+      : 'Tour por las 32 ciudades (inventario no disponible ahora)';
     const z=TOUR[0];
     map=new Map3D({center:{lat:z.lat,lng:z.lng,altitude:0},range:12000,tilt:40,heading:0,mode:(lib.MapMode&&lib.MapMode.HYBRID)||'HYBRID'});
     map.style.width='100%';map.style.height='100%';
@@ -126,35 +168,56 @@ async function init(){
   }
 }
 function fmt(n){return Math.round(n).toLocaleString('es-MX');}
+function money(n){return '$'+fmt(n);}
 function showOverlay(z,rank){
-  const idx=(z.di!=null?z.di:z._opp);
-  $('ov-sub').innerHTML='#'+rank+' municipio a nivel nacional · '+(z.ci||z.edo||'')+' · <span style="color:var(--grn)">Dinamismo '+idx+'/100</span>';
-  $('ov-n').textContent=z.n;
-  const plTxt=(z.pl!=null)?('+'+(+z.pl).toFixed(1)+'%'):'s/d';
-  $('ov-m').innerHTML=
-    '<span><b>'+idx+'</b>dinamismo DENUE</span>'+
-    '<span><b>'+plTxt+'</b>plusvalía SHF</span>'+
-    '<span><b>'+(z.neg!=null?fmt(z.neg):'—')+'</b>negocios</span>'+
-    (z.edo?'<span><b>'+z.edo+'</b>estado</span>':'');
-  const q=encodeURIComponent(z.n);
-  $('ov-cta').innerHTML=
-    '<a class="cbtn p" href="zona3d.html?zona='+q+'">🌆 Ver en 3D →</a>'+
-    '<a class="cbtn" href="mapa.html">🗺️ Ver en el mapa</a>';
+  if(MODE==='opp'){
+    $('ov-sub').innerHTML='#'+rank+' de '+TOUR.length+' · '+(z.zonaN||'')+' · <span style="color:var(--grn)">'+z.vs+'% vs mediana real</span>';
+    $('ov-n').textContent=(z.titulo||'Propiedad en oportunidad').slice(0,64);
+    $('ov-m').innerHTML=
+      '<span><b>'+money(z.precio)+'</b>precio de lista</span>'+
+      '<span><b>'+money(z.pm2)+'</b>$/m² · '+fmt(z.m2)+' m²</span>'+
+      '<span><b>'+money(z.med)+'</b>mediana de su zona</span>'+
+      (z.rec!=null&&z.rec<0?'<span><b style="color:var(--grn)">▼'+Math.abs(z.rec)+'%</b>recorte de precio</span>':'')+
+      ((z.dias!=null&&z.dias>=1)?'<span><b>'+(z.cens?'≥':'')+z.dias+'</b>días publicada</span>':'');
+    const q=encodeURIComponent(z.zonaN||'');
+    $('ov-cta').innerHTML=
+      (z.url?'<a class="cbtn p" href="'+z.url+'" target="_blank" rel="noopener">Ver ficha original →</a>':'')+
+      '<a class="cbtn" href="mapa.html?zona='+q+'&modo=inmuebles">Ver zona en el mapa</a>'+
+      '<a class="cbtn" href="analizador.html?zona='+q+'">Analizar la zona</a>';
+    const im=$('ov-img');
+    if(z.imagen){ im.src=z.imagen; im.style.display='block'; } else { im.style.display='none'; }
+    $('ov-note').textContent='Oportunidad = precio de lista ≥15% debajo de la mediana real de su zona (inventario Century 21). Verifica siempre el estado físico y legal.';
+  }else{
+    $('ov-sub').innerHTML='#'+rank+' · índice de oportunidad <span style="color:var(--grn)">'+z._opp+'/100</span>';
+    $('ov-n').textContent=z.n;
+    $('ov-m').innerHTML=
+      '<span><b>+'+(+z.pl).toFixed(1)+'%</b>plusvalía/año</span>'+
+      '<span><b>'+z.y+'%</b>yield renta</span>'+
+      '<span><b>'+(z.op||'—')+'</b>oportunidad</span>'+
+      '<span><b>'+(z.ci||'—')+'</b>ciclo</span>';
+    const q=encodeURIComponent(z.n);
+    $('ov-cta').innerHTML=
+      '<a class="cbtn p" href="zona3d.html?zona='+q+'">Ver en 3D →</a>'+
+      '<a class="cbtn" href="mapa.html?zona='+q+'&modo=inmuebles">Ver en el mapa</a>';
+    $('ov-img').style.display='none';
+    $('ov-note').textContent='';
+  }
   $('ov').classList.remove('hide');
 }
+function vista(){ return MODE==='opp'?VIEWP:VIEW; }
 function go(n){
   i=(n+TOUR.length)%TOUR.length;
-  const z=TOUR[i];
+  const z=TOUR[i], v=vista();
   $('cnt').textContent=(i+1)+'/'+TOUR.length;
   $('prog').style.width=((i+1)/TOUR.length*100)+'%';
   $('ov').classList.add('hide');
   const hd=Math.random()*360;
   if(map.stopCameraAnimation) map.stopCameraAnimation();
   if(map.flyCameraTo){
-    map.flyCameraTo({endCamera:{center:{lat:z.lat,lng:z.lng,altitude:0},range:VIEW.range,tilt:VIEW.tilt,heading:hd},durationMillis:4200});
+    map.flyCameraTo({endCamera:{center:{lat:z.lat,lng:z.lng,altitude:0},range:v.range,tilt:v.tilt,heading:hd},durationMillis:4200});
     /* vista estática al llegar: los tiles 3D refinan a máxima nitidez */
     setTimeout(()=>{ showOverlay(z,i+1);
-      if(orbit && map.flyCameraAround) map.flyCameraAround({camera:{center:{lat:z.lat,lng:z.lng,altitude:0},range:VIEW.range,tilt:VIEW.tilt,heading:hd},durationMillis:180000,rounds:0.25});
+      if(orbit && map.flyCameraAround) map.flyCameraAround({camera:{center:{lat:z.lat,lng:z.lng,altitude:0},range:v.range,tilt:v.tilt,heading:hd},durationMillis:180000,rounds:0.25});
     },4300);
   } else showOverlay(z,i+1);
   schedule();
@@ -162,11 +225,16 @@ function go(n){
 function schedule(){ clearTimeout(timer); if(playing) timer=setTimeout(()=>go(i+1),STAY); }
 function toggleOrbit(){
   orbit=!orbit; $('orb').style.background=orbit?'linear-gradient(135deg,#8a5a20,var(--amb))':'rgba(14,10,7,.7)';
+  const v=vista();
   if(!orbit && map.stopCameraAnimation){ map.stopCameraAnimation(); }
-  else if(orbit){ const z=TOUR[i]; if(map.flyCameraAround) map.flyCameraAround({camera:{center:{lat:z.lat,lng:z.lng,altitude:0},range:VIEW.range,tilt:VIEW.tilt,heading:0},durationMillis:180000,rounds:0.25}); }
+  else if(orbit){ const z=TOUR[i]; if(map.flyCameraAround) map.flyCameraAround({camera:{center:{lat:z.lat,lng:z.lng,altitude:0},range:v.range,tilt:v.tilt,heading:0},durationMillis:180000,rounds:0.25}); }
 }
+const ICO_PLAY='<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>';
+const ICO_PAUSE='<svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4h3.4v16H7zM13.6 4H17v16h-3.4z"/></svg>';
 function togglePlay(){
-  playing=!playing;$('play').textContent=playing?'⏸':'▶';
+  playing=!playing;
+  $('play').innerHTML=playing?ICO_PAUSE:ICO_PLAY;
+  $('play').title=playing?'Pausar':'Reproducir';
   if(playing) schedule(); else clearTimeout(timer);
 }
 function next(){ go(i+1); }
