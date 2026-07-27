@@ -74,7 +74,7 @@ input[type=range]{flex:1;accent-color:var(--amb);cursor:pointer}
     <p class="sub">32 ciudades como torres de datos · fuente SHF + modelo BrickBit</p>
     <div class="tabs">
       <button class="tab on" id="tab-hoy" onclick="setMode('hoy')">Hoy</button>
-      <button class="tab" id="tab-tiempo" onclick="setMode('tiempo')">⏳ Viaje en el tiempo</button>
+      <button class="tab" id="tab-tiempo" onclick="setMode('tiempo')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> Viaje en el tiempo</button>
     </div>
     <select id="ficha" onchange="if(this.value){showCard(DATA.find(z=>z.n===this.value))}" style="margin-top:10px;width:100%;background:var(--surface2);color:var(--tx);border:1px solid var(--line-strong);border-radius:12px;padding:8px 10px;font-family:inherit;font-size:12px;outline:none">
       <option value="">Ver ficha de una ciudad…</option>
@@ -90,7 +90,7 @@ input[type=range]{flex:1;accent-color:var(--amb);cursor:pointer}
 
 <div class="hud bottom glass" id="timeline" style="display:none">
   <div class="brow">
-    <button class="play" id="play" onclick="togglePlay()">▶</button>
+    <button class="play" id="play" onclick="togglePlay()" title="Reproducir"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M6 4l14 8-14 8z" fill="currentColor" stroke="none"/></svg></button>
     <span class="yr" id="yr">2005</span>
     <input type="range" id="slider" min="2005" max="2036" step="1" value="2005" oninput="setYear(+this.value)">
   </div>
@@ -101,7 +101,7 @@ input[type=range]{flex:1;accent-color:var(--amb);cursor:pointer}
   <button class="x" onclick="hideCard()">✕</button>
   <h2 id="c-n"></h2>
   <div id="c-body"></div>
-  <a id="c-go" href="#">🌆 Explorar en 3D →</a>
+  <a id="c-go" href="#"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m21 16.5-9 5-9-5v-9l9-5 9 5z"/><path d="m3 7.5 9 5 9-5M12 22.5v-10"/></svg> Explorar en 3D →</a>
 </div>
 
 <div class="legend" id="legend"></div>
@@ -271,7 +271,7 @@ function setYear(y){
   refresh();
 }
 function togglePlay(){
-  playing=!playing; $('play').textContent=playing?'⏸':'▶';
+  playing=!playing; $('play').innerHTML=playing?'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M7 4h3v16H7zM14 4h3v16h-3z" fill="currentColor" stroke="none"/></svg>':'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M6 4l14 8-14 8z" fill="currentColor" stroke="none"/></svg>';
   if(playing){
     if(year>=2036) setYear(2005);
     playT=setInterval(()=>{
