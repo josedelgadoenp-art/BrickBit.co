@@ -708,6 +708,15 @@ async function _loadC21(nom){
         m2:x.m2_construccion,pm2:x._pm,precio:x._pr,moneda:x.moneda,vs,
         veredicto:vs==null?null:(vs<=-12?'oportunidad':vs>=12?'sobreprecio':'justo')};});
   }catch(e){}
+  // Yield REAL de la zona (_metricas, lo publica c21-subir.mjs): mediana de
+  // renta C21 ×12 ÷ mediana de venta. Si hay muestra, sustituye al estimado.
+  try{
+    const rm=await fetch(BB_BACKEND.replace(/\/+$/,'')+'/api/listados?zona=_metricas');
+    const ms=rm.ok?await rm.json():[];
+    const m=Array.isArray(ms)?ms.find(x=>x.slug===slug(nom)):null;
+    const zz=(typeof ZONES!=='undefined')?ZONES.find(z=>slug(z.nombre)===slug(nom)):null;
+    if(m&&m.yield!=null&&zz){ zz.yld=m.yield; zz._yReal=true; if(typeof simulate==='function') simulate(); }
+  }catch(e){}
   return _c21;
 }
 /* ====== pines 3D del inventario real (marcador con el logo de BrickBit) ====== */
@@ -830,7 +839,7 @@ function simulate(){
     '<span class="chip">Zona: <b>'+z.nombre+'</b></span>'+
     c21Chip()+
     (z.plusvalia?'<span class="chip">Plusvalía: <b>'+z.plusvalia+'%/año</b></span>':'')+
-    (z.yld?'<span class="chip">Yield renta: <b>'+z.yld+'%</b></span>':'');
+    (z.yld?'<span class="chip">Yield renta: <b>'+z.yld+'%</b> '+(z._yReal?'<span style="color:var(--grn,#57c389)">real C21</span>':'<span class="ambv">est.</span>')+'</span>':'');
   _simLast={ z, m, tM2, cM2, ind, efi, pV, vendible, terreno, constr, inversion, ventas, util, margen, multiplo };
 }
 let _simLast=null;
