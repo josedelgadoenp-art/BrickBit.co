@@ -5,6 +5,9 @@ Proptech mexicana de inteligencia inmobiliaria. **Sitio 100% estático** (HTML/C
 ## Principio rector: honestidad de datos
 Todo dato **estimado** se marca en **ámbar** (`--amb:#F5C277`) con la etiqueta "est." o similar. Los datos reales citan su fuente (SHF, INEGI/DENUE, etc.). Nunca presentar estimaciones como hechos.
 
+## Paleta v2 (mate — sin colores brillosos ni glows)
+Tierra `#100c0a` · superficie `#1d1713` · crema `#f5ede3` · bosque `#24664a` · salvia `#6fa287` · salvia profunda `#55997e` · oliva `#b7c489` · oliva profundo `#9aac6b` · terracota `#c07a66` · arcilla rosada `#cf928b` · **ámbar `#F5C277` (intocable: marca los datos estimados)**. Escala del mapa: `#bf5b52 → #cf9247 → #e0bb83 → #b7c489 → #24664a`. Nada de `box-shadow`/`text-shadow` de color (glow); sombras solo neutras `rgba(0,0,0,…)`. `financial.html` y `aviso-de-privacidad.html` tienen su propia paleta clara (alianza GNP) y no se tocan.
+
 ## Estructura
 ```
 index.html            Landing (nav con dropdowns: Plataforma, Experiencias 3D, Arquitectos, Conócenos, Financial)

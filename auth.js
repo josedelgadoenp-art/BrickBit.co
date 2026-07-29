@@ -65,31 +65,31 @@ function injectAuthCSS(){
   const s=document.createElement('style'); s.id='bb-auth-css';
   s.textContent=`
   .bb-chip{display:inline-flex;align-items:center;gap:7px;font-family:inherit;font-size:12.5px}
-  .bb-btn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid rgba(45,212,155,.4);background:#0C1218;color:#2DD49B;transition:border-color .2s}
-  .bb-btn:hover{border-color:#2DD49B}
-  .bb-btn-primary{background:linear-gradient(135deg,#1a7d50,#2DD49B);color:#06140d;border:none}
+  .bb-btn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid rgba(85,153,126,.4);background:#0C1218;color:#55997e;transition:border-color .2s}
+  .bb-btn:hover{border-color:#55997e}
+  .bb-btn-primary{background:linear-gradient(135deg,#24664a,#55997e);color:#06140d;border:none}
   .bb-user{color:#cabbab}.bb-user b{color:#f5ede3}
   .bb-link{background:none;border:none;color:#8FA3A0;cursor:pointer;font-size:11.5px;text-decoration:underline;font-family:inherit;padding:0}
   .bb-ov{position:fixed;inset:0;background:rgba(6,8,6,.72);z-index:5000;display:none;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(3px)}
   .bb-ov.on{display:flex}
-  .bb-modal{width:100%;max-width:380px;background:#15100c;border:1px solid rgba(45,212,155,.25);border-radius:18px;padding:26px 24px;box-shadow:0 24px 70px rgba(0,0,0,.6);position:relative;font-family:'Hanken Grotesk',system-ui,sans-serif}
+  .bb-modal{width:100%;max-width:380px;background:#15100c;border:1px solid rgba(85,153,126,.25);border-radius:18px;padding:26px 24px;box-shadow:0 24px 70px rgba(0,0,0,.6);position:relative;font-family:'Hanken Grotesk',system-ui,sans-serif}
   .bb-x{position:absolute;top:12px;right:14px;background:none;border:none;color:#8FA3A0;font-size:18px;cursor:pointer;line-height:1}
   .bb-title{font-family:'Fraunces',serif;font-size:21px;color:#f5ede3;margin:0 0 4px}
   .bb-sub{font-size:12.5px;color:#8FA3A0;margin:0 0 18px}
   .bb-tabs{display:flex;gap:6px;margin-bottom:16px}
   .bb-tab{flex:1;padding:8px;border-radius:9px;border:1px solid rgba(245,237,227,.12);background:transparent;color:#a89a8c;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
-  .bb-tab.on{background:rgba(45,212,155,.12);border-color:#2DD49B;color:#2DD49B}
+  .bb-tab.on{background:rgba(85,153,126,.12);border-color:#55997e;color:#55997e}
   .bb-fld{margin-bottom:11px}
   .bb-fld label{display:block;font-size:11px;color:#a89a8c;margin-bottom:4px}
   .bb-fld input{width:100%;background:#0e0a07;border:1px solid rgba(245,237,227,.14);color:#f5ede3;border-radius:9px;padding:10px 12px;font-size:13.5px;font-family:inherit;outline:none;box-sizing:border-box}
-  .bb-fld input:focus{border-color:#2DD49B}
+  .bb-fld input:focus{border-color:#55997e}
   .bb-google{width:100%;display:flex;align-items:center;justify-content:center;gap:9px;background:#fff;color:#1f1f1f;border:none;border-radius:9px;padding:11px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:4px}
-  .bb-submit{width:100%;margin-top:6px;border-radius:9px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer;border:none;background:linear-gradient(135deg,#1a7d50,#2DD49B);color:#06140d;font-family:inherit}
+  .bb-submit{width:100%;margin-top:6px;border-radius:9px;padding:11px;font-size:13.5px;font-weight:700;cursor:pointer;border:none;background:linear-gradient(135deg,#24664a,#55997e);color:#06140d;font-family:inherit}
   .bb-submit:disabled{opacity:.6;cursor:default}
   .bb-or{display:flex;align-items:center;gap:10px;color:#8FA3A0;font-size:11px;margin:14px 0}
   .bb-or::before,.bb-or::after{content:'';flex:1;height:1px;background:rgba(245,237,227,.1)}
   .bb-msg{font-size:12px;margin-top:10px;min-height:1em}
-  .bb-msg.err{color:#F08886}.bb-msg.ok{color:#cdf25a}
+  .bb-msg.err{color:#cf928b}.bb-msg.ok{color:#b7c489}
   `;
   document.head.appendChild(s);
 }

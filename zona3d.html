@@ -14,8 +14,8 @@
 <style>
   :root{
     --bg:#100c0a; --p1:#1d1713; --p2:#241c17; --tx:#f5ede3; --mut:#a89a8c;
-    --for:#1a7d50; --lim:#cdf25a; --limd:#a9d23f; --amb:#F5C277; --grn:#57c389; --sec:#a89a8c;
-    --neg:#e06d5a; --line:rgba(245,237,227,.10); --line-strong:rgba(245,237,227,.18);
+    --for:#24664a; --lim:#b7c489; --limd:#9aac6b; --amb:#F5C277; --grn:#6fa287; --sec:#a89a8c;
+    --neg:#c07a66; --line:rgba(245,237,227,.10); --line-strong:rgba(245,237,227,.18);
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:'Hanken Grotesk',system-ui,sans-serif;overflow:hidden}
@@ -43,7 +43,7 @@
   .glass h2{margin:0 0 4px;font-family:'Fraunces',serif;font-size:16px;font-weight:600}
   .glass p{margin:0 0 10px;font-size:12px;color:var(--mut);line-height:1.45}
   .btnrow{display:flex;flex-wrap:wrap;gap:8px}
-  .b{border:1px solid rgba(87,195,137,.45);background:rgba(16,12,10,.6);color:var(--grn);border-radius:999px;
+  .b{border:1px solid rgba(111,162,135,.45);background:rgba(16,12,10,.6);color:var(--grn);border-radius:999px;
     padding:8px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:border-color .2s,background .2s}
   .b:hover{border-color:var(--grn)}
   .b.primary{background:var(--for);color:#fff;border:none}
@@ -67,7 +67,7 @@
   .simsec{margin-top:14px;border-top:1px dashed rgba(245,237,227,.15);padding-top:12px}
   #sim-panel{margin-top:10px}
   .est{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--amb);border:1px dashed rgba(245,194,119,.4);border-radius:999px;padding:1px 6px;margin-left:4px}
-  .src{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--grn);border:1px solid rgba(87,195,137,.4);border-radius:999px;padding:1px 6px;margin-left:4px}
+  .src{font-family:'Space Mono',monospace;font-size:9.5px;color:var(--grn);border:1px solid rgba(111,162,135,.4);border-radius:999px;padding:1px 6px;margin-left:4px}
   .sread{font-family:'Space Mono',monospace;font-size:11.5px;line-height:1.8;margin-top:10px;background:rgba(16,12,10,.55);border:1px solid var(--line);border-radius:12px;padding:11px 13px}
   .sread .row{display:flex;justify-content:space-between;gap:10px}
   .sread .row.total{border-top:1px solid rgba(245,237,227,.15);margin-top:5px;padding-top:5px;font-weight:700}
@@ -471,7 +471,7 @@ function drawPredio(){
   const ring=[..._predio.pts,_predio.pts[0]].map(p=>({lat:p.lat,lng:p.lng,altitude:1.2})); // el anillo DEBE cerrar
   if(!_predio.poly){
     _predio.poly=new Poly3D({altitudeMode:(AltMode&&AltMode.RELATIVE_TO_GROUND)||'RELATIVE_TO_GROUND',
-      extruded:false,drawsOccludedSegments:true,fillColor:'rgba(87,195,137,0.25)',strokeColor:'#57c389',strokeWidth:3});
+      extruded:false,drawsOccludedSegments:true,fillColor:'rgba(111,162,135,0.25)',strokeColor:'#6fa287',strokeWidth:3});
     if(map.append) map.append(_predio.poly); else map.appendChild(_predio.poly);
   }
   _predio.poly.outerCoordinates=ring;
@@ -496,7 +496,7 @@ function finishPredio(){
     verticesM:v.map(p=>({x:Math.round(p.x*10)/10, y:Math.round(p.y*10)/10})),
     areaM2:Math.round(area), anchoM:Math.round(anchoM*10)/10, fondoM:Math.round(fondoM*10)/10 })); }catch(e){}
   $('predio-read').innerHTML='✓ Predio de <b>'+f(area)+' m²</b> · '+_predio.pts.length+' lados · envolvente ~'+f(anchoM)+'×'+f(fondoM)+' m.<br>'+
-    '<a href="crear-plano.html?desde=predio" style="color:var(--sec,#57c389);font-weight:600">Diseñar un plano en este predio →</a>';
+    '<a href="crear-plano.html?desde=predio" style="color:var(--sec,#6fa287);font-weight:600">Diseñar un plano en este predio →</a>';
   $('v-lote').value=Math.round(area); drawVolume();   // el simulador adopta el área real
 }
 
@@ -709,7 +709,7 @@ function radarSVG(res){
     labels+=`<text x="${(cx+(R+14)*Math.cos(a)).toFixed(1)}" y="${(cy+(R+14)*Math.sin(a)).toFixed(1)}" font-size="13" text-anchor="middle" dominant-baseline="middle">${r.emoji}</text>`;
   });
   const poly = res.map((r,i)=>{ const a=-Math.PI/2+i*2*Math.PI/n, rr=R*(r.score/100); return (cx+rr*Math.cos(a)).toFixed(1)+','+(cy+rr*Math.sin(a)).toFixed(1); }).join(' ');
-  return `<svg viewBox="0 0 220 200" class="wradar" aria-label="Radar de servicios">${grid}${axes}<polygon points="${poly}" fill="rgba(205,242,90,.22)" stroke="var(--lim)" stroke-width="2"/>${labels}</svg>`;
+  return `<svg viewBox="0 0 220 200" class="wradar" aria-label="Radar de servicios">${grid}${axes}<polygon points="${poly}" fill="rgba(183,196,137,.22)" stroke="var(--lim)" stroke-width="2"/>${labels}</svg>`;
 }
 
 /* ====== inventario real de Century 21 (para anclar el precio de venta) ====== */
@@ -750,7 +750,7 @@ async function _loadC21(nom){
 }
 /* ====== pines 3D del inventario real (marcador con el logo de BrickBit) ====== */
 let _pins=[], _pinsOn=false;
-function pinColor(v){return v==='oportunidad'?'#57c389':v==='sobreprecio'?'#e0745a':v==='justo'?'#F5C277':'#9a8f83';}
+function pinColor(v){return v==='oportunidad'?'#6fa287':v==='sobreprecio'?'#c07a66':v==='justo'?'#F5C277':'#9a8f83';}
 async function toggleInventario(){
   const btn=$('inv-btn'); if(!map||!btn) return;
   if(_pinsOn){
@@ -828,7 +828,7 @@ function simPrefill(){
   const z=simZona();
   const pill=$('s-precio-src');
   if(!simPriceEdited){
-    if(_c21.med){ $('s-precio').value=_c21.med; pill.textContent='C21 real'; pill.style.color='var(--grn)'; pill.style.borderColor='rgba(87,195,137,.4)'; }
+    if(_c21.med){ $('s-precio').value=_c21.med; pill.textContent='C21 real'; pill.style.color='var(--grn)'; pill.style.borderColor='rgba(111,162,135,.4)'; }
     else if(z.precio_m2){ $('s-precio').value=z.precio_m2; pill.textContent='SHF est.'; pill.style.color='var(--amb)'; pill.style.borderColor='rgba(245,194,119,.5)'; }
   }
   const baseT=_c21.med||z.precio_m2;
@@ -868,7 +868,7 @@ function simulate(){
     '<span class="chip">Zona: <b>'+z.nombre+'</b></span>'+
     c21Chip()+
     (z.plusvalia?'<span class="chip">Plusvalía: <b>'+z.plusvalia+'%/año</b></span>':'')+
-    (z.yld?'<span class="chip">Yield renta: <b>'+z.yld+'%</b> '+(z._yReal?'<span style="color:var(--grn,#57c389)">real C21</span>':'<span class="ambv">est.</span>')+'</span>':'');
+    (z.yld?'<span class="chip">Yield renta: <b>'+z.yld+'%</b> '+(z._yReal?'<span style="color:var(--grn,#6fa287)">real C21</span>':'<span class="ambv">est.</span>')+'</span>':'');
   _simLast={ z, m, tM2, cM2, ind, efi, pV, vendible, terreno, constr, inversion, ventas, util, margen, multiplo };
 }
 let _simLast=null;
@@ -893,8 +893,8 @@ function simPDF(){
   const w=window.open('','_blank'); if(!w){ alert('Permite las ventanas emergentes para el PDF.'); return; }
   w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Simulador 3D · '+z.nombre+'</title>'+
    '<style>body{font-family:system-ui,-apple-system,sans-serif;color:#21292f;max-width:800px;margin:24px auto;padding:0 20px}'+
-   '.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1a7d50;padding-bottom:12px}'+
-   '.brand{font-size:26px;font-weight:800;letter-spacing:-1px;color:#0F6E56}.brand span{color:#1a7d50}'+
+   '.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #24664a;padding-bottom:12px}'+
+   '.brand{font-size:26px;font-weight:800;letter-spacing:-1px;color:#0F6E56}.brand span{color:#24664a}'+
    'h1{font-size:21px;margin:16px 0 2px}.meta{font-size:12px;color:#6c787d}'+
    'table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:10px}td{padding:6px 4px;border-bottom:1px solid #e7ecea}td.r{text-align:right}td.b{font-weight:700;color:#0F6E56}'+
    '.foot{margin-top:22px;border-top:1px solid #d8e0dd;padding-top:10px;font-size:10.5px;color:#7a878c}@media print{@page{margin:16mm}}</style></head><body>'+
