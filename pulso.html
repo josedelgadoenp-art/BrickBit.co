@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#100c0a;--p1:#1d1713;--surface:#1d1713;--surface2:#241c17;--tx:#f5ede3;--mut:#a89a8c;
-  --for:#1a7d50;--lim:#cdf25a;--lime-deep:#a9d23f;--amb:#F5C277;--grn:#57c389;--neg:#e06d5a;
+  --for:#24664a;--lim:#b7c489;--lime-deep:#9aac6b;--amb:#F5C277;--grn:#6fa287;--neg:#c07a66;
   --line:rgba(245,237,227,0.10);--line-strong:rgba(245,237,227,0.18)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font-family:'Hanken Grotesk',system-ui,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
@@ -37,7 +37,7 @@ h1 .accent{color:var(--grn);font-style:italic}
 .brow{display:flex;align-items:center;gap:12px}
 .play{width:44px;height:44px;border-radius:999px;border:none;background:var(--for);
   color:#fff;font-size:17px;cursor:pointer;flex:0 0 auto;transition:background .2s}
-.play:hover{background:#22996a}
+.play:hover{background:#2c7a58}
 .yr{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;min-width:80px;text-align:center;letter-spacing:.04em}
 .yr.fut{color:var(--amb)}
 input[type=range]{flex:1;accent-color:var(--amb);cursor:pointer}
@@ -47,14 +47,14 @@ input[type=range]{flex:1;accent-color:var(--amb);cursor:pointer}
 .met{border:1px solid var(--line-strong);background:transparent;color:var(--mut);border-radius:999px;
   padding:7px 12px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:'Space Mono',monospace;letter-spacing:.08em;text-transform:uppercase;transition:all .2s}
 .met:hover{color:var(--tx);border-color:var(--grn)}
-.met.on{background:rgba(87,195,137,.14);color:var(--grn);border-color:rgba(87,195,137,.5)}
+.met.on{background:rgba(111,162,135,.14);color:var(--grn);border-color:rgba(111,162,135,.5)}
 .card{position:fixed;z-index:30;right:14px;top:84px;width:270px;display:none}
 .card h2{margin:0 0 6px;font-family:'Fraunces',serif;font-weight:600;font-size:19px;letter-spacing:-.01em}
 .card .kv{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--line);color:var(--mut)}
 .card .kv b{color:var(--lim);font-family:'Space Mono',monospace;font-size:11.5px;font-weight:700}
 .card a{display:block;text-align:center;margin-top:12px;background:var(--for);
   color:#fff;font-weight:700;font-size:13px;text-decoration:none;border-radius:999px;padding:10px;transition:background .2s}
-.card a:hover{background:#22996a}
+.card a:hover{background:#2c7a58}
 .card .x{position:absolute;top:10px;right:12px;background:none;border:none;color:var(--mut);font-size:16px;cursor:pointer}
 .card .x:hover{color:var(--tx)}
 .legend{position:fixed;z-index:20;left:14px;bottom:16px;font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut)}
@@ -118,10 +118,10 @@ const CAM={center:{lat:19.5,lng:-101.5,altitude:0}, range:2350000, tilt:52, head
 
 function colorFor(z){
   const v=z.pl;
-  if(v>=8) return ['rgba(45,212,155,.85)','#2DD49B'];
-  if(v>=5) return ['rgba(205,242,90,.8)','#cdf25a'];
+  if(v>=8) return ['rgba(85,153,126,.85)','#55997e'];
+  if(v>=5) return ['rgba(183,196,137,.8)','#b7c489'];
   if(v>=3) return ['rgba(245,194,119,.8)','#F5C277'];
-  return ['rgba(240,136,134,.8)','#F08886'];
+  return ['rgba(207,146,139,.8)','#cf928b'];
 }
 function ring(lat,lng,sideM,alt){
   const h=sideM/2, dLat=h/111320, dLng=h/(111320*Math.cos(lat*Math.PI/180));
@@ -206,7 +206,7 @@ function sparkBB(serie){
   if(pts.length<2) return '';
   const w=110,h=26,mn=Math.min(...pts),mx=Math.max(...pts),rg=(mx-mn)||1;
   const xy=pts.map((v,i)=>`${(i/(pts.length-1)*w).toFixed(1)},${(h-3-(v-mn)/rg*(h-6)).toFixed(1)}`);
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block"><polyline points="${xy.join(' ')}" fill="none" stroke="#cdf25a" stroke-width="1.6"/><circle cx="${xy[xy.length-1].split(',')[0]}" cy="${xy[xy.length-1].split(',')[1]}" r="2.3" fill="#cdf25a"/></svg>`;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block"><polyline points="${xy.join(' ')}" fill="none" stroke="#b7c489" stroke-width="1.6"/><circle cx="${xy[xy.length-1].split(',')[0]}" cy="${xy[xy.length-1].split(',')[1]}" r="2.3" fill="#b7c489"/></svg>`;
 }
 async function init(){
   try{
@@ -297,12 +297,12 @@ function showCard(z){
   if(sBB.length){
     const u=sBB[sBB.length-1];
     rows+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(245,237,227,.12)">'+
-      '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#cdf25a;font-weight:700">Índice BrickBit · beta</div>';
+      '<div style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#b7c489;font-weight:700">Índice BrickBit · beta</div>';
     if(sBB.length>=2){
       const prev=sBB[sBB.length-2];
       const d=Math.round((u.pm2v/prev.pm2v-1)*1000)/10;
       rows+='<div class="kv"><span>Mediana de lista C21</span><b>$'+f(u.pm2v)+' /m²</b></div>'+
-        '<div class="kv"><span>vs mes anterior</span><b style="color:'+(d>=0?'#2DD49B':'#F08886')+'">'+(d>0?'+':'')+d+'%</b></div>'+
+        '<div class="kv"><span>vs mes anterior</span><b style="color:'+(d>=0?'#55997e':'#cf928b')+'">'+(d>0?'+':'')+d+'%</b></div>'+
         sparkBB(sBB)+
         '<div style="font-size:10px;color:#8a9a9e;margin-top:3px">'+sBB.length+' meses medidos · '+u.nV+' inmuebles en venta este mes</div>';
     }else{
@@ -319,7 +319,7 @@ function hideCard(){ $('card').style.display='none'; }
 function renderLegend(){
   let h;
   if(mode==='tiempo') h='Altura = Índice SHF (mismo eje para todas) · <i style="background:#F5C277"></i>2027+ es proyección';
-  else if(metric==='pl') h='Altura = plusvalía anual · color: <i style="background:#2DD49B"></i>≥8% <i style="background:#cdf25a"></i>≥5% <i style="background:#F5C277"></i>≥3% <i style="background:#F08886"></i>&lt;3%';
+  else if(metric==='pl') h='Altura = plusvalía anual · color: <i style="background:#55997e"></i>≥8% <i style="background:#b7c489"></i>≥5% <i style="background:#F5C277"></i>≥3% <i style="background:#cf928b"></i>&lt;3%';
   else if(metric==='p') h='Altura = precio $/m² <i style="background:#F5C277"></i>est. (derivado del valor SHF ÷ 83 m²) · color por plusvalía';
   else h='Altura = yield bruto de renta · color por plusvalía';
   $('legend').innerHTML=h;

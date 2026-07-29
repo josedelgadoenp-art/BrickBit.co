@@ -15,7 +15,7 @@
     .then(function (r) { return r.json(); })
     .then(function (d) {
       if (!d || d.error) { mount.style.display = "none"; return; }
-      var col = d.score >= 80 ? "#57c389" : d.score >= 65 ? "#a9d23f" : d.score >= 50 ? "#F5C277" : "#e06d5a";
+      var col = d.score >= 80 ? "#6fa287" : d.score >= 65 ? "#9aac6b" : d.score >= 50 ? "#F5C277" : "#c07a66";
       mount.innerHTML =
         '<a href="https://brickbit.co/mapa.html" target="_blank" rel="noopener" ' +
         'style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;font-family:system-ui,-apple-system,sans-serif;' +

@@ -15,18 +15,18 @@
   :root{
     --bg:#100c0a; --bg-2:#16110e; --surface:#1d1713; --surface-2:#241c17;
     --cream:#f5ede3; --muted-txt:#a89a8c;
-    --clay:#1a7d50; --clay-soft:#57c389; --clay-deep:#0c4a30;
-    --lime:#cdf25a; --lime-deep:#a9d23f;
+    --clay:#24664a; --clay-soft:#6fa287; --clay-deep:#0c4a30;
+    --lime:#b7c489; --lime-deep:#9aac6b;
     --line:rgba(245,237,227,0.10); --line-strong:rgba(245,237,227,0.18);
-    --danger:#e06d5a; --warn:#e0b95a;
+    --danger:#c07a66; --warn:#e0b95a;
     --max:1180px; --r:18px;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{background:var(--bg);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
   body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
-    background:radial-gradient(900px 600px at 78% -8%, rgba(26,125,80,0.16), transparent 60%),
-               radial-gradient(700px 500px at 8% 30%, rgba(205,242,90,0.05), transparent 60%);}
+    background:radial-gradient(900px 600px at 78% -8%, rgba(36,102,74,0.16), transparent 60%),
+               radial-gradient(700px 500px at 8% 30%, rgba(183,196,137,0.05), transparent 60%);}
   .wrap{max-width:var(--max);margin:0 auto;padding:0 24px;position:relative;z-index:1}
 
   header{position:sticky;top:0;z-index:50;background:rgba(16,12,10,0.82);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
@@ -69,7 +69,7 @@
   .status.show{display:flex}
   .spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--line-strong);border-top-color:var(--lime);animation:spin .8s linear infinite;flex:none}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .error-box{display:none;margin-top:16px;border:1px solid rgba(224,109,90,.4);background:rgba(224,109,90,.08);border-radius:12px;padding:14px 18px;color:var(--danger);font-size:.88rem;white-space:pre-wrap}
+  .error-box{display:none;margin-top:16px;border:1px solid rgba(192,122,102,.4);background:rgba(192,122,102,.08);border-radius:12px;padding:14px 18px;color:var(--danger);font-size:.88rem;white-space:pre-wrap}
   .error-box.show{display:block}
   .empty-state{color:var(--muted-txt);font-size:.95rem;border:1px dashed var(--line-strong);border-radius:var(--r);padding:34px;text-align:center}
   .empty-state a{color:var(--lime)}
@@ -97,7 +97,7 @@
   .verdict{display:none;margin-top:22px}
   .verdict.show{display:block}
   .verdict-hero{
-    border:1px solid rgba(205,242,90,.35);background:linear-gradient(140deg, rgba(205,242,90,.08), rgba(26,125,80,.06));
+    border:1px solid rgba(183,196,137,.35);background:linear-gradient(140deg, rgba(183,196,137,.08), rgba(36,102,74,.06));
     border-radius:var(--r);padding:26px;margin-bottom:18px;
   }
   .verdict-hero .vh-label{font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--lime);margin-bottom:8px}
@@ -106,8 +106,8 @@
   .crit-row{display:grid;grid-template-columns:minmax(140px,.8fr) 90px 2fr;gap:14px;padding:12px 0;border-bottom:1px dashed var(--line);font-size:.88rem;align-items:baseline}
   @media(max-width:700px){.crit-row{grid-template-columns:1fr}}
   .crit-row .who{font-family:'Space Mono',monospace;font-size:.72rem;border-radius:6px;padding:3px 10px;justify-self:start}
-  .who.A{background:rgba(205,242,90,.15);color:var(--lime)}
-  .who.B{background:rgba(87,195,137,.15);color:var(--clay-soft)}
+  .who.A{background:rgba(183,196,137,.15);color:var(--lime)}
+  .who.B{background:rgba(111,162,135,.15);color:var(--clay-soft)}
   .who.empate{background:rgba(245,237,227,.08);color:var(--muted-txt)}
   .crit-row .det{color:var(--muted-txt)}
 
@@ -117,7 +117,7 @@
     font-size:.62rem;font-weight:700;cursor:help;position:relative;vertical-align:1px;margin-left:6px;
     font-family:'Space Mono',monospace;letter-spacing:0;text-transform:none;flex:none;
   }
-  .help:hover{color:var(--lime);border-color:rgba(205,242,90,.4)}
+  .help:hover{color:var(--lime);border-color:rgba(183,196,137,.4)}
   .help::after{
     content:attr(data-tip);
     position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);
@@ -423,9 +423,9 @@ function buildCompareScene(gA, gB) {
   const offA = -(gA.anchoM / 2 + gap / 2);
   const offB =  (gB.anchoM / 2 + gap / 2);
 
-  const bA = makeBuilding(gA, 0xcdf25a);
+  const bA = makeBuilding(gA, 0xb7c489);
   bA.position.x = offA;
-  const bB = makeBuilding(gB, 0x57c389);
+  const bB = makeBuilding(gB, 0x6fa287);
   bB.position.x = offB;
   world.add(bA, bB);
 

@@ -11,11 +11,11 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{color-scheme:dark}
-:root{--bg:#100c0a;--p1:#1d1713;--p2:#16110e;--tx:#f5ede3;--mut:#a89a8c;--for:#1a7d50;--lim:#cdf25a;--amb:#F5C277;--grn:#57c389;--sec:#a89a8c;--pos:#57c389;--neg:#F08886;--bd:rgba(245,237,227,.1);--bd2:rgba(245,237,227,.18)}
+:root{--bg:#100c0a;--p1:#1d1713;--p2:#16110e;--tx:#f5ede3;--mut:#a89a8c;--for:#24664a;--lim:#b7c489;--amb:#F5C277;--grn:#6fa287;--sec:#a89a8c;--pos:#6fa287;--neg:#cf928b;--bd:rgba(245,237,227,.1);--bd2:rgba(245,237,227,.18)}
 body{background:var(--bg);color:var(--tx);font-family:'Hanken Grotesk',system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
 body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(900px 600px at 78% -8%, rgba(26,125,80,0.16), transparent 60%),
-             radial-gradient(700px 500px at 8% 30%, rgba(205,242,90,0.05), transparent 60%)}
+  background:radial-gradient(900px 600px at 78% -8%, rgba(36,102,74,0.16), transparent 60%),
+             radial-gradient(700px 500px at 8% 30%, rgba(183,196,137,0.05), transparent 60%)}
 .wrap{max-width:1180px;margin:0 auto;padding:26px 20px 60px;position:relative;z-index:1}
 header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--bd);padding-bottom:18px;margin-bottom:22px}
 .brandwrap{display:flex;align-items:center;gap:14px}
@@ -52,10 +52,10 @@ summary::-webkit-details-marker{display:none}
 .row{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px solid rgba(245,237,227,.06);font-size:13px}
 .row .l{color:var(--mut)} .row .r{font-weight:600;font-variant-numeric:tabular-nums}
 .sec-t{font-family:'Space Mono',monospace;font-size:10px;color:var(--lim);text-transform:uppercase;letter-spacing:.1em;margin:16px 0 6px}
-.appr{background:linear-gradient(180deg,rgba(87,195,137,.14),rgba(87,195,137,.03));border:1px solid rgba(87,195,137,.35);border-radius:14px;padding:13px;margin-bottom:14px}
+.appr{background:linear-gradient(180deg,rgba(111,162,135,.14),rgba(111,162,135,.03));border:1px solid rgba(111,162,135,.35);border-radius:14px;padding:13px;margin-bottom:14px}
 .appr .big{font-family:'Fraunces',serif;font-size:20px;font-weight:600;color:var(--grn)}
 .tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:20px;margin-left:6px;vertical-align:middle}
-.tag.ok{background:rgba(205,242,90,.15);color:var(--lim)} .tag.ex{background:rgba(224,161,58,.16);color:var(--amb)}
+.tag.ok{background:rgba(183,196,137,.15);color:var(--lim)} .tag.ex{background:rgba(224,161,58,.16);color:var(--amb)}
 .amber{color:var(--amb)}  /* marca inline de dato estimado (honestidad de datos) */
 .note{font-size:11.5px;color:var(--mut);background:var(--p2);border:1px solid var(--bd);border-left:2px solid var(--amb);border-radius:8px;padding:10px 12px;margin-top:14px}
 .prov{font-size:11px;color:var(--mut);margin-top:9px;line-height:1.6}
@@ -244,7 +244,7 @@ a.back:hover{color:var(--tx)}
     <div class="cta-row" style="gap:10px;margin:14px 0 0">
       <button class="pdf-btn" onclick="devTesisIA()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg> Generar tesis con IA</button>
       <button class="pdf-btn" onclick="devPDF()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg> Tesis en PDF</button>
-      <button class="pdf-btn" onclick="genPreventa()" style="border-color:rgba(205,242,90,.4);color:var(--lime,#cdf25a)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z"/><path d="M7 7h.01"/></svg> Página de preventa</button>
+      <button class="pdf-btn" onclick="genPreventa()" style="border-color:rgba(183,196,137,.4);color:var(--lime,#b7c489)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z"/><path d="M7 7h.01"/></svg> Página de preventa</button>
     </div>
     <div id="preventa-out"></div>
     <div id="dev-tesis"></div>
@@ -493,7 +493,7 @@ function renderEconomia(z){
       <div class="kpi"><div class="k">Diversificación</div><div class="v">${resPct}<span style="font-size:13px">/100</span></div><div class="s">${resTxt}</div></div>
     </div>
     <div style="margin-top:6px;font-size:12px;color:var(--tx)">Mezcla de sectores</div>
-    <div style="display:flex;gap:3px;margin:7px 0 4px;height:8px">${bar(e.com,'var(--grn)')}${bar(e.ser,'var(--clay-soft,#57c389)')}${bar(e.ind,'var(--amb)')}</div>
+    <div style="display:flex;gap:3px;margin:7px 0 4px;height:8px">${bar(e.com,'var(--grn)')}${bar(e.ser,'var(--clay-soft,#6fa287)')}${bar(e.ind,'var(--amb)')}</div>
     <div style="font-size:11px;color:var(--mut);display:flex;gap:14px;flex-wrap:wrap">
       <span>🟢 Comercio ${e.com}%</span><span>🟩 Servicios ${e.ser}%</span><span style="color:var(--amb)">🟨 Industria ${e.ind}%</span></div>
     <div class="note" style="margin-top:14px">
@@ -780,12 +780,12 @@ async function genPreventa(){
     const url=location.origin+location.pathname.replace(/[^\/]*$/,'')+'preventa.html?p='+j.id;
     out.innerHTML=`<div class="note" style="margin-top:12px;border-left-color:var(--pos)">
       🏷️ <b>Página de preventa publicada</b> (dura 90 días):<br>
-      <input type="text" readonly value="${url}" onclick="this.select()" style="width:100%;margin:8px 0;padding:8px 10px;border-radius:8px;border:0.5px solid rgba(205,242,90,.35);background:#0e0a07;color:#f5ede3;font-size:12px">
+      <input type="text" readonly value="${url}" onclick="this.select()" style="width:100%;margin:8px 0;padding:8px 10px;border-radius:8px;border:0.5px solid rgba(183,196,137,.35);background:#0e0a07;color:#f5ede3;font-size:12px">
       <a href="${url}" target="_blank" class="pdf-btn" style="text-decoration:none;display:inline-block;margin-right:8px">Abrir →</a>
       <button class="pdf-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText('${url}').then(()=>this.textContent='✓ Copiado')">Copiar enlace</button>
       <div style="font-size:11px;color:var(--mut);margin-top:8px">Compártela con prospectos: los interesados dejan sus datos y te llegan como leads. Precios ${p.saleReal?'anclados al mercado real de Century 21':'del índice SHF (est.)'}.</div></div>`;
   }catch(e){
-    out.innerHTML='<div class="note" style="margin-top:12px;border-left-color:var(--neg,#e0745a)">No se pudo publicar: '+e.message+'. Verifica que el Worker esté desplegado con la versión más reciente.</div>';
+    out.innerHTML='<div class="note" style="margin-top:12px;border-left-color:var(--neg,#c07a66)">No se pudo publicar: '+e.message+'. Verifica que el Worker esté desplegado con la versión más reciente.</div>';
   }
 }
 async function callClaudeA(system,prompt,schema){
@@ -831,8 +831,8 @@ function devPDF(){
   const w=window.open('','_blank'); if(!w){ alert('Permite las ventanas emergentes para descargar el PDF.'); return; }
   w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Modo Desarrollador · '+escA(z.n)+'</title>'+
   '<style>body{font-family:system-ui,-apple-system,sans-serif;color:#21292f;max-width:800px;margin:24px auto;padding:0 20px}'+
-  '.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1a7d50;padding-bottom:12px}'+
-  '.brand{font-size:26px;font-weight:800;letter-spacing:-1px;color:#0F6E56}.brand span{color:#1a7d50}'+
+  '.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #24664a;padding-bottom:12px}'+
+  '.brand{font-size:26px;font-weight:800;letter-spacing:-1px;color:#0F6E56}.brand span{color:#24664a}'+
   'h1{font-size:21px;margin:16px 0 2px}h2{font-size:12.5px;text-transform:uppercase;letter-spacing:.05em;color:#0F6E56;border-bottom:1px solid #d8e0dd;padding-bottom:4px;margin:22px 0 10px}'+
   '.meta{font-size:12px;color:#6c787d}table{width:100%;border-collapse:collapse;font-size:12.5px}td{padding:6px 4px;border-bottom:1px solid #e7ecea}td.r{text-align:right}td.b{font-weight:700;color:#0F6E56}'+
   'ul{font-size:13px}p{font-size:13px;line-height:1.55}.foot{margin-top:22px;border-top:1px solid #d8e0dd;padding-top:10px;font-size:10.5px;color:#7a878c}@media print{@page{margin:16mm}}</style></head><body>'+
@@ -883,7 +883,7 @@ async function _afRun(){
   const pago=ing*0.30, i=tasa/12, n=anios*12;
   const credito=Math.round(pago*(1-Math.pow(1+i,-n))/i);
   const presupuesto=credito+eng;
-  const kpi=(l,v,s)=>`<div style="flex:1;min-width:120px;background:var(--p2,rgba(255,255,255,.03));border:1px solid var(--bd);border-radius:12px;padding:10px 12px"><div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em">${l}</div><div style="font-family:'Space Mono',monospace;font-size:15px;color:var(--lim,#cdf25a);margin-top:2px">${v}</div>${s?`<div style="font-size:10px;color:var(--mut)">${s}</div>`:''}</div>`;
+  const kpi=(l,v,s)=>`<div style="flex:1;min-width:120px;background:var(--p2,rgba(255,255,255,.03));border:1px solid var(--bd);border-radius:12px;padding:10px 12px"><div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em">${l}</div><div style="font-family:'Space Mono',monospace;font-size:15px;color:var(--lim,#b7c489);margin-top:2px">${v}</div>${s?`<div style="font-size:10px;color:var(--mut)">${s}</div>`:''}</div>`;
   let html=`<div style="display:flex;gap:9px;flex-wrap:wrap">
     ${kpi('Pago mensual máx.',fmt(Math.round(pago)),'30% de tu ingreso')}
     ${kpi('Crédito estimado',fmt(credito),`${(tasa*100).toFixed(1)}% · ${anios} años`)}
@@ -893,16 +893,16 @@ async function _afRun(){
   const L=await loadZoneListingsA(z.n);
   const caben=L.filter(x=>x.precio>0&&x.precio<=presupuesto).sort((a,b)=>b.precio-a.precio);
   const top=caben.slice(0,5);
-  html+=`<div class="note" style="margin-top:10px;border-left-color:${caben.length?'var(--pos,#57c389)':'var(--amb)'}">${caben.length
+  html+=`<div class="note" style="margin-top:10px;border-left-color:${caben.length?'var(--pos,#6fa287)':'var(--amb)'}">${caben.length
     ?`<b>${caben.length} propiedad${caben.length===1?'':'es'} reales</b> de Century 21 en ${z.n} entran en tu presupuesto.`
     :`Ninguna propiedad del inventario actual de ${z.n} entra en este presupuesto. Prueba otra zona en el selector de arriba o ajusta enganche/plazo.`}</div>`;
   if(top.length){
     html+=top.map(x=>`<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;padding:7px 2px;border-top:1px dashed var(--bd);font-size:12.5px">
       <span style="color:var(--tx,#f5ede3)">${(x.titulo||x.tipo||'Propiedad').slice(0,44)}${x.m2?` · ${x.m2} m²`:''}</span>
-      <span style="white-space:nowrap;font-family:'Space Mono',monospace;color:var(--lim,#cdf25a)">${fmt(x.precio)}${x.url?` <a href="${x.url}" target="_blank" rel="noopener" style="color:var(--pos,#57c389)">ver →</a>`:''}</span></div>`).join('');
-    html+=`<a href="mapa.html?zona=${encodeURIComponent(z.n)}&modo=inmuebles" style="display:inline-block;margin-top:10px;font-size:12.5px;color:var(--pos,#57c389)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M9 2 3 5v17l6-3 6 3 6-3V2l-6 3-6-3z"/><path d="M9 2v17M15 5v17"/></svg> Ver todas en el mapa →</a>`;
+      <span style="white-space:nowrap;font-family:'Space Mono',monospace;color:var(--lim,#b7c489)">${fmt(x.precio)}${x.url?` <a href="${x.url}" target="_blank" rel="noopener" style="color:var(--pos,#6fa287)">ver →</a>`:''}</span></div>`).join('');
+    html+=`<a href="mapa.html?zona=${encodeURIComponent(z.n)}&modo=inmuebles" style="display:inline-block;margin-top:10px;font-size:12.5px;color:var(--pos,#6fa287)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M9 2 3 5v17l6-3 6 3 6-3V2l-6 3-6-3z"/><path d="M9 2v17M15 5v17"/></svg> Ver todas en el mapa →</a>`;
   }
-  html+=`<div class="note" style="margin-top:10px">Siguiente paso inteligente: un crédito de ${anios} años se protege. <a href="/financial" style="color:var(--pos,#57c389)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Revisa tu protección (vida y hogar) gratis →</a></div>`;
+  html+=`<div class="note" style="margin-top:10px">Siguiente paso inteligente: un crédito de ${anios} años se protege. <a href="/financial" style="color:var(--pos,#6fa287)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Revisa tu protección (vida y hogar) gratis →</a></div>`;
   out.innerHTML=html;
 }
 async function loadZoneListingsA(zone){
@@ -1236,7 +1236,7 @@ function renderPayback(){
   let mn=Math.min(...allv),mx=Math.max(...allv); const dy=(mx-mn)||1, n=ys.length;
   const X=k=>n>1?20+(k/(n-1))*270:155, Y=v=>78-((v-mn)/dy)*64;
   const line='M'+ys.map((r,k)=>X(k).toFixed(1)+','+Y(r.totalIfExit).toFixed(1)).join(' L');
-  const dots=ys.map((r,k)=>{const pb=(pbSale===r.y);return `<circle cx="${X(k).toFixed(1)}" cy="${Y(r.totalIfExit).toFixed(1)}" r="${pb?4:2.4}" fill="${r.totalIfExit>=0?'#2DD49B':'#F08886'}"/>`+(pb?`<text x="${Math.max(32,Math.min(268,X(k))).toFixed(1)}" y="${Math.max(11,Y(r.totalIfExit)-7).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="600" fill="#cdf25a">Recuperado</text>`:'');}).join('');
+  const dots=ys.map((r,k)=>{const pb=(pbSale===r.y);return `<circle cx="${X(k).toFixed(1)}" cy="${Y(r.totalIfExit).toFixed(1)}" r="${pb?4:2.4}" fill="${r.totalIfExit>=0?'#55997e':'#cf928b'}"/>`+(pb?`<text x="${Math.max(32,Math.min(268,X(k))).toFixed(1)}" y="${Math.max(11,Y(r.totalIfExit)-7).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="600" fill="#b7c489">Recuperado</text>`:'');}).join('');
   const xlab=ys.map((r,k)=>`<text x="${X(k).toFixed(1)}" y="90" text-anchor="middle" font-size="8" fill="#8FA3A0">${r.y}a</text>`).join('');
   el.innerHTML=`
    <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
@@ -1247,7 +1247,7 @@ function renderPayback(){
    <div style="font-size:11px;color:var(--mut);margin:12px 0 2px">Ganancia neta acumulada si vendes en el año X${tip('pbchart')}</div>
    <svg viewBox="0 0 300 94" style="width:100%;height:auto;display:block">
      <line x1="18" y1="${Y(0).toFixed(1)}" x2="292" y2="${Y(0).toFixed(1)}" stroke="var(--bd)" stroke-dasharray="3 3"/>
-     <path d="${line}" fill="none" stroke="#2DD49B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+     <path d="${line}" fill="none" stroke="#55997e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
      ${dots}${xlab}
    </svg>
    <div class="note">${colchon>=0?`Tu ocupación supuesta deja un colchón de <b>${colchon.toFixed(0)} puntos</b> sobre el equilibrio: aguantas esa vacancia extra antes de tener flujo negativo.`:`<span style="color:var(--amb)">Tu ocupación supuesta está por debajo del equilibrio: el flujo de año 1 sería negativo.</span>`} El payback con venta considera apreciación, amortización, comisión e ISR; el de solo rentas recupera el capital únicamente con flujo. Estimación informativa.</div>`;
@@ -1366,7 +1366,7 @@ function renderProforma(){
 init();populateCompare();calcCUS();renderCompare();
 </script>
 <script src="supabase.js?v=152"></script>
-<script src="auth.js?v=152"></script>
+<script src="auth.js?v=153"></script>
 <script>mountAuth('auth-slot');</script>
   <script defer src="/iris.js"></script>
 </body></html>

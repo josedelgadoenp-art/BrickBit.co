@@ -18,12 +18,12 @@
   /* ---------- estilos ---------- */
   var css = `
   #iris-fab{position:fixed;right:20px;bottom:20px;z-index:2147483000;width:62px;height:62px;border:none;
-    border-radius:50%;cursor:grab;background:radial-gradient(circle at 35% 30%,#57c389,#1a7d50 70%);
+    border-radius:50%;cursor:grab;background:radial-gradient(circle at 35% 30%,#6fa287,#24664a 70%);
     box-shadow:0 12px 30px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;padding:0;
     transition:transform .2s;touch-action:none}
   #iris-fab.iris-dragging{cursor:grabbing;transition:none}
   #iris-fab:hover{transform:scale(1.06)}
-  #iris-fab .ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(205,242,90,.7);
+  #iris-fab .ring{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(183,196,137,.7);
     animation:iris-pulse 2.4s ease-out infinite}
   @keyframes iris-pulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.7);opacity:0}}
   #iris-fab .lbl{position:absolute;right:70px;background:#1d1713;color:#f5ede3;font:600 12px/1 'Hanken Grotesk',system-ui,sans-serif;
@@ -41,7 +41,7 @@
     font-family:'Hanken Grotesk',system-ui,-apple-system,sans-serif;color:#f5ede3}
   #iris-panel.on{display:flex;animation:iris-in .22s ease}
   @keyframes iris-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-  .iris-head{display:flex;align-items:center;gap:11px;padding:14px 14px;background:rgba(26,125,80,.14);
+  .iris-head{display:flex;align-items:center;gap:11px;padding:14px 14px;background:rgba(36,102,74,.14);
     border-bottom:1px solid rgba(245,237,227,.12)}
   .iris-head .av{width:38px;height:38px;flex:none}
   .iris-head h4{margin:0;font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:16px}
@@ -51,28 +51,28 @@
   .iris-icon:hover{color:#f5ede3;background:rgba(245,237,227,.08)}
   .iris-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
   .iris-msg{max-width:85%;padding:10px 13px;border-radius:14px;font-size:14px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
-  .iris-msg.u{align-self:flex-end;background:#1a7d50;color:#fff;border-bottom-right-radius:4px}
+  .iris-msg.u{align-self:flex-end;background:#24664a;color:#fff;border-bottom-right-radius:4px}
   .iris-msg.a{align-self:flex-start;background:#241c17;border:1px solid rgba(245,237,227,.1);border-bottom-left-radius:4px}
-  .iris-msg.a a{color:#cdf25a}
+  .iris-msg.a a{color:#b7c489}
   .iris-typing{align-self:flex-start;display:flex;gap:4px;padding:12px 14px;background:#241c17;border-radius:14px}
-  .iris-typing i{width:7px;height:7px;border-radius:50%;background:#57c389;animation:iris-dot 1.2s infinite}
+  .iris-typing i{width:7px;height:7px;border-radius:50%;background:#6fa287;animation:iris-dot 1.2s infinite}
   .iris-typing i:nth-child(2){animation-delay:.2s}.iris-typing i:nth-child(3){animation-delay:.4s}
   @keyframes iris-dot{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
   .iris-sug{display:flex;flex-wrap:wrap;gap:7px;padding:0 16px 6px}
   .iris-sug button{background:rgba(245,237,227,.05);border:1px solid rgba(245,237,227,.15);color:#d8ccbd;
     font:500 12px/1.2 inherit;padding:8px 11px;border-radius:999px;cursor:pointer;text-align:left}
-  .iris-sug button:hover{border-color:#57c389;color:#f5ede3}
+  .iris-sug button:hover{border-color:#6fa287;color:#f5ede3}
   .iris-foot{display:flex;align-items:center;gap:8px;padding:11px 12px;border-top:1px solid rgba(245,237,227,.12)}
   .iris-foot input{flex:1;background:#1d1713;border:1px solid rgba(245,237,227,.16);color:#f5ede3;border-radius:999px;
     padding:11px 14px;font:14px inherit;outline:none}
-  .iris-foot input:focus{border-color:#57c389}
+  .iris-foot input:focus{border-color:#6fa287}
   .iris-foot button{flex:none;width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;font-size:16px;
     display:flex;align-items:center;justify-content:center}
   .iris-mic{background:#241c17;color:#f5ede3;border:1px solid rgba(245,237,227,.16)!important}
-  .iris-mic.rec{background:#e06d5a;color:#fff;animation:iris-rec 1s infinite}
+  .iris-mic.rec{background:#c07a66;color:#fff;animation:iris-rec 1s infinite}
   @keyframes iris-rec{50%{opacity:.6}}
-  .iris-send{background:#1a7d50;color:#fff}
-  .iris-send:hover{background:#57c389}
+  .iris-send{background:#24664a;color:#fff}
+  .iris-send:hover{background:#6fa287}
   .iris-disc{font-size:10px;color:#7d7266;text-align:center;padding:0 12px 10px}
   ${reduce ? "#iris-fab .ring,.iris-eye,.iris-typing i{animation:none!important}" : ""}
   `;
@@ -83,8 +83,8 @@
      onerror cambia al orbe SVG animado como respaldo. */
   function orb(cls) {
     return '<svg class="' + cls + '" viewBox="0 0 48 48" aria-hidden="true">' +
-      '<defs><radialGradient id="ig" cx="35%" cy="30%"><stop offset="0" stop-color="#cdf25a"/>' +
-      '<stop offset="55%" stop-color="#57c389"/><stop offset="100%" stop-color="#0c4a30"/></radialGradient></defs>' +
+      '<defs><radialGradient id="ig" cx="35%" cy="30%"><stop offset="0" stop-color="#b7c489"/>' +
+      '<stop offset="55%" stop-color="#6fa287"/><stop offset="100%" stop-color="#0c4a30"/></radialGradient></defs>' +
       '<circle cx="24" cy="24" r="21" fill="url(#ig)"/>' +
       '<g fill="#0f130a"><ellipse class="iris-eye" cx="18" cy="22" rx="2.4" ry="3.2"/>' +
       '<ellipse class="iris-eye" cx="30" cy="22" rx="2.4" ry="3.2"/></g>' +

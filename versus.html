@@ -13,7 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#100c0a;--surface:#1d1713;--surface2:#241c17;--tx:#f5ede3;--mut:#a89a8c;
-  --for:#1a7d50;--lim:#cdf25a;--lime-deep:#a9d23f;--amb:#F5C277;--grn:#57c389;--neg:#e06d5a;
+  --for:#24664a;--lim:#b7c489;--lime-deep:#9aac6b;--amb:#F5C277;--grn:#6fa287;--neg:#c07a66;
   --line:rgba(245,237,227,0.10);--line-strong:rgba(245,237,227,0.18)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font-family:'Hanken Grotesk',system-ui,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
@@ -154,7 +154,7 @@ function renderTable(){
   const a=Z(cur.A), b=Z(cur.B); if(!a||!b) return;
   const pct=v=>'+'+(+v).toFixed(1)+'%', n0=v=>Math.round(v).toLocaleString('es-MX'), p2=v=>(+v).toFixed(2), di=v=>Math.round(v)+'/100';
   const sa=_muniScore(a), sb=_muniScore(b), winner=sa===sb?null:(sa>sb?a:b);
-  const verdict=winner?'<div class="trow" style="background:rgba(87,195,137,.10)"><span class="va '+(winner===a?'win':'lose')+'">🏆</span><span class="lab" style="color:var(--grn);font-weight:700">Más dinámico: '+winner.muni+'</span><span class="vb '+(winner===b?'win':'lose')+'">'+(winner===b?'🏆':'')+'</span></div><div style="font-size:10.5px;color:var(--mut);text-align:center;padding:4px 0">🏆 mide el <b>dinamismo económico</b> (DENUE), no un veredicto de inversión — compara cada fila por separado.</div>':'';
+  const verdict=winner?'<div class="trow" style="background:rgba(111,162,135,.10)"><span class="va '+(winner===a?'win':'lose')+'">🏆</span><span class="lab" style="color:var(--grn);font-weight:700">Más dinámico: '+winner.muni+'</span><span class="vb '+(winner===b?'win':'lose')+'">'+(winner===b?'🏆':'')+'</span></div><div style="font-size:10.5px;color:var(--mut);text-align:center;padding:4px 0">🏆 mide el <b>dinamismo económico</b> (DENUE), no un veredicto de inversión — compara cada fila por separado.</div>':'';
   $('tbl').innerHTML=
     '<div class="trow"><span class="va" style="font-size:15px">'+a.muni+'</span><span class="lab">municipio</span><span class="vb" style="font-size:15px">'+b.muni+'</span></div>'+
     row('Dinamismo DENUE',a.di,b.di,di,true)+
@@ -177,8 +177,8 @@ function versusPDF(){
   const w=window.open('','_blank'); if(!w){ alert('Permite las ventanas emergentes para el PDF.'); return; }
   w.document.write('<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Versus · '+a.muni+' vs '+b.muni+'</title>'+
    '<style>body{font-family:system-ui,-apple-system,sans-serif;color:#21292f;max-width:760px;margin:24px auto;padding:0 20px}'+
-   '.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1a7d50;padding-bottom:12px}'+
-   '.brand{font-size:26px;font-weight:800;letter-spacing:-1px;color:#0F6E56}.brand span{color:#1a7d50}.meta{font-size:12px;color:#6c787d}'+
+   '.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #24664a;padding-bottom:12px}'+
+   '.brand{font-size:26px;font-weight:800;letter-spacing:-1px;color:#0F6E56}.brand span{color:#24664a}.meta{font-size:12px;color:#6c787d}'+
    'h1{font-size:20px;margin:16px 0 2px}p{font-size:13px}table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}td{padding:7px 5px;border-bottom:1px solid #e7ecea}td.r{text-align:right}td.b{font-weight:700;color:#0F6E56}'+
    '.foot{margin-top:20px;border-top:1px solid #d8e0dd;padding-top:10px;font-size:10.5px;color:#7a878c}@media print{@page{margin:16mm}}</style></head><body>'+
    '<div class="head"><div><div class="brand">brick<span>bit</span></div><div class="meta">Versus · duelo de municipios</div></div><div class="meta">'+fdate+'</div></div>'+
