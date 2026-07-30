@@ -731,6 +731,16 @@ function planFeasibLoad(){
     setTimeout(()=>{ const el=$('dev-plan')||$('dev-out'); if(el&&el.scrollIntoView) el.scrollIntoView({behavior:'smooth',block:'start'}); },450);
   }catch(e){}
 }
+let AGUA_A=null;
+fetch('data/agua.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{AGUA_A=j; if(typeof renderDev==='function') renderDev();}).catch(()=>{});
+/* Sequía oficial del municipio (Monitor SMN/CONAGUA): factor de desarrollo.
+   D2+ merece un aviso: la factibilidad de agua puede condicionar el proyecto. */
+function aguaAviso(z){
+  const a=AGUA_A&&AGUA_A.zonas&&AGUA_A.zonas[z.n]; if(!a) return '';
+  if(a.nivel>=3) return `<div class="note" style="border-left-color:var(--neg,#c07a66);margin:0 0 10px">💧 <b>${a.etiqueta}</b> en el municipio (Monitor de Sequía SMN/CONAGUA${AGUA_A.meta&&AGUA_A.meta.corte?`, corte ${AGUA_A.meta.corte}`:''}). Antes de proyectar, confirma la <b>factibilidad de agua</b> con el organismo operador: puede condicionar densidad, tiempos y costo.</div>`;
+  if(a.nivel>=1) return `<div class="note" style="border-left-color:var(--amb);margin:0 0 10px">💧 ${a.etiqueta} en el municipio (SMN/CONAGUA). Considera la factibilidad hídrica en el programa.</div>`;
+  return '';
+}
 function renderDev(){
   const z=zona(), out=$('dev-out'); if(!z||!out) return;
   devEnsureMed(z);   // trae la mediana real C21 y re-renderiza al llegar
@@ -738,7 +748,7 @@ function renderDev(){
   const roi=p.roi, col=roi>=25?'var(--pos)':roi>=15?'var(--amb)':'var(--neg)';
   const verdict=roi>=25?'Muy viable':roi>=15?'Viable':roi>0?'Ajustado':'No viable';
   const mixRows=p.mix.map(x=>`<div style="display:flex;justify-content:space-between;gap:12px;font-size:12px;padding:5px 0;border-bottom:1px solid var(--bd)"><span>${x.t}</span><span style="color:var(--mut)">${x.c} uds · ${x.m} m²</span><span style="color:var(--pos)">${_dm(x.pu)}</span></div>`).join('');
-  out.innerHTML=`
+  out.innerHTML=aguaAviso(z)+`
     <div style="display:flex;align-items:center;gap:16px;margin:8px 0 12px">
       <div style="font-family:'Fraunces',serif;font-weight:600;font-size:36px;color:${col};line-height:1">${Math.round(roi)}%</div>
       <div><div style="font-weight:700;color:${col}">${verdict} · ROI del proyecto</div><div style="font-size:11.5px;color:var(--mut)">TIR ${Math.round(p.tir)}% anual · ${p.plazo} meses · VPN ${_dmM(p.vpn)}</div></div>

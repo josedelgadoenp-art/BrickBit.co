@@ -1333,6 +1333,18 @@ function renderPortafolio(){
    existe todavía, el bloque simplemente no se muestra. */
 let RIESGOS=null;
 fetch('data/riesgos.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{RIESGOS=j;}).catch(()=>{});
+/* ==== Capa de agua (Monitor de Sequía SMN/CONAGUA) ====
+   data/agua.json lo genera tools/agua_local.py con el CSV municipal oficial.
+   Si el archivo no existe todavía, el bloque no se muestra. */
+let AGUA=null;
+fetch('data/agua.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{AGUA=j;}).catch(()=>{});
+function aguaHTML(name){
+  const z=AGUA&&AGUA.zonas&&AGUA.zonas[name]; if(!z) return '';
+  const col=z.nivel>=4?'#c07a66':z.nivel===3?'#cf9247':z.nivel>=1?'#F5C277':'#6fa287';
+  return `<div class="ptitle" style="margin-top:18px">💧 Agua · sequía municipal</div>
+    <div style="font-size:12.5px;margin-top:4px"><b style="color:${col}">● ${z.etiqueta}</b></div>
+    <div class="notice" style="margin-top:8px;font-size:11px">Monitor de Sequía de México (SMN/CONAGUA)${AGUA.meta&&AGUA.meta.corte?`, corte ${AGUA.meta.corte}`:''}. Es contexto de disponibilidad hídrica del municipio (quincenal, oficial): la dotación de un proyecto la dicta el <b>organismo operador local</b> — pide la factibilidad antes de proyectar.</div>`;
+}
 function riesgoHTML(name){
   const z=RIESGOS&&RIESGOS.zonas&&RIESGOS.zonas[name]; if(!z) return '';
   const L={homicidio:'Homicidio doloso',robo_casa:'Robo a casa hab.',robo_vehiculo:'Robo de vehículo',extorsion:'Extorsión'};
@@ -1376,6 +1388,7 @@ function panel(name,d,tipo){
       <div class="ind-c"><div class="ind-l">Ciclo económico</div><div class="ind-v" style="font-size:11px">${d.ciclo}</div></div>
     </div>
     ${real?riesgoHTML(name):''}
+    ${real?aguaHTML(name):''}
     <div class="ptitle" style="margin-top:18px">🤖 Análisis de desarrollo (IA)</div>
     <button class="ia-btn" id="ia-btn" onclick="runIA()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4 12H1M23 12h-3M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2"/></svg>Proyecto óptimo para esta zona</button>
     ${(CITIES[name]&&window.bbConfigured)?`<button class="ia-btn" id="fav-btn" data-zona="${escapeHtml(name)}" onclick="toggleFav(this)" style="background:#0C1218;border:0.5px solid rgba(245,237,227,.18);color:#f5ede3;margin-top:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>Guardar zona en favoritos</button>`:''}

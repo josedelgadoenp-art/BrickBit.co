@@ -86,6 +86,11 @@ export default {
 
     /* ---- API pública: BrickBit Score y pronóstico por zona (para widgets/partners).
        Lectura pública (CORS *), datos derivados de estados.json + forecast.json. ---- */
+    /* ---- Contexto macro (IA): titulares recientes → factores del mercado.
+       INFORMATIVO: NO entra al modelo de predicción validado. Caché 20 h. ---- */
+    if (url.pathname === '/api/macro' && request.method === 'GET') {
+      return handleMacro(env, headers);
+    }
     if (url.pathname === '/api/score' && (request.method === 'GET' || request.method === 'OPTIONS')) {
       return handlePublicApi('score', request, url, env);
     }
@@ -822,6 +827,40 @@ function slugZona(nombre) {
 }
 // Pide JSON directo (sin gramática/output_config, que puede tardar en compilar).
 // Opus devuelve JSON limpio con la instrucción; se limpian fences por si acaso.
+/* Contexto macro: lee titulares (Google News RSS, consultas fijas de economía e
+   inmobiliario MX) y Claude los sintetiza en factores. Se cachea 20 h en KV.
+   Es CONTEXTO CUALITATIVO — el modelo de precios validado no lo consume. */
+async function handleMacro(env, headers) {
+  const h = { ...headers, 'content-type': 'application/json' };
+  try {
+    if (env.SHARES) {
+      const c = await env.SHARES.get('macro:brief');
+      if (c) { const j = JSON.parse(c); if (Date.now() - (j._ts || 0) < 20 * 3600e3) return new Response(c, { headers: h }); }
+    }
+    const feeds = [
+      'https://news.google.com/rss/search?q=Banxico+OR+%22tasa+de+inter%C3%A9s%22+OR+inflaci%C3%B3n+M%C3%A9xico&hl=es-419&gl=MX&ceid=MX:es-419',
+      'https://news.google.com/rss/search?q=%22sector+inmobiliario%22+OR+vivienda+OR+hipotecario+M%C3%A9xico&hl=es-419&gl=MX&ceid=MX:es-419',
+    ];
+    const titulares = [];
+    for (const f of feeds) {
+      try {
+        const xml = await (await fetch(f, { headers: { 'user-agent': 'BrickBit/1.0' } })).text();
+        const m = [...xml.matchAll(/<title>(?:<!\[CDATA\[)?([^<\]]{15,160})/g)].map((x) => x[1]);
+        titulares.push(...m.slice(1, 11)); // el primer <title> es el del feed
+      } catch (e) {}
+    }
+    if (titulares.length < 4) return json({ error: 'sin titulares' }, 502, h);
+    const out = await askClaudeJSON(env,
+      'Eres un analista macro del mercado inmobiliario mexicano. Con base SOLO en los titulares dados, responde JSON: {"resumen": "2 frases", "factores": [{"factor": "...", "efecto": "favorable|neutral|riesgo", "explicacion": "1 frase sobre su efecto en vivienda/tasas"}]} con 3 a 5 factores. Sé sobrio: son titulares, no datos verificados.',
+      'Titulares recientes:\n- ' + titulares.join('\n- '));
+    const brief = { ...out, fecha: new Date().toISOString().slice(0, 10), n: titulares.length, _ts: Date.now() };
+    if (env.SHARES) await env.SHARES.put('macro:brief', JSON.stringify(brief));
+    return json(brief, 200, h);
+  } catch (e) {
+    return json({ error: 'macro no disponible: ' + e.message }, 500, h);
+  }
+}
+
 async function askClaudeJSON(env, system, userText) {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
