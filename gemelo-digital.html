@@ -1019,7 +1019,7 @@ async function analyzeEngineering(geometry) {
   const checksLine = _checks.length ? `CHEQUEOS DETERMINÍSTICOS DE LA GEOMETRÍA (criterios de ingeniería ya calculados; refléjalos en las fallas y explícalos):\n- ${_checks.join('\n- ')}` : '';
   const searchLine = _pz ? `Si te ayuda a precisar, BUSCA en la web la microzonificación sísmica y el reglamento de construcción vigente de ${_pz}, y cita brevemente la fuente en la explicación de la primera falla.` : '';
   return callClaude({
-    system: 'Eres un ingeniero estructurista y residente de obra con 25 años de experiencia en México. Cuantificas materiales conforme a prácticas comunes (NTC/CFE/ONNCCE), recomiendas calidades y acero de refuerzo por elemento, y evalúas riesgos de falla de diseño y construcción con horizontes de tiempo realistas. Sé específico y conservador; incluye desperdicio típico en cantidades.',
+    system: 'Eres un ingeniero estructurista y residente de obra con 25 años de experiencia en México. Cuantificas materiales conforme a prácticas comunes (NTC/CFE/ONNCCE), recomiendas calidades y acero de refuerzo por elemento, y evalúas riesgos de falla de diseño y construcción con horizontes de tiempo realistas. Sé específico y conservador; cuantifica cantidades NETAS de proyecto, SIN desperdicio: el excedente de obra se agrega y se muestra por separado.',
     content: [
       ...(state.file ? [planContentBlock()] : []),
       { type: 'text', text:
@@ -1489,6 +1489,41 @@ async function geocodeAndPlace() {
 /* =====================================================================
    Pasos 5/6 — materiales y fallas
 ===================================================================== */
+/* ===== Excedente de obra (mermas) y compra directa =====
+   En obra nunca se pide lo exacto: el excedente cubre desperdicio, cortes,
+   traslapes y roturas. Porcentajes típicos de la práctica mexicana. */
+function mermaDe(txt){
+  const s=(txt||'').toLowerCase();
+  if(/varilla|acero|malla|estribo|armex/.test(s)) return 5;
+  if(/concreto|f'c|premezclado/.test(s)) return 5;
+  if(/mortero|cemento|cal\b|pegazulejo/.test(s)) return 10;
+  if(/block|tabique|ladrillo|mamposter/.test(s)) return 8;
+  if(/loseta|azulejo|piso|porcelanato|yeso|pasta|acabado/.test(s)) return 12;
+  if(/pintura|impermeab|sellador/.test(s)) return 8;
+  if(/madera|cimbra|triplay|polin|barrote/.test(s)) return 10;
+  return 7;
+}
+function linksCompra(q){
+  const u=encodeURIComponent(String(q).trim());
+  return '<a href="https://www.homedepot.com.mx/s/'+u+'" target="_blank" rel="noopener">Home Depot</a> · '+
+         '<a href="https://www.construrama.com/catalogsearch/result/?q='+u+'" target="_blank" rel="noopener">Construrama</a> · '+
+         '<a href="https://listado.mercadolibre.com.mx/'+u+'" target="_blank" rel="noopener">Mercado Libre</a>';
+}
+function compraCard(e){
+  const filas=e.materiales.flatMap(cat=>(cat.items||[]).map(it=>{
+    const m=mermaDe(it.concepto+' '+cat.categoria);
+    const pedir=it.cantidad*(1+m/100);
+    return '<li><span>'+escapeHtml(it.concepto)+' — <b>'+fmt(pedir)+' '+escapeHtml(it.unidad)+'</b> '+
+      '<small style="color:#8f8275">(neto '+fmt(it.cantidad)+' +'+m+'%)</small></span>'+
+      '<span style="font-size:11px;white-space:nowrap">'+linksCompra(it.concepto+' '+(it.calidad||''))+'</span></li>';
+  })).join('');
+  if(!filas) return '';
+  return '<div class="mat-card" style="grid-column:1/-1"><h4>Lista de compra con excedente de obra <span class="tag">práctica de obra</span></h4>'+
+    '<ul>'+filas+'</ul>'+
+    '<p style="font-size:11px;color:#8f8275;margin:8px 0 0;line-height:1.55">El excedente cubre desperdicio, cortes, traslapes y roturas — en obra nunca se pide lo exacto. '+
+    'Los enlaces abren la búsqueda del material en cada proveedor: <b>el precio depende de tu región y sucursal</b>; cotiza con la ubicación real del proyecto. BrickBit no fija estos precios.</p></div>';
+}
+
 function renderEngineering() {
   const e = state.engineering;
   $('secMaterials').classList.remove('hidden');
@@ -1510,9 +1545,9 @@ function renderEngineering() {
       <h4>${escapeHtml(cat.categoria)} <span class="tag">IA</span></h4>
       <ul>${cat.items.map(it => `
         <li><span>${escapeHtml(it.concepto)}<br><small style="color:var(--clay-soft)">${escapeHtml(it.calidad)}</small></span>
-        <span>${fmt(it.cantidad)} ${escapeHtml(it.unidad)}</span></li>`).join('')}
+        <span>${fmt(it.cantidad)} ${escapeHtml(it.unidad)}<br><small style="color:var(--amb,#F5C277)">pedir ${fmt(it.cantidad*(1+mermaDe(it.concepto+' '+cat.categoria)/100))} (+${mermaDe(it.concepto+' '+cat.categoria)}%)</small></span></li>`).join('')}
       </ul>
-    </div>`).join('') + costCard;
+    </div>`).join('') + costCard + compraCard(e);
 
   // varillas
   $('rebarBody').innerHTML = e.varillas.map(v => `
@@ -1520,7 +1555,7 @@ function renderEngineering() {
       <td>${escapeHtml(v.tipo)}</td>
       <td>${v.diametroMm}</td>
       <td>${escapeHtml(v.grado)}</td>
-      <td><b>${fmt(v.cantidadKg)}</b></td>
+      <td><b>${fmt(v.cantidadKg)}</b> <small style="color:var(--amb,#F5C277)">pedir ${fmt(v.cantidadKg*1.05)} kg</small></td>
       <td>${v.separacionCm ? '@ ' + v.separacionCm + ' cm' : '—'}</td>
       <td>${escapeHtml(v.ubicacion)}</td>
     </tr>`).join('');

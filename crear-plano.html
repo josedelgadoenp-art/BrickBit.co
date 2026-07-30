@@ -317,7 +317,7 @@ let PREDIO = null;
     const f = n => Math.round(n).toLocaleString('es-MX');
     const div = document.createElement('div');
     div.style.cssText = 'margin-top:14px;padding:11px 14px;border:1px solid rgba(111,162,135,.3);border-left:3px solid #6fa287;border-radius:10px;font-size:12.5px;line-height:1.6';
-    div.innerHTML = `📐 <b>Predio real cargado desde el Simulador 3D:</b> ${f(d.areaM2)} m² · ${d.verticesM.length} lados · envolvente ~${d.anchoM}×${d.fondoM} m. La IA diseñará <b>dentro de tu polígono real</b>, no de un rectángulo.`;
+    div.innerHTML = `📐 <b>Predio real cargado desde el Simulador 3D:</b> ${f(d.areaM2)} m² · ${d.verticesM.length} lados · envolvente ~${d.anchoM}×${d.fondoM} m${d.frente ? ` · <b>frente a la calle: ${d.frente}</b>` : ''}. La IA diseñará <b>dentro de tu polígono real</b>, con la orientación verdadera del terreno.`;
     $('normBox').insertAdjacentElement('beforebegin', div);
   } catch (e) {}
 })();
@@ -434,7 +434,9 @@ $('btnGenerate').addEventListener('click', async () => {
 `Diseña ${num} propuesta(s) de plano arquitectónico optimizado, con enfoques distintos entre sí (p. ej. amplitud vs. privacidad vs. costo de obra), para:
 
 TERRENO: ${ancho} m de frente × ${fondo} m de fondo (${(ancho*fondo).toFixed(0)} m²)${PREDIO ? `
-FORMA REAL DEL TERRENO (dibujada sobre el mapa): polígono de ${PREDIO.verticesM.length} vértices, en metros desde su esquina origen: ${PREDIO.verticesM.map(p => `(${p.x}, ${p.y})`).join(' ')}. Área real: ${PREDIO.areaM2} m². IMPORTANTE: el footprint del edificio debe caber DENTRO de este polígono (no del rectángulo envolvente) y aprovechar su forma y orientación (el eje +Y del polígono apunta al norte).` : ''}
+FORMA REAL DEL TERRENO (dibujada sobre el mapa): polígono de ${PREDIO.verticesM.length} vértices, en metros desde su esquina origen: ${PREDIO.verticesM.map(p => `(${p.x}, ${p.y})`).join(' ')}. Área real: ${PREDIO.areaM2} m². IMPORTANTE: el footprint del edificio debe caber DENTRO de este polígono (no del rectángulo envolvente) y aprovechar su forma y orientación (el eje +Y del polígono apunta al NORTE VERDADERO).${PREDIO.frente ? `
+FRENTE A LA CALLE: el predio da a la calle por el ${PREDIO.frente.toUpperCase()}. Coloca el ACCESO principal (y cochera si aplica) sobre ese frente.` : ''}
+DISEÑO BIOCLIMÁTICO (obligatorio, clima mexicano): recámaras de preferencia al ORIENTE/SURESTE (sol de mañana); baños, cocina, escaleras y bodegas al PONIENTE como amortiguador térmico del sol de la tarde; estancias con luz SUR protegida; evita ventanas grandes al poniente sin protección.` : ''}
 % CONSTRUIBLE (COS): ${cos}% → huella máxima ${((PREDIO ? PREDIO.areaM2 : ancho*fondo)*cos/100).toFixed(1)} m²
 NIVELES: ${niveles}
 ${zona ? 'ZONA/CIUDAD: ' + zona + ' (considera clima y orientaciones típicas)' : ''}
@@ -549,6 +551,15 @@ function planSVG(g, overlay) {
   s += `<text x="${xC - 8}" y="${PAD + h / 2}" font-family="Georgia,serif" font-size="9.5" fill="#5b5344" text-anchor="middle" transform="rotate(-90 ${xC - 8} ${PAD + h / 2})">${g.fondoM} m</text>`;
   // norte
   s += `<g transform="translate(${W - 26},${PAD - 14})"><circle r="10" fill="none" stroke="#8a7f6b" stroke-width="1"/><path d="M0,-7 L3,4 L0,2 L-3,4 Z" fill="#26201a"/><text y="-13" font-family="Georgia,serif" font-size="8" fill="#5b5344" text-anchor="middle">N</text></g>`;
+  // frente a la calle (del predio real): se rotula sobre el lado correspondiente
+  if (typeof PREDIO !== 'undefined' && PREDIO && PREDIO.frente) {
+    const F = PREDIO.frente;
+    const pos = F === 'sur' ? { x: PAD + w / 2, y: PAD + h - 7, r: 0 }
+      : F === 'norte' ? { x: PAD + w / 2, y: PAD + 12, r: 0 }
+      : F === 'oriente' ? { x: PAD + w - 9, y: PAD + h / 2, r: 90 }
+      : { x: PAD + 9, y: PAD + h / 2, r: -90 };
+    s += `<text x="${pos.x}" y="${pos.y}" font-family="Georgia,serif" font-size="8" letter-spacing="2.5" fill="#8a7f6b" text-anchor="middle" transform="rotate(${pos.r} ${pos.x} ${pos.y})">CALLE · FRENTE ${F.toUpperCase()}</text>`;
+  }
   // título
   s += `<text x="${PAD}" y="${H + 14}" font-family="Georgia,serif" font-size="10" fill="#5b5344">Planta baja · ${escapeHtml(g.nombreProyecto)} · esc. gráfica · BrickBit IA</text>`;
 
@@ -1110,7 +1121,7 @@ $('btnLamina').addEventListener('click', () => {
       <tr class="tot"><td>Total estimado</td><td class="r"></td>${pTotales.map(v => `<td class="r">${$m(v)}</td>`).join('')}</tr>
       <tr><td>Costo por m² (todo incluido)</td><td class="r"></td>${pTotales.map(v => `<td class="r">${$m(v / areaP)}/m²</td>`).join('')}</tr>
     </table>
-    <div style="font-size:10.5px;color:#8a969c;margin-top:6px">Costos base de referencia (MXN, jul 2026): ${CALIDADES.map(([n, b]) => `${n} ${$m(b)}/m²`).join(' · ')} de costo directo. Presupuesto <b>paramétrico</b>: la distribución por partidas es típica de vivienda en México y varía con el proyecto; no sustituye un catálogo de conceptos ni precios unitarios de tu región.</div>
+    <div style="font-size:10.5px;color:#8a969c;margin-top:6px">Costos base de referencia (MXN, jul 2026): ${CALIDADES.map(([n, b]) => `${n} ${$m(b)}/m²`).join(' · ')} de costo directo. Presupuesto <b>paramétrico</b>: la distribución por partidas es típica de vivienda en México y varía con el proyecto; no sustituye un catálogo de conceptos ni precios unitarios de tu región. <b>Práctica de obra:</b> al comprar, pide con excedente sobre lo neto — concreto +5% · mortero/cemento +10% · block/tabique +8% · acero +5% (traslapes y cortes) · acabados +12%; en obra nunca se pide lo exacto.</div>
   </div>` : '';
   const w = window.open('', '_blank'); if (!w) { alert('Permite las ventanas emergentes para generar la lámina.'); return; }
   w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Lámina · ${escapeHtml(g.nombreProyecto)}</title>

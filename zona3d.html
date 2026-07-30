@@ -495,9 +495,23 @@ function finishPredio(){
     zona:(zona?zona.nombre:HOME.zona), vertices:_predio.pts,
     verticesM:v.map(p=>({x:Math.round(p.x*10)/10, y:Math.round(p.y*10)/10})),
     areaM2:Math.round(area), anchoM:Math.round(anchoM*10)/10, fondoM:Math.round(fondoM*10)/10 })); }catch(e){}
-  $('predio-read').innerHTML='✓ Predio de <b>'+f(area)+' m²</b> · '+_predio.pts.length+' lados · envolvente ~'+f(anchoM)+'×'+f(fondoM)+' m.<br>'+
-    '<a href="crear-plano.html?desde=predio" style="color:var(--sec,#6fa287);font-weight:600">Diseñar un plano en este predio →</a>';
+  $('predio-read').innerHTML='✓ Predio de <b>'+f(area)+' m²</b> · '+_predio.pts.length+' lados · envolvente ~'+f(anchoM)+'×'+f(fondoM)+' m.'+
+    '<div style="margin-top:7px;font-size:11.5px;color:#b8ab99">¿Hacia dónde da el FRENTE (la calle)? El plano pondrá ahí el acceso.</div>'+
+    '<div id="predio-frente" style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap">'+
+      ['norte','sur','oriente','poniente'].map(d=>'<button class="b ghost" style="padding:3px 9px;font-size:11px" onclick="predioFrente(\''+d+'\',this)">'+d[0].toUpperCase()+d.slice(1)+'</button>').join('')+
+    '</div>'+
+    '<a href="crear-plano.html?desde=predio" style="display:inline-block;margin-top:8px;color:var(--sec,#6fa287);font-weight:600">Diseñar un plano en este predio →</a>';
   $('v-lote').value=Math.round(area); drawVolume();   // el simulador adopta el área real
+}
+
+/* Frente del predio (lado que da a la calle): la IA del Creador de planos lo
+   usa para colocar el acceso y orientar el diseño. Se guarda junto al predio. */
+function predioFrente(fr,btn){
+  try{ const d=JSON.parse(localStorage.getItem('bb_predio')||'null');
+       if(d){ d.frente=fr; localStorage.setItem('bb_predio',JSON.stringify(d)); } }catch(e){}
+  const box=$('predio-frente');
+  if(box) box.querySelectorAll('button').forEach(x=>{x.style.borderColor='';x.style.color='';});
+  if(btn){ btn.style.borderColor='var(--sec,#6fa287)'; btn.style.color='var(--sec,#6fa287)'; }
 }
 
 /* ====== volumen edificable (COS/CUS) ====== */
