@@ -135,6 +135,10 @@ a.back:hover{color:var(--tx)}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
 /* ---- pase de usabilidad móvil (≤640px) ---- */
 @media(max-width:640px){
+  /* los tooltips (.hint::after) fuera de pantalla no deben crear scroll lateral;
+     el scroll horizontal legítimo vive en contenedores .cmp-scroll */
+  html,body{overflow-x:hidden}
+  .hint::after{width:160px}
   img,svg{max-width:100%}
   .wrap{padding:20px 14px 48px}
   header{gap:10px}
@@ -148,8 +152,11 @@ a.back:hover{color:var(--tx)}
   .menu{max-width:calc(100vw - 28px)}
   /* grids de 3 columnas → 2 en móvil */
   .g3{grid-template-columns:1fr 1fr}
-  /* KPIs siempre a 2 columnas (el !important vence al estilo inline del payback) */
-  .kpis{grid-template-columns:1fr 1fr!important}
+  /* KPIs siempre a 2 columnas (el !important vence al estilo inline del payback);
+     minmax(0,1fr) + min-width:0 evita que un texto largo ensanche la columna */
+  .kpis{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+  .kpi{min-width:0}
+  .kpi .k,.kpi .v,.kpi .s,.kpi .vs{overflow-wrap:anywhere}
   .kpi .v{font-size:20px}
   /* comparador: ancho mínimo legible dentro del scroll horizontal */
   .cmp-scroll .cmp-head,.cmp-scroll .cmp-row{min-width:460px}
