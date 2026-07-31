@@ -207,6 +207,7 @@ body{font-family:'Hanken Grotesk',system-ui,-apple-system,sans-serif;background:
   <button class="zlvl" id="zlvl-3" onclick="goLevel(3)" disabled>Colonia / AGEB</button>
   <span class="menu-wrap" id="vista-wrap">
     <button class="mt active" id="vista-btn" onclick="toggleVista(event)" style="display:inline-flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M4 22V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v19M4 22h16M16 8h3a1 1 0 0 1 1 1v13M8 6h.01M12 6h.01M8 10h.01M12 10h.01M8 14h.01M12 14h.01M10 22v-4"/></svg>Propiedades ▾</button>
+    <button class="mt" id="cerca-btn" onclick="cercaDeMi()" title="Propiedades en venta alrededor de tu ubicación actual" style="display:inline-flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>Cerca de mí</button>
     <div class="menu" id="vista-menu">
       <button id="mt-prop" class="sel" onclick="pickMode('prop')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M4 22V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v19M4 22h16M16 8h3a1 1 0 0 1 1 1v13M8 6h.01M12 6h.01M8 10h.01M12 10h.01M8 14h.01M12 14h.01M10 22v-4"/></svg>Propiedades</button>
       <button id="mt-zonas" onclick="pickMode('zonas')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="M9 2 3 5v17l6-3 6 3 6-3V2l-6 3-6-3z"/><path d="M9 2v17M15 5v17"/></svg>Análisis de zonas</button>
@@ -1338,6 +1339,16 @@ fetch('data/riesgos.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j
    Si el archivo no existe todavía, el bloque no se muestra. */
 let AGUA=null;
 fetch('data/agua.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{AGUA=j;}).catch(()=>{});
+/* Métricas REALES por zona (_metricas, generadas en cada corrida del
+   inventario): mediana de venta con su n — la cifra dura del panel. */
+let METR={};
+fetch(BB_BACKEND.replace(/\/+$/,'')+'/api/listados?zona=_metricas').then(r=>r.ok?r.json():[]).then(ms=>{
+  if(Array.isArray(ms)) ms.forEach(m=>{METR[m.slug]=m;});
+}).catch(()=>{});
+function metrHTML(name){
+  const m=METR[slugZona(name)]; if(!m||!m.pm2v) return '';
+  return `<div class="model-tag" style="color:#a9c4ae">📊 Mercado vivo C21: mediana <b>${fmt(m.pm2v)}/m²</b> (${m.nV} ventas)${m.yield!=null?` · yield real <b>${m.yield}%</b> (${m.nR} rentas)`:''}${m.pm2t?` · suelo ${fmt(m.pm2t)}/m²`:''}</div>`;
+}
 function aguaHTML(name){
   const z=AGUA&&AGUA.zonas&&AGUA.zonas[name]; if(!z) return '';
   const col=z.nivel>=4?'#c07a66':z.nivel===3?'#cf9247':z.nivel>=1?'#F5C277':'#6fa287';
@@ -1358,6 +1369,55 @@ function riesgoHTML(name){
     <div class="ind-grid">${celdas}</div>
     <div class="notice" style="margin-top:8px;font-size:11px">Incidencia oficial del <b>SESNSP</b> (carpetas de investigación, últimos 12 meses${RIESGOS.meta&&RIESGOS.meta.corte?` al corte ${RIESGOS.meta.corte}`:''}), tasa por 100 mil hab. (Censo 2020). <b>Es dato estatal</b>: el riesgo varía mucho por colonia; úsalo como contexto, no como medición del punto. P0 = la entidad más segura del país.</div>`;
 }
+/* ==== CERCA DE MÍ: el inventario real alrededor de tu ubicación ====
+   Mejora sobre el "homes near me" gringo: no solo dice QUÉ hay cerca, dice
+   qué está en OPORTUNIDAD (vs mediana real), con recortes y días publicada. */
+let _meMk=null;
+function cercaDeMi(){
+  if(!navigator.geolocation){ note('Tu navegador no permite geolocalización.'); return; }
+  const btn=document.getElementById('cerca-btn'); if(btn) btn.style.opacity='.55';
+  note('Buscando propiedades alrededor de ti…');
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    try{
+      const lat=pos.coords.latitude, lng=pos.coords.longitude;
+      propMode=true; clearAll(); curCity=null; curMun=null; crumbs([]); setLvl(0);
+      map.flyTo([lat,lng],14,{duration:1});
+      if(_meMk) map.removeLayer(_meMk);
+      _meMk=L.marker([lat,lng],{icon:L.divIcon({className:'',iconSize:[18,18],iconAnchor:[9,9],
+        html:'<div style="width:18px;height:18px;border-radius:50%;background:#6fa287;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.5)" title="Tú estás aquí"></div>'})}).addTo(map);
+      const reg=await loadZonasReg();
+      const zonas=[...Object.keys(CITIES).map(n=>({n,lat:CITIES[n].lat,lng:CITIES[n].lng})),
+                   ...reg.filter(m=>m.lat!=null).map(m=>({n:m.nombre,lat:m.lat,lng:m.lng}))]
+        .map(z=>({...z,d:_havKm2(lat,lng,z.lat,z.lng)})).sort((a,b)=>a.d-b.d).slice(0,3);
+      let props=[];
+      for(const z of zonas){
+        if(z.d>60) continue;   // zonas demasiado lejos no aportan
+        const Ls=await loadZoneListings(z.n);
+        props.push(...Ls.map(x=>listingToProp(x,{nom:z.n},z.n)));
+      }
+      props.forEach(p=>{p._dkm=_havKm2(lat,lng,p.lat,p.lng);});
+      let R=5, cerca=props.filter(p=>p._dkm<=R);
+      if(cerca.length<5){ R=15; cerca=props.filter(p=>p._dkm<=R); }
+      cerca.sort((a,b)=>a._dkm-b._dkm); cerca=cerca.slice(0,60);
+      propM.forEach(m=>map.removeLayer(m)); propM=[];
+      cerca.forEach(p=>{const m=L.marker([p.lat,p.lng],{icon:propIcon(p)}).addTo(map);
+        m.bindTooltip(`<b>${p.t}</b><br>${fmtM(p.price)} · a ${p._dkm<1?Math.round(p._dkm*1000)+' m':p._dkm.toFixed(1)+' km'}`,{direction:"top",offset:[0,-15]});
+        m.on("click",()=>selProp(p)); propM.push(m);});
+      const nOpp=cerca.filter(p=>p.veredicto==='oportunidad').length;
+      list(`Cerca de ti · ${cerca.length} propiedades (radio ${R} km)`,
+        cerca.map(p=>({nom:p.nom,opp:p.opp,price:p.price,_p:p,_sort:-p._dkm,
+          _meta:`a ${p._dkm<1?Math.round(p._dkm*1000)+' m':p._dkm.toFixed(1)+' km'}${p.veredicto==='oportunidad'?' · OPORTUNIDAD '+p.vs+'%':''}${p.rec!=null&&p.rec<0?' · recorte '+Math.abs(p.rec)+'%':''}`})),
+        d=>selProp(d._p||d));
+      note(cerca.length
+        ? `${cerca.length} propiedades en ${R} km — ${nOpp} en oportunidad. Inventario Century 21.`
+        : 'Sin inventario C21 en un radio de 15 km de tu ubicación.');
+    }catch(e){ note('No se pudo cargar el inventario cercano.'); }
+    if(btn) btn.style.opacity='';
+  }, err=>{
+    note(err.code===1?'Permiso de ubicación denegado — actívalo para usar "Cerca de mí".':'No pudimos obtener tu ubicación.');
+    if(btn) btn.style.opacity='';
+  }, {enableHighAccuracy:true, timeout:12000, maximumAge:60000});
+}
 function panel(name,d,tipo){
   curData=d;curTipo=tipo;const f=fcCalc(d.price,d.g);d._fc=f;d._fcm=fcModel(name,d.price);
   // real = una de las 32 zonas ancla con datos SHF. Municipios generados y colonias
@@ -1373,6 +1433,7 @@ function panel(name,d,tipo){
     ${real?scoreHTML(name,d):'<div class="notice" style="margin-top:10px;border-color:rgba(224,161,58,.35)">⚠ <b style="color:#F5C277">Zona derivada (est.):</b> no es una de las 32 zonas ancla con dato SHF. Los números de abajo son una <b>proyección compuesta</b> a partir del promedio de su ciudad, no el modelo validado. Úsalos solo como referencia.</div>'}
     <div class="model-tag">⚙ Pronóstico: <b>${real&&d._fcm?'modelo espacial SAR + Moran (validado por backtest SHF)':'proyección compuesta (sin modelo validado)'}</b></div>
     <div class="model-tag">📊 Datos: <b>${real?(d._src||'estimado (modelo)'):'estimado a partir del promedio de la ciudad'}</b></div>
+    ${real?metrHTML(name):''}
     ${d._valm?`<div class="model-tag">🏠 Valor mediano vivienda (SHF): <b>${fmtM(d._valm)}</b></div>`:''}
     ${d._supm?`<div class="model-tag">📐 Superficie media vivienda (ENVI): <b>${d._supm} m²</b></div>`:''}
     <div class="ptitle" style="margin-top:18px">📈 Pronóstico precio/m² (IC 90%)</div>
