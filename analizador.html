@@ -457,7 +457,7 @@ function init(){
     if(!Array.isArray(ms)||!ms.length) return;
     const bySlug={}; ms.forEach(m=>bySlug[m.slug]=m);
     ZONAS.forEach(z=>{const m=bySlug[_slugZ(z.n)]; if(!m) return;
-      if(m.yield!=null){ z.y=m.yield; z._yReal=true; }
+      if(m.yield!=null){ z.y=m.yield; z._yReal=true; z._nV=m.nV; z._nR=m.nR; }
       if(m.pm2v!=null) z._pm2v=m.pm2v;      // mediana real de venta (accesibilidad)
     });
     calc(); if(typeof renderDev==='function') renderDev();
@@ -1091,7 +1091,7 @@ function calc(){
     <div class="row"><span class="l"><b>= Neto de venta</b></span><span class="r">${fmt(netoVenta)}</span></div>
 
     <div class="prov">
-      <b>Procedencia de los datos.</b> <span class="lim">Real:</span> la apreciación viene del pronóstico de la SHF (modelo espacial SAR validado a 1–3 años; ${H>3?'<span class="neg">a '+H+' años es extrapolado</span>':'validado'}). ${z._yReal?`<span class="lim">Real:</span> el yield de renta (${z.y}%) está <b>medido</b> con el inventario vivo de Century 21 (mediana de renta ×12 ÷ mediana de venta de la zona).`:`<span class="amb" style="color:var(--amb)">Estimado:</span> la renta usa el yield típico de la zona (pendiente de listados reales).`} <span class="amb" style="color:var(--amb)">Supuestos:</span> los costos fiscales son valores mexicanos típicos, editables arriba.
+      <b>Procedencia de los datos.</b> <span class="lim">Real:</span> la apreciación viene del pronóstico de la SHF (modelo espacial SAR validado a 1–3 años; ${H>3?'<span class="neg">a '+H+' años es extrapolado</span>':'validado'}). ${z._yReal?`<span class="lim">Real:</span> el yield de renta (${z.y}%) está <b>medido</b> con el inventario vivo de Century 21${z._nV?` — muestra: ${z._nV} ventas y ${z._nR} rentas activas`:''} (mediana de renta ×12 ÷ mediana de venta de la zona).`:`<span class="amb" style="color:var(--amb)">Estimado:</span> la renta usa el yield típico de la zona (pendiente de listados reales).`} <span class="amb" style="color:var(--amb)">Supuestos:</span> los costos fiscales son valores mexicanos típicos, editables arriba.
     </div>
     ${(monto>0&&num('tasa')/100>capRate/100)?`<div class="note" style="border-left-color:var(--amb)">Apalancamiento negativo: la tasa de crédito (${num('tasa')}%) supera al cap rate (${capRate.toFixed(1)}%), así que financiar <b>resta</b> flujo. En México las rentas residenciales suelen rendir menos que el crédito, por lo que el retorno se apoya en la apreciación o en comprar de contado.</div>`:''}
     <div class="note">Herramienta informativa de análisis, <b>no asesoría de inversión ni fiscal</b>. El ISR de ganancia de capital en México admite ajuste por inflación del costo y posibles exenciones (casa-habitación); este cálculo es una estimación simplificada. Confirma con un contador antes de decidir.</div>`;

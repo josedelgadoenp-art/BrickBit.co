@@ -698,10 +698,28 @@
         <h2 class="exp-title">Explora el <span class="accent">Valor Futuro<span class="underglow"></span></span> de 32 ciudades.</h2>
         <p class="lead">Precio por m², plusvalía y pronóstico validado por backtest. Elige una ciudad y observa hacia dónde va su valor.</p>
         <div class="hero-meta">
+          <div class="stat" id="stat-inv" style="display:none"><span class="num" id="stat-inv-n">0</span><span class="lbl" id="stat-inv-l">Propiedades en seguimiento</span></div>
           <div class="stat"><span class="num" data-count="32" data-suffix="">0</span><span class="lbl">Ciudades con datos reales</span></div>
           <div class="stat"><span class="num" data-count="21" data-suffix="">0</span><span class="lbl">Años de historia SHF</span></div>
           <div class="stat"><span class="num" data-count="91" data-suffix="%">0%</span><span class="lbl">Cobertura IC · 1 año</span></div>
         </div>
+        <script>
+        /* Cifra VIVA del inventario: se lee del Worker y solo se muestra si
+           responde — nunca un número inventado. */
+        (function(){
+          fetch('https://brickbit-api.jose-delgado-enp.workers.dev/api/listados')
+            .then(function(r){ return r.ok ? r.json() : null; })
+            .then(function(idx){
+              if(!idx) return;
+              var tot=0, zonas=0;
+              for(var k in idx){ if(k.indexOf('_')!==0 && typeof idx[k]==='number'){ tot+=idx[k]; zonas++; } }
+              if(tot<100) return;
+              document.getElementById('stat-inv-n').textContent=tot.toLocaleString('es-MX');
+              document.getElementById('stat-inv-l').textContent='Propiedades vivas · '+zonas+' zonas';
+              document.getElementById('stat-inv').style.display='';
+            }).catch(function(){});
+        })();
+        </script>
       </div>
 
       <!-- interactive explorer panel (datos reales SHF/ENVI + pronóstico validado) -->

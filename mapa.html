@@ -1339,6 +1339,16 @@ fetch('data/riesgos.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j
    Si el archivo no existe todavía, el bloque no se muestra. */
 let AGUA=null;
 fetch('data/agua.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{AGUA=j;}).catch(()=>{});
+/* Métricas REALES por zona (_metricas, generadas en cada corrida del
+   inventario): mediana de venta con su n — la cifra dura del panel. */
+let METR={};
+fetch(BB_BACKEND.replace(/\/+$/,'')+'/api/listados?zona=_metricas').then(r=>r.ok?r.json():[]).then(ms=>{
+  if(Array.isArray(ms)) ms.forEach(m=>{METR[m.slug]=m;});
+}).catch(()=>{});
+function metrHTML(name){
+  const m=METR[slugZona(name)]; if(!m||!m.pm2v) return '';
+  return `<div class="model-tag" style="color:#a9c4ae">📊 Mercado vivo C21: mediana <b>${fmt(m.pm2v)}/m²</b> (${m.nV} ventas)${m.yield!=null?` · yield real <b>${m.yield}%</b> (${m.nR} rentas)`:''}${m.pm2t?` · suelo ${fmt(m.pm2t)}/m²`:''}</div>`;
+}
 function aguaHTML(name){
   const z=AGUA&&AGUA.zonas&&AGUA.zonas[name]; if(!z) return '';
   const col=z.nivel>=4?'#c07a66':z.nivel===3?'#cf9247':z.nivel>=1?'#F5C277':'#6fa287';
@@ -1423,6 +1433,7 @@ function panel(name,d,tipo){
     ${real?scoreHTML(name,d):'<div class="notice" style="margin-top:10px;border-color:rgba(224,161,58,.35)">⚠ <b style="color:#F5C277">Zona derivada (est.):</b> no es una de las 32 zonas ancla con dato SHF. Los números de abajo son una <b>proyección compuesta</b> a partir del promedio de su ciudad, no el modelo validado. Úsalos solo como referencia.</div>'}
     <div class="model-tag">⚙ Pronóstico: <b>${real&&d._fcm?'modelo espacial SAR + Moran (validado por backtest SHF)':'proyección compuesta (sin modelo validado)'}</b></div>
     <div class="model-tag">📊 Datos: <b>${real?(d._src||'estimado (modelo)'):'estimado a partir del promedio de la ciudad'}</b></div>
+    ${real?metrHTML(name):''}
     ${d._valm?`<div class="model-tag">🏠 Valor mediano vivienda (SHF): <b>${fmtM(d._valm)}</b></div>`:''}
     ${d._supm?`<div class="model-tag">📐 Superficie media vivienda (ENVI): <b>${d._supm} m²</b></div>`:''}
     <div class="ptitle" style="margin-top:18px">📈 Pronóstico precio/m² (IC 90%)</div>
