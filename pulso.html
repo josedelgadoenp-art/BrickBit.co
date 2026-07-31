@@ -79,6 +79,8 @@ input[type=range]{flex:1;accent-color:var(--amb);cursor:pointer}
     <select id="ficha" onchange="if(this.value){showCard(DATA.find(z=>z.n===this.value))}" style="margin-top:10px;width:100%;background:var(--surface2);color:var(--tx);border:1px solid var(--line-strong);border-radius:12px;padding:8px 10px;font-family:inherit;font-size:12px;outline:none">
       <option value="">Ver ficha de una ciudad…</option>
     </select>
+    <button class="tab" id="macro-btn" onclick="toggleMacro()" style="margin-top:9px;width:100%">Contexto macro · IA</button>
+    <div id="macro-out" style="display:none;margin-top:8px;max-width:280px;font-size:11.5px;line-height:1.55"></div>
     <div class="metrics" id="metrics" style="margin-top:9px">
       <button class="met on" data-m="pl" onclick="setMetric('pl')">Plusvalía</button>
       <button class="met" data-m="p" onclick="setMetric('p')">Precio $/m²</button>
@@ -316,6 +318,28 @@ function showCard(z){
   $('card').style.display='block';
 }
 function hideCard(){ $('card').style.display='none'; }
+/* Contexto macro (IA): titulares recientes sintetizados por el Worker.
+   INFORMATIVO — no entra al modelo de predicción validado, y se dice. */
+let _macroBusy=false;
+async function toggleMacro(){
+  const box=$('macro-out');
+  if(box.style.display!=='none'){ box.style.display='none'; return; }
+  box.style.display='block';
+  if(box.dataset.ok==='1'||_macroBusy) return;
+  _macroBusy=true;
+  box.innerHTML='<span style="color:var(--mut)">Leyendo titulares…</span>';
+  try{
+    const r=await fetch(BB_BACKEND+'/api/macro');
+    const j=await r.json();
+    if(!r.ok||j.error) throw 0;
+    const col=e=>e==='favorable'?'var(--grn)':e==='riesgo'?'var(--neg)':'var(--mut)';
+    box.innerHTML='<div style="color:var(--tx)">'+j.resumen+'</div>'+
+      (j.factores||[]).map(f=>'<div style="margin-top:6px"><b style="color:'+col(f.efecto)+'">● '+f.factor+'</b><br><span style="color:var(--mut)">'+f.explicacion+'</span></div>').join('')+
+      '<div style="margin-top:8px;color:var(--mut);font-size:10px">Síntesis con IA de '+(j.n||'')+' titulares ('+(j.fecha||'')+'). <b style="color:var(--amb)">Informativo</b>: NO entra al modelo de predicción validado.</div>';
+    box.dataset.ok='1';
+  }catch(e){ box.innerHTML='<span style="color:var(--mut)">Contexto macro no disponible (requiere redeploy del worker).</span>'; }
+  _macroBusy=false;
+}
 function renderLegend(){
   let h;
   if(mode==='tiempo') h='Altura = Índice SHF (mismo eje para todas) · <i style="background:#F5C277"></i>2027+ es proyección';
