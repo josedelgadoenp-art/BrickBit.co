@@ -457,9 +457,11 @@
     .exp-kpis{gap:6px}
     .exp-k{padding:9px 8px}
     .hero-meta{gap:18px 26px}
-    /* nav compacta: que quepan logo + CTA + hamburguesa */
+    /* nav compacta: logo + hamburguesa + cuenta (el CTA del mapa vive en el hero y en el menú) */
+    .brand{flex:none}
     .nav-cta{gap:10px}
-    .nav-cta .btn-primary{padding:.7em 1.05em;font-size:.86rem}
+    .nav-cta>a.btn-primary{display:none}
+    .nav-cta .btn{padding:.6em 1em;font-size:.85rem}
     /* formularios y footer */
     .wait-in{font-size:16px}
     .wait-btn{min-height:44px}
