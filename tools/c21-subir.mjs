@@ -43,9 +43,37 @@ const KEEP = ['id', 'url', 'titulo', 'precio', 'moneda', 'operacion', 'tipo', 'c
 // descartaba; se puede subir con --minz N si se quiere zonas más robustas.
 const MINZ = (() => { const i = args.indexOf('--minz'); const v = i >= 0 ? parseInt(args[i + 1], 10) : 3; return isNaN(v) || v < 2 ? 3 : v; })();
 
+// --- Saneo de geocodificación rota del portal ---
+// C21 pone coordenadas por DEFECTO (un punto en CDMX) a listados sin geo real:
+// una "oficina en Tijuana" llega con lat/lng de Polanco y contamina la zona.
+// Regla: si el ESTADO del texto queda a >150 km de las coordenadas, las
+// coordenadas mienten → se anulan y el listado se enruta por municipio/estado.
+const normTxt = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+// estado (texto del listado) → ciudad ancla de estados.json (¡el JSON trae
+// CIUDADES, no estados: "Tijuana" y no "Baja California"!)
+const EDO_CIUDAD = { 'aguascalientes':'Aguascalientes','baja california':'Tijuana','baja california sur':'La Paz',
+  'campeche':'Campeche','chiapas':'Tuxtla Gutiérrez','chihuahua':'Chihuahua','ciudad de mexico':'Ciudad de México',
+  'cdmx':'Ciudad de México','distrito federal':'Ciudad de México','coahuila':'Saltillo','colima':'Colima',
+  'durango':'Durango','estado de mexico':'Toluca','mexico':'Toluca','guanajuato':'León','guerrero':'Chilpancingo',
+  'hidalgo':'Pachuca','jalisco':'Guadalajara','michoacan':'Morelia','morelos':'Cuernavaca','nayarit':'Tepic',
+  'nuevo leon':'Monterrey','oaxaca':'Oaxaca','puebla':'Puebla','queretaro':'Querétaro','quintana roo':'Cancún',
+  'san luis potosi':'San Luis Potosí','sinaloa':'Culiacán','sonora':'Hermosillo','tabasco':'Villahermosa',
+  'tamaulipas':'Reynosa','tlaxcala':'Tlaxcala','veracruz':'Veracruz','yucatan':'Mérida','zacatecas':'Zacatecas' };
+const CIUDAD_LL = {};
+for (const e of zonas) CIUDAD_LL[e.nombre] = [e.lat, e.lng];
+let geoRotas = 0;
+
 const shards = {};          // zonas ciudad (las 32 ancla, por cercanía de coordenadas)
 const huerfanas = [];       // {x, o} fuera del radio de 40 km de toda ciudad ancla
 for (const x of D) {
+  if (x.lat != null && x.lng != null && x.estado) {
+    const ne = normTxt(x.estado);
+    const ciudad = EDO_CIUDAD[ne] || Object.entries(EDO_CIUDAD).find(([k]) => ne.includes(k))?.[1];
+    const ll = ciudad && CIUDAD_LL[ciudad];
+    // 300 km de la ancla del estado cubre estados grandes (Chihuahua, BC) sin
+    // falsos positivos; el punto por defecto en CDMX queda a >1000 km de casi todos.
+    if (ll && hav(x.lat, x.lng, ll[0], ll[1]) > 300) { x.lat = null; x.lng = null; geoRotas++; }
+  }
   const o = {}; for (const k of KEEP) o[k] = x[k] ?? null;
   const p = x.precio, c = x.m2_construccion;
   o.pm2 = (p && c && c > 0) ? Math.round(p / c) : null;
@@ -95,6 +123,7 @@ registro.sort((a, b) => b.n - a.n);
 
 const entries = Object.entries(shards).sort((a, b) => b[1].length - a[1].length);
 console.log(`Inventario: ${D.length} propiedades · SIN datos personales`);
+console.log(`  · Geocodificación rota anulada: ${geoRotas} listados (se enrutan por su municipio/estado de texto)`);
 console.log(`  · 32 ciudades ancla:     ${entries.reduce((s, e) => s + e[1].length, 0)} propiedades en ${entries.length} zonas`);
 console.log(`  · Municipios (nuevos):   ${muniProps} propiedades en ${registro.length} zonas (mín. ${MINZ} c/u)`);
 console.log(`  · Cola corta descartada: ${colaProps} (municipios con <${MINZ}) · ${sinMunicipio} sin municipio`);
