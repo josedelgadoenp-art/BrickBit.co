@@ -433,6 +433,38 @@
   .fade-up{opacity:0;transform:translateY(10px);transition:opacity 1s ease,transform 1s ease}
   .fade-up.in{opacity:1;transform:translateY(0)}
   .explorer-section{padding:clamp(3rem,8vh,6rem) 0}
+
+  /* ---- pase de usabilidad móvil (≤640px) ---- */
+  @media(max-width:640px){
+    img,svg,video{max-width:100%}
+    .wrap{padding:0 18px}
+    section{padding:64px 0}
+    /* grids de secciones a 1 columna */
+    .cards,.road,.dist-grid{grid-template-columns:1fr}
+    .aud .col{padding:28px 22px}
+    .bsc-grid{grid-template-columns:1fr}
+    /* hero VEX: aire lateral + tipografía contenida */
+    .hero-vex-inner{padding-left:18px;padding-right:18px}
+    .vex-btns{gap:10px}
+    .vex-btn{padding:.75rem 1.35rem;min-height:44px}
+    /* buscador IA: input arriba, botón en su propia fila; 16px evita el zoom de iOS */
+    .vex-search{flex-wrap:wrap;gap:8px;padding:8px 10px;max-width:100%}
+    .vex-search input{flex:1 1 calc(100% - 34px);min-width:0;font-size:16px;padding:8px 0}
+    .vex-search button{flex:1 1 100%;min-height:44px;padding:10px 16px}
+    .vex-chip{padding:8px 12px;min-height:34px;display:inline-flex;align-items:center}
+    /* panel del explorador */
+    .panel{padding:20px 16px}
+    .exp-kpis{gap:6px}
+    .exp-k{padding:9px 8px}
+    .hero-meta{gap:18px 26px}
+    /* nav compacta: que quepan logo + CTA + hamburguesa */
+    .nav-cta{gap:10px}
+    .nav-cta .btn-primary{padding:.7em 1.05em;font-size:.86rem}
+    /* formularios y footer */
+    .wait-in{font-size:16px}
+    .wait-btn{min-height:44px}
+    .foot-cols{gap:34px}
+  }
 </style>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Organization","name":"BrickBit",
