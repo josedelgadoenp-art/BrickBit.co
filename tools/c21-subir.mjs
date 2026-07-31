@@ -43,9 +43,26 @@ const KEEP = ['id', 'url', 'titulo', 'precio', 'moneda', 'operacion', 'tipo', 'c
 // descartaba; se puede subir con --minz N si se quiere zonas más robustas.
 const MINZ = (() => { const i = args.indexOf('--minz'); const v = i >= 0 ? parseInt(args[i + 1], 10) : 3; return isNaN(v) || v < 2 ? 3 : v; })();
 
+// --- Saneo de geocodificación rota del portal ---
+// C21 pone coordenadas por DEFECTO (un punto en CDMX) a listados sin geo real:
+// una "oficina en Tijuana" llega con lat/lng de Polanco y contamina la zona.
+// Regla: si el ESTADO del texto queda a >150 km de las coordenadas, las
+// coordenadas mienten → se anulan y el listado se enruta por municipio/estado.
+const ANCLA_EDO = {};
+for (const e of zonas) { const edo = (e.estado || e.nombre); if (!ANCLA_EDO[edo]) ANCLA_EDO[edo] = [e.lat, e.lng]; }
+const normTxt = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const EDO_LL = {};
+for (const e of zonas) EDO_LL[normTxt(e.nombre)] = [e.lat, e.lng];
+let geoRotas = 0;
+
 const shards = {};          // zonas ciudad (las 32 ancla, por cercanía de coordenadas)
 const huerfanas = [];       // {x, o} fuera del radio de 40 km de toda ciudad ancla
 for (const x of D) {
+  if (x.lat != null && x.lng != null && x.estado) {
+    // ancla de referencia del estado (por la capital que tenemos en estados.json)
+    const cap = Object.entries(EDO_LL).find(([n]) => normTxt(x.estado).includes(n) || n.includes(normTxt(x.estado)));
+    if (cap && hav(x.lat, x.lng, cap[1][0], cap[1][1]) > 150) { x.lat = null; x.lng = null; geoRotas++; }
+  }
   const o = {}; for (const k of KEEP) o[k] = x[k] ?? null;
   const p = x.precio, c = x.m2_construccion;
   o.pm2 = (p && c && c > 0) ? Math.round(p / c) : null;
@@ -95,6 +112,7 @@ registro.sort((a, b) => b.n - a.n);
 
 const entries = Object.entries(shards).sort((a, b) => b[1].length - a[1].length);
 console.log(`Inventario: ${D.length} propiedades · SIN datos personales`);
+console.log(`  · Geocodificación rota anulada: ${geoRotas} listados (se enrutan por su municipio/estado de texto)`);
 console.log(`  · 32 ciudades ancla:     ${entries.reduce((s, e) => s + e[1].length, 0)} propiedades en ${entries.length} zonas`);
 console.log(`  · Municipios (nuevos):   ${muniProps} propiedades en ${registro.length} zonas (mín. ${MINZ} c/u)`);
 console.log(`  · Cola corta descartada: ${colaProps} (municipios con <${MINZ}) · ${sinMunicipio} sin municipio`);
