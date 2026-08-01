@@ -7,3 +7,15 @@ venv/
 # Streamlit
 .streamlit/secrets.toml
 denue_cache/
+
+# Caché local de wrangler (Cloudflare)
+backend/.wrangler/
+
+# Descargas de datos de gobierno: se procesan con los scripts de tools/ y lo que
+# se sube es el data/*.json resultante, nunca el archivo original (pesa cientos
+# de MB). Los CSV que SÍ viven en el repo están dentro de data/ y se conservan.
+/*.csv
+/*.xlsx
+/*.zip
+tools/*.csv
+tools/*.xlsx
