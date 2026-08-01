@@ -3016,6 +3016,19 @@ GIROS_B2B = {
 
 
 @st.cache_data(show_spinner="📍 Buscando la ubicación óptima…", max_entries=8)
+def _txt_comp_cercano(m) -> str:
+    """'competencia más cercana a 410 m' | 'sin competencia del giro en la ciudad'."""
+    try:
+        if m is None or (isinstance(m, float) and np.isnan(m)):
+            return "sin competencia del giro en la ciudad"
+        m = float(m)
+    except (TypeError, ValueError):
+        return "sin competencia del giro en la ciudad"
+    if m >= 1000:
+        return f"competencia más cercana a {m / 1000:.1f} km"
+    return f"competencia más cercana a {int(m):,} m"
+
+
 def ubicacion_optima(suffix: str, giro: str) -> pd.DataFrame | None:
     """
     📍 MOTOR DE UBICACIÓN B2B: rejilla ~300 m sobre la ciudad; demanda =
@@ -3056,7 +3069,22 @@ def ubicacion_optima(suffix: str, giro: str) -> pd.DataFrame | None:
     idx = [int(np.argmin(np.hypot(mids[:, 0] - x, mids[:, 1] - y)))
            for x, y in zip(agg["lng"], agg["lat"])]
     agg["calle"] = calles["nombre"].to_numpy()[idx]
-    return agg.nlargest(10, "score").reset_index(drop=True)
+    top = agg.nlargest(10, "score").reset_index(drop=True)
+    # Distancia REAL (metros, haversine) a la competencia más cercana en TODA
+    # la ciudad: para decidir un sitio dice más que un conteo en radio fijo.
+    comp_pts = estab.loc[es_comp, ["lat", "lng"]].dropna().to_numpy()
+    if len(comp_pts):
+        la1 = np.radians(top["lat"].to_numpy())[:, None]
+        lo1 = np.radians(top["lng"].to_numpy())[:, None]
+        la2 = np.radians(comp_pts[:, 0].astype(float))[None, :]
+        lo2 = np.radians(comp_pts[:, 1].astype(float))[None, :]
+        h = (np.sin((la2 - la1) / 2) ** 2
+             + np.cos(la1) * np.cos(la2) * np.sin((lo2 - lo1) / 2) ** 2)
+        top["comp_cercano_m"] = np.round(
+            (2 * 6371000.0 * np.arcsin(np.sqrt(h))).min(axis=1))
+    else:
+        top["comp_cercano_m"] = np.nan
+    return top
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -3347,8 +3375,8 @@ def informe_sitio_pdf(suffix: str, giro: str) -> bytes:
                    f"{mejor['score'] * 100:.0f}/100")
         pdf_vineta(pdf, f"Demanda: {int(mejor['demanda']):,} empleos DENUE "
                    "en el entorno (~450 m, clientela cautiva)")
-        pdf_vineta(pdf, f"Competidores del giro en ~300 m: "
-                   f"{int(mejor['competidores'])}")
+        pdf_vineta(pdf, "Distancia a la competencia: "
+               + _txt_comp_cercano(mejor.get("comp_cercano_m")))
         n_comp_ciudad = int(top["competidores"].sum())
         frase_can = ""
         if can is not None and not can.empty:
@@ -3380,20 +3408,24 @@ def informe_sitio_pdf(suffix: str, giro: str) -> bytes:
             "#": range(1, len(top) + 1),
             "Calle": top["calle"],
             "Empleos": top["demanda"].astype(int).map("{:,}".format),
-            "Comp.": top["competidores"].astype(int),
+            "Comp. cercana": [_txt_comp_cercano(m).replace(
+                "competencia más cercana a ", "").replace(
+                "sin competencia del giro en la ciudad", "sin comp.")
+                for m in top.get("comp_cercano_m", [np.nan] * len(top))],
             "Score": (top["score"] * 100).round(0).astype(int),
-            "Por qué": [f"{int(d):,} empleos alrededor · {int(c)} "
-                        f"competidores en ~300 m"
-                        for d, c in zip(top["demanda"],
-                                        top["competidores"])]})
+            "Por qué": [f"{int(d):,} empleos alrededor · {_txt_comp_cercano(m)}"
+                        for d, m in zip(top["demanda"],
+                                        top.get("comp_cercano_m",
+                                                [np.nan] * len(top)))]})
         pdf_tabla(pdf, tabla)
         pdf_h2(pdf, "Lectura del número 1")
         pdf_parrafo(pdf, f"{mejor['calle']} encabeza el ranking porque "
-                    f"combina la mayor demanda desatendida: "
-                    f"{int(mejor['demanda']):,} empleos formales alrededor "
-                    f"con apenas {int(mejor['competidores'])} competidores "
-                    f"de {giro} detectados por nombre comercial. El empleo "
-                    "cercano es clientela cautiva de lunes a viernes.")
+                    f"combina la mayor demanda desatendida "
+                    f"({int(mejor['demanda']):,} empleos formales alrededor) "
+                    f"con la {_txt_comp_cercano(mejor.get('comp_cercano_m'))} "
+                    f"para el giro {giro} (detección por nombre comercial). "
+                    "El empleo cercano es clientela cautiva de lunes a "
+                    "viernes.")
         if len(top) >= 3:
             alt = top.iloc[1:3]
             pdf_h2(pdf, "Alternativas 2 y 3")
@@ -3659,10 +3691,10 @@ def tab_huecos(suffix: str = "azcapotzalco") -> None:
                 f"{top['score'].iloc[0] * 100:.0f}/100.</div>",
                 unsafe_allow_html=True)
             top = top.copy()
-            top["porque"] = [f"{int(d):,} empleos alrededor · {int(c)} "
-                             f"competidores en ~300 m"
-                             for d, c in zip(top["demanda"],
-                                             top["competidores"])]
+            top["porque"] = [f"{int(d):,} empleos alrededor · {_txt_comp_cercano(m)}"
+                             for d, m in zip(top["demanda"],
+                                             top.get("comp_cercano_m",
+                                                     [float("nan")] * len(top)))]
             c1, c2 = st.columns([3, 2])
             with c1:
                 st.dataframe(
