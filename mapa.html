@@ -685,7 +685,7 @@ function listingToProp(L,c,nom){
   return {...ty,zona:nom,nom:(L.titulo?(L.titulo.slice(0,42)):`${ty.t} · ${L.m2} m²`),m2:L.m2,pm2:L.pm2,price:L.precio_mxn,
     g:(c.g!=null?c.g:null),yield:(c.yield!=null?c.yield:null),dom:(L.dom!=null?L.dom:(c.dom!=null?c.dom:null)),opp:c.opp,ciclo:c.ciclo,
     lat:L.lat,lng:L.lng,fuente:L.fuente,url:L.url,
-    vs:(L.vs!=null?L.vs:null),veredicto:L.veredicto||null,titulo:L.titulo,imagen:L.imagen,moneda:L.moneda,
+    vs:(L.vs!=null?L.vs:null),mcol:!!L.mcol,veredicto:L.veredicto||null,titulo:L.titulo,imagen:L.imagen,moneda:L.moneda,
     dias:(L.dias!=null?L.dias:null),diasCens:!!L.diasCens,rec:(L.rec!=null?L.rec:null)};
 }
 /* Línea de seguimiento (memoria del mercado) para el panel de una propiedad:
@@ -1567,7 +1567,7 @@ function renderRes(p){
     <div class="sel-sub">${fmt(p.pm2)} /m² · ${p.m2} m²</div>
     ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
     <span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>
-    ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#6fa287':p.veredicto==='sobreprecio'?'#c07a66':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de la zona · est.</span></div>`:''}
+    ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#6fa287':p.veredicto==='sobreprecio'?'#c07a66':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% ${p.mcol?'vs mediana de su colonia':'vs mediana de la zona'} · est.</span></div>`:''}
     ${segHTML(p)}
     ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#6fa287">ver ficha original</a>`:''}</div>`:''}
     ${rent!=null?`<div class="rent-box"><div class="rent-l">Renta mensual estimada</div><div class="rent-v">${fmt(rent)}</div><div class="rent-s">${fmt(Math.round(rent/p.m2))}/m² · yield ${p.yield}%</div></div>`:''}
@@ -1602,7 +1602,7 @@ function renderCom(p){
     <div class="sel-sub">${fmt(p.pm2)} /m² · ${p.m2} m²</div>
     ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
     <span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>
-    ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#6fa287':p.veredicto==='sobreprecio'?'#c07a66':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% vs mediana de la zona · est.</span></div>`:''}
+    ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#6fa287':p.veredicto==='sobreprecio'?'#c07a66':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% ${p.mcol?'vs mediana de su colonia':'vs mediana de la zona'} · est.</span></div>`:''}
     ${segHTML(p)}
     ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#6fa287">ver ficha original</a>`:''}</div>`:''}
     ${hasG?`<div class="ptitle" style="margin-top:16px">📈 Pronóstico precio/m² (IC 90%)</div>
@@ -1941,16 +1941,31 @@ async function loadZoneListings(zone){
     const medDe=a=>{const s=a.sort((x,y)=>x-y);return s.length>=4?s[Math.floor(s.length/2)]:null;};
     const medC=medDe(norm.filter(x=>!x._ter&&x._pm>5000&&x._pm<150000).map(x=>x._pm));
     const medT=medDe(norm.filter(x=>x._ter&&x._pm>300&&x._pm<120000).map(x=>x._pm));
-    const L=norm.map(x=>{
-        const med=x._ter?medT:medC;
+    // Mediana por COLONIA (≥4 comparables construidos): en ciudades heterogéneas
+    // (CDMX) comparar contra la mediana de TODA la ciudad marcaba a la periferia
+    // entera como "oportunidad" y el veredicto perdía sentido.
+    const colAgg={};
+    norm.forEach(x=>{ if(!x._ter&&x._pm>5000&&x._pm<150000&&x.colonia) (colAgg[x.colonia]=colAgg[x.colonia]||[]).push(x._pm); });
+    const colMed={};
+    Object.keys(colAgg).forEach(c=>{ const s=colAgg[c].sort((a,b)=>a-b); if(s.length>=4) colMed[c]=s[Math.floor(s.length/2)]; });
+    const L0=norm.map(x=>{
+        const mcol=(!x._ter&&x.colonia&&colMed[x.colonia])?colMed[x.colonia]:null;
+        const med=mcol||(x._ter?medT:medC);
         const vs=(med&&x._pm)?Math.round((x._pm/med-1)*100):null;
         return {id:x.id,tipo:x.tipo,ter:x._ter,m2:x._m2,pm2:x._pm,precio_mxn:x._pr,colonia:x.colonia||null,
           lat:x.lat,lng:x.lng,url:x.url,fuente:'Century 21',titulo:x.titulo,imagen:x.imagen,municipio:x.municipio,moneda:x.moneda,
-          vs, veredicto: vs==null?null:(vs<=-12?'oportunidad':vs>=12?'sobreprecio':'justo'),
+          vs, mcol:!!mcol, veredicto: vs==null?null:(vs<=-12?'oportunidad':vs>=12?'sobreprecio':'justo'),
           ...segInfo(seg,x.id)};
-      })
-      .sort((a,b)=>(a.vs??999)-(b.vs??999))  // oportunidades primero
-      .slice(0,140);
+      });
+    // Muestreo ESPACIAL del cupo de pines (round-robin por celdas de ~2.5 km):
+    // antes el cupo de 140 se lo comían las más baratas de la periferia y el
+    // centro de CDMX (Polanco, Azcapotzalco, Iztapalapa) quedaba VACÍO.
+    const celdas={};
+    L0.forEach(x=>{ const k=Math.round(x.lat*45)+'_'+Math.round(x.lng*45); (celdas[k]=celdas[k]||[]).push(x); });
+    const cs=Object.values(celdas); cs.forEach(b=>b.sort((a,c)=>(a.vs??999)-(c.vs??999)));
+    const L=[]; let hubo=true;
+    while(L.length<180&&hubo){ hubo=false; for(const b of cs){ if(b.length){ L.push(b.shift()); hubo=true; if(L.length>=180) break; } } }
+    L.sort((a,b)=>(a.vs??999)-(b.vs??999));  // oportunidades primero en la lista
     REAL_LIST[zone]=L; return L;
   }catch(e){ REAL_LIST[zone]=[]; return []; }
 }
