@@ -1440,7 +1440,7 @@ function cercaDeMi(){
       for(const z of zonas){
         if(z.d>60) continue;   // zonas demasiado lejos no aportan
         const Ls=await loadZoneListings(z.n);
-        props.push(...Ls.map(x=>listingToProp(x,{nom:z.n},z.n)));
+        props.push(...Ls.map(x=>listingToProp(x,(CITIES[z.n]?Object.assign({nom:z.n},CITIES[z.n]):{nom:z.n}),z.n)));
       }
       props.forEach(p=>{p._dkm=_havKm2(lat,lng,p.lat,p.lng);});
       let R=5, cerca=props.filter(p=>p._dkm<=R);
@@ -1566,7 +1566,7 @@ function renderRes(p){
     <div class="sel-price">${fmtM(p.price)}</div>
     <div class="sel-sub">${fmt(p.pm2)} /m² · ${p.m2} m²</div>
     ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
-    <span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>
+    ${p.opp?`<span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>`:''}
     ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#6fa287':p.veredicto==='sobreprecio'?'#c07a66':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% ${p.mcol?'vs mediana de su colonia':'vs mediana de la zona'} · est.</span></div>`:''}
     ${segHTML(p)}
     ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#6fa287">ver ficha original</a>`:''}</div>`:''}
@@ -1601,7 +1601,7 @@ function renderCom(p){
     <div class="sel-price">${fmtM(p.price)}</div>
     <div class="sel-sub">${fmt(p.pm2)} /m² · ${p.m2} m²</div>
     ${p.imagen?`<img src="${p.imagen}" alt="" loading="lazy" style="width:100%;height:150px;object-fit:cover;border-radius:10px;margin:10px 0;display:block">`:''}
-    <span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>
+    ${p.opp?`<span class="prop-badge b-${p.opp.toLowerCase()}">${p.opp} oportunidad</span>`:''}
     ${p.vs!=null?`<div style="margin-top:8px;font-size:12.5px"><b style="color:${p.veredicto==='oportunidad'?'#6fa287':p.veredicto==='sobreprecio'?'#c07a66':'#F5C277'}">● ${p.veredicto==='oportunidad'?'Precio de oportunidad':p.veredicto==='sobreprecio'?'Sobreprecio':'Precio justo'}</b> <span style="color:#8a9a9e">${p.vs>0?'+':''}${p.vs}% ${p.mcol?'vs mediana de su colonia':'vs mediana de la zona'} · est.</span></div>`:''}
     ${segHTML(p)}
     ${p.fuente?`<div class="model-tag">📋 Listado: <b>${p.fuente}</b>${p.url?` · <a href="${p.url}" target="_blank" style="color:#6fa287">ver ficha original</a>`:''}</div>`:''}
