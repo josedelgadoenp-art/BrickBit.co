@@ -1386,6 +1386,12 @@ fetch('data/riesgos.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j
    Si el archivo no existe todavía, el bloque no se muestra. */
 let AGUA=null;
 fetch('data/agua.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{AGUA=j;}).catch(()=>{});
+/* ==== Capa de obra pública (CompraNet, SHCP) ====
+   data/obras.json lo genera tools/obras_local.py con el CSV anual de contratos
+   de CompraNet (el gobierno bloquea IPs de nube, corre local). Si el archivo
+   no existe todavía, el bloque no se muestra. */
+let OBRAS=null;
+fetch('data/obras.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{OBRAS=j;}).catch(()=>{});
 /* Métricas REALES por zona (_metricas, generadas en cada corrida del
    inventario): mediana de venta con su n — la cifra dura del panel. */
 let METR={};
@@ -1415,6 +1421,21 @@ function riesgoHTML(name){
   return `<div class="ptitle" style="margin-top:18px">🛡️ Seguridad · ${z.entidad} (estatal)</div>
     <div class="ind-grid">${celdas}</div>
     <div class="notice" style="margin-top:8px;font-size:11px">Incidencia oficial del <b>SESNSP</b> (carpetas de investigación, últimos 12 meses${RIESGOS.meta&&RIESGOS.meta.corte?` al corte ${RIESGOS.meta.corte}`:''}), tasa por 100 mil hab. (Censo 2020). <b>Es dato estatal</b>: el riesgo varía mucho por colonia; úsalo como contexto, no como medición del punto. P0 = la entidad más segura del país.</div>`;
+}
+function obrasHTML(name){
+  const z=OBRAS&&OBRAS.zonas&&OBRAS.zonas[name]; if(!z) return '';
+  const mdp=v=>{const m=v/1e6;return m<100?m.toFixed(1):Math.round(m).toLocaleString('es-MX');};
+  const top=(z.top||[]).slice(0,3).map(t=>{
+    const tt=(t.titulo||'').length>60?(t.titulo||'').slice(0,60)+'…':(t.titulo||'');
+    return `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:11px;margin-top:5px"><span style="color:#f5ede3;opacity:.8;min-width:0">${escapeHtml(tt)}</span><span style="color:#b7c489;white-space:nowrap;font-family:'Space Mono',monospace">${mdp(t.monto)} mdp</span></div>`;
+  }).join('');
+  return `<div class="ptitle" style="margin-top:18px">🏗️ Obra pública · ${escapeHtml(z.entidad)} (CompraNet)</div>
+    <div class="ind-grid">
+      <div class="ind-c"><div class="ind-l">Contratos de obra</div><div class="ind-v" style="color:#6fa287">${(+z.n).toLocaleString('es-MX')}</div></div>
+      <div class="ind-c"><div class="ind-l">Monto total</div><div class="ind-v" style="color:#b7c489">${mdp(z.monto_total)} mdp</div><div style="font-size:9.5px;color:#8a9a9e">millones de pesos</div></div>
+    </div>
+    ${top}
+    <div class="notice" style="margin-top:8px;font-size:11px">Contratos de obra pública en <b>CompraNet (SHCP)</b>${OBRAS.meta&&OBRAS.meta.corte?`, corte ${OBRAS.meta.corte}`:''}. Es <b>señal de inversión pública federal por ENTIDAD</b>; no incluye toda la obra estatal/municipal (la contratada fuera de CompraNet no aparece).</div>`;
 }
 /* ==== CERCA DE MÍ: el inventario real alrededor de tu ubicación ====
    Mejora sobre el "homes near me" gringo: no solo dice QUÉ hay cerca, dice
@@ -1497,6 +1518,7 @@ function panel(name,d,tipo){
     </div>
     ${real?riesgoHTML(name):''}
     ${real?aguaHTML(name):''}
+    ${real?obrasHTML(name):''}
     <div class="ptitle" style="margin-top:18px">🤖 Análisis de desarrollo (IA)</div>
     <button class="ia-btn" id="ia-btn" onclick="runIA()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4 12H1M23 12h-3M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2"/></svg>Proyecto óptimo para esta zona</button>
     ${(CITIES[name]&&window.bbConfigured)?`<button class="ia-btn" id="fav-btn" data-zona="${escapeHtml(name)}" onclick="toggleFav(this)" style="background:#0C1218;border:0.5px solid rgba(245,237,227,.18);color:#f5ede3;margin-top:8px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto;vertical-align:-2px"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>Guardar zona en favoritos</button>`:''}
