@@ -11,18 +11,21 @@
 # Actions → "New repository secret" → Name: INGEST_SECRET, Value: tu clave
 # de ingesta del Worker.
 #
-# Corre solo el día 1 de cada mes a las 09:00 UTC (~03:00 CDMX) y también se
-# puede lanzar a mano: pestaña Actions → "Inventario C21 mensual" → Run workflow.
+# Corre TODOS LOS DÍAS a las 09:00 UTC (~03:00 CDMX, hora valle del portal) y
+# también se puede lanzar a mano: Actions → "Inventario C21 diario" → Run workflow.
+# Con la corrida diaria, los "días publicada" y los recortes de precio del
+# seguimiento tienen precisión de UN DÍA (antes, de un mes). El Índice BrickBit
+# sigue siendo mensual: la corrida del día actualiza el mes en curso.
 #
 # Si Century 21 llegara a bloquear las IPs de GitHub (como hace el gobierno con
 # INEGI/SESNSP), este job fallará: en ese caso el respaldo es programarlo en tu
 # PC con el Programador de tareas de Windows (ver CLAUDE.md / instrucciones).
 # =============================================================================
-name: Inventario C21 mensual
+name: Inventario C21 diario
 
 on:
   schedule:
-    - cron: '0 9 1 * *'
+    - cron: '0 9 * * *'
   workflow_dispatch: {}
 
 jobs:
