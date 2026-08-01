@@ -1,8 +1,8 @@
-# BrickBit · Morfogénesis Urbana — tema oficial brickbit.co
-# Tierra oscura + arcilla verde + lima eléctrico + crema.
+# BrickBit · Morfogénesis Urbana — tema oficial brickbit.co (paleta v2 mate)
+# Tierra oscura + bosque + oliva mate + crema.
 [theme]
 base = "dark"
-primaryColor = "#CDF25A"
+primaryColor = "#b7c489"
 backgroundColor = "#100C0A"
 secondaryBackgroundColor = "#1D1713"
 textColor = "#F5EDE3"

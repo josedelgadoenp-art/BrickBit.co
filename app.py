@@ -37,8 +37,11 @@ import base64
 import json
 import math
 import os
+import re
 import time
+import unicodedata
 import urllib.request
+from urllib.parse import quote
 
 import numpy as np
 import pandas as pd
@@ -58,10 +61,10 @@ SUPERFICIE = "#1d1713"      # --surface     tarjetas / paneles
 CREMA = "#f5ede3"           # --cream       texto principal
 TEXTO_SUAVE = "#a89a8c"     # --muted-txt   texto secundario
 ARCILLA_PROF = "#0c4a30"    # --clay-deep
-ARCILLA = "#1a7d50"         # --clay        verde marca
-ARCILLA_SUAVE = "#57c389"   # --clay-soft
-LIMA = "#cdf25a"            # --lime        acento eléctrico
-LIMA_PROF = "#a9d23f"       # --lime-deep
+ARCILLA = "#24664a"         # --clay        bosque mate
+ARCILLA_SUAVE = "#6fa287"   # --clay-soft   salvia mate
+LIMA = "#b7c489"            # --lime        oliva mate (acento)
+LIMA_PROF = "#9aac6b"       # --lime-deep   oliva profundo mate
 
 FUENTES_URL = ("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700"
                "&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700"
@@ -82,26 +85,37 @@ URL_MUNICIPIOS = ("https://raw.githubusercontent.com/strotgen/mexico-leaflet/"
 
 # Estilos de basemap (Carto, sin token). "Voyager" ≈ look Google Maps.
 ESTILOS_MAPA = {
-    "🌱 Tierra BrickBit (oscuro)": "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",
-    "🗺 Voyager (estilo Google Maps)": "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
-    "☀️ Positron claro": "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+    "Tierra BrickBit (oscuro)": "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",
+    "Voyager (estilo Google Maps)": "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
+    "Positron claro": "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
 }
+
+# Las cinco escalas del organismo: clave interna → etiqueta del selector.
+# La LÓGICA compara siempre la clave (esc == "micro"…), nunca la etiqueta.
+ESCALAS = {
+    "muni": "República · municipios",
+    "edos": "República · estados",
+    "cp": "CDMX · códigos postales",
+    "calle": "Calle · establecimiento",
+    "micro": "Microtejido (CDMX)",
+}
+ESCALA_POR_LABEL = {v: k for k, v in ESCALAS.items()}
 
 # Rampa "vegetal" BrickBit: arcilla profunda → arcilla → arcilla suave → lima → crema
 _STOPS_T = np.array([0.00, 0.30, 0.55, 0.80, 1.00])
-_STOPS_R = np.array([12.0, 26.0, 87.0, 205.0, 245.0])
-_STOPS_G = np.array([74.0, 125.0, 195.0, 242.0, 237.0])
-_STOPS_B = np.array([48.0, 80.0, 137.0, 90.0, 227.0])
+_STOPS_R = np.array([12.0, 36.0, 111.0, 183.0, 245.0])
+_STOPS_G = np.array([74.0, 102.0, 162.0, 196.0, 237.0])
+_STOPS_B = np.array([48.0, 74.0, 135.0, 137.0, 227.0])
 
 # Colorway Plotly de marca
 NEON = [LIMA, ARCILLA_SUAVE, CREMA, LIMA_PROF, ARCILLA,
-        "#7ce0a8", "#e8ffb0", "#3da06c"]
+        "#55997e", "#c07a66", "#cf928b"]
 ESCALA_PLOTLY = [[0.0, ARCILLA_PROF], [0.30, ARCILLA],
                  [0.55, ARCILLA_SUAVE], [0.80, LIMA], [1.0, CREMA]]
 
 # Colores RGBA de capas (sistema circulatorio en verdes/lima de marca)
-RGB_ARCILLA_SUAVE = [87, 195, 137]
-RGB_LIMA = [205, 242, 90]
+RGB_ARCILLA_SUAVE = [111, 162, 135]
+RGB_LIMA = [183, 196, 137]
 RGB_CREMA = [245, 237, 227]
 
 # Claves INEGI de entidad federativa (state_code del GeoJSON municipal)
@@ -238,7 +252,7 @@ def score_brickbit(v_t: np.ndarray, v0: np.ndarray, potencial: np.ndarray,
     """
     Score BrickBit 0–10 por célula: plusvalía proyectada (40%) + potencial
     morfogenético (25%) + velocidad de contagio (20%) + accesibilidad de
-    entrada (15%). Cada punto es auditable en '🔎 Origen del crecimiento'.
+    entrada (15%). Cada punto es auditable en 'Origen del crecimiento'.
     """
     acum = v_t / v0 - 1
     s = (0.40 * norm01(acum) + 0.25 * np.asarray(potencial, dtype=float)
@@ -320,15 +334,15 @@ PIB_PC = {  # PIB per cápita estatal aprox, miles de MXN/año
 
 MEGAPROYECTOS = {
     "— Sin megaproyecto —": None,
-    "🚄 Tren Maya + Riviera (sureste)": dict(
+    "Tren Maya + Riviera (sureste)": dict(
         estados=["Yucatán", "Quintana Roo", "Campeche", "Tabasco", "Chiapas"],
         año=1, fuerza=0.50),
-    "🏭 Nearshoring · corredor norte": dict(
+    "Nearshoring · corredor norte": dict(
         estados=["Nuevo León", "Coahuila", "Chihuahua", "Tamaulipas",
                  "Baja California", "Sonora"], año=2, fuerza=0.45),
-    "🌊 Corredor Interoceánico (Istmo)": dict(
+    "Corredor Interoceánico (Istmo)": dict(
         estados=["Oaxaca", "Veracruz", "Tabasco"], año=2, fuerza=0.55),
-    "✈️ Polo aeroespacial del Bajío": dict(
+    "Polo aeroespacial del Bajío": dict(
         estados=["Querétaro", "Guanajuato", "Aguascalientes",
                  "San Luis Potosí", "Jalisco"], año=3, fuerza=0.40),
 }
@@ -548,6 +562,93 @@ def datos_municipales() -> pd.DataFrame:
         df["tasa_renovacion"] = renovacion.round(4)
         df["estancado"] = urbano & (renovacion <= umbral)
     return df
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 4.5 · MERCADO VIVO C21 — medianas REALES de lista por zona (worker BrickBit)
+#       Capa de VERDAD aterrizada: enriquece tooltips, nunca recolorea el mapa.
+# ══════════════════════════════════════════════════════════════════════════════
+
+URL_MERCADO_VIVO = ("https://brickbit-api.jose-delgado-enp.workers.dev"
+                    "/api/listados?zona=_metricas")
+
+
+def slugificar(texto: str) -> str:
+    """
+    Slug idéntico al del worker BrickBit (c21-subir.mjs):
+    NFD → sin diacríticos → lower → no-alfanumérico a '-' → strip '-'.
+    """
+    t = unicodedata.normalize("NFD", str(texto))
+    t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def cargar_mercado_vivo() -> dict:
+    """
+    Medianas reales de PRECIOS DE LISTA Century 21 por zona, refrescadas a
+    diario por el worker BrickBit → {slug: registro}. Cualquier fallo (sin
+    red, timeout, JSON inesperado) devuelve {} en silencio: la app NUNCA
+    debe romperse por esta capa.
+    """
+    try:
+        import requests
+        r = requests.get(URL_MERCADO_VIVO, timeout=8)
+        r.raise_for_status()
+        datos = r.json()
+        if isinstance(datos, dict):    # tolerar envolturas {"items": [...]}
+            datos = (datos.get("items") or datos.get("listados")
+                     or datos.get("zonas") or [])
+        return {str(d["slug"]): d for d in datos
+                if isinstance(d, dict) and d.get("slug")}
+    except Exception:                                      # noqa: BLE001
+        return {}
+
+
+def _c21_registro(nombre: str, mercado: dict) -> dict | None:
+    """
+    Empata un nombre BrickBit contra el inventario C21 por slug. Prueba el
+    nombre completo ('municipio-estado', separador '·' o ',') y luego solo
+    la primera parte ('municipio' / ciudad ancla).
+    """
+    if not mercado:
+        return None
+    candidatos = [slugificar(nombre)]
+    candidatos += [slugificar(p) for p in str(nombre).split("·") if p.strip()]
+    for s in candidatos:
+        if s and s in mercado:
+            return mercado[s]
+    return None
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def c21_lineas_municipales() -> tuple[list[str], int]:
+    """
+    Línea de tooltip 'Mercado vivo C21' por municipio (o '' si no hay dato)
+    + cuántos municipios empatan. Empate por slug de 'Municipio, Estado' y,
+    como respaldo, solo 'Municipio' (las 32 ciudades ancla usan la ciudad).
+    """
+    mercado = cargar_mercado_vivo()
+    df = datos_municipales()
+    lineas: list[str] = []
+    n = 0
+    for muni, edo in zip(df["municipio"], df["estado"]):
+        reg = None
+        if mercado:
+            reg = (mercado.get(slugificar(f"{muni}, {edo}"))
+                   or mercado.get(slugificar(str(muni))))
+        pm2v = (reg or {}).get("pm2v")
+        if reg and pm2v:
+            nv = reg.get("nV") or 0
+            cuenta = f"{int(nv):,} ventas · lista C21" if nv else "lista C21"
+            lineas.append(
+                f"<br/><span style='color:{ARCILLA_SUAVE}'>Mercado vivo "
+                f"C21: <b>${float(pm2v):,.0f}/m²</b> ({cuenta}) · dato "
+                "diario</span>")
+            n += 1
+        else:
+            lineas.append("")
+    return lineas, n
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -774,7 +875,7 @@ def _capas_circulatorias(flujos: pd.DataFrame, fase: float,
         pdk.Layer(
             "TripsLayer", data=construir_trayectos(flujos),
             get_path="camino", get_timestamps="marcas",
-            get_color=[232, 255, 176], width_min_pixels=3,
+            get_color=[245, 237, 227], width_min_pixels=3,
             trail_length=0.30, current_time=(fase * 2.0) % 2.0, opacity=0.9,
         ),
         pdk.Layer(
@@ -873,11 +974,12 @@ def preparar_municipios_render(valores: np.ndarray, año: float,
         "extra_txt": [
             (f"🏪 {int(n):,} negocios · {int(e):,} empleos (DENUE) · "
              f"resiliencia {r:.2f}" if n > 0 else
-             f"ZM más cercana: {z} ({d:.0f} km) · potencial {q:.2f}")
-            for n, e, r, z, d, q in zip(
+             f"ZM más cercana: {z} ({d:.0f} km) · potencial {q:.2f}") + c21
+            for n, e, r, z, d, q, c21 in zip(
                 df["n_estab"], df["empleo"], df["resiliencia"],
                 df["zm_cercana"], df["dist_zm_km"],
-                df["potencial_crecimiento"])],
+                df["potencial_crecimiento"],
+                c21_lineas_municipales()[0])],
     })
     return contornos_municipales().join(base, on="idx_mun")
 
@@ -989,13 +1091,13 @@ BARRIOS = [
 
 CATALIZADORES = {
     "— Sin catalizador —": None,
-    "🚇 Nueva línea de Metro (norte)": dict(lng=-99.192, lat=19.497, año=2, fuerza=0.85, radio=0.011),
-    "🏬 Centro comercial (poniente)": dict(lng=-99.203, lat=19.478, año=3, fuerza=0.70, radio=0.009),
-    "🌳 Parque lineal Vallejo (centro)": dict(lng=-99.184, lat=19.486, año=1, fuerza=0.55, radio=0.013),
+    "Nueva línea de Metro (norte)": dict(lng=-99.192, lat=19.497, año=2, fuerza=0.85, radio=0.011),
+    "Centro comercial (poniente)": dict(lng=-99.203, lat=19.478, año=3, fuerza=0.70, radio=0.009),
+    "Parque lineal Vallejo (centro)": dict(lng=-99.184, lat=19.486, año=1, fuerza=0.55, radio=0.013),
     # catalizadores a escala ZMVM (alcance metropolitano del microtejido)
-    "✈️ AIFA + Tren Suburbano (norte ZMVM)": dict(lng=-99.02, lat=19.69, año=1, fuerza=0.90, radio=0.055),
-    "🚌 Mexibús Ecatepec (oriente ZMVM)": dict(lng=-99.05, lat=19.60, año=2, fuerza=0.65, radio=0.040),
-    "🏙 Corredor Interlomas (poniente ZMVM)": dict(lng=-99.28, lat=19.40, año=2, fuerza=0.70, radio=0.035),
+    "AIFA + Tren Suburbano (norte ZMVM)": dict(lng=-99.02, lat=19.69, año=1, fuerza=0.90, radio=0.055),
+    "Mexibús Ecatepec (oriente ZMVM)": dict(lng=-99.05, lat=19.60, año=2, fuerza=0.65, radio=0.040),
+    "Corredor Interlomas (poniente ZMVM)": dict(lng=-99.28, lat=19.40, año=2, fuerza=0.70, radio=0.035),
 }
 
 # ── semillas del tejido ZMVM: (nombre, lng, lat, peso_precio $/m², sigma) ──
@@ -1244,9 +1346,9 @@ EMERGENTES_CDMX = [  # (lng, lat, peso 0-1, sigma) — dónde muta primero
 
 DETONANTES_CDMX = {
     "— Sin detonante —": None,
-    "🚠 Cablebús + Metro norte (Vallejo)": dict(lng=-99.186, lat=19.489, año=1, fuerza=0.55, radio=0.030),
-    "🏗 Corredor Reforma Norte": dict(lng=-99.155, lat=19.445, año=2, fuerza=0.50, radio=0.025),
-    "🌳 Regeneración oriente (Iztapalapa)": dict(lng=-99.065, lat=19.355, año=1, fuerza=0.60, radio=0.040),
+    "Cablebús + Metro norte (Vallejo)": dict(lng=-99.186, lat=19.489, año=1, fuerza=0.55, radio=0.030),
+    "Corredor Reforma Norte": dict(lng=-99.155, lat=19.445, año=2, fuerza=0.50, radio=0.025),
+    "Regeneración oriente (Iztapalapa)": dict(lng=-99.065, lat=19.355, año=1, fuerza=0.60, radio=0.040),
 }
 
 
@@ -1466,10 +1568,10 @@ RUTA_SISMO_TPL = os.path.join(_DIR, "data", "sismografo_{s}.json")
 RUTA_VALID_TPL = os.path.join(_DIR, "data", "validacion_{s}.json")
 
 SECTORES = {
-    "Comercio": [205, 242, 90],       # lima
-    "Servicios": [87, 195, 137],      # arcilla suave
+    "Comercio": [183, 196, 137],      # oliva
+    "Servicios": [111, 162, 135],     # salvia
     "Industria": [245, 237, 227],     # crema
-    "Alimentos": [124, 224, 168],     # verde medio
+    "Alimentos": [85, 153, 126],      # salvia profunda
 }
 
 # Anclas de reserva (demo Azcapotzalco) si un municipio no trae datos reales
@@ -2013,10 +2115,10 @@ def tab_ranking_municipios(valores: np.ndarray, año: float,
     cols["Dist. ZM (km)"] = df["dist_zm_km"]
     tabla = pd.DataFrame(cols).nlargest(40, "Plusvalía acumulada")
     st.caption(
-        ("🏆 Top 40 de 2,436 municipios — precio y potencial anclados en la "
+        ("Top 40 de 2,436 municipios — precio y potencial anclados en la "
          "**vitalidad económica REAL del DENUE** (negocios y empleo por "
          "municipio)." if hay_real else
-         "🏆 Top 40 de 2,436 municipios por plusvalía acumulada — "
+         "Top 40 de 2,436 municipios por plusvalía acumulada — "
          "el anillo periurbano de las ZM domina la mutación."))
     _tabla_ranking(tabla, año)
 
@@ -2033,7 +2135,7 @@ def _tabla_ranking(tabla: pd.DataFrame, año: float) -> None:
                 min_value=0, max_value=1),
             "Resiliencia": st.column_config.ProgressColumn(
                 min_value=0, max_value=1),
-            "Score BrickBit": st.column_config.NumberColumn(format="%.1f ⚡"),
+            "Score BrickBit": st.column_config.NumberColumn(format="%.1f"),
             "Negocios (DENUE)": st.column_config.NumberColumn(format="%d"),
             "Empleo (DENUE)": st.column_config.NumberColumn(format="%d"),
             "Precio hoy (m²)": st.column_config.NumberColumn(format="$%d"),
@@ -2056,7 +2158,7 @@ def tab_trayectorias(valores: np.ndarray, año: float,
         fig.add_trace(go.Scatter(
             x=xs + xs[::-1],
             y=list(banda[2, :, i0]) + list(banda[0, :, i0])[::-1],
-            fill="toself", fillcolor="rgba(205,242,90,0.13)",
+            fill="toself", fillcolor="rgba(183,196,137,0.13)",
             line=dict(width=0), hoverinfo="skip",
             name=f"P10–P90 · {str(nombres.iloc[i0])[:22]}"))
     for c, i in zip(NEON, top):
@@ -2170,16 +2272,16 @@ def tab_origen(nombres: pd.Series, args_sar: dict, idx_defecto: int,
     v0 = float(np.asarray(args_sar["v0"])[idx])
 
     cols = st.columns(4 if banda is not None else 3)
-    cols[0].metric("📈 Crecimiento total a 10 años",
+    cols[0].metric("Crecimiento total a 10 años",
                    f"+${total:,.0f} /m²", f"+{total / v0 * 100:.0f}% sobre hoy")
-    cols[1].metric("🌱 Crecimiento propio", f"{total_p / total * 100:.0f}%",
+    cols[1].metric("Crecimiento propio", f"{total_p / total * 100:.0f}%",
                    "plusvalía/vitalidad intrínseca")
-    cols[2].metric("🧬 Contagio vecinal", f"{total_c / total * 100:.0f}%",
+    cols[2].metric("Contagio vecinal", f"{total_c / total * 100:.0f}%",
                    f"desde {len(vecinos)} vecinos directos")
     if banda is not None:
         p10 = (banda[0, -1, idx] / v0 - 1) * 100
         p90 = (banda[2, -1, idx] / v0 - 1) * 100
-        cols[3].metric("🎲 Rango de confianza (10a)",
+        cols[3].metric("Rango de confianza (10a)",
                        f"+{p10:.0f}% a +{p90:.0f}%",
                        "P10–P90 · Monte Carlo n=24")
 
@@ -2222,7 +2324,7 @@ def tab_origen(nombres: pd.Series, args_sar: dict, idx_defecto: int,
             unsafe_allow_html=True)
 
     # ── Tesis de inversión narrada (el organismo habla) ───────────────────────
-    with st.expander("🧠 Tesis de inversión narrada"):
+    with st.expander("Tesis de inversión narrada"):
         v_fin = v0 + total
         fase_txt = ("mutación temprana — la ventana de entrada está abierta"
                     if total_c / total > 0.55 else
@@ -2277,9 +2379,29 @@ geográfica real; vitalidad económica del DENUE/INEGI. Las proyecciones son
 simulaciones calibradas, no garantía de rendimiento. Este documento no
 constituye asesoría de inversión en términos de la regulación aplicable.*
 """
-    st.download_button("⬇ Descargar dossier (Markdown)", dossier,
+    st.download_button("Descargar dossier (Markdown)", dossier,
                        file_name=f"dossier_brickbit_{sel[:30].replace(' ', '_')}.md",
                        mime="text/markdown")
+
+    # ── 🔗 Deep links al resto del ecosistema BrickBit ────────────────────────
+    # Si la selección empata (por slug) con el inventario vivo C21, saltamos
+    # directo a sus herramientas con la zona precargada; si no, al mapa
+    # nacional. El nombre viaja TAL CUAL (urlencoded).
+    if _c21_registro(sel, cargar_mercado_vivo()) is not None:
+        col_l1, col_l2 = st.columns(2)
+        col_l1.link_button(
+            "Analizar como inversión →",
+            f"https://brickbit.co/analizador.html?zona={quote(sel)}",
+            width="stretch")
+        col_l2.link_button(
+            "Ver propiedades reales →",
+            f"https://brickbit.co/mapa.html?zona={quote(sel)}&modo=inmuebles",
+            width="stretch")
+    else:
+        st.link_button("Explorar el inventario nacional →",
+                       "https://brickbit.co/mapa.html", width="stretch")
+    st.caption("Continúa el análisis con datos vivos en las herramientas "
+               "BrickBit.")
 
 
 def _banda(args: dict, n: int = 24) -> np.ndarray:
@@ -2327,13 +2449,13 @@ def tab_estancamiento(valores: np.ndarray, año: float) -> None:
     est = df[df["estancado"]].copy()
     est = est.sort_values("tasa_renovacion")
     c1, c2, c3 = st.columns(3)
-    c1.metric("🏚 Municipios en estancamiento", f"{len(est)}",
+    c1.metric("Municipios en estancamiento", f"{len(est)}",
               "urbanos, renovación en percentil 15")
-    c2.metric("🧊 Renovación mediana (estancados)",
+    c2.metric("Renovación mediana (estancados)",
               f"{est['tasa_renovacion'].median() * 100:.1f}%",
               f"vs {df.loc[df['n_estab'] >= 300, 'tasa_renovacion'].median() * 100:.1f}% urbano nacional")
     peor = est.iloc[0]
-    c3.metric("⚠ Caso más frío", f"{peor['municipio']}",
+    c3.metric("Caso más frío", f"{peor['municipio']}",
               f"{peor['estado']} · {peor['tasa_renovacion'] * 100:.1f}% renovación")
     st.dataframe(
         est.head(25)[["municipio", "estado", "n_estab", "empleo",
@@ -2396,14 +2518,14 @@ def tab_carteras(valores: np.ndarray) -> None:
     v5, _ = estado_en(valores, 5.0)
     frente = frente_de_onda(v5, vecindad_municipios())
     tesis = {
-        "🌅 Anillo periurbano del sureste": (
+        "Anillo periurbano del sureste": (
             df["estado"].isin(["Yucatán", "Quintana Roo", "Campeche"])
             & df["dist_zm_km"].between(8, 45)),
-        "🏭 Corredor nearshoring norte": (
+        "Corredor nearshoring norte": (
             df["estado"].isin(["Nuevo León", "Coahuila", "Chihuahua",
                                "Tamaulipas", "Baja California", "Sonora"])
             & (df["dist_zm_km"] < 35)),
-        "🌊 Frente de onda (LISA)": pd.Series(frente, index=df.index),
+        "Frente de onda (LISA)": pd.Series(frente, index=df.index),
     }
     cols = st.columns(3)
     resumen = []
@@ -2446,7 +2568,7 @@ def tab_sismografo(suffix: str = "azcapotzalco") -> None:
     c1, c2 = st.columns([2, 3])
     with c1:
         lider = sismo.loc[sismo["magnitud"].idxmax()]
-        st.metric("🌡 Epicentro de mutación", lider["nombre"],
+        st.metric("Epicentro de mutación", lider["nombre"],
                   f"{int(lider['indicadoras'])} especies indicadoras")
         st.dataframe(top[["nombre", "altas", "bajas", "especies"]].rename(
             columns={"nombre": "Calle", "altas": "Altas", "bajas": "Bajas",
@@ -2494,26 +2616,26 @@ def _validacion_contagio(suffix: str = "azcapotzalco") -> None:
         f"motor— no es una hipótesis: es medible en la realidad de "
         f"Azcapotzalco.")
     c1, c2, c3 = st.columns(3)
-    c1.metric("🎯 Predicción propia", f"r = {v['r_propio']}",
+    c1.metric("Predicción propia", f"r = {v['r_propio']}",
               "vitalidad → aperturas")
-    c2.metric("🧬 Contagio de vecinas", f"r = {v['r_vecinas']}",
+    c2.metric("Contagio de vecinas", f"r = {v['r_vecinas']}",
               "spillover espacial real")
-    c3.metric("🔬 Muestra", f"{v['celdas']} celdas",
+    c3.metric("Muestra", f"{v['celdas']} celdas",
               f"corte temporal {v['corte']}")
 
 
 # Giros B2B detectables por palabra clave en el nombre real del negocio
 GIROS_B2B = {
-    "💊 Farmacia": ["FARMACIA"],
-    "☕ Cafetería": ["CAFE", "CAFETERIA"],
-    "🏋 Gimnasio": ["GIMNASIO", "GYM", "FITNESS", "CROSSFIT"],
-    "🐕 Veterinaria": ["VETERINAR"],
-    "🥖 Panadería": ["PANADERIA"],
-    "🔧 Ferretería": ["FERRETER"],
-    "🧺 Lavandería": ["LAVANDER"],
-    "🦷 Dental": ["DENTAL", "DENTISTA", "ODONT"],
-    "📄 Papelería": ["PAPELER"],
-    "🌮 Tortillería": ["TORTILLER"],
+    "Farmacia": ["FARMACIA"],
+    "Cafetería": ["CAFE", "CAFETERIA"],
+    "Gimnasio": ["GIMNASIO", "GYM", "FITNESS", "CROSSFIT"],
+    "Veterinaria": ["VETERINAR"],
+    "Panadería": ["PANADERIA"],
+    "Ferretería": ["FERRETER"],
+    "Lavandería": ["LAVANDER"],
+    "Dental": ["DENTAL", "DENTISTA", "ODONT"],
+    "Papelería": ["PAPELER"],
+    "Tortillería": ["TORTILLER"],
 }
 
 
@@ -2613,11 +2735,11 @@ def tab_impacto(suffix: str) -> None:
         return
     med = float(df["Multiplicador medido"].median())
     c1, c2, c3 = st.columns(3)
-    c1.metric("🧲 Multiplicador de atracción medido", f"{med:.2f}×",
+    c1.metric("Multiplicador de atracción medido", f"{med:.2f}×",
               "mediana de anclas reales")
-    c2.metric("⚓ Anclas analizadas", f"{len(df)}",
+    c2.metric("Anclas analizadas", f"{len(df)}",
               "grandes empleadores 2022-2024")
-    c3.metric("📐 Método", "Dif-en-dif",
+    c3.metric("Método", "Dif-en-dif",
               "±2 años · <400 m · vs tendencia ciudad")
     st.dataframe(df.head(15), hide_index=True, width="stretch",
                  column_config={"Multiplicador medido":
@@ -2645,7 +2767,7 @@ def tab_huecos(suffix: str = "azcapotzalco") -> None:
 
     # ── 📍 Ubicación óptima por giro (con nombres reales del DENUE) ──────────
     if es_real:
-        giro = st.selectbox("📍 ¿Qué giro quieres abrir?",
+        giro = st.selectbox("¿Qué giro quieres abrir?",
                             list(GIROS_B2B.keys()), key=f"giro_{suffix}")
         top = ubicacion_optima(suffix, giro)
         if top is not None and not top.empty:
@@ -2662,7 +2784,7 @@ def tab_huecos(suffix: str = "azcapotzalco") -> None:
                                    st.column_config.ProgressColumn(
                                        min_value=0, max_value=1)})
             with c2:
-                st.metric("🥇 Mejor ubicación", str(top["calle"].iloc[0])[:28],
+                st.metric("Mejor ubicación", str(top["calle"].iloc[0])[:28],
                           f"{int(top['demanda'].iloc[0]):,} empleos cerca · "
                           f"{int(top['competidores'].iloc[0])} competidores")
                 st.markdown(
@@ -2781,7 +2903,7 @@ def inyectar_css() -> None:
       div[data-testid="stMetric"] {{
           background: {SUPERFICIE}; border: 1px solid #2a221c;
           border-radius: 14px; padding: .6rem .9rem;
-          box-shadow: 0 0 18px rgba(205,242,90,.06);
+          box-shadow: 0 6px 16px rgba(0,0,0,.28);
       }}
       div[data-testid="stMetricValue"] {{
           color: {LIMA}; font-family: 'Space Mono', monospace;
@@ -2798,7 +2920,31 @@ def inyectar_css() -> None:
           border-color: {LIMA}; }}
       .leyenda {{ font-family: 'Space Mono', monospace; color: {TEXTO_SUAVE};
                   font-size: .82rem; }}
-      #MainMenu, footer {{ visibility: hidden; }}
+      .chip-c21 {{
+          display: inline-block; margin-top: .45rem; padding: .28rem .8rem;
+          font-family: 'Space Mono', monospace; font-size: .74rem;
+          color: {CREMA}; background: rgba(111,162,135,.12);
+          border: 1px solid {ARCILLA_SUAVE}; border-radius: 99px;
+      }}
+      .chip-c21 b {{ color: {LIMA}; }}
+      .franja-simulacion {{
+          background: rgba(245,194,119,.12); border-left: 3px solid #F5C277;
+          color: {CREMA}; font-size: 12.5px; line-height: 1.45;
+          font-family: 'Hanken Grotesk', sans-serif;
+          padding: .32rem .75rem; border-radius: 0 8px 8px 0;
+          margin: .15rem 0 .4rem;
+      }}
+      /* ── ocultar el cromo de Streamlit (menú, header, footer, insignias) ── */
+      #MainMenu, header[data-testid="stHeader"], footer,
+      [data-testid="stToolbar"], [data-testid="stDecoration"],
+      [data-testid="stStatusWidget"],
+      .viewerBadge_container__1QSob, [class*="viewerBadge"] {{
+          display: none !important; visibility: hidden !important;
+      }}
+      /* botones de fullscreen / toolbar por elemento */
+      button[title="View fullscreen"],
+      [data-testid="StyledFullScreenButton"],
+      [data-testid="stElementToolbar"] {{ display: none !important; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -2835,11 +2981,11 @@ _EXPLICA_COMUN = (
     "- 🎨 **El color = la “temperatura” de valor y crecimiento** de cada zona. "
     "De más frío a más caliente:  \n"
     "&nbsp;&nbsp;🟫 <span style='color:#0c4a30'>**latente**</span> → "
-    "🟩 <span style='color:#1a7d50'>**despertando**</span> → "
-    "🟢 <span style='color:#57c389'>**en expansión**</span> → "
-    "🟡 <span style='color:#cdf25a'>**en plena mutación**</span> → "
+    "🟩 <span style='color:#24664a'>**despertando**</span> → "
+    "🟢 <span style='color:#6fa287'>**en expansión**</span> → "
+    "🟡 <span style='color:#b7c489'>**en plena mutación**</span> → "
     "⬜ <span style='color:#f5ede3'>**núcleo consolidado**</span> (lo más caro).\n"
-    "- 🫀 **Los arcos verde→lima** son el *sistema circulatorio del capital*: "
+    "- 🫀 **Los arcos verde→oliva** son el *sistema circulatorio del capital*: "
     "dinero que fluye de las zonas ya caras (corazones) hacia las emergentes.\n"
     "- ⏳ **El deslizador “Predicción (años)”** te lleva al futuro: mira cómo se "
     "expande el crecimiento año con año. *Esa proyección es una simulación.*\n"
@@ -2849,38 +2995,57 @@ _EXPLICA_COMUN = (
     "observa la onda expansiva que provoca.\n"
 )
 _EXPLICA_ESCALA = {
-    "🏛": "**Escala municipios:** cada polígono es **uno de los 2,436 municipios** "
+    "muni": "**Escala municipios:** cada polígono es **uno de los 2,436 municipios** "
          "del país. Su valor y potencial están anclados en la **actividad "
          "económica REAL del DENUE/INEGI** (negocios y empleos observados). Las "
          "torres 3D marcan las grandes metrópolis.",
-    "🇲🇽": "**Escala estados:** cada polígono es **uno de los 32 estados**. Las "
+    "edos": "**Escala estados:** cada polígono es **uno de los 32 estados**. Las "
          "torres 3D representan el peso de cada entidad; el color, su ritmo de "
          "crecimiento proyectado.",
-    "🏘": "**Escala códigos postales (CDMX):** cada polígono es **un CP real de "
+    "cp": "**Escala códigos postales (CDMX):** cada polígono es **un CP real de "
          "SEPOMEX** (1,182 en total). Las etiquetas son las **alcaldías**. La "
-         "pestaña «🏛 Por alcaldía» resume el crecimiento de cada una.",
-    "🛣": "**Escala calle · establecimiento:** aquí ves la ciudad **desde la "
+         "pestaña «Por alcaldía» resume el crecimiento de cada una.",
+    "calle": "**Escala calle · establecimiento:** aquí ves la ciudad **desde la "
          "banqueta**.  \n"
          "- Cada **línea es una calle real** (del DENUE). Entre **más gruesa y "
          "brillante**, más *vitalidad económica* tiene (más negocios y empleo).\n"
          "- Los **puntos de colores** son establecimientos, coloreados por giro "
          "(comercio, servicios, industria).\n"
-         "- Los **círculos lima con nombre** son las **anclas**: los grandes "
+         "- Los **círculos oliva con nombre** son las **anclas**: los grandes "
          "empleadores que bombean crecimiento a su alrededor.",
-    "🧫": "**Escala microtejido:** cada **cuadro es una manzana**. En modo 3D, la "
+    "micro": "**Escala microtejido:** cada **cuadro es una manzana**. En modo 3D, la "
          "**altura = el precio** por m². Aquí ves el contagio calle-a-calle en "
          "su máximo detalle (Azcapotzalco fino, o toda la ZMVM).",
 }
 
 
-def explicador(escala: str) -> None:
+def aviso_honestidad(anio: float, rho: float) -> str | None:
+    """
+    Honestidad de simulación: el pronóstico VALIDADO de BrickBit cubre 1–3
+    años; la ola SAR a 10 años con ρ ajustable es SIMULACIÓN exploratoria.
+    Devuelve el texto del aviso (franja ámbar) o None si el escenario está
+    dentro de lo razonable (0 < año ≤ 3 con la ρ calibrada de 0.85).
+    """
+    partes = []
+    if anio < 0:
+        partes.append("Retro-simulación: reconstrucción, no dato histórico "
+                      "puntual")
+    elif anio > 3:
+        partes.append(f"Proyección a {anio:.0f} años: SIMULACIÓN "
+                      "exploratoria — el modelo BrickBit está validado por "
+                      "backtest a 1–3 años")
+    if abs(rho - 0.85) > 1e-9:
+        partes.append(f"ρ={rho:g} ajustado a mano (el calibrado es 0.85)")
+    return " · ".join(partes) if partes else None
+
+
+def explicador(esc: str) -> None:
     """Recuadro plegable “¿Qué estoy viendo?” con la lectura del mapa en
-    lenguaje simple, adaptado a la escala activa. Para que cualquiera —aunque
-    sea su primera vez— entienda de inmediato qué representa cada elemento."""
-    inicial = escala[0]
-    extra = next((v for k, v in _EXPLICA_ESCALA.items() if escala.startswith(k)),
-                 "")
-    with st.expander("❓ ¿Qué estoy viendo? — cómo leer este mapa", expanded=False):
+    lenguaje simple, adaptado a la escala activa (clave: muni/edos/cp/calle/
+    micro). Para que cualquiera —aunque sea su primera vez— entienda de
+    inmediato qué representa cada elemento."""
+    extra = _EXPLICA_ESCALA.get(esc, "")
+    with st.expander("¿Qué estoy viendo? — cómo leer este mapa", expanded=False):
         st.markdown(_EXPLICA_COMUN, unsafe_allow_html=True)
         if extra:
             st.markdown("---")
@@ -2967,7 +3132,7 @@ def tab_alcaldias(df_cp: pd.DataFrame, valores: np.ndarray,
                 format="+%.1f%%", min_value=0.0,
                 max_value=max(0.01, float(g["crecimiento"].max()))),
         })
-    st.caption("💡 Mueve el deslizador de años: el ranking de alcaldías se "
+    st.caption("Mueve el deslizador de años: el ranking de alcaldías se "
                "reordena en vivo conforme el contagio avanza por el tejido.")
 
 
@@ -2975,94 +3140,72 @@ def main() -> None:
     st.set_page_config(page_title="BrickBit · Morfogénesis Urbana MX",
                        page_icon="🧬", layout="wide",
                        initial_sidebar_state="expanded")
+
+    # ── 🔗 Escenarios compartibles: la URL es el estado inicial ───────────────
+    # brickbit.co/morfogenesis?esc=micro&anio=7&rho=1.2&det=…&retro=1 arranca
+    # los widgets exactamente en ese escenario. Lectura defensiva: lo que no
+    # valide (escala inexistente, número corrupto…) se ignora en silencio.
+    qp = st.query_params
+    esc_url = qp.get("esc")
+    if esc_url not in ESCALAS:
+        esc_url = None
+    try:
+        anio_url = float(qp.get("anio"))
+    except (TypeError, ValueError):
+        anio_url = None
+    try:
+        rho_url = round(min(1.5, max(0.0, float(qp.get("rho")))) * 20) / 20
+    except (TypeError, ValueError):
+        rho_url = None
+    det_url = qp.get("det") or None      # se valida contra el dict de su escala
+    retro_url = {"1": True, "0": False}.get(qp.get("retro"))
+
     inyectar_css()
     if os.path.exists(RUTA_LOGO):
         st.logo(RUTA_LOGO, size="large")
     encabezado()
 
-    # ── Panel lateral ─────────────────────────────────────────────────────────
+    # ── Panel lateral: escala + ajustes ───────────────────────────────────────
     with st.sidebar:
-        escala = st.radio("🔭 Escala del organismo",
-                          ["🏛 República · municipios",
-                           "🇲🇽 República · estados",
-                           "🏘 CDMX · códigos postales",
-                           "🛣 Calle · establecimiento",
-                           "🧫 Microtejido (CDMX)"],
-                          help="El mismo motor SAR a cinco escalas: de los 32 "
-                               "estados hasta la banqueta, negocio a negocio.")
+        escala_lbl = st.radio("Escala del organismo", list(ESCALAS.values()),
+                              index=(list(ESCALAS).index(esc_url)
+                                     if esc_url else 0),
+                              help="El mismo motor SAR a cinco escalas: de los "
+                                   "32 estados hasta la banqueta, negocio a "
+                                   "negocio.")
+        esc = ESCALA_POR_LABEL[escala_lbl]
 
-        st.markdown("### ⏳ Línea de tiempo")
-        retro = st.checkbox("⏪ Time-lapse bidireccional (retro-simulación)",
-                            False,
+        st.markdown("### Línea de tiempo")
+        retro = st.checkbox("Time-lapse bidireccional (retro-simulación)",
+                            retro_url if retro_url is not None else False,
                             help="Extiende la línea de tiempo 5 años hacia "
                                  "atrás para ver de dónde viene la ola.")
-        año = st.slider("Predicción (años)",
-                        -float(RETRO) if retro else 0.0, float(AÑOS),
-                        0.0, step=0.25, format="%.2f años")
 
-        st.markdown("### 🧫 Parámetros del organismo")
-        rho = st.slider("Virulencia del contagio (ρ)", 0.0, 1.5, 0.85, 0.05,
+        st.markdown("### Parámetros avanzados")
+        rho = st.slider("Virulencia del contagio (ρ)", 0.0, 1.5,
+                        rho_url if rho_url is not None else 0.85, 0.05,
                         help="Coeficiente espacial autorregresivo: cuánto pesa "
                              "el vecindario en el crecimiento de cada célula.")
-        if escala.startswith(("🧫", "🛣")):
-            detonante = st.selectbox("Célula madre (catalizador urbano)",
-                                     list(CATALIZADORES.keys()))
-        elif escala.startswith("🏘"):
-            detonante = st.selectbox("Detonante urbano CDMX",
-                                     list(DETONANTES_CDMX.keys()))
-        else:
-            detonante = st.selectbox("Megaproyecto detonante",
-                                     list(MEGAPROYECTOS.keys()),
-                                     help="Célula madre a escala nación: eleva "
-                                          "el potencial de toda una región.")
 
-        if escala.startswith("🛣"):
-            munis = municipios_calle()
-            if munis:
-                labels = [m["label"] for m in munis]
-                # arranca en el corazón de CDMX, no en el primer alfabético
-                idx0 = next((i for i, mm in enumerate(munis)
-                             if mm["suffix"] == "cuauhtemoc"), 0)
-                sel = st.selectbox(
-                    f"🏙 Elige tu ciudad — {len(munis)} disponibles",
-                    labels, index=idx0,
-                    help="Todas con DENUE/INEGI real a nivel calle: las 9 "
-                         "alcaldías centrales de CDMX, Guadalajara, Monterrey "
-                         "y su zona metro, Cancún, Playa del Carmen, Tulum, "
-                         "La Paz, Los Cabos y las 32 capitales estatales.")
-                m = munis[labels.index(sel)]
-                st.session_state["municipio_suffix"] = m["suffix"]
-                st.session_state["municipio_nombre"] = m["municipio"]
-            st.caption(f"🇲🇽 {len(munis)} ciudades reales precargadas — CDMX, "
-                       "Guadalajara, Monterrey, Q. Roo, B.C.S. y más. "
-                       "¿Falta la tuya? Se agrega con `ingerir_denue.py`.")
-
-        st.markdown("### 👁 Capas y estilo")
+        st.markdown("### Capas y estilo")
         estilo = st.selectbox("Estilo de mapa", list(ESTILOS_MAPA.keys()))
-        mostrar_flujos = st.checkbox("🫀 Sistema circulatorio de capital", True)
-        if escala.startswith("🧫"):
-            alcance_micro = "zmvm" if st.radio(
-                "🗺 Alcance del tejido",
-                ["Azcapotzalco · CDMX (fino)", "ZMVM · CDMX + Edomex"],
-                help="ZMVM cultiva 2,304 células metropolitanas: las 16 "
-                     "alcaldías + Ecatepec, Naucalpan, Tlalnepantla, Neza, "
-                     "Cuautitlán Izcalli, Huixquilucan, Tecámac/AIFA y más."
-            ).startswith("ZMVM") else "azcapotzalco"
-            extrusion = st.checkbox("⛰ Relieve 3D del tejido", True)
-        elif escala.startswith("🛣"):
-            mostrar_estab = st.checkbox("🏪 Establecimientos (puntos)", True)
-        elif not escala.startswith("🏘"):
-            mostrar_torres = st.checkbox("🏙 Torres metropolitanas 3D", True)
-            mostrar_etiquetas = st.checkbox("🏷 Nombres de ciudades", True)
+        mostrar_flujos = st.checkbox("Sistema circulatorio de capital", True)
+        if esc == "micro":
+            extrusion = st.checkbox("Relieve 3D del tejido", True)
+        elif esc == "calle":
+            mostrar_estab = st.checkbox("Establecimientos (puntos)", True)
+        elif esc != "cp":
+            mostrar_torres = st.checkbox("Torres metropolitanas 3D", True)
+            mostrar_etiquetas = st.checkbox("Nombres de ciudades", True)
 
         mostrar_lisa = False
-        if escala.startswith(("🏛", "🏘")):
-            mostrar_lisa = st.checkbox("🌊 Frente de onda (LISA)", False,
+        if esc in ("muni", "cp"):
+            mostrar_lisa = st.checkbox("Frente de onda (LISA)", False,
                                        help="Moran local: contorno crema en "
                                             "las células baratas rodeadas de "
                                             "caras — donde romperá la ola.")
 
-        st.markdown("### 🎯 Detonante por clic")
+        st.markdown("### Detonante por clic")
         clic_activo = st.checkbox("Activar clic-para-detonar", False,
                                   help="Haz clic en cualquier célula del mapa "
                                        "e inyecta ahí una célula madre; mira "
@@ -3070,22 +3213,117 @@ def main() -> None:
         clic = st.session_state.get("clic_epicentro") if clic_activo else None
         if clic_activo and clic:
             st.caption(f"Epicentro activo: {clic[1]:.3f}, {clic[0]:.3f}")
-            if st.button("🧹 Quitar epicentro", width="stretch"):
+            if st.button("Quitar epicentro", width="stretch"):
                 del st.session_state["clic_epicentro"]
                 st.rerun()
 
-        st.markdown("---")
-        reproducir = st.button("▶ Reproducir morfogénesis (10 años)",
-                               width="stretch")
-        st.caption("Las venas verdes→lima bombean capital de los corazones "
-                   "hacia las zonas emergentes. Datos simulados.")
-
     lienzo_kpi = st.container()
-    explicador(escala)
+    explicador(esc)
+
+    # ── Controles principales — siempre a la vista, arriba del mapa ───────────
+    alcance_micro = "azcapotzalco"
+    if esc in ("calle", "micro"):
+        col_modo, col_det, col_año, col_play = st.columns(
+            [2.6, 2.4, 2.8, 1.6], vertical_alignment="bottom")
+    else:
+        col_det, col_año, col_play = st.columns(
+            [2.8, 3.4, 1.6], vertical_alignment="bottom")
+        col_modo = None
+
+    if esc == "calle":
+        with col_modo:
+            munis = municipios_calle()
+            if munis:
+                labels = [m["label"] for m in munis]
+                # arranca en el corazón de CDMX, no en el primer alfabético
+                idx0 = next((i for i, mm in enumerate(munis)
+                             if mm["suffix"] == "cuauhtemoc"), 0)
+                sel = st.selectbox(
+                    f"Elige tu ciudad — {len(munis)} disponibles",
+                    labels, index=idx0,
+                    help="Todas con DENUE/INEGI real a nivel calle: las 9 "
+                         "alcaldías centrales de CDMX, Guadalajara, Monterrey "
+                         "y su zona metro, Cancún, Playa del Carmen, Tulum, "
+                         "La Paz, Los Cabos y las 32 capitales estatales. "
+                         "¿Falta la tuya? Se agrega con ingerir_denue.py.")
+                m = munis[labels.index(sel)]
+                st.session_state["municipio_suffix"] = m["suffix"]
+                st.session_state["municipio_nombre"] = m["municipio"]
+    elif esc == "micro":
+        with col_modo:
+            alcance_micro = "zmvm" if st.selectbox(
+                "Alcance del tejido",
+                ["Azcapotzalco · CDMX (fino)", "ZMVM · CDMX + Edomex"],
+                help="ZMVM cultiva 2,304 células metropolitanas: las 16 "
+                     "alcaldías + Ecatepec, Naucalpan, Tlalnepantla, Neza, "
+                     "Cuautitlán Izcalli, Huixquilucan, Tecámac/AIFA y más."
+            ).startswith("ZMVM") else "azcapotzalco"
+
+    def _idx_det(dic: dict) -> int:
+        """Índice inicial del detonante si la URL trae uno válido para esta
+        escala; si no está en el dict, se ignora (defensivo)."""
+        return list(dic).index(det_url) if det_url in dic else 0
+
+    with col_det:
+        if esc in ("micro", "calle"):
+            detonante = st.selectbox("Célula madre (catalizador urbano)",
+                                     list(CATALIZADORES.keys()),
+                                     index=_idx_det(CATALIZADORES))
+        elif esc == "cp":
+            detonante = st.selectbox("Detonante urbano CDMX",
+                                     list(DETONANTES_CDMX.keys()),
+                                     index=_idx_det(DETONANTES_CDMX))
+        else:
+            detonante = st.selectbox("Megaproyecto detonante",
+                                     list(MEGAPROYECTOS.keys()),
+                                     index=_idx_det(MEGAPROYECTOS),
+                                     help="Célula madre a escala nación: eleva "
+                                          "el potencial de toda una región.")
+    with col_año:
+        año_min = -float(RETRO) if retro else 0.0
+        año_ini = 0.0
+        if anio_url is not None:    # clamp al rango del slider (paso 0.25)
+            año_ini = round(min(float(AÑOS), max(año_min, anio_url)) * 4) / 4
+        año = st.slider("Predicción (años)",
+                        año_min, float(AÑOS),
+                        año_ini, step=0.25, format="%.2f años",
+                        help="Mueve el horizonte de la simulación; la "
+                             "proyección es simulada, no asesoría.")
+    with col_play:
+        reproducir = st.button("Reproducir morfogénesis", width="stretch",
+                               help="Anima la línea de tiempo completa "
+                                    "(10 años).")
+
+    # ── La URL siempre refleja el escenario actual (compartible) ──────────────
+    # Solo se tocan nuestras claves: ?embed=… de Streamlit queda intacto.
+    _escenario = {"esc": esc, "anio": f"{año:g}", "rho": f"{rho:g}",
+                  "det": detonante, "retro": "1" if retro else "0"}
+    for _k, _v in _escenario.items():
+        if qp.get(_k) != _v:
+            qp[_k] = _v
+
+    with st.sidebar:
+        with st.expander("Compartir este escenario"):
+            st.code("https://brickbit.co/morfogenesis"
+                    f"?esc={esc}&anio={año:g}&rho={rho:g}"
+                    f"&det={quote(detonante)}&retro={1 if retro else 0}",
+                    language=None)
+            st.caption("Copia el enlace: quien lo abra verá exactamente "
+                       "este escenario.")
+
+    # ── 🟡 Honestidad de simulación: franja ámbar encima del mapa ─────────────
+    _aviso = aviso_honestidad(año, rho)
+    if _aviso:
+        st.markdown(f"<div class='franja-simulacion'>⚠ {_aviso}</div>",
+                    unsafe_allow_html=True)
+
     lienzo = st.empty()
+    st.caption("Motor de simulación SAR (exploratorio) · distinto del "
+               "pronóstico validado 1–3 años que usan el mapa y el "
+               "analizador.")
 
     # ══ REPÚBLICA · MUNICIPIOS ════════════════════════════════════════════════
-    if escala.startswith("🏛"):
+    if esc == "muni":
         valores = simular_municipios(rho, detonante, clic)
         valores_edo = simular_nacion(rho, detonante, clic)
         df_m = datos_municipales()
@@ -3102,24 +3340,31 @@ def main() -> None:
         neg_real = int(df_m["n_estab"].sum())
         with lienzo_kpi:
             c1, c2, c3, c4, c5 = st.columns(5)
-            c1.metric("💰 Precio municipal medio", f"${v_t.mean():,.0f} /m²",
+            c1.metric("Precio municipal medio", f"${v_t.mean():,.0f} /m²",
                       f"+{(v_t.mean() / valores[0].mean() - 1) * 100:.1f}% vs hoy")
-            c2.metric("🧲 Índice de Moran", f"{moran:.3f}",
+            c2.metric("Índice de Moran", f"{moran:.3f}",
                       "cohesión espacial" if moran > 0.15 else "tejido fragmentado")
             if neg_real > 0:
-                c3.metric("🏪 Negocios reales (DENUE)", f"{neg_real / 1e6:.2f} M",
+                c3.metric("Negocios reales (DENUE)", f"{neg_real / 1e6:.2f} M",
                           f"{int((df_m['n_estab'] > 0).sum())} municipios cubiertos")
             else:
-                c3.metric("🫀 Capital en rotación",
+                c3.metric("Capital en rotación",
                           f"${flujos['capital_mmd'].sum():,.0f} mmd/año",
                           f"{len(flujos)} arterias activas")
-            c4.metric("🧬 Municipio más mutante",
+            c4.metric("Municipio más mutante",
                       df_m["municipio"].iloc[mutante],
                       f"{df_m['estado'].iloc[mutante]} · "
                       f"+{(v_t[mutante] / valores[0][mutante] - 1) * 100:.0f}%")
-            c5.metric("📅 Horizonte", f"Año {año:.1f} / {AÑOS}",
-                      "🎯 epicentro por clic" if clic else
+            c5.metric("Horizonte", f"Año {año:.1f} / {AÑOS}",
+                      "epicentro por clic" if clic else
                       (detonante if MEGAPROYECTOS[detonante] else "sin megaproyecto"))
+            n_c21 = c21_lineas_municipales()[1]
+            if n_c21:
+                st.markdown(
+                    f"<div class='chip-c21'><b>{n_c21}</b> municipios con "
+                    "mercado vivo C21 — medianas reales de precios de lista, "
+                    "refresco diario (en el tooltip del mapa)</div>",
+                    unsafe_allow_html=True)
 
         def fabricar(a, f):
             return construir_deck_municipios(
@@ -3133,9 +3378,9 @@ def main() -> None:
         nombres_m = df_m["municipio"] + " · " + df_m["estado"]
         banda_m = banda_municipios(rho, detonante, clic)
         t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs(
-            ["🏆 Ranking municipal", "🔎 Origen del crecimiento",
-             "🏚 Estancamiento", "🧬 Gemelos de ADN", "💼 Carteras por tesis",
-             "📈 Trayectorias 10 años", "⚗️ Nube de fases", "🔬 El modelo"])
+            ["Ranking municipal", "Origen del crecimiento",
+             "Estancamiento", "Gemelos de ADN", "Carteras por tesis",
+             "Trayectorias 10 años", "Nube de fases", "El modelo"])
         with t1:
             tab_ranking_municipios(valores, año, score)
         with t2:
@@ -3165,7 +3410,7 @@ def main() -> None:
             st.markdown(TEXTO_METODOLOGIA)
 
     # ══ REPÚBLICA · ESTADOS ═══════════════════════════════════════════════════
-    elif escala.startswith("🇲🇽"):
+    elif esc == "edos":
         valores = simular_nacion(rho, detonante, clic)
         df_e = datos_estatales()
         vv = extender_pasado(valores) if retro else valores
@@ -3181,17 +3426,17 @@ def main() -> None:
         score = score_brickbit(v_t, valores[0], df_e["potencial"], tasa)
         with lienzo_kpi:
             c1, c2, c3, c4, c5 = st.columns(5)
-            c1.metric("💰 Valor medio nacional", f"${medio:,.0f} /m²",
+            c1.metric("Valor medio nacional", f"${medio:,.0f} /m²",
                       f"+{(medio / medio_0 - 1) * 100:.1f}% vs hoy")
-            c2.metric("🧲 Índice de Moran", f"{moran:.3f}",
+            c2.metric("Índice de Moran", f"{moran:.3f}",
                       "cohesión espacial" if moran > 0.15 else "tejido fragmentado")
-            c3.metric("🫀 Capital en rotación",
+            c3.metric("Capital en rotación",
                       f"${flujos['capital_mmd'].sum():,.0f} mmd/año",
                       f"{len(flujos)} arterias activas")
-            c4.metric("🧬 Estado más mutante", df_e["estado"].iloc[mutante],
+            c4.metric("Estado más mutante", df_e["estado"].iloc[mutante],
                       f"+{(v_t[mutante] / valores[0][mutante] - 1) * 100:.0f}% acumulado")
-            c5.metric("📅 Horizonte", f"Año {año:.1f} / {AÑOS}",
-                      "🎯 epicentro por clic" if clic else
+            c5.metric("Horizonte", f"Año {año:.1f} / {AÑOS}",
+                      "epicentro por clic" if clic else
                       (detonante if MEGAPROYECTOS[detonante] else "sin megaproyecto"))
 
         def fabricar(a, f):
@@ -3202,12 +3447,12 @@ def main() -> None:
         render_mapa(lienzo, fabricar, año_idx, reproducir, 90,
                     float(vv.shape[0] - 1), clic_activo, "deck_edo")
 
-        t1, t2, t3, t4, t5, t6 = st.tabs(["🏆 Ranking de mutación",
-                                          "🔎 Origen del crecimiento",
-                                          "🧬 Gemelos de ADN",
-                                          "📈 Trayectorias 10 años",
-                                          "⚗️ Diagrama de fases",
-                                          "🔬 El modelo"])
+        t1, t2, t3, t4, t5, t6 = st.tabs(["Ranking de mutación",
+                                          "Origen del crecimiento",
+                                          "Gemelos de ADN",
+                                          "Trayectorias 10 años",
+                                          "Diagrama de fases",
+                                          "El modelo"])
         with t1:
             tab_ranking_estados(valores, año, flujos, score)
         with t2:
@@ -3230,7 +3475,7 @@ def main() -> None:
             st.markdown(TEXTO_METODOLOGIA)
 
     # ══ CDMX · CÓDIGOS POSTALES (SEPOMEX real) ════════════════════════════════
-    elif escala.startswith("🏘"):
+    elif esc == "cp":
         valores = simular_cp(rho, detonante, clic)
         df_cp = datos_cp()
         vv = extender_pasado(valores) if retro else valores
@@ -3242,17 +3487,17 @@ def main() -> None:
                                df_cp["potencial_crecimiento"], tasa)
         with lienzo_kpi:
             c1, c2, c3, c4, c5 = st.columns(5)
-            c1.metric("💰 Precio medio CDMX", f"${v_t.mean():,.0f} /m²",
+            c1.metric("Precio medio CDMX", f"${v_t.mean():,.0f} /m²",
                       f"+{(v_t.mean() / valores[0].mean() - 1) * 100:.1f}% vs hoy")
-            c2.metric("🧲 Índice de Moran", f"{moran:.3f}",
+            c2.metric("Índice de Moran", f"{moran:.3f}",
                       "cohesión espacial" if moran > 0.15 else "tejido fragmentado")
-            c3.metric("🏘 Células postales", "1,182",
+            c3.metric("Células postales", "1,182",
                       "polígonos SEPOMEX reales")
-            c4.metric("🧬 CP más mutante", f"CP {df_cp['cp'].iloc[mutante]}",
+            c4.metric("CP más mutante", f"CP {df_cp['cp'].iloc[mutante]}",
                       f"{df_cp['alcaldia'].iloc[mutante]} · "
                       f"+{(v_t[mutante] / valores[0][mutante] - 1) * 100:.0f}%")
-            c5.metric("📅 Horizonte", f"Año {año:.1f} / {AÑOS}",
-                      "🎯 epicentro por clic" if clic else
+            c5.metric("Horizonte", f"Año {año:.1f} / {AÑOS}",
+                      "epicentro por clic" if clic else
                       (detonante if DETONANTES_CDMX[detonante] else "sin detonante"))
 
         def fabricar(a, f):
@@ -3263,11 +3508,11 @@ def main() -> None:
                     float(vv.shape[0] - 1), clic_activo, "deck_cp")
 
         nombres_cp = "CP " + df_cp["cp"] + " · " + df_cp["alcaldia"]
-        t0, t1, t2, t3, t4 = st.tabs(["🏛 Por alcaldía",
-                                      "🔎 Origen del crecimiento",
-                                      "🧬 Gemelos de ADN",
-                                      "📈 Trayectorias 10 años",
-                                      "🔬 El modelo"])
+        t0, t1, t2, t3, t4 = st.tabs(["Por alcaldía",
+                                      "Origen del crecimiento",
+                                      "Gemelos de ADN",
+                                      "Trayectorias 10 años",
+                                      "El modelo"])
         with t0:
             tab_alcaldias(df_cp, vv, año_idx)
         with t1:
@@ -3291,7 +3536,7 @@ def main() -> None:
                        "emergentes reales de CDMX.")
 
     # ══ CALLE · ESTABLECIMIENTO (DENUE real de CUALQUIER municipio) ═══════════
-    elif escala.startswith("🛣"):
+    elif esc == "calle":
         suf = st.session_state.get("municipio_suffix", "azcapotzalco")
         calles_df = expediente_calles(suf)
         _, estab_df, es_real = cargar_red_vial(suf)
@@ -3322,17 +3567,17 @@ def main() -> None:
 
         with lienzo_kpi:
             c1, c2, c3, c4, c5 = st.columns(5)
-            c1.metric("🛣 Calles vivas", f"{len(calles_df)}",
+            c1.metric("Calles vivas", f"{len(calles_df)}",
                       f"red vial · {muni_nom}")
-            c2.metric("🏪 Establecimientos", f"{len(estab_df):,}",
+            c2.metric("Establecimientos", f"{len(estab_df):,}",
                       "DENUE real" if es_real else "demo etiquetada")
-            c3.metric("💰 Índice de valor medio", f"${v_t.mean():,.0f} /m²",
+            c3.metric("Índice de valor medio", f"${v_t.mean():,.0f} /m²",
                       f"+{(v_t.mean() / valores[0].mean() - 1) * 100:.1f}% vs hoy")
-            c4.metric("🧬 Calle más mutante",
+            c4.metric("Calle más mutante",
                       calles_df["nombre"].iloc[mutante],
                       f"+{(v_t[mutante] / valores[0][mutante] - 1) * 100:.0f}% acumulado")
-            c5.metric("📅 Horizonte", f"Año {año:.1f} / {AÑOS}",
-                      "🎯 epicentro por clic" if clic else
+            c5.metric("Horizonte", f"Año {año:.1f} / {AÑOS}",
+                      "epicentro por clic" if clic else
                       (detonante if CATALIZADORES[detonante] else "sin catalizador"))
 
         def fabricar(a, f):
@@ -3344,9 +3589,9 @@ def main() -> None:
 
         banda_c = banda_calles(rho, detonante, clic, suf)
         t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs(
-            ["🔎 Origen del crecimiento", "🌡 Sismógrafo",
-             "🧪 Impacto medido", "📍 Ubicación B2B", "🧬 Gemelos de ADN",
-             "🏆 Ranking de calles", "📈 Trayectorias", "🔬 El modelo"])
+            ["Origen del crecimiento", "Sismógrafo",
+             "Impacto medido", "Ubicación B2B", "Gemelos de ADN",
+             "Ranking de calles", "Trayectorias", "El modelo"])
         with t1:
             tab_origen(calles_df["nombre"],
                        _args_calles(rho, detonante, clic, suf),
@@ -3355,7 +3600,7 @@ def main() -> None:
             tab_sismografo(suf)
             if es_real and "estancada" in calles_df.columns \
                     and calles_df["estancada"].any():
-                st.markdown("#### 🏚 Calles en riesgo de estancamiento")
+                st.markdown("#### Calles en riesgo de estancamiento")
                 est_c = calles_df[calles_df["estancada"]] \
                     .nlargest(12, "n_estab")
                 st.dataframe(
@@ -3413,14 +3658,14 @@ def main() -> None:
         precio_t, tasa = estado_en(valores, año)
         with lienzo_kpi:
             c1, c2, c3, c4 = st.columns(4)
-            c1.metric("💰 Valor medio del tejido", f"${precio_t.mean():,.0f} /m²",
+            c1.metric("Valor medio del tejido", f"${precio_t.mean():,.0f} /m²",
                       f"+{(precio_t.mean() / valores[0].mean() - 1) * 100:.1f}% vs hoy")
-            c2.metric("🧬 Células en mutación",
+            c2.metric("Células en mutación",
                       f"{int((tasa >= np.quantile(tasa, 0.90)).sum())}",
                       f"top 10% de {len(gdf):,} células"
                       + (" · ZMVM" if alcance_micro == "zmvm" else ""))
-            c3.metric("🫀 Pulso de capital", "22 flujos activos", f"ρ = {rho:.2f}")
-            c4.metric("📅 Horizonte", f"Año {año:.1f} / {AÑOS}",
+            c3.metric("Pulso de capital", "22 flujos activos", f"ρ = {rho:.2f}")
+            c4.metric("Horizonte", f"Año {año:.1f} / {AÑOS}",
                       detonante if CATALIZADORES[detonante] else "sin catalizador")
 
         def fabricar(a, f):
@@ -3441,7 +3686,7 @@ def main() -> None:
         f"<span style='color:{ARCILLA_SUAVE}'>■</span> expansión&nbsp;&nbsp;"
         f"<span style='color:{LIMA}'>■</span> mutación&nbsp;&nbsp;"
         f"<span style='color:{CREMA}'>■</span> núcleo consolidado"
-        "&nbsp;&nbsp;·&nbsp;&nbsp; arcos verde→lima = capital fluyendo "
+        "&nbsp;&nbsp;·&nbsp;&nbsp; arcos verde→oliva = capital fluyendo "
         "de corazones a zonas emergentes</div>",
         unsafe_allow_html=True,
     )
@@ -3462,7 +3707,7 @@ if __name__ == "__main__":
             "servidor gratuito de Streamlit, o un dato inesperado). "
             "Pulsa **Liberar memoria y reintentar** — la app se recupera sola."
         )
-        if st.button("🔄 Liberar memoria y reintentar", type="primary"):
+        if st.button("Liberar memoria y reintentar", type="primary"):
             st.cache_data.clear()
             gc.collect()
             st.rerun()
