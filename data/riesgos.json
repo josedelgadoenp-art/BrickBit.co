@@ -1,0 +1,490 @@
+{
+ "meta": {
+  "fuente": "SESNSP · Incidencia Delictiva Estatal (nueva metodología), carpetas de investigación",
+  "poblacion": "Censo INEGI 2020",
+  "corte": "2025-12",
+  "nota": "Tasas ESTATALES por 100 mil habitantes, últimos 12 meses publicados. Hay cifra negra y el riesgo varía mucho por colonia: es contexto, no medición del punto exacto."
+ },
+ "zonas": {
+  "Ciudad de México": {
+   "entidad": "Ciudad De Mexico",
+   "tasas": {
+    "homicidio": 8.3,
+    "robo_casa": 28.2,
+    "robo_vehiculo": 66.8,
+    "extorsion": 19.0
+   },
+   "percentil": {
+    "robo_casa": 61,
+    "homicidio": 39,
+    "extorsion": 90,
+    "robo_vehiculo": 39
+   }
+  },
+  "Guadalajara": {
+   "entidad": "Jalisco",
+   "tasas": {
+    "homicidio": 11.4,
+    "robo_casa": 25.3,
+    "robo_vehiculo": 110.9,
+    "extorsion": 5.3
+   },
+   "percentil": {
+    "robo_casa": 48,
+    "homicidio": 48,
+    "extorsion": 55,
+    "robo_vehiculo": 77
+   }
+  },
+  "Monterrey": {
+   "entidad": "Nuevo Leon",
+   "tasas": {
+    "homicidio": 12.6,
+    "robo_casa": 22.8,
+    "robo_vehiculo": 19.8,
+    "extorsion": 16.3
+   },
+   "percentil": {
+    "robo_casa": 39,
+    "homicidio": 55,
+    "extorsion": 84,
+    "robo_vehiculo": 13
+   }
+  },
+  "Cancún": {
+   "entidad": "Quintana Roo",
+   "tasas": {
+    "homicidio": 13.4,
+    "robo_casa": 62.5,
+    "robo_vehiculo": 144.4,
+    "extorsion": 11.1
+   },
+   "percentil": {
+    "robo_casa": 87,
+    "homicidio": 61,
+    "extorsion": 74,
+    "robo_vehiculo": 84
+   }
+  },
+  "Mérida": {
+   "entidad": "Yucatan",
+   "tasas": {
+    "homicidio": 1.5,
+    "robo_casa": 6.9,
+    "robo_vehiculo": 3.1,
+    "extorsion": 0.1
+   },
+   "percentil": {
+    "robo_casa": 6,
+    "homicidio": 0,
+    "extorsion": 0,
+    "robo_vehiculo": 0
+   }
+  },
+  "Querétaro": {
+   "entidad": "Queretaro",
+   "tasas": {
+    "homicidio": 5.9,
+    "robo_casa": 67.3,
+    "robo_vehiculo": 145.7,
+    "extorsion": 11.3
+   },
+   "percentil": {
+    "robo_casa": 90,
+    "homicidio": 16,
+    "extorsion": 77,
+    "robo_vehiculo": 87
+   }
+  },
+  "Tijuana": {
+   "entidad": "Baja California",
+   "tasas": {
+    "homicidio": 40.6,
+    "robo_casa": 44.4,
+    "robo_vehiculo": 219.5,
+    "extorsion": 2.4
+   },
+   "percentil": {
+    "robo_casa": 74,
+    "homicidio": 90,
+    "extorsion": 26,
+    "robo_vehiculo": 100
+   }
+  },
+  "Puebla": {
+   "entidad": "Puebla",
+   "tasas": {
+    "homicidio": 11.8,
+    "robo_casa": 29.8,
+    "robo_vehiculo": 163.0,
+    "extorsion": 3.7
+   },
+   "percentil": {
+    "robo_casa": 65,
+    "homicidio": 52,
+    "extorsion": 42,
+    "robo_vehiculo": 90
+   }
+  },
+  "León": {
+   "entidad": "Guanajuato",
+   "tasas": {
+    "homicidio": 33.0,
+    "robo_casa": 46.8,
+    "robo_vehiculo": 96.4,
+    "extorsion": 20.7
+   },
+   "percentil": {
+    "robo_casa": 81,
+    "homicidio": 81,
+    "extorsion": 97,
+    "robo_vehiculo": 61
+   }
+  },
+  "San Luis Potosí": {
+   "entidad": "San Luis Potosi",
+   "tasas": {
+    "homicidio": 6.6,
+    "robo_casa": 23.1,
+    "robo_vehiculo": 70.4,
+    "extorsion": 6.2
+   },
+   "percentil": {
+    "robo_casa": 42,
+    "homicidio": 23,
+    "extorsion": 65,
+    "robo_vehiculo": 48
+   }
+  },
+  "Aguascalientes": {
+   "entidad": "Aguascalientes",
+   "tasas": {
+    "homicidio": 6.0,
+    "robo_casa": 118.1,
+    "robo_vehiculo": 99.7,
+    "extorsion": 5.0
+   },
+   "percentil": {
+    "robo_casa": 100,
+    "homicidio": 19,
+    "extorsion": 52,
+    "robo_vehiculo": 68
+   }
+  },
+  "La Paz": {
+   "entidad": "Baja California Sur",
+   "tasas": {
+    "homicidio": 14.2,
+    "robo_casa": 111.2,
+    "robo_vehiculo": 64.6,
+    "extorsion": 17.3
+   },
+   "percentil": {
+    "robo_casa": 97,
+    "homicidio": 65,
+    "extorsion": 87,
+    "robo_vehiculo": 35
+   }
+  },
+  "Saltillo": {
+   "entidad": "Coahuila De Zaragoza",
+   "tasas": {
+    "homicidio": 2.4,
+    "robo_casa": 30.3,
+    "robo_vehiculo": 8.8,
+    "extorsion": 2.4
+   },
+   "percentil": {
+    "robo_casa": 68,
+    "homicidio": 3,
+    "extorsion": 26,
+    "robo_vehiculo": 6
+   }
+  },
+  "Chihuahua": {
+   "entidad": "Chihuahua",
+   "tasas": {
+    "homicidio": 39.9,
+    "robo_casa": 43.5,
+    "robo_vehiculo": 83.9,
+    "extorsion": 0.3
+   },
+   "percentil": {
+    "robo_casa": 71,
+    "homicidio": 87,
+    "extorsion": 3,
+    "robo_vehiculo": 55
+   }
+  },
+  "Culiacán": {
+   "entidad": "Sinaloa",
+   "tasas": {
+    "homicidio": 44.8,
+    "robo_casa": 14.6,
+    "robo_vehiculo": 209.4,
+    "extorsion": 3.4
+   },
+   "percentil": {
+    "robo_casa": 23,
+    "homicidio": 94,
+    "extorsion": 39,
+    "robo_vehiculo": 94
+   }
+  },
+  "Hermosillo": {
+   "entidad": "Sonora",
+   "tasas": {
+    "homicidio": 34.1,
+    "robo_casa": 11.0,
+    "robo_vehiculo": 80.7,
+    "extorsion": 2.2
+   },
+   "percentil": {
+    "robo_casa": 10,
+    "homicidio": 84,
+    "extorsion": 19,
+    "robo_vehiculo": 52
+   }
+  },
+  "Durango": {
+   "entidad": "Durango",
+   "tasas": {
+    "homicidio": 3.0,
+    "robo_casa": 20.2,
+    "robo_vehiculo": 27.9,
+    "extorsion": 1.3
+   },
+   "percentil": {
+    "robo_casa": 32,
+    "homicidio": 6,
+    "extorsion": 10,
+    "robo_vehiculo": 16
+   }
+  },
+  "Tepic": {
+   "entidad": "Nayarit",
+   "tasas": {
+    "homicidio": 12.7,
+    "robo_casa": 14.4,
+    "robo_vehiculo": 40.4,
+    "extorsion": 3.8
+   },
+   "percentil": {
+    "robo_casa": 16,
+    "homicidio": 58,
+    "extorsion": 45,
+    "robo_vehiculo": 19
+   }
+  },
+  "Colima": {
+   "entidad": "Colima",
+   "tasas": {
+    "homicidio": 76.2,
+    "robo_casa": 99.5,
+    "robo_vehiculo": 109.1,
+    "extorsion": 19.4
+   },
+   "percentil": {
+    "robo_casa": 94,
+    "homicidio": 100,
+    "extorsion": 94,
+    "robo_vehiculo": 71
+   }
+  },
+  "Toluca": {
+   "entidad": "Mexico",
+   "tasas": {
+    "homicidio": 7.7,
+    "robo_casa": 27.2,
+    "robo_vehiculo": 122.5,
+    "extorsion": 12.7
+   },
+   "percentil": {
+    "robo_casa": 52,
+    "homicidio": 29,
+    "extorsion": 81,
+    "robo_vehiculo": 81
+   }
+  },
+  "Morelia": {
+   "entidad": "Michoacan De Ocampo",
+   "tasas": {
+    "homicidio": 22.6,
+    "robo_casa": 18.8,
+    "robo_vehiculo": 110.8,
+    "extorsion": 6.0
+   },
+   "percentil": {
+    "robo_casa": 29,
+    "homicidio": 71,
+    "extorsion": 61,
+    "robo_vehiculo": 74
+   }
+  },
+  "Cuernavaca": {
+   "entidad": "Morelos",
+   "tasas": {
+    "homicidio": 50.6,
+    "robo_casa": 62.3,
+    "robo_vehiculo": 218.0,
+    "extorsion": 21.3
+   },
+   "percentil": {
+    "robo_casa": 84,
+    "homicidio": 97,
+    "extorsion": 100,
+    "robo_vehiculo": 97
+   }
+  },
+  "Pachuca": {
+   "entidad": "Hidalgo",
+   "tasas": {
+    "homicidio": 8.2,
+    "robo_casa": 44.7,
+    "robo_vehiculo": 87.7,
+    "extorsion": 5.8
+   },
+   "percentil": {
+    "robo_casa": 77,
+    "homicidio": 35,
+    "extorsion": 58,
+    "robo_vehiculo": 58
+   }
+  },
+  "Oaxaca": {
+   "entidad": "Oaxaca",
+   "tasas": {
+    "homicidio": 18.9,
+    "robo_casa": 14.5,
+    "robo_vehiculo": 52.4,
+    "extorsion": 1.8
+   },
+   "percentil": {
+    "robo_casa": 19,
+    "homicidio": 68,
+    "extorsion": 16,
+    "robo_vehiculo": 26
+   }
+  },
+  "Tuxtla Gutiérrez": {
+   "entidad": "Chiapas",
+   "tasas": {
+    "homicidio": 5.8,
+    "robo_casa": 1.8,
+    "robo_vehiculo": 11.5,
+    "extorsion": 1.5
+   },
+   "percentil": {
+    "robo_casa": 0,
+    "homicidio": 10,
+    "extorsion": 13,
+    "robo_vehiculo": 10
+   }
+  },
+  "Villahermosa": {
+   "entidad": "Tabasco",
+   "tasas": {
+    "homicidio": 31.6,
+    "robo_casa": 27.3,
+    "robo_vehiculo": 97.4,
+    "extorsion": 8.2
+   },
+   "percentil": {
+    "robo_casa": 55,
+    "homicidio": 77,
+    "extorsion": 68,
+    "robo_vehiculo": 65
+   }
+  },
+  "Campeche": {
+   "entidad": "Campeche",
+   "tasas": {
+    "homicidio": 10.9,
+    "robo_casa": 12.4,
+    "robo_vehiculo": 4.2,
+    "extorsion": 2.2
+   },
+   "percentil": {
+    "robo_casa": 13,
+    "homicidio": 45,
+    "extorsion": 19,
+    "robo_vehiculo": 3
+   }
+  },
+  "Veracruz": {
+   "entidad": "Veracruz De Ignacio De La Llave",
+   "tasas": {
+    "homicidio": 10.1,
+    "robo_casa": 22.0,
+    "robo_vehiculo": 57.1,
+    "extorsion": 9.1
+   },
+   "percentil": {
+    "robo_casa": 35,
+    "homicidio": 42,
+    "extorsion": 71,
+    "robo_vehiculo": 29
+   }
+  },
+  "Zacatecas": {
+   "entidad": "Zacatecas",
+   "tasas": {
+    "homicidio": 7.0,
+    "robo_casa": 24.0,
+    "robo_vehiculo": 67.8,
+    "extorsion": 3.8
+   },
+   "percentil": {
+    "robo_casa": 45,
+    "homicidio": 26,
+    "extorsion": 45,
+    "robo_vehiculo": 42
+   }
+  },
+  "Tlaxcala": {
+   "entidad": "Tlaxcala",
+   "tasas": {
+    "homicidio": 7.7,
+    "robo_casa": 18.2,
+    "robo_vehiculo": 60.0,
+    "extorsion": 0.9
+   },
+   "percentil": {
+    "robo_casa": 26,
+    "homicidio": 29,
+    "extorsion": 6,
+    "robo_vehiculo": 32
+   }
+  },
+  "Reynosa": {
+   "entidad": "Tamaulipas",
+   "tasas": {
+    "homicidio": 5.8,
+    "robo_casa": 27.6,
+    "robo_vehiculo": 51.5,
+    "extorsion": 3.3
+   },
+   "percentil": {
+    "robo_casa": 58,
+    "homicidio": 10,
+    "extorsion": 35,
+    "robo_vehiculo": 23
+   }
+  },
+  "Chilpancingo": {
+   "entidad": "Guerrero",
+   "tasas": {
+    "homicidio": 30.2,
+    "robo_casa": 6.0,
+    "robo_vehiculo": 70.1,
+    "extorsion": 3.1
+   },
+   "percentil": {
+    "robo_casa": 3,
+    "homicidio": 74,
+    "extorsion": 32,
+    "robo_vehiculo": 45
+   }
+  }
+ }
+}
