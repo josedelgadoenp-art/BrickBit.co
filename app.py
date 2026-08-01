@@ -49,6 +49,7 @@ import geopandas as gpd
 import plotly.graph_objects as go
 import pydeck as pdk
 import streamlit as st
+from fpdf import FPDF
 from shapely.geometry import box
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -647,6 +648,212 @@ def c21_lineas_municipales() -> tuple[list[str], int]:
         else:
             lineas.append("")
     return lineas, n
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 4B · HELPERS PDF — ENTREGABLES CON MARCA BRICKBIT (fpdf2)
+#      Documento tipo papel: fondo BLANCO, banda superior verde bosque
+#      (#24664a) con "BRICKBIT" en crema (el tierra #100c0a no imprime bien),
+#      tipografía Helvetica core (latin-1: acentos OK, sin emojis ni
+#      em-dashes), zebra suave #f2ede4 en tablas y callout ámbar #F5C277
+#      reservado a la honestidad de datos. Pie: "brickbit.co · página N".
+# ══════════════════════════════════════════════════════════════════════════════
+
+PDF_BOSQUE = (36, 102, 74)        # #24664a  banda y títulos
+PDF_CREMA = (245, 237, 227)       # #f5ede3  texto sobre la banda
+PDF_TINTA = (28, 24, 20)          # texto principal sobre blanco
+PDF_GRIS = (110, 100, 90)         # texto secundario y pies
+PDF_ZEBRA = (242, 237, 228)       # #f2ede4  filas alternas
+PDF_AMBAR = (245, 194, 119)       # #F5C277  SOLO honestidad de datos
+PDF_AMBAR_FONDO = (250, 243, 229)  # fondo pálido del callout
+PDF_SALVIA = (111, 162, 135)      # #6fa287  reglas y acentos suaves
+
+
+def _l1(texto) -> str:
+    """Sanitiza cualquier texto a latin-1 (Helvetica core): á é í ó ú ñ ü ²
+    sobreviven; lo que no exista en latin-1 se reemplaza con '?'."""
+    return str(texto).encode("latin-1", errors="replace").decode("latin-1")
+
+
+class PDFBrickBit(FPDF):
+    """Documento con marca BrickBit: banda superior bosque en cada página y
+    pie con 'brickbit.co · página N · fecha'."""
+
+    def __init__(self, titulo: str = "BrickBit"):
+        super().__init__(orientation="P", unit="mm", format="A4")
+        self.titulo_doc = _l1(titulo)
+        self.set_title(self.titulo_doc)
+        self.set_author("BrickBit")
+        self.set_margins(16, 24, 16)
+        self.set_auto_page_break(auto=True, margin=22)
+        # sin compresión de streams: documento inspeccionable y estable
+        # (los entregables pesan decenas de KB, no importa el ahorro)
+        self.compress = True   # PDFs ligeros: mismo contenido, menos peso
+
+    def header(self):
+        self.set_fill_color(*PDF_BOSQUE)
+        self.rect(0, 0, self.w, 13, style="F")
+        self.set_xy(16, 3.5)
+        self.set_font("Helvetica", "B", 11)
+        self.set_text_color(*PDF_CREMA)
+        self.cell(60, 6, "BRICKBIT")
+        self.set_font("Helvetica", "", 8)
+        self.cell(self.w - 32 - 60, 6, self.titulo_doc[:72], align="R")
+        self.set_y(20)
+        self.set_text_color(*PDF_TINTA)
+
+    def footer(self):
+        from datetime import date as _d
+        self.set_y(-16)
+        self.set_draw_color(*PDF_SALVIA)
+        self.set_line_width(0.3)
+        self.line(16, self.get_y(), self.w - 16, self.get_y())
+        self.set_y(-13)
+        self.set_font("Helvetica", "", 8)
+        self.set_text_color(*PDF_GRIS)
+        self.cell(0, 6, _l1(f"brickbit.co · página {self.page_no()} · "
+                            f"{_d.today().isoformat()}"), align="C")
+
+
+def pdf_h1(pdf: PDFBrickBit, texto: str) -> None:
+    pdf.set_font("Helvetica", "B", 15)
+    pdf.set_text_color(*PDF_BOSQUE)
+    pdf.multi_cell(0, 8, _l1(texto))
+    pdf.set_draw_color(*PDF_SALVIA)
+    pdf.set_line_width(0.4)
+    pdf.line(pdf.l_margin, pdf.get_y() + 1,
+             pdf.l_margin + 52, pdf.get_y() + 1)
+    pdf.ln(5)
+    pdf.set_text_color(*PDF_TINTA)
+
+
+def pdf_h2(pdf: PDFBrickBit, texto: str) -> None:
+    pdf.ln(1.5)
+    pdf.set_font("Helvetica", "B", 11.5)
+    pdf.set_text_color(*PDF_BOSQUE)
+    pdf.multi_cell(0, 6.4, _l1(texto))
+    pdf.ln(1)
+    pdf.set_text_color(*PDF_TINTA)
+
+
+def pdf_parrafo(pdf: PDFBrickBit, texto: str, tam: float = 10,
+                color: tuple = PDF_TINTA, estilo: str = "") -> None:
+    pdf.set_font("Helvetica", estilo, tam)
+    pdf.set_text_color(*color)
+    pdf.multi_cell(0, 5.3, _l1(texto))
+    pdf.ln(1.2)
+    pdf.set_text_color(*PDF_TINTA)
+
+
+def pdf_vineta(pdf: PDFBrickBit, texto: str, tam: float = 10) -> None:
+    """Viñeta simple con '·' (latin-1) y sangría francesa."""
+    pdf.set_font("Helvetica", "", tam)
+    pdf.set_text_color(*PDF_TINTA)
+    pdf.set_x(pdf.l_margin + 3)
+    pdf.multi_cell(pdf.epw - 3, 5.3, _l1(f"·  {texto}"))
+    pdf.ln(0.6)
+
+
+def pdf_tabla(pdf: PDFBrickBit, df: pd.DataFrame, tam: float = 8.5,
+              max_filas: int = 40) -> None:
+    """Tabla sencilla de marca: encabezado bosque/crema y zebra #f2ede4.
+    Trunca celdas largas para que la fila nunca se desborde."""
+    if df is None or len(df) == 0:
+        pdf_parrafo(pdf, "(sin datos)", color=PDF_GRIS, estilo="I")
+        return
+    d = df.head(max_filas).copy()
+    cols = [str(c) for c in d.columns]
+    celdas = [[_l1(v) for v in map(str, d[c].tolist())] for c in d.columns]
+    # anchos proporcionales al contenido (acotados) sobre el ancho útil
+    pesos = []
+    for j, c in enumerate(cols):
+        largo = max([len(c)] + [len(v) for v in celdas[j]])
+        pesos.append(min(max(largo, 6), 46))
+    epw = pdf.epw
+    anchos = [epw * p / sum(pesos) for p in pesos]
+    alto = 6.0
+
+    def _fila(valores, fill_rgb, txt_rgb, negrita=False):
+        if pdf.get_y() + alto > pdf.page_break_trigger:
+            pdf.add_page()
+        pdf.set_font("Helvetica", "B" if negrita else "", tam)
+        pdf.set_text_color(*txt_rgb)
+        if fill_rgb:
+            pdf.set_fill_color(*fill_rgb)
+        for w, v in zip(anchos, valores):
+            tope = max(3, int(w / (0.62 * tam / 3.2)))
+            txt = v if len(v) <= tope else v[:tope - 1] + "..."
+            pdf.cell(w, alto, txt, border=0, fill=bool(fill_rgb))
+        pdf.ln(alto)
+
+    _fila([_l1(c) for c in cols], PDF_BOSQUE, PDF_CREMA, negrita=True)
+    for i in range(len(d)):
+        _fila([celdas[j][i] for j in range(len(cols))],
+              PDF_ZEBRA if i % 2 else None, PDF_TINTA)
+    pdf.ln(2)
+    pdf.set_text_color(*PDF_TINTA)
+
+
+def pdf_callout(pdf: PDFBrickBit, texto: str,
+                titulo: str = "Honestidad de datos") -> None:
+    """Callout ámbar de honestidad: borde izquierdo #F5C277 (el ámbar es
+    intocable y SOLO marca estimaciones/alcance) sobre fondo pálido."""
+    pdf.ln(2)
+    cuerpo = _l1(texto)
+    pdf.set_font("Helvetica", "", 9)
+    alto_txt = pdf.multi_cell(pdf.epw - 8, 4.8, cuerpo, dry_run=True,
+                              output="HEIGHT")
+    alto_tot = alto_txt + 12
+    if pdf.get_y() + alto_tot > pdf.page_break_trigger:
+        pdf.add_page()
+    x, y = pdf.l_margin, pdf.get_y()
+    pdf.set_fill_color(*PDF_AMBAR_FONDO)
+    pdf.rect(x, y, pdf.epw, alto_tot, style="F")
+    pdf.set_fill_color(*PDF_AMBAR)
+    pdf.rect(x, y, 1.8, alto_tot, style="F")
+    pdf.set_xy(x + 5, y + 3)
+    pdf.set_font("Helvetica", "B", 9)
+    pdf.set_text_color(*PDF_TINTA)
+    pdf.cell(0, 5, _l1(titulo))
+    pdf.set_xy(x + 5, y + 9)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.multi_cell(pdf.epw - 8, 4.8, cuerpo)
+    pdf.set_y(y + alto_tot + 3)
+    pdf.set_text_color(*PDF_TINTA)
+
+
+def pdf_portada(pdf: PDFBrickBit, titulo: str, subtitulo: str = "",
+                lineas: tuple = ()) -> None:
+    """Portada: título grande bosque + subtítulo + fecha (nueva página)."""
+    from datetime import date as _d
+    pdf.add_page()
+    pdf.set_y(56)
+    pdf.set_font("Helvetica", "B", 23)
+    pdf.set_text_color(*PDF_BOSQUE)
+    pdf.multi_cell(0, 10.5, _l1(titulo))
+    if subtitulo:
+        pdf.ln(1)
+        pdf.set_font("Helvetica", "", 13)
+        pdf.set_text_color(*PDF_GRIS)
+        pdf.multi_cell(0, 7, _l1(subtitulo))
+    pdf.ln(2)
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(*PDF_GRIS)
+    pdf.cell(0, 6, _l1(f"BrickBit · Motor de Morfogénesis Urbana · "
+                       f"{_d.today().isoformat()}"))
+    pdf.ln(10)
+    pdf.set_draw_color(*PDF_SALVIA)
+    pdf.set_line_width(0.5)
+    pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + 60, pdf.get_y())
+    pdf.ln(8)
+    pdf.set_text_color(*PDF_TINTA)
+    for linea in lineas:
+        pdf_vineta(pdf, linea)
+
+
+def pdf_bytes(pdf: PDFBrickBit) -> bytes:
+    """El documento como bytes listos para st.download_button."""
+    return bytes(pdf.output())
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2112,6 +2319,41 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
         if filas:
             capas += _capas_circulatorias(pd.DataFrame(filas), fase, escala=0.006)
 
+    # ── Red de sucursales del usuario (modo franquicia) ──────────────────────
+    # Sucursales en terracota #c07a66 con borde crema; huecos de cobertura en
+    # salvia #6fa287. Solo cuando hay sucursales cargadas para ESTE municipio.
+    if st.session_state.get("bb_red_suffix") == suffix:
+        suc = st.session_state.get("bb_red_suc")
+        if suc is not None and len(suc):
+            suc_r = pd.DataFrame({
+                "pos": [[float(a), float(b)] for a, b in zip(suc["lng"],
+                                                             suc["lat"])],
+                "nombre": suc["nombre"].astype(str)})
+            capas.append(pdk.Layer(
+                "ScatterplotLayer", id="red-sucursales", data=suc_r,
+                get_position="pos", get_radius=70,
+                get_fill_color=[192, 122, 102, 235],       # terracota
+                stroked=True, get_line_color=RGB_CREMA + [255],
+                line_width_min_pixels=2, radius_min_pixels=6,
+                radius_max_pixels=14))
+            capas.append(pdk.Layer(
+                "TextLayer", data=suc_r, get_position="pos",
+                get_text="nombre", get_size=11,
+                get_color=[207, 146, 139, 235],
+                get_alignment_baseline="'top'", get_pixel_offset=[0, 10]))
+        huecos = st.session_state.get("bb_red_huecos")
+        if huecos is not None and len(huecos):
+            hue_r = pd.DataFrame({
+                "pos": [[float(a), float(b)] for a, b in
+                        zip(huecos["lng"], huecos["lat"])]})
+            capas.append(pdk.Layer(
+                "ScatterplotLayer", id="red-huecos", data=hue_r,
+                get_position="pos", get_radius=160,
+                get_fill_color=[111, 162, 135, 70],        # salvia
+                stroked=True, get_line_color=[111, 162, 135, 220],
+                line_width_min_pixels=2, radius_min_pixels=9,
+                radius_max_pixels=26))
+
     return pdk.Deck(layers=capas, initial_view_state=_vista_calles(df),
                     map_style=ESTILO_MAPA, tooltip=_tooltip())
 
@@ -2417,36 +2659,42 @@ con datos {'reales DENUE' if hay_datos_denue() else 'simulados'} —
 no es asesoría de inversión.</span>
         """, unsafe_allow_html=True)
 
-    # ── 📄 Dossier descargable de la unidad (entregable de asesoría) ─────────
+    # ── 📄 Dossier descargable de la unidad (entregable de asesoría, PDF) ────
     from datetime import date as _date
-    dossier = f"""# Dossier BrickBit — {sel}
-*Generado por el Motor de Morfogénesis Urbana · {_date.today().isoformat()}*
-
-## Resumen ejecutivo
-- **Valor hoy:** ${v0:,.0f}/m² → **proyección 10 años:** ${v0 + total:,.0f}/m² (+{total / v0 * 100:.0f}%)
-{"- **Rango de confianza (P10–P90):** +" + f"{(banda[0, -1, idx] / v0 - 1) * 100:.0f}% a +{(banda[2, -1, idx] / v0 - 1) * 100:.0f}%" if banda is not None else ""}
-- **Anatomía:** {total_p / total * 100:.0f}% crecimiento propio · {total_c / total * 100:.0f}% contagio de {len(vecinos)} vecinos
-- **Vector dominante:** {lider} ({pct_lider:.0f}% del contagio)
-
-## Desglose anual (MXN/m²)
-```
-{df_a.round(0).to_string(index=False)}
-```
-
-## Top vecinos que bombean el crecimiento
-```
-{pd.DataFrame({"Vecino": [str(nombres.iloc[v]) for v in vecinos[np.argsort(aporte_vec)[::-1][:8]]], "Aporte MXN/m²": np.sort(aporte_vec)[::-1][:8].round(0)}).to_string(index=False)}
-```
-
----
-*Metodología: modelo espacial autorregresivo (SAR) sobre contigüidad
-geográfica real; vitalidad económica del DENUE/INEGI. Las proyecciones son
-simulaciones calibradas, no garantía de rendimiento. Este documento no
-constituye asesoría de inversión en términos de la regulación aplicable.*
-"""
-    st.download_button("Descargar dossier (Markdown)", dossier,
-                       file_name=f"dossier_brickbit_{sel[:30].replace(' ', '_')}.md",
-                       mime="text/markdown")
+    pdf_d = PDFBrickBit(titulo=f"Dossier · {sel}")
+    pdf_d.add_page()
+    pdf_h1(pdf_d, f"Dossier BrickBit - {sel}")
+    pdf_parrafo(pdf_d, "Generado por el Motor de Morfogénesis Urbana · "
+                f"{_date.today().isoformat()}", color=PDF_GRIS, estilo="I")
+    pdf_h2(pdf_d, "Resumen ejecutivo")
+    pdf_vineta(pdf_d, f"Valor hoy: ${v0:,.0f}/m² -> proyección 10 años: "
+               f"${v0 + total:,.0f}/m² (+{total / v0 * 100:.0f}%)")
+    if banda is not None:
+        pdf_vineta(pdf_d, "Rango de confianza (P10-P90): "
+                   f"+{(banda[0, -1, idx] / v0 - 1) * 100:.0f}% a "
+                   f"+{(banda[2, -1, idx] / v0 - 1) * 100:.0f}%")
+    pdf_vineta(pdf_d, f"Anatomía: {total_p / total * 100:.0f}% crecimiento "
+               f"propio · {total_c / total * 100:.0f}% contagio de "
+               f"{len(vecinos)} vecinos")
+    pdf_vineta(pdf_d, f"Vector dominante: {lider} ({pct_lider:.0f}% del "
+               "contagio)")
+    pdf_h2(pdf_d, "Desglose anual (MXN/m²)")
+    pdf_tabla(pdf_d, df_a.apply(lambda s: s.map(lambda v: f"{v:,.0f}")))
+    pdf_h2(pdf_d, "Top vecinos que bombean el crecimiento")
+    pdf_tabla(pdf_d, pd.DataFrame({
+        "Vecino": [str(nombres.iloc[v])
+                   for v in vecinos[np.argsort(aporte_vec)[::-1][:8]]],
+        "Aporte MXN/m² (10 años)":
+            np.sort(aporte_vec)[::-1][:8].round(0).astype(int)}))
+    pdf_callout(pdf_d, "Metodología: modelo espacial autorregresivo (SAR) "
+                "sobre contigüidad geográfica real; vitalidad económica del "
+                "DENUE/INEGI. Las proyecciones son simulaciones calibradas, "
+                "no garantía de rendimiento. Este documento no constituye "
+                "asesoría de inversión en términos de la regulación "
+                "aplicable.")
+    st.download_button("Descargar dossier (PDF)", pdf_bytes(pdf_d),
+                       file_name=f"dossier_brickbit_{sel[:30].replace(' ', '_')}.pdf",
+                       mime="application/pdf")
 
     # ── 🧭 Lectura para el desarrollador — interpretación accionable ─────────
     # 1) Ventana de entrada: año del pico de crecimiento anual simulado
@@ -2811,6 +3059,502 @@ def ubicacion_optima(suffix: str, giro: str) -> pd.DataFrame | None:
     return agg.nlargest(10, "score").reset_index(drop=True)
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# 8D · CANARIOS DE LA PLUSVALÍA · MODO FRANQUICIA · INFORMES PDF (escala calle)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Giros "canario": su llegada precede a la gentrificación (detectados por
+# palabra clave en el nombre real DENUE; misma técnica que GIROS_B2B).
+GIROS_CANARIO = {
+    "Café de especialidad": ["CAFE"],
+    "Barbería": ["BARBER"],
+    "Galería / arte": ["GALERIA", "ARTE "],
+    "Yoga / pilates": ["YOGA", "PILATES"],
+    "Coworking": ["COWORK"],
+    "Cerveza artesanal / vinoteca": ["CERVEC", "VINOT", "TAP ROOM"],
+    "Panadería artesanal": ["PANADER"],
+}
+
+
+@st.cache_data(show_spinner="Buscando canarios de la plusvalía…",
+               max_entries=8)
+def canarios_calle(suffix: str) -> pd.DataFrame | None:
+    """
+    Time machine comercial: celdas ~300 m (mismo paso 0.0028 que
+    ubicacion_optima) donde ACABAN de llegar giros canario (alta DENUE en los
+    últimos 2 años) a un tejido donde antes había pocos. Score 0-100 =
+    llegada nueva ponderada por la ausencia previa. Devuelve el top-10 con la
+    calle más cercana, las especies recientes y el total histórico.
+    """
+    calles, estab, real = cargar_red_vial(suffix)
+    if not real or estab.empty or "anio" not in estab.columns:
+        return None
+    nom = estab["nombre"].fillna("").str.upper()
+    es_can = np.zeros(len(estab), dtype=bool)
+    esp = np.array([""] * len(estab), dtype=object)
+    for nombre_esp, kws in GIROS_CANARIO.items():
+        m = nom.apply(lambda s: any(k in s for k in kws)).to_numpy() & ~es_can
+        es_can |= m
+        esp[m] = nombre_esp
+    if not es_can.any():
+        return None
+    can = estab.loc[es_can, ["lng", "lat", "anio"]].copy()
+    can["especie"] = esp[es_can]
+    anios = pd.to_numeric(estab["anio"], errors="coerce")
+    max_anio = int(anios.max())
+    can["reciente"] = (pd.to_numeric(can["anio"], errors="coerce")
+                       .fillna(0) >= max_anio - 2)
+
+    paso = 0.0028                       # misma rejilla que ubicacion_optima
+    can["gx"] = np.round(can["lng"].to_numpy() / paso).astype(int)
+    can["gy"] = np.round(can["lat"].to_numpy() / paso).astype(int)
+    agg = can.groupby(["gx", "gy"]).agg(
+        recientes=("reciente", "sum"), historico=("reciente", "size"),
+        lng=("lng", "mean"), lat=("lat", "mean")).reset_index()
+    esp_rec = (can[can["reciente"]].groupby(["gx", "gy"])["especie"]
+               .agg(lambda s: ", ".join(sorted(set(s)))).rename("especies")
+               .reset_index())
+    agg = agg.merge(esp_rec, on=["gx", "gy"], how="left")
+    agg["especies"] = agg["especies"].fillna("-")
+    agg["previos"] = agg["historico"] - agg["recientes"]
+    agg = agg[agg["recientes"] >= 1]
+    if agg.empty:
+        return None
+    # llegada nueva donde antes había pocos canarios → señal de despegue
+    bruto = agg["recientes"].to_numpy(float) \
+        / (1.0 + 0.8 * agg["previos"].to_numpy(float))
+    agg["score"] = (norm01(bruto) * 100).round(0).astype(int)
+
+    mids = np.array([np.mean(c, axis=0) for c in calles["camino"]])
+    idx = [int(np.argmin(np.hypot(mids[:, 0] - x, mids[:, 1] - y)))
+           for x, y in zip(agg["lng"], agg["lat"])]
+    agg["calle"] = calles["nombre"].to_numpy()[idx]
+    top = agg.sort_values(["score", "recientes"],
+                          ascending=False).head(10)
+    return top[["calle", "recientes", "especies", "historico", "score",
+                "lng", "lat"]].reset_index(drop=True)
+
+
+@st.cache_data(max_entries=8)
+def rejilla_demanda(suffix: str) -> pd.DataFrame | None:
+    """
+    Rejilla de demanda ~300 m (idéntica a la de ubicacion_optima, sin giro):
+    demanda = empleo DENUE del entorno (vecindad reina), con la calle más
+    cercana como nombre. Base del análisis de cobertura de una red.
+    """
+    calles, estab, real = cargar_red_vial(suffix)
+    if not real or estab.empty:
+        return None
+    paso = 0.0028
+    gx = np.round(estab["lng"].to_numpy() / paso).astype(int)
+    gy = np.round(estab["lat"].to_numpy() / paso).astype(int)
+    celda = pd.DataFrame({"gx": gx, "gy": gy,
+                          "empleo": estab["empleo"].to_numpy()})
+    agg = celda.groupby(["gx", "gy"]).agg(
+        empleo=("empleo", "sum"), n=("empleo", "size")).reset_index()
+    axv, ayv = agg["gx"].to_numpy(), agg["gy"].to_numpy()
+    emp = agg["empleo"].to_numpy(float)
+    dem = np.zeros(len(agg))
+    for i in range(len(agg)):
+        m = (np.abs(axv - axv[i]) <= 1) & (np.abs(ayv - ayv[i]) <= 1)
+        dem[i] = emp[m].sum()
+    agg["demanda"] = dem.astype(int)
+    agg = agg[agg["n"] >= 8]
+    if agg.empty:
+        return None
+    agg["lng"] = (agg["gx"] + 0.5) * paso
+    agg["lat"] = (agg["gy"] + 0.5) * paso
+    mids = np.array([np.mean(c, axis=0) for c in calles["camino"]])
+    idx = [int(np.argmin(np.hypot(mids[:, 0] - x, mids[:, 1] - y)))
+           for x, y in zip(agg["lng"], agg["lat"])]
+    agg["calle"] = calles["nombre"].to_numpy()[idx]
+    return agg[["lng", "lat", "demanda", "calle"]].reset_index(drop=True)
+
+
+def _haversine_m(lat1, lng1, lat2, lng2) -> np.ndarray:
+    """Distancia haversine en metros (vectorizada)."""
+    la1, lo1, la2, lo2 = map(np.radians, (np.asarray(lat1, float),
+                                          np.asarray(lng1, float),
+                                          np.asarray(lat2, float),
+                                          np.asarray(lng2, float)))
+    a = (np.sin((la2 - la1) / 2) ** 2
+         + np.cos(la1) * np.cos(la2) * np.sin((lo2 - lo1) / 2) ** 2)
+    return 6371000.0 * 2 * np.arcsin(np.sqrt(np.clip(a, 0, 1)))
+
+
+def parsear_sucursales(texto: str, archivo=None
+                       ) -> tuple[pd.DataFrame, int, int]:
+    """
+    Parse defensivo de sucursales `lat,lng[,nombre]` desde texto pegado y/o
+    CSV subido. Ignora líneas malas; devuelve (df, leídas, intentadas).
+    """
+    filas, intentadas = [], 0
+
+    def _agregar(lat, lng, nombre):
+        try:
+            lat, lng = float(lat), float(lng)
+        except (TypeError, ValueError):
+            return False
+        if not (-90 <= lat <= 90 and -180 <= lng <= 180) \
+                or not (math.isfinite(lat) and math.isfinite(lng)):
+            return False
+        nom = str(nombre).strip() if nombre is not None else ""
+        if not nom or nom.lower() == "nan":
+            nom = f"Sucursal {len(filas) + 1}"
+        filas.append({"nombre": nom[:40], "lat": lat, "lng": lng})
+        return True
+
+    for linea in (texto or "").splitlines():
+        li = linea.strip()
+        if not li or li.lower().startswith("lat"):
+            continue
+        intentadas += 1
+        partes = [p.strip() for p in li.split(",")]
+        if len(partes) >= 2:
+            _agregar(partes[0], partes[1],
+                     partes[2] if len(partes) > 2 else None)
+    if archivo is not None:
+        try:
+            dfc = pd.read_csv(archivo)
+            dfc.columns = [str(c).strip().lower() for c in dfc.columns]
+            if "lat" in dfc.columns and "lng" in dfc.columns:
+                for _, r in dfc.iterrows():
+                    intentadas += 1
+                    _agregar(r.get("lat"), r.get("lng"), r.get("nombre"))
+        except Exception:                                  # noqa: BLE001
+            pass
+    return pd.DataFrame(filas, columns=["nombre", "lat", "lng"]), \
+        len(filas), intentadas
+
+
+def canibalizacion_red(suc: pd.DataFrame,
+                       umbral_m: float = 600.0) -> pd.DataFrame:
+    """Pares de sucursales a menos de `umbral_m` metros (haversine)."""
+    pares = []
+    for i in range(len(suc)):
+        for j in range(i + 1, len(suc)):
+            d = float(_haversine_m(suc["lat"].iloc[i], suc["lng"].iloc[i],
+                                   suc["lat"].iloc[j], suc["lng"].iloc[j]))
+            if d < umbral_m:
+                pares.append({"Sucursal A": suc["nombre"].iloc[i],
+                              "Sucursal B": suc["nombre"].iloc[j],
+                              "Distancia (m)": int(round(d))})
+    return pd.DataFrame(pares,
+                        columns=["Sucursal A", "Sucursal B",
+                                 "Distancia (m)"]).sort_values(
+        "Distancia (m)").reset_index(drop=True) if pares else \
+        pd.DataFrame(columns=["Sucursal A", "Sucursal B", "Distancia (m)"])
+
+
+def huecos_cobertura(suffix: str, suc: pd.DataFrame,
+                     radio_km: float = 1.2, n: int = 5
+                     ) -> pd.DataFrame | None:
+    """
+    Huecos de cobertura: las `n` celdas de demanda (rejilla ~300 m) con más
+    empleo que quedan a más de `radio_km` de TODA sucursal de la red.
+    """
+    rej = rejilla_demanda(suffix)
+    if rej is None or rej.empty or suc is None or suc.empty:
+        return None
+    dmin = np.full(len(rej), np.inf)
+    for _, s in suc.iterrows():
+        d = _haversine_m(rej["lat"].to_numpy(), rej["lng"].to_numpy(),
+                         s["lat"], s["lng"])
+        dmin = np.minimum(dmin, d)
+    lejos = rej.assign(dist_m=dmin)[dmin > radio_km * 1000]
+    if lejos.empty:
+        return lejos.assign(**{"Distancia a la red (km)": []})[
+            ["calle", "demanda", "Distancia a la red (km)", "lng", "lat"]]
+    top = lejos.nlargest(n, "demanda").copy()
+    top["Distancia a la red (km)"] = (top["dist_m"] / 1000).round(2)
+    return top[["calle", "demanda", "Distancia a la red (km)",
+                "lng", "lat"]].reset_index(drop=True)
+
+
+def _meta_municipio(suffix: str) -> tuple[str, str]:
+    """(municipio, estado) reales desde data/calles_<suffix>.json."""
+    muni, edo = suffix.replace("_", " ").title(), ""
+    try:
+        with open(RUTA_CALLES_TPL.format(s=suffix), encoding="utf-8") as f:
+            meta = json.load(f)
+        muni = meta.get("municipio", muni)
+        edo = meta.get("estado", "")
+    except (OSError, json.JSONDecodeError):
+        pass
+    return muni, edo
+
+
+def _sin_acentos_minusculas(texto: str) -> str:
+    t = unicodedata.normalize("NFD", str(texto))
+    return "".join(c for c in t
+                   if unicodedata.category(c) != "Mn").lower().strip()
+
+
+_ETIQUETAS_SEQUIA = {0: "Sin sequía", 1: "D0 - anormalmente seco",
+                     2: "D1 - sequía moderada", 3: "D2 - sequía severa",
+                     4: "D3 - sequía extrema", 5: "D4 - sequía excepcional"}
+
+
+def sequia_municipio(muni: str, edo: str) -> tuple[int, str] | None:
+    """
+    Nivel de sequía CONAGUA del municipio desde data/agua.json (clave
+    'municipio|entidad' normalizada sin acentos, minúsculas). None si no
+    empata o el archivo no existe — jamás se inventa.
+    """
+    try:
+        with open(os.path.join(_DIR, "data", "agua.json"),
+                  encoding="utf-8") as f:
+            agua = json.load(f)
+        clave = (f"{_sin_acentos_minusculas(muni)}|"
+                 f"{_sin_acentos_minusculas(edo)}")
+        nivel = agua.get("municipios", {}).get(clave)
+        if nivel is None:
+            return None
+        nivel = int(nivel)
+        return nivel, _ETIQUETAS_SEQUIA.get(nivel, f"nivel {nivel}")
+    except (OSError, json.JSONDecodeError, TypeError, ValueError):
+        return None
+
+
+def informe_sitio_pdf(suffix: str, giro: str) -> bytes:
+    """
+    Informe de selección de sitio (PDF multipágina): portada + resumen,
+    análisis del top-10, contexto del municipio (DENUE + mercado vivo C21 +
+    sequía CONAGUA cuando empatan) y metodología con descargos. Se construye
+    100% con datos locales/cacheados: si algo no empata, se omite.
+    """
+    from datetime import date as _date
+    calles, estab, real = cargar_red_vial(suffix)
+    top = ubicacion_optima(suffix, giro)
+    can = canarios_calle(suffix)
+    muni, edo = _meta_municipio(suffix)
+    ciudad = muni + (f", {edo}" if edo else "")
+
+    pdf = PDFBrickBit(titulo=f"Informe de sitio · {muni}")
+
+    # ── PÁG 1 · portada + resumen ejecutivo ──────────────────────────────────
+    pdf_portada(pdf, "Informe de selección de sitio",
+                f"{giro} en {ciudad}")
+    if top is None or top.empty:
+        pdf_parrafo(pdf, "No se encontraron celdas con tejido comercial "
+                    "suficiente para este giro en esta ciudad.")
+        mejor = None
+    else:
+        mejor = top.iloc[0]
+        pdf_h2(pdf, "Resumen ejecutivo")
+        pdf_vineta(pdf, f"Mejor sitio: {mejor['calle']}")
+        pdf_vineta(pdf, "Score de demanda desatendida: "
+                   f"{mejor['score'] * 100:.0f}/100")
+        pdf_vineta(pdf, f"Demanda: {int(mejor['demanda']):,} empleos DENUE "
+                   "en el entorno (~450 m, clientela cautiva)")
+        pdf_vineta(pdf, f"Competidores del giro en ~300 m: "
+                   f"{int(mejor['competidores'])}")
+        n_comp_ciudad = int(top["competidores"].sum())
+        frase_can = ""
+        if can is not None and not can.empty:
+            frase_can = (f"Además, {can['calle'].iloc[0]} muestra llegada "
+                         "reciente de giros canario (señal temprana de "
+                         "gentrificación) a corta distancia del tejido "
+                         "analizado.")
+        else:
+            frase_can = ("No se detectan señales de gentrificación temprana "
+                         "relevantes: la tesis se sostiene en demanda "
+                         "laboral, no en moda.")
+        conclusiones = (
+            f"1) {mejor['calle']} concentra {int(mejor['demanda']):,} "
+            f"empleos de clientela cautiva con solo "
+            f"{int(mejor['competidores'])} competidores de {giro}: la mejor "
+            "relación demanda/oferta de la ciudad. "
+            f"2) En el conjunto del top-10 se observan "
+            f"{n_comp_ciudad} competidores del giro: hay espacio real antes "
+            "de saturar. "
+            f"3) {frase_can}")
+        pdf_h2(pdf, "Conclusiones")
+        pdf_parrafo(pdf, conclusiones)
+
+    # ── PÁG 2 · análisis del top-10 ──────────────────────────────────────────
+    pdf.add_page()
+    pdf_h1(pdf, "Análisis: los 10 mejores sitios")
+    if top is not None and not top.empty:
+        tabla = pd.DataFrame({
+            "#": range(1, len(top) + 1),
+            "Calle": top["calle"],
+            "Empleos": top["demanda"].astype(int).map("{:,}".format),
+            "Comp.": top["competidores"].astype(int),
+            "Score": (top["score"] * 100).round(0).astype(int),
+            "Por qué": [f"{int(d):,} empleos alrededor · {int(c)} "
+                        f"competidores en ~300 m"
+                        for d, c in zip(top["demanda"],
+                                        top["competidores"])]})
+        pdf_tabla(pdf, tabla)
+        pdf_h2(pdf, "Lectura del número 1")
+        pdf_parrafo(pdf, f"{mejor['calle']} encabeza el ranking porque "
+                    f"combina la mayor demanda desatendida: "
+                    f"{int(mejor['demanda']):,} empleos formales alrededor "
+                    f"con apenas {int(mejor['competidores'])} competidores "
+                    f"de {giro} detectados por nombre comercial. El empleo "
+                    "cercano es clientela cautiva de lunes a viernes.")
+        if len(top) >= 3:
+            alt = top.iloc[1:3]
+            pdf_h2(pdf, "Alternativas 2 y 3")
+            pdf_parrafo(
+                pdf,
+                f"Si el sitio 1 no consigue local o el uso de suelo no lo "
+                f"permite, {alt['calle'].iloc[0]} "
+                f"({int(alt['demanda'].iloc[0]):,} empleos, "
+                f"{int(alt['competidores'].iloc[0])} competidores) y "
+                f"{alt['calle'].iloc[1]} "
+                f"({int(alt['demanda'].iloc[1]):,} empleos, "
+                f"{int(alt['competidores'].iloc[1])} competidores) ofrecen "
+                "un perfil demanda/competencia comparable.")
+    else:
+        pdf_parrafo(pdf, "Sin celdas candidatas para este giro.")
+    if can is not None and not can.empty:
+        pdf_h2(pdf, "Señales de gentrificación temprana cercanas")
+        for _, c in can.head(3).iterrows():
+            pdf_vineta(pdf, f"{c['calle']}: {int(c['recientes'])} negocios "
+                       f"canario en los últimos 2 años ({c['especies']}); "
+                       f"score {int(c['score'])}/100")
+        pdf_parrafo(pdf, "La llegada de estos giros suele preceder a los "
+                    "despegues de precio; es señal exploratoria, no "
+                    "garantía.", color=PDF_GRIS, estilo="I")
+
+    # ── PÁG 3 · contexto del municipio ───────────────────────────────────────
+    pdf.add_page()
+    pdf_h1(pdf, f"Contexto del municipio: {ciudad}")
+    pdf_h2(pdf, "Tejido económico (DENUE/INEGI)")
+    pdf_vineta(pdf, f"Establecimientos registrados: {len(estab):,}")
+    if "empleo" in estab.columns:
+        pdf_vineta(pdf, "Empleo formal estimado por estratos: "
+                   f"{int(estab['empleo'].sum()):,} puestos")
+    pdf_vineta(pdf, f"Calles con actividad mapeadas: {len(calles):,}")
+    if "anio" in estab.columns:
+        pdf_vineta(pdf, "Corte del CSV DENUE: altas registradas hasta "
+                   f"{int(pd.to_numeric(estab['anio'], errors='coerce').max())}")
+    reg = _c21_registro(f"{muni} · {edo}" if edo else muni,
+                        cargar_mercado_vivo())
+    if reg is not None and reg.get("pm2v"):
+        pdf_h2(pdf, "Mercado vivo Century 21 (precios de lista, "
+               "refresco diario)")
+        pdf_vineta(pdf, f"Mediana de venta: ${float(reg['pm2v']):,.0f}/m²")
+        _nv = int(reg.get("nV") or 0)
+        if _nv:
+            pdf_vineta(pdf, f"Inventario en venta observado: {_nv:,} "
+                       "propiedades")
+        _yld = reg.get("yield") or reg.get("yld") or reg.get("yieldReal")
+        if _yld:
+            pdf_vineta(pdf, f"Yield bruto real (renta/venta): "
+                       f"{float(_yld):.1f}% anual")
+    agua = sequia_municipio(muni, edo)
+    if agua is not None:
+        nivel, etiqueta = agua
+        pdf_h2(pdf, "Contexto hídrico (Monitor de Sequía CONAGUA/SMN)")
+        pdf_vineta(pdf, f"Nivel de sequía del municipio: {etiqueta}")
+        if nivel >= 3:
+            nota_agua = ("El municipio está en sequía severa o peor: trata "
+                         "la factibilidad hídrica como riesgo de proyecto y "
+                         "confírmala con el organismo operador ANTES de "
+                         "firmar.")
+        elif nivel >= 1:
+            nota_agua = ("Hay condición de sequía ligera/moderada: la "
+                         "factibilidad de servicio la dicta el organismo "
+                         "operador local; confírmala en la prospección.")
+        else:
+            nota_agua = ("Sin sequía al corte vigente. Aun así, la dotación "
+                         "de agua de un local la dicta el organismo "
+                         "operador local.")
+        pdf_parrafo(pdf, nota_agua, color=PDF_GRIS)
+
+    # ── PÁG 4 · metodología y descargos ──────────────────────────────────────
+    pdf.add_page()
+    pdf_h1(pdf, "Metodología y descargos")
+    pdf_h2(pdf, "Cómo se calcula")
+    pdf_parrafo(pdf, "Demanda: suma de empleo DENUE en la celda de ~300 m y "
+                "sus 8 vecinas (radio efectivo ~450 m): la clientela "
+                "cautiva que trabaja alrededor del sitio. Competencia: "
+                "establecimientos del giro detectados por palabra clave en "
+                "su nombre comercial real. Score: log(1+demanda) / "
+                "(1 + 1.2 x competidores), normalizado 0-100; premia "
+                "demanda alta sin oferta. Solo se consideran celdas con "
+                "tejido comercial real (8+ establecimientos).")
+    pdf_parrafo(pdf, "Canarios de la plusvalía: giros indicadores (café de "
+                "especialidad, barbería, galería, yoga/pilates, coworking, "
+                "cerveza artesanal, panadería artesanal) con alta DENUE en "
+                "los últimos 2 años, ponderados donde antes había pocos: "
+                "llegada nueva, no stock viejo.")
+    pdf_h2(pdf, "Fuentes")
+    pdf_vineta(pdf, "DENUE / INEGI: establecimientos, empleo por estratos y "
+               "año de alta (corte del CSV ingerido)")
+    pdf_vineta(pdf, "Century 21 México: medianas de precios de lista, con "
+               "autorización, refresco diario (cuando el municipio empata)")
+    pdf_vineta(pdf, "CONAGUA / SMN: Monitor de Sequía de México, corte "
+               "municipal quincenal (cuando el municipio empata)")
+    pdf_callout(pdf, "Este informe es un FILTRO DE PROSPECCIÓN estadística, "
+                "no un estudio de mercado terminado: valida en campo el "
+                "flujo peatonal, el uso de suelo y la normativa local antes "
+                "de decidir. La competencia se detecta por nombre comercial "
+                "y puede omitir negocios con nombres atípicos. BrickBit no "
+                "garantiza resultados comerciales.")
+    return pdf_bytes(pdf)
+
+
+def informe_red_pdf(suffix: str, suc: pd.DataFrame, pares: pd.DataFrame,
+                    huecos: pd.DataFrame | None) -> bytes:
+    """Informe de red de sucursales (PDF, 2 páginas): resumen de
+    canibalización y huecos + metodología con descargo honesto."""
+    muni, edo = _meta_municipio(suffix)
+    ciudad = muni + (f", {edo}" if edo else "")
+    pdf = PDFBrickBit(titulo=f"Informe de red · {muni}")
+
+    # ── PÁG 1 · resumen de la red ────────────────────────────────────────────
+    pdf.add_page()
+    pdf_h1(pdf, f"Informe de red de sucursales - {ciudad}")
+    pdf_h2(pdf, "Resumen")
+    pdf_vineta(pdf, f"Sucursales analizadas: {len(suc)}")
+    pdf_vineta(pdf, "Pares en riesgo de canibalización (<600 m): "
+               f"{0 if pares is None else len(pares)}")
+    n_huecos = 0 if huecos is None or huecos.empty else len(huecos)
+    pdf_vineta(pdf, f"Huecos de cobertura detectados (>1.2 km de toda "
+               f"sucursal): {n_huecos}")
+    if pares is not None and not pares.empty:
+        pdf_h2(pdf, "Canibalización: pares a menos de 600 m")
+        pdf_tabla(pdf, pares)
+    else:
+        pdf_h2(pdf, "Canibalización")
+        pdf_parrafo(pdf, "Ningún par de sucursales queda a menos de 600 m: "
+                    "sin canibalización geométrica aparente.")
+    if huecos is not None and not huecos.empty:
+        pdf_h2(pdf, "Huecos de cobertura: demanda lejos de tu red")
+        pdf_tabla(pdf, huecos.rename(columns={
+            "calle": "Calle", "demanda": "Empleos (demanda)"})[
+            ["Calle", "Empleos (demanda)", "Distancia a la red (km)"]])
+    else:
+        pdf_h2(pdf, "Huecos de cobertura")
+        pdf_parrafo(pdf, "Toda la demanda relevante queda a menos de 1.2 km "
+                    "de alguna sucursal (o no hay rejilla de demanda para "
+                    "esta ciudad).")
+
+    # ── PÁG 2 · metodología + descargo ───────────────────────────────────────
+    pdf.add_page()
+    pdf_h1(pdf, "Metodología y alcance")
+    pdf_parrafo(pdf, "Canibalización: distancia haversine entre cada par de "
+                "sucursales; se reporta todo par a menos de 600 m. Huecos: "
+                "rejilla de demanda de ~300 m sobre el empleo DENUE "
+                "(vecindad reina, radio efectivo ~450 m); se reportan las 5 "
+                "celdas con más demanda cuya distancia a TODA sucursal "
+                "supera 1.2 km, nombradas por su calle más cercana.")
+    pdf_vineta(pdf, "Fuente de demanda: DENUE / INEGI (empleo por estratos, "
+               "corte del CSV ingerido)")
+    pdf_vineta(pdf, "Coordenadas de sucursales: proporcionadas por el "
+               "usuario, sin verificación en campo")
+    pdf_callout(pdf, "Análisis geométrico sobre demanda DENUE: la "
+                "canibalización real depende de tu ticket promedio, tu "
+                "catchment y las barreras urbanas (avenidas, ríos, vías). "
+                "Úsalo como radiografía inicial de la red, no como decisión "
+                "final. BrickBit no garantiza resultados comerciales.")
+    return pdf_bytes(pdf)
+
+
 @st.cache_data(show_spinner="🧪 Midiendo el impacto real de las anclas…")
 def impacto_anclas(suffix: str) -> pd.DataFrame | None:
     """
@@ -2943,6 +3687,108 @@ def tab_huecos(suffix: str = "azcapotzalco") -> None:
                     "negocios del giro detectados por su nombre real. El "
                     "score premia demanda alta sin oferta.</div>",
                     unsafe_allow_html=True)
+                st.download_button(
+                    "Informe de sitio (PDF)",
+                    informe_sitio_pdf(suffix, giro),
+                    file_name=f"informe_sitio_{suffix}_{slugificar(giro)}.pdf",
+                    mime="application/pdf",
+                    help="Entregable de 4 páginas: resumen ejecutivo, "
+                         "análisis del top-10, contexto del municipio y "
+                         "metodología.")
+
+        # ── Canarios de la plusvalía (time machine comercial) ────────────────
+        st.markdown("---")
+        st.markdown("#### Canarios de la plusvalía · llegada temprana de "
+                    "giros indicadores")
+        canarios = canarios_calle(suffix)
+        if canarios is not None and not canarios.empty:
+            lider_c = canarios.iloc[0]
+            st.markdown(
+                f"<div class='leyenda'>A <b>{lider_c['calle']}</b> llegaron "
+                f"{int(lider_c['recientes'])} negocios canario en los "
+                f"últimos 2 años: {lider_c['especies']}. Este patrón "
+                "precede a los despegues de precio.</div>",
+                unsafe_allow_html=True)
+            st.dataframe(
+                canarios[["calle", "recientes", "especies", "historico",
+                          "score"]].rename(columns={
+                    "calle": "Calle",
+                    "recientes": "Canarios recientes (2 años)",
+                    "especies": "Especies recientes",
+                    "historico": "Total histórico",
+                    "score": "Score de llegada"}),
+                hide_index=True, width="stretch",
+                column_config={"Score de llegada":
+                               st.column_config.ProgressColumn(
+                                   format="%d", min_value=0, max_value=100)})
+        else:
+            st.info("Sin canarios detectables en esta ciudad: se requieren "
+                    "nombres y años de alta del DENUE.")
+        st.caption("Señal EXPLORATORIA basada en fechas de alta del DENUE; "
+                   "correlación observada en gentrificación urbana, no "
+                   "garantía. Cruza con el inventario C21 de la zona.")
+
+        # ── Modo franquicia / cadena ─────────────────────────────────────────
+        with st.expander("Mi red de sucursales · canibalización y huecos"):
+            texto_suc = st.text_area(
+                "Pega tus sucursales: una por línea, `lat,lng[,nombre]`",
+                key=f"red_txt_{suffix}", height=120,
+                placeholder="19.4870,-99.1840,Sucursal Centro\n"
+                            "19.4930,-99.1710")
+            archivo_suc = st.file_uploader(
+                "...o sube un CSV con columnas lat,lng[,nombre]",
+                type=["csv"], key=f"red_csv_{suffix}")
+            suc, leidas, intentadas = parsear_sucursales(texto_suc,
+                                                         archivo_suc)
+            if intentadas and leidas < intentadas:
+                st.warning(f"Leí {leidas} de {intentadas} líneas; el resto "
+                           "no trae lat,lng válidos y se ignoró.")
+            if suc.empty:
+                for _k in ("bb_red_suffix", "bb_red_suc", "bb_red_huecos"):
+                    st.session_state.pop(_k, None)
+                st.caption("Carga al menos una sucursal para analizar tu "
+                           "red sobre la demanda DENUE de esta ciudad.")
+            else:
+                st.caption(f"{leidas} sucursales leídas.")
+                pares = canibalizacion_red(suc)
+                huecos = huecos_cobertura(suffix, suc)
+                col_r1, col_r2 = st.columns(2)
+                with col_r1:
+                    st.markdown("##### Canibalización (pares a <600 m)")
+                    if pares.empty:
+                        st.markdown("<div class='leyenda'>Ningún par de "
+                                    "sucursales a menos de 600 m.</div>",
+                                    unsafe_allow_html=True)
+                    else:
+                        st.dataframe(pares, hide_index=True,
+                                     width="stretch")
+                with col_r2:
+                    st.markdown("##### Huecos de cobertura (>1.2 km de "
+                                "toda sucursal)")
+                    if huecos is None or huecos.empty:
+                        st.markdown("<div class='leyenda'>Sin huecos: toda "
+                                    "la demanda queda a menos de 1.2 km de "
+                                    "alguna sucursal.</div>",
+                                    unsafe_allow_html=True)
+                    else:
+                        st.dataframe(
+                            huecos[["calle", "demanda",
+                                    "Distancia a la red (km)"]].rename(
+                                columns={"calle": "Calle (hueco)",
+                                         "demanda": "Empleos (demanda)"}),
+                            hide_index=True, width="stretch")
+                # capa en el mapa de la escala calle (terracota + salvia)
+                st.session_state["bb_red_suffix"] = suffix
+                st.session_state["bb_red_suc"] = suc
+                st.session_state["bb_red_huecos"] = huecos
+                st.download_button(
+                    "Informe de red (PDF)",
+                    informe_red_pdf(suffix, suc, pares, huecos),
+                    file_name=f"informe_red_{suffix}.pdf",
+                    mime="application/pdf")
+            st.caption("Análisis geométrico sobre demanda DENUE: la "
+                       "canibalización real depende de tu ticket y "
+                       "catchment; úsalo como radiografía inicial.")
         st.markdown("---")
     oferta = estab.groupby(["calle", "sector"]).size().unstack(fill_value=0)
     filas = []
