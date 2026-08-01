@@ -83,12 +83,10 @@ URL_ESTADOS = ("https://raw.githubusercontent.com/angelnmara/geojson/"
 URL_MUNICIPIOS = ("https://raw.githubusercontent.com/strotgen/mexico-leaflet/"
                   "master/municipalities.geojson")
 
-# Estilos de basemap (Carto, sin token). "Voyager" ≈ look Google Maps.
-ESTILOS_MAPA = {
-    "Tierra BrickBit (oscuro)": "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json",
-    "Voyager (estilo Google Maps)": "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
-    "Positron claro": "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-}
+# Basemap FIJO: Tierra BrickBit (Carto dark-matter, sin token) — el único
+# estilo de la app; casa con la paleta mate (tierra #100c0a / crema #f5ede3).
+ESTILO_MAPA = ("https://basemaps.cartocdn.com/gl/"
+               "dark-matter-nolabels-gl-style/style.json")
 
 # Las cinco escalas del organismo: clave interna → etiqueta del selector.
 # La LÓGICA compara siempre la clave (esc == "micro"…), nunca la etiqueta.
@@ -996,7 +994,7 @@ def capa_bordes_estatales() -> pdk.Layer:
 
 def construir_deck_nacion(valores: np.ndarray, año: float, fase: float,
                           mostrar_flujos: bool, mostrar_torres: bool,
-                          mostrar_etiquetas: bool, estilo: str,
+                          mostrar_etiquetas: bool,
                           flujos: pd.DataFrame) -> pdk.Deck:
     """Escala estados: piel estatal + órganos ZM + sangre de capital."""
     capas = [pdk.Layer(
@@ -1025,12 +1023,12 @@ def construir_deck_nacion(valores: np.ndarray, año: float, fase: float,
         ))
     return pdk.Deck(layers=capas,
                     initial_view_state=_vista(-102.4, 23.9, 4.4),
-                    map_style=ESTILOS_MAPA[estilo], tooltip=_tooltip())
+                    map_style=ESTILO_MAPA, tooltip=_tooltip())
 
 
 def construir_deck_municipios(valores: np.ndarray, año: float, fase: float,
                               mostrar_flujos: bool, mostrar_torres: bool,
-                              mostrar_etiquetas: bool, estilo: str,
+                              mostrar_etiquetas: bool,
                               flujos: pd.DataFrame,
                               valores_edo: np.ndarray,
                               mostrar_lisa: bool = False) -> pdk.Deck:
@@ -1071,7 +1069,7 @@ def construir_deck_municipios(valores: np.ndarray, año: float, fase: float,
         ))
     return pdk.Deck(layers=capas,
                     initial_view_state=_vista(-102.4, 23.9, 4.6, pitch=42),
-                    map_style=ESTILOS_MAPA[estilo], tooltip=_tooltip())
+                    map_style=ESTILO_MAPA, tooltip=_tooltip())
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1128,6 +1126,47 @@ _EMERGENTES_ZMVM = [(-99.00, 19.69, 0.85, 0.045),   # AIFA / Suburbano
                     (-99.26, 19.36, 0.35, 0.024),   # Santa Fe
                     (-99.11, 19.49, 0.35, 0.024)]   # GAM
 
+# ── Unidades del microtejido: 16 alcaldías CDMX + 10 municipios Edomex ──────
+# Tejido SIMULADO calibrado con las semillas reales de _SEMILLAS_ZMVM.
+# centro = (lng, lat) geográfico aproximado; medio_* = semiancho del bbox en
+# grados (alcaldías chicas ±0.03°, grandes ±0.06°, municipios ±0.05°).
+def _u(nombre, zona, lng, lat, m_lng, m_lat):
+    return {"nombre": nombre, "zona": zona, "centro": (lng, lat),
+            "medio_lng": m_lng, "medio_lat": m_lat}
+
+
+UNIDADES_MICRO = {
+    # CDMX — 16 alcaldías
+    "alvaro_obregon": _u("Álvaro Obregón", "CDMX", -99.235, 19.345, 0.045, 0.055),
+    "azcapotzalco": _u("Azcapotzalco", "CDMX", CENTRO_LNG, CENTRO_LAT,
+                       NX / 2 * PASO_LNG, NY / 2 * PASO_LAT),
+    "benito_juarez": _u("Benito Juárez", "CDMX", -99.16, 19.385, 0.030, 0.030),
+    "coyoacan": _u("Coyoacán", "CDMX", -99.15, 19.33, 0.040, 0.035),
+    "cuajimalpa": _u("Cuajimalpa", "CDMX", -99.30, 19.355, 0.045, 0.045),
+    "cuauhtemoc": _u("Cuauhtémoc", "CDMX", -99.145, 19.43, 0.030, 0.030),
+    "gustavo_a_madero": _u("Gustavo A. Madero", "CDMX", -99.11, 19.51, 0.060, 0.055),
+    "iztacalco": _u("Iztacalco", "CDMX", -99.095, 19.395, 0.030, 0.026),
+    "iztapalapa": _u("Iztapalapa", "CDMX", -99.055, 19.345, 0.060, 0.050),
+    "magdalena_contreras": _u("M. Contreras", "CDMX", -99.245, 19.29, 0.038, 0.040),
+    "miguel_hidalgo": _u("Miguel Hidalgo", "CDMX", -99.20, 19.43, 0.040, 0.035),
+    "milpa_alta": _u("Milpa Alta", "CDMX", -99.02, 19.13, 0.060, 0.055),
+    "tlahuac": _u("Tláhuac", "CDMX", -99.00, 19.27, 0.050, 0.040),
+    "tlalpan": _u("Tlalpan", "CDMX", -99.185, 19.24, 0.060, 0.060),
+    "venustiano_carranza": _u("Venustiano Carranza", "CDMX", -99.095, 19.43, 0.032, 0.028),
+    "xochimilco": _u("Xochimilco", "CDMX", -99.10, 19.245, 0.050, 0.040),
+    # Edomex — 10 municipios metropolitanos clave
+    "ecatepec": _u("Ecatepec", "Edomex", -99.06, 19.60, 0.050, 0.050),
+    "naucalpan": _u("Naucalpan", "Edomex", -99.24, 19.475, 0.050, 0.045),
+    "tlalnepantla": _u("Tlalnepantla", "Edomex", -99.195, 19.54, 0.050, 0.045),
+    "nezahualcoyotl": _u("Nezahualcóyotl", "Edomex", -99.03, 19.40, 0.040, 0.038),
+    "cuautitlan_izcalli": _u("Cuautitlán Izcalli", "Edomex", -99.245, 19.645, 0.050, 0.048),
+    "huixquilucan": _u("Huixquilucan", "Edomex", -99.29, 19.395, 0.050, 0.042),
+    "atizapan": _u("Atizapán", "Edomex", -99.26, 19.56, 0.050, 0.040),
+    "tecamac": _u("Tecámac", "Edomex", -98.99, 19.66, 0.050, 0.050),
+    "chimalhuacan": _u("Chimalhuacán", "Edomex", -98.955, 19.42, 0.040, 0.036),
+    "coacalco": _u("Coacalco", "Edomex", -99.11, 19.63, 0.035, 0.030),
+}
+
 
 def _dims_micro(alcance: str) -> tuple[int, int, float, float, float, float]:
     """(NX, NY, centro_lng, centro_lat, paso_lng, paso_lat) por alcance."""
@@ -1139,14 +1178,22 @@ def _dims_micro(alcance: str) -> tuple[int, int, float, float, float, float]:
         lat_min, lat_max = 19.22, 19.74
         return (nx, ny, (lng_min + lng_max) / 2, (lat_min + lat_max) / 2,
                 (lng_max - lng_min) / nx, (lat_max - lat_min) / ny)
+    u = UNIDADES_MICRO.get(alcance)
+    if u is not None:
+        # grid FINO estilo Azcapotzalco (26×26) centrado en el bbox de la
+        # unidad; el paso escala con su semiancho real
+        nx, ny = NX, NY
+        return (nx, ny, u["centro"][0], u["centro"][1],
+                2 * u["medio_lng"] / nx, 2 * u["medio_lat"] / ny)
     return NX, NY, CENTRO_LNG, CENTRO_LAT, PASO_LNG, PASO_LAT
 
 
-@st.cache_data(show_spinner="🧫 Cultivando tejido urbano…", max_entries=2)
+@st.cache_data(show_spinner="🧫 Cultivando tejido urbano…", max_entries=8)
 def generar_tejido_urbano(alcance: str = "azcapotzalco") -> gpd.GeoDataFrame:
     """GeoDataFrame de manzanas simuladas con precio, potencial y flujo.
-    alcance='azcapotzalco' (676 manzanas finas) o 'zmvm' (2,304 células
-    metropolitanas: CDMX + Edomex)."""
+    alcance='azcapotzalco' (676 manzanas finas, modelo original), 'zmvm'
+    (2,304 células metropolitanas) o cualquier clave de UNIDADES_MICRO
+    (grid fino 26×26 con el modelo ZMVM + corazón local propio)."""
     rng = np.random.default_rng(SEMILLA)
     nx, ny, c_lng, c_lat, p_lng, p_lat = _dims_micro(alcance)
     ix, iy = np.meshgrid(np.arange(nx), np.arange(ny))
@@ -1163,21 +1210,38 @@ def generar_tejido_urbano(alcance: str = "azcapotzalco") -> gpd.GeoDataFrame:
     def nucleo(lng, lat, sigma):
         return np.exp(-((cx - lng) ** 2 + (cy - lat) ** 2) / (2 * sigma ** 2))
 
-    if alcance == "zmvm":
+    es_unidad = alcance in UNIDADES_MICRO and alcance != "azcapotzalco"
+    if alcance == "zmvm" or es_unidad:
         precio = np.full(cx.size, 5200.0)
         for _, sl, st_, peso, sig in _SEMILLAS_ZMVM:
             precio += peso * nucleo(sl, st_, sig)
-        precio *= rng.lognormal(0.0, 0.12, precio.size)
         potencial = rng.uniform(0.04, 0.18, precio.size)
         for el, et, peso, sig in _EMERGENTES_ZMVM:
             potencial += peso * nucleo(el, et, sig)
+        if es_unidad:
+            # corazón local SUAVE en el centro de la unidad: mismo modelo
+            # ZMVM (semillas reales) pero con núcleo propio para que el
+            # tejido de cada alcaldía/municipio tenga vida centrípeta
+            u = UNIDADES_MICRO[alcance]
+            sig_u = 0.45 * max(u["medio_lng"], u["medio_lat"])
+            n_u = nucleo(u["centro"][0], u["centro"][1], sig_u)
+            precio += 2500.0 * n_u
+            potencial += 0.25 * n_u
+        precio *= rng.lognormal(0.0, 0.12, precio.size)
         potencial = np.clip(potencial, 0, 1)
-        # cada célula toma el nombre de su semilla municipal más cercana
-        sx = np.array([s[1] for s in _SEMILLAS_ZMVM])
-        sy = np.array([s[2] for s in _SEMILLAS_ZMVM])
-        cerca = np.argmin((cx[:, None] - sx) ** 2 + (cy[:, None] - sy) ** 2,
-                          axis=1)
-        barrios = [_SEMILLAS_ZMVM[int(i)][0] for i in cerca]
+        if es_unidad:
+            # dentro de una unidad, cada célula se nombra por su cuadrante
+            u = UNIDADES_MICRO[alcance]
+            dx = np.where(cx < u["centro"][0], "Pte", "Ote")
+            dy = np.where(cy < u["centro"][1], "Sur", "Nte")
+            barrios = [f"{u['nombre']} · {a}-{b}" for a, b in zip(dy, dx)]
+        else:
+            # cada célula toma el nombre de su semilla municipal más cercana
+            sx = np.array([s[1] for s in _SEMILLAS_ZMVM])
+            sy = np.array([s[2] for s in _SEMILLAS_ZMVM])
+            cerca = np.argmin((cx[:, None] - sx) ** 2
+                              + (cy[:, None] - sy) ** 2, axis=1)
+            barrios = [_SEMILLAS_ZMVM[int(i)][0] for i in cerca]
     else:
         precio = (13500 + 14000 * nucleo(-99.176, 19.470, 0.010)
                   + 9000 * nucleo(-99.170, 19.492, 0.008)
@@ -1201,7 +1265,7 @@ def generar_tejido_urbano(alcance: str = "azcapotzalco") -> gpd.GeoDataFrame:
     return gdf
 
 
-@st.cache_data(max_entries=2)
+@st.cache_data(max_entries=8)
 def vecindad_reina(alcance: str = "azcapotzalco"
                    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Contigüidad reina de la retícula micro: la W del SAR celular."""
@@ -1223,7 +1287,7 @@ def vecindad_reina(alcance: str = "azcapotzalco"
     return pares_i, pares_j, grados
 
 
-@st.cache_data(show_spinner="🧬 Simulando morfogénesis celular…", max_entries=8)
+@st.cache_data(show_spinner="🧬 Simulando morfogénesis celular…", max_entries=16)
 def simular_micro(rho: float, catalizador: str,
                   alcance: str = "azcapotzalco") -> np.ndarray:
     """SAR celular con catalizador gaussiano (célula madre puntual)."""
@@ -1287,7 +1351,7 @@ def preparar_celulas(gdf: gpd.GeoDataFrame, valores: np.ndarray, año: float,
 
 def construir_deck_micro(gdf: gpd.GeoDataFrame, valores: np.ndarray,
                          año: float, fase: float, mostrar_flujos: bool,
-                         extrusion: bool, estilo: str) -> pdk.Deck:
+                         extrusion: bool) -> pdk.Deck:
     """El microtejido celular completo (motor original de morfogénesis)."""
     capas = [pdk.Layer(
         "PolygonLayer",
@@ -1301,15 +1365,17 @@ def construir_deck_micro(gdf: gpd.GeoDataFrame, valores: np.ndarray,
     if mostrar_flujos:
         capas += _capas_circulatorias(flujos_micro(gdf, valores, año),
                                       fase, escala=0.006)
-    # vista según el tamaño del tejido: fino (Azcapotzalco) o ZMVM completa
-    es_zmvm = (gdf["lng"].max() - gdf["lng"].min()) > 0.1
-    if es_zmvm:
-        vista = _vista(float(gdf["lng"].mean()), float(gdf["lat"].mean()),
-                       10.2, pitch=48, bearing=-10)
-    else:
-        vista = _vista(CENTRO_LNG, CENTRO_LAT, 13.1, pitch=52, bearing=-16)
+    # vista adaptada al tamaño del tejido (fino por unidad o ZMVM completa):
+    # zoom continuo — a doble de extensión, un nivel menos de zoom
+    lng_span = float(gdf["lng"].max() - gdf["lng"].min())
+    es_zmvm = lng_span > 0.1
+    zoom = float(np.clip(13.1 + math.log2(0.0637 / max(lng_span, 1e-6)),
+                         9.6, 13.5))
+    vista = _vista(float(gdf["lng"].mean()), float(gdf["lat"].mean()), zoom,
+                   pitch=48 if es_zmvm else 52,
+                   bearing=-10 if es_zmvm else -16)
     return pdk.Deck(layers=capas, initial_view_state=vista,
-                    map_style=ESTILOS_MAPA[estilo], tooltip=_tooltip())
+                    map_style=ESTILO_MAPA, tooltip=_tooltip())
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1492,7 +1558,7 @@ def simular_cp(rho: float, detonante: str, clic: tuple = None) -> np.ndarray:
 
 
 def construir_deck_cp(valores: np.ndarray, año: float, fase: float,
-                      mostrar_flujos: bool, estilo: str,
+                      mostrar_flujos: bool,
                       mostrar_lisa: bool = False) -> pdk.Deck:
     """1,182 células postales reales de CDMX latiendo."""
     df = datos_cp()
@@ -1551,7 +1617,7 @@ def construir_deck_cp(valores: np.ndarray, año: float, fase: float,
         capas += _capas_circulatorias(pd.DataFrame(filas), fase, escala=0.03)
     return pdk.Deck(layers=capas,
                     initial_view_state=_vista(-99.14, 19.38, 10.6, pitch=45),
-                    map_style=ESTILOS_MAPA[estilo], tooltip=_tooltip())
+                    map_style=ESTILO_MAPA, tooltip=_tooltip())
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1930,7 +1996,6 @@ def _liston(camino: list, medio_m: float) -> list | None:
 
 def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
                           mostrar_estab: bool, mostrar_flujos: bool,
-                          estilo: str,
                           suffix: str = "azcapotzalco") -> pdk.Deck:
     """La zona vista desde la banqueta: calles que laten, negocios que
     alimentan el crecimiento y anclas que lo detonan."""
@@ -2048,7 +2113,7 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
             capas += _capas_circulatorias(pd.DataFrame(filas), fase, escala=0.006)
 
     return pdk.Deck(layers=capas, initial_view_state=_vista_calles(df),
-                    map_style=ESTILOS_MAPA[estilo], tooltip=_tooltip())
+                    map_style=ESTILO_MAPA, tooltip=_tooltip())
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2383,11 +2448,69 @@ constituye asesoría de inversión en términos de la regulación aplicable.*
                        file_name=f"dossier_brickbit_{sel[:30].replace(' ', '_')}.md",
                        mime="text/markdown")
 
+    # ── 🧭 Lectura para el desarrollador — interpretación accionable ─────────
+    # 1) Ventana de entrada: año del pico de crecimiento anual simulado
+    incr_anual = (df_a["Propio (MXN/m²)"]
+                  + df_a["Contagio vecinal (MXN/m²)"]).to_numpy()
+    i_pico = int(np.argmax(incr_anual))
+    if i_pico == 0:
+        b_ventana = ("<b>Ventana de entrada:</b> el momentum ya está aquí — "
+                     "el crecimiento anual simulado arranca en su punto "
+                     "máximo. Entrada tardía, paga prima.")
+    else:
+        año_pico = int(df_a["año"].iloc[i_pico])
+        b_ventana = (f"<b>Ventana de entrada:</b> la ola alcanza su punto "
+                     f"máximo aquí hacia el año ~{año_pico}: la ventana de "
+                     "compra de suelo es ANTES de ese punto.")
+    # 2) Contagio del vecindario: valor de la unidad vs sus vecinas directas
+    #    + percentil dentro de todo el organismo
+    v_todos = np.asarray(args_sar["v0"], dtype=float)
+    pctl = float((v_todos <= v0).mean() * 100)
+    temperatura = ("caliente" if pctl >= 67
+                   else "incubando" if pctl >= 33 else "fría")
+    if len(vecinos):
+        med_vec = float(v_todos[vecinos].mean())
+        rel_vec = ("por debajo de" if v0 < 0.95 * med_vec
+                   else "por encima de" if v0 > 1.05 * med_vec
+                   else "a la par de")
+        b_contagio = (f"<b>Contagio del vecindario:</b> hoy vale {rel_vec} "
+                      f"sus vecinas (${v0:,.0f} vs ${med_vec:,.0f}/m² "
+                      f"promedio vecinal) y está en el percentil "
+                      f"{pctl:.0f} del organismo: <b>{temperatura}</b>.")
+    else:
+        b_contagio = (f"<b>Contagio del vecindario:</b> está en el percentil "
+                      f"{pctl:.0f} del organismo: <b>{temperatura}</b>.")
+    # 3) Ancla de realidad: mercado vivo C21 si la unidad empata por slug
+    reg_c21 = _c21_registro(sel, cargar_mercado_vivo())
+    if reg_c21 is not None and reg_c21.get("pm2v"):
+        _nv = int(reg_c21.get("nV") or 0)
+        b_ancla = (f"<b>Ancla de realidad:</b> precio real hoy: "
+                   f"${float(reg_c21['pm2v']):,.0f}/m² de lista"
+                   + (f" ({_nv:,} ventas)" if _nv else "")
+                   + " — mercado vivo C21.")
+    else:
+        b_ancla = ("<b>Ancla de realidad:</b> sin inventario C21 aquí: "
+                   "valida precio en campo.")
+    st.markdown(
+        "<div style='background:#1d1713;border:1px solid #6fa287;"
+        "border-radius:10px;padding:0.9rem 1.1rem;margin:0.6rem 0;"
+        "color:#f5ede3'>"
+        "<b>🧭 Lectura para el desarrollador</b>"
+        "<ul style='margin:0.5rem 0 0.4rem 1.1rem;padding:0'>"
+        f"<li style='margin-bottom:0.35rem'>{b_ventana}</li>"
+        f"<li style='margin-bottom:0.35rem'>{b_contagio}</li>"
+        f"<li style='margin-bottom:0.35rem'>{b_ancla}</li>"
+        "</ul>"
+        "<span style='color:#F5C277;font-size:0.82rem'>Simulación "
+        "exploratoria SAR — úsala para priorizar dónde investigar, no como "
+        "promesa de plusvalía.</span></div>",
+        unsafe_allow_html=True)
+
     # ── 🔗 Deep links al resto del ecosistema BrickBit ────────────────────────
     # Si la selección empata (por slug) con el inventario vivo C21, saltamos
     # directo a sus herramientas con la zona precargada; si no, al mapa
     # nacional. El nombre viaja TAL CUAL (urlencoded).
-    if _c21_registro(sel, cargar_mercado_vivo()) is not None:
+    if reg_c21 is not None:
         col_l1, col_l2 = st.columns(2)
         col_l1.link_button(
             "Analizar como inversión →",
@@ -2633,9 +2756,14 @@ GIROS_B2B = {
     "Panadería": ["PANADERIA"],
     "Ferretería": ["FERRETER"],
     "Lavandería": ["LAVANDER"],
-    "Dental": ["DENTAL", "DENTISTA", "ODONT"],
+    "Consultorio dental": ["DENTAL", "DENTISTA", "ODONTO"],
     "Papelería": ["PAPELER"],
     "Tortillería": ["TORTILLER"],
+    "Gasolinera": ["GASOLINER", "COMBUSTIBLE", "ESTACION DE SERVICIO",
+                   "PEMEX"],
+    "Autolavado": ["AUTOLAVADO", "CAR WASH", "LAVADO DE AUTOS"],
+    "Guardería": ["GUARDERIA", "ESTANCIA INFANTIL"],
+    "Refaccionaria": ["REFACCION"],
 }
 
 
@@ -2767,17 +2895,39 @@ def tab_huecos(suffix: str = "azcapotzalco") -> None:
 
     # ── 📍 Ubicación óptima por giro (con nombres reales del DENUE) ──────────
     if es_real:
+        st.markdown("#### ¿Dónde abro mi negocio? · selector de sitio B2B")
+        st.caption("Demanda = empleo DENUE real alrededor; competencia = "
+                   "coincidencia por nombre comercial. Es un filtro de "
+                   "prospección: valida en campo y con normativa de uso "
+                   "de suelo.")
         giro = st.selectbox("¿Qué giro quieres abrir?",
                             list(GIROS_B2B.keys()), key=f"giro_{suffix}")
         top = ubicacion_optima(suffix, giro)
         if top is not None and not top.empty:
+            # línea narrativa destacada del #1
+            _d1 = int(top["demanda"].iloc[0])
+            _c1n = int(top["competidores"].iloc[0])
+            st.markdown(
+                f"<div class='leyenda'>🥇 <b>Mejor sitio: "
+                f"{str(top['calle'].iloc[0])}</b> — {_d1:,} empleos de "
+                f"clientela cautiva con solo {_c1n} competidores del giro. "
+                f"Score de demanda desatendida: "
+                f"{top['score'].iloc[0] * 100:.0f}/100.</div>",
+                unsafe_allow_html=True)
+            top = top.copy()
+            top["porque"] = [f"{int(d):,} empleos alrededor · {int(c)} "
+                             f"competidores en ~300 m"
+                             for d, c in zip(top["demanda"],
+                                             top["competidores"])]
             c1, c2 = st.columns([3, 2])
             with c1:
                 st.dataframe(
-                    top[["calle", "demanda", "competidores", "score"]].rename(
+                    top[["calle", "demanda", "competidores", "porque",
+                         "score"]].rename(
                         columns={"calle": "Zona (calle más cercana)",
                                  "demanda": "Empleos en el entorno",
                                  "competidores": f"Competidores {giro}",
+                                 "porque": "Por qué",
                                  "score": "Score de hueco"}),
                     hide_index=True, width="stretch",
                     column_config={"Score de hueco":
@@ -3015,7 +3165,8 @@ _EXPLICA_ESCALA = {
          "empleadores que bombean crecimiento a su alrededor.",
     "micro": "**Escala microtejido:** cada **cuadro es una manzana**. En modo 3D, la "
          "**altura = el precio** por m². Aquí ves el contagio calle-a-calle en "
-         "su máximo detalle (Azcapotzalco fino, o toda la ZMVM).",
+         "su máximo detalle (una alcaldía/municipio en fino, o toda la ZMVM). "
+         "El tejido es **simulado**, calibrado con semillas reales de la ZMVM.",
 }
 
 
@@ -3187,8 +3338,7 @@ def main() -> None:
                         help="Coeficiente espacial autorregresivo: cuánto pesa "
                              "el vecindario en el crecimiento de cada célula.")
 
-        st.markdown("### Capas y estilo")
-        estilo = st.selectbox("Estilo de mapa", list(ESTILOS_MAPA.keys()))
+        st.markdown("### Capas")
         mostrar_flujos = st.checkbox("Sistema circulatorio de capital", True)
         if esc == "micro":
             extrusion = st.checkbox("Relieve 3D del tejido", True)
@@ -3251,13 +3401,22 @@ def main() -> None:
                 st.session_state["municipio_nombre"] = m["municipio"]
     elif esc == "micro":
         with col_modo:
-            alcance_micro = "zmvm" if st.selectbox(
-                "Alcance del tejido",
-                ["Azcapotzalco · CDMX (fino)", "ZMVM · CDMX + Edomex"],
-                help="ZMVM cultiva 2,304 células metropolitanas: las 16 "
-                     "alcaldías + Ecatepec, Naucalpan, Tlalnepantla, Neza, "
-                     "Cuautitlán Izcalli, Huixquilucan, Tecámac/AIFA y más."
-            ).startswith("ZMVM") else "azcapotzalco"
+            # "ZMVM completo" primero; luego las 26 unidades en alfabético
+            # (CDMX · … / Edomex · …). La clave viaja como alcance_micro.
+            _ops_micro = {"zmvm": "ZMVM completo"}
+            _ops_micro.update(
+                (k, f"{u['zona']} · {u['nombre']}")
+                for k, u in sorted(UNIDADES_MICRO.items(),
+                                   key=lambda kv: (kv[1]["zona"],
+                                                   slugificar(kv[1]["nombre"]))))
+            _lbl_micro = st.selectbox(
+                "Alcaldía / municipio", list(_ops_micro.values()),
+                help="Tejido SIMULADO calibrado con las semillas reales de la "
+                     "ZMVM. 'ZMVM completo' cultiva 2,304 células "
+                     "metropolitanas; cada alcaldía/municipio cultiva su "
+                     "propio grid fino de 676 manzanas con corazón local.")
+            alcance_micro = list(_ops_micro)[
+                list(_ops_micro.values()).index(_lbl_micro)]
 
     def _idx_det(dic: dict) -> int:
         """Índice inicial del detonante si la URL trae uno válido para esta
@@ -3369,7 +3528,7 @@ def main() -> None:
         def fabricar(a, f):
             return construir_deck_municipios(
                 vv, a, f, mostrar_flujos, mostrar_torres,
-                mostrar_etiquetas, estilo, flujos_nacionales(ve, a),
+                mostrar_etiquetas, flujos_nacionales(ve, a),
                 ve, mostrar_lisa)
 
         render_mapa(lienzo, fabricar, año_idx, reproducir, 48,
@@ -3442,7 +3601,7 @@ def main() -> None:
         def fabricar(a, f):
             return construir_deck_nacion(vv, a, f, mostrar_flujos,
                                          mostrar_torres, mostrar_etiquetas,
-                                         estilo, flujos_nacionales(vv, a))
+                                         flujos_nacionales(vv, a))
 
         render_mapa(lienzo, fabricar, año_idx, reproducir, 90,
                     float(vv.shape[0] - 1), clic_activo, "deck_edo")
@@ -3501,8 +3660,7 @@ def main() -> None:
                       (detonante if DETONANTES_CDMX[detonante] else "sin detonante"))
 
         def fabricar(a, f):
-            return construir_deck_cp(vv, a, f, mostrar_flujos, estilo,
-                                     mostrar_lisa)
+            return construir_deck_cp(vv, a, f, mostrar_flujos, mostrar_lisa)
 
         render_mapa(lienzo, fabricar, año_idx, reproducir, 60,
                     float(vv.shape[0] - 1), clic_activo, "deck_cp")
@@ -3582,7 +3740,7 @@ def main() -> None:
 
         def fabricar(a, f):
             return construir_deck_calles(vv, a, f, mostrar_estab,
-                                         mostrar_flujos, estilo, suf)
+                                         mostrar_flujos, suf)
 
         render_mapa(lienzo, fabricar, año_idx, reproducir, 60,
                     float(vv.shape[0] - 1), clic_activo, f"deck_calle_{suf}")
@@ -3663,14 +3821,16 @@ def main() -> None:
             c2.metric("Células en mutación",
                       f"{int((tasa >= np.quantile(tasa, 0.90)).sum())}",
                       f"top 10% de {len(gdf):,} células"
-                      + (" · ZMVM" if alcance_micro == "zmvm" else ""))
+                      + (" · ZMVM" if alcance_micro == "zmvm"
+                         else f" · {UNIDADES_MICRO[alcance_micro]['nombre']}"
+                         if alcance_micro in UNIDADES_MICRO else ""))
             c3.metric("Pulso de capital", "22 flujos activos", f"ρ = {rho:.2f}")
             c4.metric("Horizonte", f"Año {año:.1f} / {AÑOS}",
                       detonante if CATALIZADORES[detonante] else "sin catalizador")
 
         def fabricar(a, f):
             return construir_deck_micro(gdf, valores, a, f,
-                                        mostrar_flujos, extrusion, estilo)
+                                        mostrar_flujos, extrusion)
 
         if reproducir:
             animar(lienzo, fabricar)
