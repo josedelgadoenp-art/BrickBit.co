@@ -115,7 +115,11 @@
      está dormida (plan gratis de Streamlit). No sondeamos antes con fetch()
      porque un fetch no-cors a una app dormida se rechaza en falso y disparaba
      el mensaje de error aunque el motor estuviera bien desplegado. */
-  iframe.src = MOTOR_URL + "/?embed=true&embed_options=dark_theme,hide_footer,hide_toolbar,hide_colored_line";
+  /* Escenarios compartibles: los query params de esta página (?esc=…&anio=…&
+     rho=…&det=…&retro=…) se reenvían tal cual al motor, que los lee como
+     estado inicial de sus controles. */
+  const params = window.location.search ? "&" + window.location.search.slice(1) : "";
+  iframe.src = MOTOR_URL + "/?embed=true&embed_options=dark_theme,hide_footer,hide_toolbar,hide_colored_line" + params;
 
   /* Cuando el iframe carga (motor listo, o pantalla "despertar" de Streamlit),
      retiramos el velo para que se vea lo que haya dentro. */

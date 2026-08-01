@@ -37,8 +37,11 @@ import base64
 import json
 import math
 import os
+import re
 import time
+import unicodedata
 import urllib.request
+from urllib.parse import quote
 
 import numpy as np
 import pandas as pd
@@ -562,6 +565,93 @@ def datos_municipales() -> pd.DataFrame:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# 4.5 · MERCADO VIVO C21 — medianas REALES de lista por zona (worker BrickBit)
+#       Capa de VERDAD aterrizada: enriquece tooltips, nunca recolorea el mapa.
+# ══════════════════════════════════════════════════════════════════════════════
+
+URL_MERCADO_VIVO = ("https://brickbit-api.jose-delgado-enp.workers.dev"
+                    "/api/listados?zona=_metricas")
+
+
+def slugificar(texto: str) -> str:
+    """
+    Slug idéntico al del worker BrickBit (c21-subir.mjs):
+    NFD → sin diacríticos → lower → no-alfanumérico a '-' → strip '-'.
+    """
+    t = unicodedata.normalize("NFD", str(texto))
+    t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def cargar_mercado_vivo() -> dict:
+    """
+    Medianas reales de PRECIOS DE LISTA Century 21 por zona, refrescadas a
+    diario por el worker BrickBit → {slug: registro}. Cualquier fallo (sin
+    red, timeout, JSON inesperado) devuelve {} en silencio: la app NUNCA
+    debe romperse por esta capa.
+    """
+    try:
+        import requests
+        r = requests.get(URL_MERCADO_VIVO, timeout=8)
+        r.raise_for_status()
+        datos = r.json()
+        if isinstance(datos, dict):    # tolerar envolturas {"items": [...]}
+            datos = (datos.get("items") or datos.get("listados")
+                     or datos.get("zonas") or [])
+        return {str(d["slug"]): d for d in datos
+                if isinstance(d, dict) and d.get("slug")}
+    except Exception:                                      # noqa: BLE001
+        return {}
+
+
+def _c21_registro(nombre: str, mercado: dict) -> dict | None:
+    """
+    Empata un nombre BrickBit contra el inventario C21 por slug. Prueba el
+    nombre completo ('municipio-estado', separador '·' o ',') y luego solo
+    la primera parte ('municipio' / ciudad ancla).
+    """
+    if not mercado:
+        return None
+    candidatos = [slugificar(nombre)]
+    candidatos += [slugificar(p) for p in str(nombre).split("·") if p.strip()]
+    for s in candidatos:
+        if s and s in mercado:
+            return mercado[s]
+    return None
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def c21_lineas_municipales() -> tuple[list[str], int]:
+    """
+    Línea de tooltip 'Mercado vivo C21' por municipio (o '' si no hay dato)
+    + cuántos municipios empatan. Empate por slug de 'Municipio, Estado' y,
+    como respaldo, solo 'Municipio' (las 32 ciudades ancla usan la ciudad).
+    """
+    mercado = cargar_mercado_vivo()
+    df = datos_municipales()
+    lineas: list[str] = []
+    n = 0
+    for muni, edo in zip(df["municipio"], df["estado"]):
+        reg = None
+        if mercado:
+            reg = (mercado.get(slugificar(f"{muni}, {edo}"))
+                   or mercado.get(slugificar(str(muni))))
+        pm2v = (reg or {}).get("pm2v")
+        if reg and pm2v:
+            nv = reg.get("nV") or 0
+            cuenta = f"{int(nv):,} ventas · lista C21" if nv else "lista C21"
+            lineas.append(
+                f"<br/><span style='color:{ARCILLA_SUAVE}'>Mercado vivo "
+                f"C21: <b>${float(pm2v):,.0f}/m²</b> ({cuenta}) · dato "
+                "diario</span>")
+            n += 1
+        else:
+            lineas.append("")
+    return lineas, n
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # 5 · MOTOR SAR (ESTADOS · MUNICIPIOS) + ÍNDICE DE MORAN
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -884,11 +974,12 @@ def preparar_municipios_render(valores: np.ndarray, año: float,
         "extra_txt": [
             (f"🏪 {int(n):,} negocios · {int(e):,} empleos (DENUE) · "
              f"resiliencia {r:.2f}" if n > 0 else
-             f"ZM más cercana: {z} ({d:.0f} km) · potencial {q:.2f}")
-            for n, e, r, z, d, q in zip(
+             f"ZM más cercana: {z} ({d:.0f} km) · potencial {q:.2f}") + c21
+            for n, e, r, z, d, q, c21 in zip(
                 df["n_estab"], df["empleo"], df["resiliencia"],
                 df["zm_cercana"], df["dist_zm_km"],
-                df["potencial_crecimiento"])],
+                df["potencial_crecimiento"],
+                c21_lineas_municipales()[0])],
     })
     return contornos_municipales().join(base, on="idx_mun")
 
@@ -2292,6 +2383,26 @@ constituye asesoría de inversión en términos de la regulación aplicable.*
                        file_name=f"dossier_brickbit_{sel[:30].replace(' ', '_')}.md",
                        mime="text/markdown")
 
+    # ── 🔗 Deep links al resto del ecosistema BrickBit ────────────────────────
+    # Si la selección empata (por slug) con el inventario vivo C21, saltamos
+    # directo a sus herramientas con la zona precargada; si no, al mapa
+    # nacional. El nombre viaja TAL CUAL (urlencoded).
+    if _c21_registro(sel, cargar_mercado_vivo()) is not None:
+        col_l1, col_l2 = st.columns(2)
+        col_l1.link_button(
+            "Analizar como inversión →",
+            f"https://brickbit.co/analizador.html?zona={quote(sel)}",
+            width="stretch")
+        col_l2.link_button(
+            "Ver propiedades reales →",
+            f"https://brickbit.co/mapa.html?zona={quote(sel)}&modo=inmuebles",
+            width="stretch")
+    else:
+        st.link_button("Explorar el inventario nacional →",
+                       "https://brickbit.co/mapa.html", width="stretch")
+    st.caption("Continúa el análisis con datos vivos en las herramientas "
+               "BrickBit.")
+
 
 def _banda(args: dict, n: int = 24) -> np.ndarray:
     """
@@ -2809,6 +2920,20 @@ def inyectar_css() -> None:
           border-color: {LIMA}; }}
       .leyenda {{ font-family: 'Space Mono', monospace; color: {TEXTO_SUAVE};
                   font-size: .82rem; }}
+      .chip-c21 {{
+          display: inline-block; margin-top: .45rem; padding: .28rem .8rem;
+          font-family: 'Space Mono', monospace; font-size: .74rem;
+          color: {CREMA}; background: rgba(111,162,135,.12);
+          border: 1px solid {ARCILLA_SUAVE}; border-radius: 99px;
+      }}
+      .chip-c21 b {{ color: {LIMA}; }}
+      .franja-simulacion {{
+          background: rgba(245,194,119,.12); border-left: 3px solid #F5C277;
+          color: {CREMA}; font-size: 12.5px; line-height: 1.45;
+          font-family: 'Hanken Grotesk', sans-serif;
+          padding: .32rem .75rem; border-radius: 0 8px 8px 0;
+          margin: .15rem 0 .4rem;
+      }}
       /* ── ocultar el cromo de Streamlit (menú, header, footer, insignias) ── */
       #MainMenu, header[data-testid="stHeader"], footer,
       [data-testid="stToolbar"], [data-testid="stDecoration"],
@@ -2892,6 +3017,26 @@ _EXPLICA_ESCALA = {
          "**altura = el precio** por m². Aquí ves el contagio calle-a-calle en "
          "su máximo detalle (Azcapotzalco fino, o toda la ZMVM).",
 }
+
+
+def aviso_honestidad(anio: float, rho: float) -> str | None:
+    """
+    Honestidad de simulación: el pronóstico VALIDADO de BrickBit cubre 1–3
+    años; la ola SAR a 10 años con ρ ajustable es SIMULACIÓN exploratoria.
+    Devuelve el texto del aviso (franja ámbar) o None si el escenario está
+    dentro de lo razonable (0 < año ≤ 3 con la ρ calibrada de 0.85).
+    """
+    partes = []
+    if anio < 0:
+        partes.append("Retro-simulación: reconstrucción, no dato histórico "
+                      "puntual")
+    elif anio > 3:
+        partes.append(f"Proyección a {anio:.0f} años: SIMULACIÓN "
+                      "exploratoria — el modelo BrickBit está validado por "
+                      "backtest a 1–3 años")
+    if abs(rho - 0.85) > 1e-9:
+        partes.append(f"ρ={rho:g} ajustado a mano (el calibrado es 0.85)")
+    return " · ".join(partes) if partes else None
 
 
 def explicador(esc: str) -> None:
@@ -2995,6 +3140,26 @@ def main() -> None:
     st.set_page_config(page_title="BrickBit · Morfogénesis Urbana MX",
                        page_icon="🧬", layout="wide",
                        initial_sidebar_state="expanded")
+
+    # ── 🔗 Escenarios compartibles: la URL es el estado inicial ───────────────
+    # brickbit.co/morfogenesis?esc=micro&anio=7&rho=1.2&det=…&retro=1 arranca
+    # los widgets exactamente en ese escenario. Lectura defensiva: lo que no
+    # valide (escala inexistente, número corrupto…) se ignora en silencio.
+    qp = st.query_params
+    esc_url = qp.get("esc")
+    if esc_url not in ESCALAS:
+        esc_url = None
+    try:
+        anio_url = float(qp.get("anio"))
+    except (TypeError, ValueError):
+        anio_url = None
+    try:
+        rho_url = round(min(1.5, max(0.0, float(qp.get("rho")))) * 20) / 20
+    except (TypeError, ValueError):
+        rho_url = None
+    det_url = qp.get("det") or None      # se valida contra el dict de su escala
+    retro_url = {"1": True, "0": False}.get(qp.get("retro"))
+
     inyectar_css()
     if os.path.exists(RUTA_LOGO):
         st.logo(RUTA_LOGO, size="large")
@@ -3003,6 +3168,8 @@ def main() -> None:
     # ── Panel lateral: escala + ajustes ───────────────────────────────────────
     with st.sidebar:
         escala_lbl = st.radio("Escala del organismo", list(ESCALAS.values()),
+                              index=(list(ESCALAS).index(esc_url)
+                                     if esc_url else 0),
                               help="El mismo motor SAR a cinco escalas: de los "
                                    "32 estados hasta la banqueta, negocio a "
                                    "negocio.")
@@ -3010,12 +3177,13 @@ def main() -> None:
 
         st.markdown("### Línea de tiempo")
         retro = st.checkbox("Time-lapse bidireccional (retro-simulación)",
-                            False,
+                            retro_url if retro_url is not None else False,
                             help="Extiende la línea de tiempo 5 años hacia "
                                  "atrás para ver de dónde viene la ola.")
 
         st.markdown("### Parámetros avanzados")
-        rho = st.slider("Virulencia del contagio (ρ)", 0.0, 1.5, 0.85, 0.05,
+        rho = st.slider("Virulencia del contagio (ρ)", 0.0, 1.5,
+                        rho_url if rho_url is not None else 0.85, 0.05,
                         help="Coeficiente espacial autorregresivo: cuánto pesa "
                              "el vecindario en el crecimiento de cada célula.")
 
@@ -3091,22 +3259,34 @@ def main() -> None:
                      "Cuautitlán Izcalli, Huixquilucan, Tecámac/AIFA y más."
             ).startswith("ZMVM") else "azcapotzalco"
 
+    def _idx_det(dic: dict) -> int:
+        """Índice inicial del detonante si la URL trae uno válido para esta
+        escala; si no está en el dict, se ignora (defensivo)."""
+        return list(dic).index(det_url) if det_url in dic else 0
+
     with col_det:
         if esc in ("micro", "calle"):
             detonante = st.selectbox("Célula madre (catalizador urbano)",
-                                     list(CATALIZADORES.keys()))
+                                     list(CATALIZADORES.keys()),
+                                     index=_idx_det(CATALIZADORES))
         elif esc == "cp":
             detonante = st.selectbox("Detonante urbano CDMX",
-                                     list(DETONANTES_CDMX.keys()))
+                                     list(DETONANTES_CDMX.keys()),
+                                     index=_idx_det(DETONANTES_CDMX))
         else:
             detonante = st.selectbox("Megaproyecto detonante",
                                      list(MEGAPROYECTOS.keys()),
+                                     index=_idx_det(MEGAPROYECTOS),
                                      help="Célula madre a escala nación: eleva "
                                           "el potencial de toda una región.")
     with col_año:
+        año_min = -float(RETRO) if retro else 0.0
+        año_ini = 0.0
+        if anio_url is not None:    # clamp al rango del slider (paso 0.25)
+            año_ini = round(min(float(AÑOS), max(año_min, anio_url)) * 4) / 4
         año = st.slider("Predicción (años)",
-                        -float(RETRO) if retro else 0.0, float(AÑOS),
-                        0.0, step=0.25, format="%.2f años",
+                        año_min, float(AÑOS),
+                        año_ini, step=0.25, format="%.2f años",
                         help="Mueve el horizonte de la simulación; la "
                              "proyección es simulada, no asesoría.")
     with col_play:
@@ -3114,7 +3294,33 @@ def main() -> None:
                                help="Anima la línea de tiempo completa "
                                     "(10 años).")
 
+    # ── La URL siempre refleja el escenario actual (compartible) ──────────────
+    # Solo se tocan nuestras claves: ?embed=… de Streamlit queda intacto.
+    _escenario = {"esc": esc, "anio": f"{año:g}", "rho": f"{rho:g}",
+                  "det": detonante, "retro": "1" if retro else "0"}
+    for _k, _v in _escenario.items():
+        if qp.get(_k) != _v:
+            qp[_k] = _v
+
+    with st.sidebar:
+        with st.expander("Compartir este escenario"):
+            st.code("https://brickbit.co/morfogenesis"
+                    f"?esc={esc}&anio={año:g}&rho={rho:g}"
+                    f"&det={quote(detonante)}&retro={1 if retro else 0}",
+                    language=None)
+            st.caption("Copia el enlace: quien lo abra verá exactamente "
+                       "este escenario.")
+
+    # ── 🟡 Honestidad de simulación: franja ámbar encima del mapa ─────────────
+    _aviso = aviso_honestidad(año, rho)
+    if _aviso:
+        st.markdown(f"<div class='franja-simulacion'>⚠ {_aviso}</div>",
+                    unsafe_allow_html=True)
+
     lienzo = st.empty()
+    st.caption("Motor de simulación SAR (exploratorio) · distinto del "
+               "pronóstico validado 1–3 años que usan el mapa y el "
+               "analizador.")
 
     # ══ REPÚBLICA · MUNICIPIOS ════════════════════════════════════════════════
     if esc == "muni":
@@ -3152,6 +3358,13 @@ def main() -> None:
             c5.metric("Horizonte", f"Año {año:.1f} / {AÑOS}",
                       "epicentro por clic" if clic else
                       (detonante if MEGAPROYECTOS[detonante] else "sin megaproyecto"))
+            n_c21 = c21_lineas_municipales()[1]
+            if n_c21:
+                st.markdown(
+                    f"<div class='chip-c21'><b>{n_c21}</b> municipios con "
+                    "mercado vivo C21 — medianas reales de precios de lista, "
+                    "refresco diario (en el tooltip del mapa)</div>",
+                    unsafe_allow_html=True)
 
         def fabricar(a, f):
             return construir_deck_municipios(
