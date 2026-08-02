@@ -1,0 +1,3484 @@
+{
+ "meta": {
+  "fuente": "CompraNet (SHCP) · contratos de obra pública",
+  "corte": "2020–2024",
+  "rango_archivo": "2010–2024",
+  "atribucion": "etiquetas de la descripción; los contratos sin estado reconocible quedan fuera",
+  "sin_entidad": 245796,
+  "nota": "Contratación pública FEDERAL registrada en CompraNet; la obra estatal/municipal fuera de CompraNet no aparece. Es señal de inversión pública, no catálogo exhaustivo."
+ },
+ "estados": {
+  "tamaulipas": {
+   "n": 425,
+   "monto_total": 4650066836.63,
+   "top": [
+    {
+     "titulo": "Trabajos Para Llevar a Cabo la Construcción delH.G. de Tampico, Tamaulipas, Bajo la Modalidad de Proyecto Inte",
+     "dependencia": "Gami Ingenieria E Instalaciones Sa de Cv",
+     "monto": 1998808301.22,
+     "inicio": "2022-12-06"
+    },
+    {
+     "titulo": "Construcción de Obra Hidráulica E Infraestructura Vial",
+     "dependencia": "Construcciones Gv de Monterrey Sa de Cv",
+     "monto": 160948006.49,
+     "inicio": "2020-12-29"
+    },
+    {
+     "titulo": "Construcción de Obras Hidráulicas",
+     "dependencia": "Carter Construcciones y Equipos Sa de Cv",
+     "monto": 57090212.14,
+     "inicio": "2021-12-01"
+    },
+    {
+     "titulo": "Supervisión y Control de Los Trabajos Para Llevar a Cabo la Construcción delH.G. de Tampico, Tamaulipas, Bajo ",
+     "dependencia": "Coordinadora y Desarrolladora P&O Sa de Cv",
+     "monto": 52126958.67,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Construcción delSistema de Alcantarillado",
+     "dependencia": "Dimarsa Plomeria y Azulejos Sa de Cv",
+     "monto": 25740252.32,
+     "inicio": "2022-08-02"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Derivado de la Epidemia Covid-19",
+     "n": 3
+    },
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado.",
+     "n": 2
+    },
+    {
+     "nombre": "Incluye: 15.75 Km de Red de Atarjeas",
+     "n": 1
+    },
+    {
+     "nombre": "Inlcuye: 606 Ml de Linea de Conduccion",
+     "n": 1
+    },
+    {
+     "nombre": "Incluye 8.9 Km de Red de Atarjeas",
+     "n": 1
+    }
+   ]
+  },
+  "chiapas": {
+   "n": 206,
+   "monto_total": 1028127389.92,
+   "top": [
+    {
+     "titulo": "Trabajos Para Llevar a Cabo la Construcción de la C.H. de Palenque, Chiapas, Bajo la Modalidad de Proyecto Int",
+     "dependencia": "Irkon Holdings Sa de Cv",
+     "monto": 444141830.37,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Trabajos de Obra Civil En C.H.13, San Cristóbal de Las Casas, Chiapas.",
+     "dependencia": "Grupo Triton Consultores y Constructores Sa de Cv",
+     "monto": 40405443.63,
+     "inicio": "2022-03-02"
+    },
+    {
+     "titulo": "Construcción de 2 Edificios (B y C) y Obra Exterior En la Sede Central",
+     "dependencia": "Kasto, Soluciones En Construccion y Acabados Mx Sa de Cv",
+     "monto": 39234812.54,
+     "inicio": "2021-01-04"
+    },
+    {
+     "titulo": "Construcción de Edificios, Demolición de Edificios y Obra Exterior",
+     "dependencia": "Grupo Lorant y Asociados Sa de Cv",
+     "monto": 17838948.13,
+     "inicio": "2022-08-08"
+    },
+    {
+     "titulo": "Construccion de Planta de Tratamiento",
+     "dependencia": "Arfran Construcciones, S.A. de C.V.",
+     "monto": 17064697.37,
+     "inicio": "2020-11-18"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado.",
+     "n": 2
+    },
+    {
+     "nombre": "En la Localidad de Plan de Ayala",
+     "n": 1
+    },
+    {
+     "nombre": "Tramo: Km 0+000 Al Km 7+000 Subtramo: Km 1+875 Al Km 2+175",
+     "n": 1
+    },
+    {
+     "nombre": "Morelos (Incluye Cd. de México)",
+     "n": 1
+    },
+    {
+     "nombre": "C.P. 29000\".",
+     "n": 1
+    }
+   ]
+  },
+  "colima": {
+   "n": 37,
+   "monto_total": 243375620.55,
+   "top": [
+    {
+     "titulo": "Construccion de la Uhn Manzanillo Viii, Col.",
+     "dependencia": "Secretaria de Marina (Digaod)",
+     "monto": 80927697.15,
+     "inicio": "2021-08-16"
+    },
+    {
+     "titulo": "Demolición de Inmueble Hospital General Zona No.10",
+     "dependencia": "Constructora Germer Sa de Cv",
+     "monto": 27454574.36,
+     "inicio": "2022-07-28"
+    },
+    {
+     "titulo": "Mantenimiento a Inmuebles En Occidente, Jal, Col, Gto, Qro, y Mich",
+     "dependencia": "H.I.C. Infraestructura Progresiva Sa de Cv",
+     "monto": 18237326.06,
+     "inicio": "2022-10-04"
+    },
+    {
+     "titulo": "Mantenimiento de la Uhn Manzanillo Ii, Col.",
+     "dependencia": "Secretaria de Marina (Digaod)",
+     "monto": 16884978.07,
+     "inicio": "2021-08-02"
+    },
+    {
+     "titulo": "Mantenimiento Preventivo y Correctivo a Inmuebles de la Fgr En Occidente",
+     "dependencia": "Grupo Constructor Mafyn Sa de Cv",
+     "monto": 14378570.43,
+     "inicio": "2021-08-02"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Col.",
+     "n": 4
+    },
+    {
+     "nombre": "Jalisco y Nayarit",
+     "n": 1
+    },
+    {
+     "nombre": "Colima.- Mejoramiento de la Infraestructura Fisica Educativa",
+     "n": 1
+    },
+    {
+     "nombre": "Segunda Etapa.",
+     "n": 1
+    }
+   ]
+  },
+  "aguascalientes": {
+   "n": 60,
+   "monto_total": 312520659.47,
+   "top": [
+    {
+     "titulo": "Conv. Fed. 002-21",
+     "dependencia": "Ingenieria Civil + Industrial, Firma Sa de Cv",
+     "monto": 29312351.73,
+     "inicio": "2021-07-27"
+    },
+    {
+     "titulo": "Conv. Fed. 001-2020",
+     "dependencia": "Glg Ingenieros Sa de Cv",
+     "monto": 26600073.53,
+     "inicio": "2020-06-02"
+    },
+    {
+     "titulo": "Conv. Fed. 001-2020",
+     "dependencia": "Fernando Rubio Ortiz",
+     "monto": 26269633.78,
+     "inicio": "2020-06-02"
+    },
+    {
+     "titulo": "Conv. Fed. 001-2020",
+     "dependencia": "Jose Luis Telles Peredo",
+     "monto": 25813519.85,
+     "inicio": "2020-04-01"
+    },
+    {
+     "titulo": "Conv. Fed. 001-2020",
+     "dependencia": "Mcb Maquinaria y Construcciones Sa de Cv",
+     "monto": 23900026.72,
+     "inicio": "2020-04-01"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Ags.",
+     "n": 25
+    },
+    {
+     "nombre": "Aguascalientes.",
+     "n": 4
+    },
+    {
+     "nombre": "Ags. (Segundo Procedimiento)",
+     "n": 3
+    },
+    {
+     "nombre": "Calle Mariano Azuela S/N",
+     "n": 2
+    },
+    {
+     "nombre": "Calle Doctor Pedro de Alba No. 357",
+     "n": 1
+    }
+   ]
+  },
+  "nayarit": {
+   "n": 15,
+   "monto_total": 68858728.04,
+   "top": [
+    {
+     "titulo": "Construccion de Cuartos En Hotel-Escuela (6ª Etapa), En U.T. de Ba de Ba",
+     "dependencia": "Grupo Quatro Desarrollos Sa de Cv",
+     "monto": 20947670.49,
+     "inicio": "2021-08-23"
+    },
+    {
+     "titulo": "Reequipamiento de 2 Filtros de Zeolita",
+     "dependencia": "Fonatur Infraestructura Sa de Cv",
+     "monto": 13383199.59,
+     "inicio": "2022-08-01"
+    },
+    {
+     "titulo": "Construcción de Nueva Sala de Hemodinamia En el Hgz No. 1, En el Municipio de Tepic, Nayarit",
+     "dependencia": "Healthcare Systems de Mexico Sa de Cv",
+     "monto": 8862856.72,
+     "inicio": "2022-10-27"
+    },
+    {
+     "titulo": "Construcción de Casetas Para Las Estaciones Transmisoras de Televisión Digital",
+     "dependencia": "Promotora Lindavista Sa de Cv",
+     "monto": 8363837.81,
+     "inicio": "2021-11-05"
+    },
+    {
+     "titulo": "Proyecto Ejecutivo y Construcción de Una Caseta Para la Estación Transmisora De",
+     "dependencia": "Torres y Servicios Para Radiodifusion Sa de Cv",
+     "monto": 8054005.99,
+     "inicio": "2021-05-17"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Periodo 2020.",
+     "n": 1
+    },
+    {
+     "nombre": "Periodo 2021",
+     "n": 1
+    }
+   ]
+  },
+  "sonora": {
+   "n": 85,
+   "monto_total": 4166004140.51,
+   "top": [
+    {
+     "titulo": "Reposición de 650 Ml de Emisor a Base de Tubería de Pvc de 16\" de Diámetro y 11",
+     "dependencia": "2K17 Ingenieria y Construccion Sa de Cv",
+     "monto": 3368607000.0,
+     "inicio": "2020-05-27"
+    },
+    {
+     "titulo": "Modernización Como Calle Completa delBlvd. Luis Donaldo Colosio En Nogales, Son",
+     "dependencia": "Gluyas Construcciones Sa de Cv",
+     "monto": 228166530.76,
+     "inicio": "2020-03-06"
+    },
+    {
+     "titulo": "Obra Compl. Para la Constr.  delHospital General delEstado de Sonora, En Hmo",
+     "dependencia": "D'Marsella Terracerias Sa de Cv",
+     "monto": 78998061.61,
+     "inicio": "2022-06-20"
+    },
+    {
+     "titulo": "Obra Compl. Para la Constr.  delHospital General delEstado de Sonora, En Hmo",
+     "dependencia": "D'Marsella Terracerias Sa de Cv",
+     "monto": 78998061.6,
+     "inicio": "2022-06-20"
+    },
+    {
+     "titulo": "Construcción de Acueducto Macoyahui-Álamos de 24,553.82 M.",
+     "dependencia": "El Roble Leasing Sa de Cv",
+     "monto": 66891636.27,
+     "inicio": "2022-01-14"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Distrito de Riego 014",
+     "n": 5
+    },
+    {
+     "nombre": "Ubicado En Avenida Morelos",
+     "n": 1
+    },
+    {
+     "nombre": "Xalapa",
+     "n": 1
+    }
+   ]
+  },
+  "oaxaca": {
+   "n": 111,
+   "monto_total": 1063688739.09,
+   "top": [
+    {
+     "titulo": "Reforzamiento de Muelles En el Puerto Comercial de Salina Cruz, Oaxaca",
+     "dependencia": "Jotacu Instalaciones Sa de Cv",
+     "monto": 305533006.46,
+     "inicio": "2022-03-10"
+    },
+    {
+     "titulo": "Ampliación E Intervención Integral delHr No. 18, En Huajuapan de León, Oaxaca",
+     "dependencia": "Arcac Construcciones Sa de Cv",
+     "monto": 159309452.82,
+     "inicio": "2021-12-13"
+    },
+    {
+     "titulo": "Proy. Int. Para la Cosntr. de Las Est. Nav. En Ixtepec, Oax. Tex. Ver.",
+     "dependencia": "Cosol-Construction Solutions S a P I de Cv",
+     "monto": 138448369.08,
+     "inicio": "2022-06-20"
+    },
+    {
+     "titulo": "Retiro de Rompeolas Existente Para Ampliación de la Bocana de Acceso En el Puert",
+     "dependencia": "Obras Maritimas Hb",
+     "monto": 135849577.74,
+     "inicio": "2022-07-01"
+    },
+    {
+     "titulo": "Construcción  de Albergue  Para  la  Atencion  de Niñas,Niños y Adolescentes  Migrantes  Acompañados  En  el M",
+     "dependencia": "Grupo Constructor Diemar Sa de Cv",
+     "monto": 46412239.23,
+     "inicio": "2023-09-06"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Que Fue Validado Por la Dirección de Agua Potable",
+     "n": 1
+    },
+    {
+     "nombre": "2 Etapa.",
+     "n": 1
+    },
+    {
+     "nombre": "2 Etapa",
+     "n": 1
+    },
+    {
+     "nombre": "Gral. Antonio de León",
+     "n": 1
+    },
+    {
+     "nombre": "Intervención delInmueble Capilla delBuen Socorro",
+     "n": 1
+    }
+   ]
+  },
+  "mexico": {
+   "n": 134,
+   "monto_total": 1807129305.69,
+   "top": [
+    {
+     "titulo": "Diseño y Construcción de la Línea de Conducción Ramal Zumpango, Estado de México",
+     "dependencia": "La Peninsular Compañia Constructora S.A. de C.V",
+     "monto": 172360651.4,
+     "inicio": "2022-04-12"
+    },
+    {
+     "titulo": "Proyecto Integral de Obra Pública  Municipio de Zumpango 2",
+     "dependencia": "Tei Construccion, S.A. de C. V.",
+     "monto": 166659215.97,
+     "inicio": "2021-01-26"
+    },
+    {
+     "titulo": "Proyecto Integral de Obra Pública Municipio de Tultitlan 2",
+     "dependencia": "Tadco Constructora Sa de Cv",
+     "monto": 165376356.54,
+     "inicio": "2021-01-27"
+    },
+    {
+     "titulo": "Construcción de Espacio Público y Centro de Desarrollo Comunitario",
+     "dependencia": "Constructora Sogu Sa de Cv",
+     "monto": 126724580.03,
+     "inicio": "2020-06-01"
+    },
+    {
+     "titulo": "Proyecto Integral de Obra Pública Municipio de Tecámac 2",
+     "dependencia": "Mlm Ingenieria y Desarrollo Sa de Cv",
+     "monto": 105539012.13,
+     "inicio": "2021-01-25"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Pertenecientes Al Sistema de Aguas de la Ciudad de México.",
+     "n": 2
+    },
+    {
+     "nombre": "Bajo la Modalidad Mixta (Precio Unitario y Precio Alzado).",
+     "n": 2
+    },
+    {
+     "nombre": "Michoacán y Morelos",
+     "n": 1
+    },
+    {
+     "nombre": "Primera Etapa",
+     "n": 1
+    },
+    {
+     "nombre": "Rehabilitación delCentro de Salud San Juan la Isla",
+     "n": 1
+    }
+   ]
+  },
+  "jalisco": {
+   "n": 46,
+   "monto_total": 2799154075.31,
+   "top": [
+    {
+     "titulo": "Trabajos Para Llevar a Cabo la Construcción delH.R.A.E. de Tlajomulco de Zuñiga, Jalisco, Bajo la Modalidad de",
+     "dependencia": "Ingenieria y Control de Proyectos, S.A. de C.V.",
+     "monto": 2547533938.13,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Supervisión y Control de Los Trabajos Para Llevar a Cabo la Construcción delH.R.A.E.  de Tlajomulco de Zuñiga,",
+     "dependencia": "Alta Consultoria y Asesoria Sc",
+     "monto": 63011214.0,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Supervisión Adecuaciones a la Presa el Zapotillo",
+     "dependencia": "Sistemas Avanzados En Ingenieria Civil Sa de Cv",
+     "monto": 41789319.82,
+     "inicio": "2022-10-14"
+    },
+    {
+     "titulo": "Trabajos de Conservacion y Mantto Centro de Atención de Hemodiálisis (Cathem) Ubicada En la Calle Tesistan 670",
+     "dependencia": "Odevisa Sa de Cv",
+     "monto": 29842025.32,
+     "inicio": "2021-10-08"
+    },
+    {
+     "titulo": "Trabajos de Obra Civil En Cd. Guzmán, Zapotlán el Grande, Jal.",
+     "dependencia": "Comercializadora Ramysan Sa de Cv",
+     "monto": 23499429.7,
+     "inicio": "2022-04-05"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Michoacán y Oaxaca.",
+     "n": 1
+    },
+    {
+     "nombre": "Entre Calles Calderón de la Barca y Lope de Vega",
+     "n": 1
+    },
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado.",
+     "n": 1
+    },
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado",
+     "n": 1
+    }
+   ]
+  },
+  "baja california sur": {
+   "n": 29,
+   "monto_total": 549549141.98,
+   "top": [
+    {
+     "titulo": "Trabajos Para Llevar a Cabo la Construcción de la C.H. de Cabo San Lucas, Baja California Sur, Bajo la Modalid",
+     "dependencia": "Gami Ingenieria E Instalaciones Sa de Cv",
+     "monto": 439423643.58,
+     "inicio": "2022-12-06"
+    },
+    {
+     "titulo": "Lo-050Gyr070-E15-2021 Conclusión de Amp y Remod de Ucin delHgz+Mf No 1, Lpz",
+     "dependencia": "Precisa Construcciones",
+     "monto": 14362555.94,
+     "inicio": "2021-11-01"
+    },
+    {
+     "titulo": "Mantenimiento Uhm Cd Constitucion \"B\", B.C.S.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 13218517.85,
+     "inicio": "2020-10-12"
+    },
+    {
+     "titulo": "Supervisión y Control de Los Trabajos Para Llevar a Cabo la Construcción de la C.H. de Cabo San Lucas, Baja Ca",
+     "dependencia": "Kapainar Diseños y Manufacturas Sa de Cv",
+     "monto": 13073155.0,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Lo-050Gyr070-E3-2021 Construcción Est. y Saneam. Umf14+7 Lpz",
+     "dependencia": "Precisa Construcciones",
+     "monto": 8660832.22,
+     "inicio": "2021-06-14"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Sinaloa y Sonora.",
+     "n": 1
+    },
+    {
+     "nombre": "Sonora y Durango.",
+     "n": 1
+    },
+    {
+     "nombre": "Isla de Cedros",
+     "n": 1
+    },
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado",
+     "n": 1
+    },
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado.",
+     "n": 1
+    }
+   ]
+  },
+  "veracruz de ignacio de la llave": {
+   "n": 120,
+   "monto_total": 373208800.03,
+   "top": [
+    {
+     "titulo": "Reconstrucción de Carpeta de Concreto Asfáltico Prolongacion Benito Juarez",
+     "dependencia": "Servi Rent Ariadme Sa de Cv",
+     "monto": 29996265.07,
+     "inicio": "2020-07-15"
+    },
+    {
+     "titulo": "Repavimentación Con Concreto Hidráulico de la Calle Fraternidad...",
+     "dependencia": "Estudio, Costos E Infraestructura Sa de Cv",
+     "monto": 18214037.15,
+     "inicio": "2021-05-07"
+    },
+    {
+     "titulo": "Rehabilitación de Camellones, Fraccionamiento Reforma, Veracruz, Veracruz...",
+     "dependencia": "Consorcio Regional Maren Sa de Cv",
+     "monto": 16379310.35,
+     "inicio": "2020-09-12"
+    },
+    {
+     "titulo": "Pavimentación Con Concreto Hidráulico de Las Calles Adolfo Sugasti de Oriente 6",
+     "dependencia": "Estudio, Costos E Infraestructura Sa de Cv",
+     "monto": 16043439.99,
+     "inicio": "2020-08-25"
+    },
+    {
+     "titulo": "Pavimentación Con Concreto Hidráulico",
+     "dependencia": "Estudio, Costos E Infraestructura Sa de Cv",
+     "monto": 14746063.4,
+     "inicio": "2020-08-25"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Veracruz de Ignacio de la Llave.",
+     "n": 13
+    },
+    {
+     "nombre": "Ver.",
+     "n": 3
+    },
+    {
+     "nombre": "5 de Mayo y Av. Revolucion",
+     "n": 1
+    },
+    {
+     "nombre": "Cebis Ubicado En Niños Héroes No. 204",
+     "n": 1
+    }
+   ]
+  },
+  "ciudad de mexico": {
+   "n": 94,
+   "monto_total": 828027724.23,
+   "top": [
+    {
+     "titulo": "Construccion de la Uhm Santa Fe Vii, Cd. de Mex.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 211360595.28,
+     "inicio": "2022-06-01"
+    },
+    {
+     "titulo": "Construccion Uhn Tepetlapa, Cdmx.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 69359386.98,
+     "inicio": "2020-08-03"
+    },
+    {
+     "titulo": "Construcción de la Uhm Santa Fe Vi, Cd. de Méx.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 64353931.19,
+     "inicio": "2021-08-16"
+    },
+    {
+     "titulo": "Adecuación de Oficinas Abiertas y Espacios Colaborativos delEdificio Sede 2C",
+     "dependencia": "Grupo Constructor Karius Sa de Cv",
+     "monto": 54285677.43,
+     "inicio": "2021-11-02"
+    },
+    {
+     "titulo": "Salud Dgdif Accion de Rehab. Edificio B Hosp. Juárez México",
+     "dependencia": "Darian Edificaciones Sa de Cv",
+     "monto": 27861094.92,
+     "inicio": "2021-05-28"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "C.P. 07760",
+     "n": 4
+    },
+    {
+     "nombre": "a Precio Alzado y Tiempo Determinado.",
+     "n": 2
+    },
+    {
+     "nombre": "C.P. 06720",
+     "n": 2
+    },
+    {
+     "nombre": "Entre Calle Culiacán",
+     "n": 2
+    },
+    {
+     "nombre": "Zona Sur.",
+     "n": 2
+    }
+   ]
+  },
+  "coahuila de zaragoza": {
+   "n": 79,
+   "monto_total": 3192145106.48,
+   "top": [
+    {
+     "titulo": "Trabajos Para Llevar a Cabo la Construcción delH.R.A.E. de Torreón, Coahuila, Bajo la Modalidad de Proyecto In",
+     "dependencia": "Ingenieria y Desarrollo Inmobiliario de Mexico Sa de Cv",
+     "monto": 2610890000.0,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Pav. Asfaltica Diversas Calles En San Buenaventura, Coah",
+     "dependencia": "Triturados Castaños,  S.A. de C.V.",
+     "monto": 72133395.67,
+     "inicio": "2020-12-22"
+    },
+    {
+     "titulo": "Supervisión y Control de Los Trabajos Para Llevar a Cabo la Construcción delH.R.A.E. de Torreón, Coahuila, Baj",
+     "dependencia": "Direccion y Desarrollo de Proyectos Sa de Cv",
+     "monto": 67854299.19,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Term. Constr. Paso a Desnivel Carr.57 Cruce Blvd. Alvaro Obregon Sabinas, Coah",
+     "dependencia": "Rotugra Construcciones Sa de Cv",
+     "monto": 35367845.28,
+     "inicio": "2020-09-30"
+    },
+    {
+     "titulo": "Constr. Inf. Ciclista y Parabuses Carret. Frontera-San Buenaventura En Frontera",
+     "dependencia": "Karla Cecilia delBosque de Luna",
+     "monto": 24637931.08,
+     "inicio": "2020-03-03"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Con Un Total de 1",
+     "n": 1
+    },
+    {
+     "nombre": "Gómez Palacio y Lerdo",
+     "n": 1
+    },
+    {
+     "nombre": "Municipio de San Juan de Las Sabinas",
+     "n": 1
+    },
+    {
+     "nombre": "(Reposicion delPozo \"Leal\"",
+     "n": 1
+    },
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado.",
+     "n": 1
+    }
+   ]
+  },
+  "guanajuato": {
+   "n": 19,
+   "monto_total": 140822663.27,
+   "top": [
+    {
+     "titulo": "E54-2020",
+     "dependencia": "Anguiano y Wong Asesores Sa de Cv",
+     "monto": 59753814.72,
+     "inicio": "2020-12-03"
+    },
+    {
+     "titulo": "Obras de Remediación de Suelos  Primera Etapa: Tratamiento de 34,400 Ton. de Suelo Contaminado Con Plaguicida",
+     "dependencia": "Obras y Servicios Jisa Sa de Cv",
+     "monto": 25380110.1,
+     "inicio": "2022-11-15"
+    },
+    {
+     "titulo": "Construcción delCentro de Mezclas En la Umae el Bajío, León, Guanajuato.",
+     "dependencia": "Corpomara Constructores Sa de Cv",
+     "monto": 16972668.46,
+     "inicio": "2021-11-17"
+    },
+    {
+     "titulo": "Mantenimiento a Obra Civil E Instalaciones Umae Hgp 48 Bajio",
+     "dependencia": "Constructora Nortag Sa de Cv",
+     "monto": 5787041.0,
+     "inicio": "2022-03-15"
+    },
+    {
+     "titulo": "L.P. Mantenimiento a Obra Publica E Instalaciones Umae Hgp 48 Leon",
+     "dependencia": "Constructora Nortag Sa de Cv",
+     "monto": 5367067.0,
+     "inicio": "2021-03-03"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Relativos a Preliminares",
+     "n": 2
+    },
+    {
+     "nombre": "Gto.",
+     "n": 1
+    },
+    {
+     "nombre": "Guanajuato\".",
+     "n": 1
+    }
+   ]
+  },
+  "michoacan de ocampo": {
+   "n": 384,
+   "monto_total": 500055919.34,
+   "top": [
+    {
+     "titulo": "Edificio de Rectoria (2Da Etapa) Ciudad Universitaria En la Umsnh",
+     "dependencia": "Octavio Rodriguez Lopez",
+     "monto": 39656147.88,
+     "inicio": "2021-02-15"
+    },
+    {
+     "titulo": "Mantenimiento Uhn Lázaro Cárdenas Iii-C, Mich.",
+     "dependencia": "Secretaria de Marina (Digaod)",
+     "monto": 28642197.38,
+     "inicio": "2022-08-08"
+    },
+    {
+     "titulo": "Lpn E1 Mantenimiento Pavimentos Pista Rodajes Uruapan",
+     "dependencia": "Javac Construcciones Sa de Cv",
+     "monto": 18205543.35,
+     "inicio": "2021-05-21"
+    },
+    {
+     "titulo": "Edificio Ud-1, Edificio Lt-1 Edificio Biblioteca, Edificio Ud1, En la Uplc",
+     "dependencia": "Proyectos de Obra Civil Sa de Cv",
+     "monto": 17522692.96,
+     "inicio": "2021-02-15"
+    },
+    {
+     "titulo": "Laboratorio de Biotecnología, Edificio de Artes y Culturales En la Ucemich",
+     "dependencia": "Cocicha Sa de Cv",
+     "monto": 16720560.3,
+     "inicio": "2020-11-17"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Para el Ejercicio 2022",
+     "n": 8
+    },
+    {
+     "nombre": "Para el Ejercicio 2020",
+     "n": 6
+    },
+    {
+     "nombre": "Para el Ejercicio 2021",
+     "n": 4
+    },
+    {
+     "nombre": "Oaxaca y Yucatán.",
+     "n": 1
+    },
+    {
+     "nombre": "Para el Ejercicio 2022.",
+     "n": 1
+    }
+   ]
+  },
+  "nuevo leon": {
+   "n": 13,
+   "monto_total": 199131738.37,
+   "top": [
+    {
+     "titulo": "Trabajos de Oc E Inst. Para Nueva Umf 10 Cons. En Juárez, N.L.",
+     "dependencia": "Constructora y Arrendadora San Sebastian S.A. de C.V.",
+     "monto": 71247685.56,
+     "inicio": "2022-08-09"
+    },
+    {
+     "titulo": "Construcción de la Uhm Escobedo Iii, N.L.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 56318094.09,
+     "inicio": "2023-09-04"
+    },
+    {
+     "titulo": "Continuación de Los Trabajos Para  la  Unidad de Medicina Familiar de 10 Consul",
+     "dependencia": "Hornos Industriales Maquinaria y Automatizacion Sa de Cv",
+     "monto": 21333766.34,
+     "inicio": "2021-10-15"
+    },
+    {
+     "titulo": "Lo-E38-20 Construcción de Colector de Drenaje Sanitario de 800 M.",
+     "dependencia": "Rt Conduccion Integral Sa de Cv",
+     "monto": 17973049.98,
+     "inicio": "2021-01-11"
+    },
+    {
+     "titulo": "Estudios de Volúmenes de Tránsito Vehicular En 2,525 Sitios de la Red Carretera",
+     "dependencia": "Servicios de Consultoria En Infraestructura Vial Sa de Cv",
+     "monto": 6680123.94,
+     "inicio": "2022-05-16"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "San Luis Potosí  y Tamaulipas",
+     "n": 1
+    },
+    {
+     "nombre": "(Rehabilitación de Techumbre de Policarbonato) Ot 17012",
+     "n": 1
+    }
+   ]
+  },
+  "queretaro": {
+   "n": 22,
+   "monto_total": 222835206.53,
+   "top": [
+    {
+     "titulo": "Lo-009000960-E5-2020 Bernal  Higuerillas 2 Viaductos Km 43+760 y Km 46+010",
+     "dependencia": "Construccion y Electrificacion Logistica Sa de Cv",
+     "monto": 73832579.62,
+     "inicio": "2020-04-08"
+    },
+    {
+     "titulo": "Lo-009000960-E4-2020 Tramo Bernal  Higuerillas delKm 42+100 Al Km 47+808",
+     "dependencia": "Edificadora Lagos Sa de Cv",
+     "monto": 41537095.13,
+     "inicio": "2020-04-08"
+    },
+    {
+     "titulo": "Construcción delCentro de Vinculación Campus Norte, En el Instituto Tecnológico",
+     "dependencia": "Saicer Constructora Inmobiliaria Sa de Cv",
+     "monto": 23092037.13,
+     "inicio": "2021-02-15"
+    },
+    {
+     "titulo": "Lo-009000960-E27-2020 Pavimentación Bernal  Higuerillas",
+     "dependencia": "Grupo Constructor Degeo Sa de Cv",
+     "monto": 17092446.89,
+     "inicio": "2020-09-07"
+    },
+    {
+     "titulo": "Mantenimiento Inmuebles Autopista México - Querétaro",
+     "dependencia": "Late Construcciones, S. A. de C. V.",
+     "monto": 11435384.82,
+     "inicio": "2021-06-01"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Querétaro.",
+     "n": 5
+    },
+    {
+     "nombre": "Qro.",
+     "n": 2
+    },
+    {
+     "nombre": "Incluyendo Material",
+     "n": 1
+    },
+    {
+     "nombre": "Qro.; Conalep \"Nueva Creación\" - 2° Etapa",
+     "n": 1
+    },
+    {
+     "nombre": "Qro.\"",
+     "n": 1
+    }
+   ]
+  },
+  "guerrero": {
+   "n": 41,
+   "monto_total": 92799113.66,
+   "top": [
+    {
+     "titulo": "Construcción de Una Estación  Transmisora de Televisión Digital Terrestre Para E",
+     "dependencia": "Acoisa",
+     "monto": 16978223.65,
+     "inicio": "2020-10-03"
+    },
+    {
+     "titulo": "Estudios de Volúmenes de Tránsito Vehicular En 2,951 Sitios de la Red Carretera",
+     "dependencia": "Impulsora de Investigaciones, Proyectos y Desarrollos S. A. de C. V.",
+     "monto": 8535525.98,
+     "inicio": "2022-05-16"
+    },
+    {
+     "titulo": "Mantenimiento  y Conservación de Área de Hemodialisis de Hospital General Dr. Raymundo Abarca Alarcón, Chilpan",
+     "dependencia": "Grupo Constructor Elixmag S. de R.L. de C.V.",
+     "monto": 8369919.43,
+     "inicio": "2022-11-15"
+    },
+    {
+     "titulo": "Volúmenes de Tránsito Con Clasificación Vehicular En la Red Carretera Nacional C",
+     "dependencia": "Impulsora de Investigaciones, Proyectos y Desarrollos S. A. de C. V.",
+     "monto": 7875568.76,
+     "inicio": "2020-09-01"
+    },
+    {
+     "titulo": "Estudios de Volúmenes Tránsito 2021, Zona 1",
+     "dependencia": "Servicios Mexicanos de Ingenieria Civil S.A. de C.V.",
+     "monto": 7586637.84,
+     "inicio": "2021-04-16"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Guadalupe y Calvo",
+     "n": 6
+    },
+    {
+     "nombre": "Oaxaca y Puebla",
+     "n": 2
+    },
+    {
+     "nombre": "Para el Periodo 2020.",
+     "n": 1
+    },
+    {
+     "nombre": "Consistente En Trabajos de Albañilería",
+     "n": 1
+    },
+    {
+     "nombre": "Hacienda Longoria",
+     "n": 1
+    }
+   ]
+  },
+  "puebla": {
+   "n": 61,
+   "monto_total": 495512395.5,
+   "top": [
+    {
+     "titulo": "Construcción de la Uhm Puebla Vi, Pue.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 223763119.68,
+     "inicio": "2024-06-12"
+    },
+    {
+     "titulo": "Mantenimiento de la Uhm Puebla I",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 74455095.32,
+     "inicio": "2023-09-14"
+    },
+    {
+     "titulo": "Construcción de Línea de Conducción En Pead 24 Rd 13.5 delCadenamiento 10+827 Al 12+871 En Periférico Ecológi",
+     "dependencia": "Terracerías y Caminos de la Sierra, S.A. de C.V.",
+     "monto": 31410833.87,
+     "inicio": "2022-12-28"
+    },
+    {
+     "titulo": "Prueba de Estimulación Hidráulica En Un Pozo Geotérmico de la Zona de Acoculco.",
+     "dependencia": "Hidrogeologia y Perforaciones Sa de Cv",
+     "monto": 24247666.84,
+     "inicio": "2020-12-23"
+    },
+    {
+     "titulo": "Construcción delCentro de Mezclas En la Umae San José Chiapa, Puebla.",
+     "dependencia": "Construcciones Nirvana Sa de Cv",
+     "monto": 20674002.77,
+     "inicio": "2021-12-10"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Localidad Amozoc de Mota",
+     "n": 3
+    },
+    {
+     "nombre": "Consta de Suministro y Colocacion de Tuberia de Pvc 2",
+     "n": 2
+    },
+    {
+     "nombre": "Querétaro y Tlaxcala",
+     "n": 1
+    },
+    {
+     "nombre": "de Acuerdo a Las Especificaciones Técnicas",
+     "n": 1
+    },
+    {
+     "nombre": "Cuautinchan y Tzicatlacoyan",
+     "n": 1
+    }
+   ]
+  },
+  "chihuahua": {
+   "n": 26,
+   "monto_total": 1686135870.87,
+   "top": [
+    {
+     "titulo": "Proyecto Integral Hospital General Regional 260 Camas,  Ciudad Juárez, Chihuahua",
+     "dependencia": "Ingenieria y Control de Proyectos, S.A. de C.V.",
+     "monto": 1360514986.9,
+     "inicio": "2022-09-09"
+    },
+    {
+     "titulo": "Construcción de la Ptar Norte,Con Una Cap. de 300 Lps, En Localidad de Delicias",
+     "dependencia": "La Peninsular Compañia Constructora S.A. de C.V",
+     "monto": 133526843.72,
+     "inicio": "2020-08-13"
+    },
+    {
+     "titulo": "Construcción de Presa Para el Control de Avenidas \"Filtro Ii\"; En Ciudad Juárez,",
+     "dependencia": "Constructora Figosa Sa de Cv",
+     "monto": 59951029.4,
+     "inicio": "2022-08-24"
+    },
+    {
+     "titulo": "Construcción de Presa Para el Control de Avenidas \"Puerto la Paz\"; En Ciudad Juárez, Chihuahua",
+     "dependencia": "Merp Edificaciones y Terracerias",
+     "monto": 36806616.86,
+     "inicio": "2023-01-19"
+    },
+    {
+     "titulo": "Reposición de la Red de Alcantarillado Sanitario En la Zona Centro de la Ciudad de Ojinaga, Chihuahua",
+     "dependencia": "Construcciones y Agroservicios Sa de Cv",
+     "monto": 26997073.06,
+     "inicio": "2022-12-06"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Durango y Zacatecas.",
+     "n": 1
+    },
+    {
+     "nombre": "Chihuahua; Hospital General Ciudad Juárez",
+     "n": 1
+    },
+    {
+     "nombre": "Primera Etapa de Intervención.",
+     "n": 1
+    },
+    {
+     "nombre": "la Cual Incluye la Instalación de 10",
+     "n": 1
+    },
+    {
+     "nombre": "la Cual Incluye la Instalación de 2",
+     "n": 1
+    }
+   ]
+  },
+  "morelos": {
+   "n": 55,
+   "monto_total": 322086123.58,
+   "top": [
+    {
+     "titulo": "Reforzamiento de la Estructura, Trabajos de Terracerias, Construccion de Instalaciones Hidraulicas, Sanitarias",
+     "dependencia": "Constructora y Arrendadora San Sebastian, S.A. de C.V.",
+     "monto": 43103432.8,
+     "inicio": "2022-06-03"
+    },
+    {
+     "titulo": "Integracion delTeatro Con el Centro Cultural, Que Contempla la Fachada Actual, Recubrimiento a Muros Que Dan A",
+     "dependencia": "Dahuabe Construcciones Sa de Cv",
+     "monto": 34230480.94,
+     "inicio": "2022-04-21"
+    },
+    {
+     "titulo": "Refuerzos Estructurales, Cancelerias, Herrerias y Señalizacion En Construccion delMercado de la Unidad, Centro",
+     "dependencia": "Lax Constructora, S.A. de C.V.",
+     "monto": 18829448.8,
+     "inicio": "2022-04-07"
+    },
+    {
+     "titulo": "Diseño y Construccion de Un Canal de Concreto Armado Para la Conduccion de Los Volumenes Pluviales En el Centr",
+     "dependencia": "Desarrolladora Glar Sa de Cv",
+     "monto": 17321100.77,
+     "inicio": "2022-05-16"
+    },
+    {
+     "titulo": "Rehabilitacion de Canchas Existentes, Rehabilitacion de Malla En Campo de Futbol, Muro de Contencion de Skate ",
+     "dependencia": "Alz Construcciones Sa de Cv",
+     "monto": 15081052.35,
+     "inicio": "2022-04-21"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Ubicado En la Colonia Centro",
+     "n": 1
+    },
+    {
+     "nombre": "Primera Etapa\"",
+     "n": 1
+    },
+    {
+     "nombre": "Zac. 32Dpr1249M",
+     "n": 1
+    }
+   ]
+  },
+  "campeche": {
+   "n": 41,
+   "monto_total": 150388923.65,
+   "top": [
+    {
+     "titulo": "Supervisión de la Construcción Para la Segunda Fase de Rehabilitación y Moderniz",
+     "dependencia": "Experiencia Inmobiliaria Total Sa de Cv",
+     "monto": 22868555.74,
+     "inicio": "2022-04-15"
+    },
+    {
+     "titulo": "Sistema de Abastecimiento, Distribución y Almacenamiento de Agua Potable Acueduc",
+     "dependencia": "Marco Magdiel Hernandez Cruz",
+     "monto": 17232723.38,
+     "inicio": "2020-05-21"
+    },
+    {
+     "titulo": "Mantenimiento a Inmuebles En Oriente, Yucatán, Cam, Q. Roo, Tabasco  y Chiapas",
+     "dependencia": "Pircsa",
+     "monto": 13882920.5,
+     "inicio": "2022-10-17"
+    },
+    {
+     "titulo": "Mantenimiento Preventivo y Correctivos a Inmuebles y En Uso de Fgr Oriente",
+     "dependencia": "Ge de Mexico Sa de Cv",
+     "monto": 13195056.48,
+     "inicio": "2021-07-01"
+    },
+    {
+     "titulo": "Sistema de Abastecimiento, Distribucíon y Almacenamiento de Agua Potable(Rehabil",
+     "dependencia": "Suministros Construcciones Consultoria y Proyectos M5 Sa de Cv",
+     "monto": 12927660.76,
+     "inicio": "2021-03-18"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "(Limpieza",
+     "n": 2
+    },
+    {
+     "nombre": "Etapa 2.",
+     "n": 2
+    }
+   ]
+  },
+  "zacatecas": {
+   "n": 21,
+   "monto_total": 233997233.31,
+   "top": [
+    {
+     "titulo": "E25-2022 Construcción delCentro de Investigación En Biomedicina Molecular, Zacatecas",
+     "dependencia": "- Mag Constructora, S.A. de C.V.",
+     "monto": 116372228.76,
+     "inicio": "2022-12-09"
+    },
+    {
+     "titulo": "Construccion Uhm Zacatecas Iii",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 39720000.0,
+     "inicio": "2021-08-16"
+    },
+    {
+     "titulo": "E1 Sustitución de Red de Agua Potable y Alcantarillado En la Cabecera Municipal",
+     "dependencia": "Excavaciones Profesionales Sa de Cv",
+     "monto": 23766832.64,
+     "inicio": "2020-05-23"
+    },
+    {
+     "titulo": "Mantenimiento a Inmuebles En Noreste, Tamps, Zac, S L P y Ags.",
+     "dependencia": "Impulsora Nacional de Negocios y Proyectos de Infraestructura Sa de Cv",
+     "monto": 13318265.81,
+     "inicio": "2022-11-14"
+    },
+    {
+     "titulo": "Automatizacion y Telemtetria En el Sistema Carrillo y Pardillo; En el Municipio de Fresnillo, Zacatecas",
+     "dependencia": "Proirh Proyectos de Ingenieria Para Redes Hidraulicas S de Rl de Cv",
+     "monto": 6667835.46,
+     "inicio": "2023-01-04"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Zac.",
+     "n": 3
+    },
+    {
+     "nombre": "Para Ejecutarse En Los Municipios de Rio Grande",
+     "n": 2
+    },
+    {
+     "nombre": "Campeche y Chiapas",
+     "n": 1
+    },
+    {
+     "nombre": "Rehabilitación Edifcio \"A\" (1  Aula)",
+     "n": 1
+    },
+    {
+     "nombre": "Zac. C.P. 98000",
+     "n": 1
+    }
+   ]
+  },
+  "sinaloa": {
+   "n": 31,
+   "monto_total": 560886341.91,
+   "top": [
+    {
+     "titulo": "Construcción de la Línea de Conducción y Ramales  delAcueducto Concordia., Sin.",
+     "dependencia": "Edificaciones y Obras Santa Fe Sa de Cv",
+     "monto": 207647765.74,
+     "inicio": "2022-11-01"
+    },
+    {
+     "titulo": "Trabajos de Obra Civil E Instalaciones Electromecánicas Para Cmfe8Q En Guasave, Sinaloa",
+     "dependencia": "Obras y Construcciones  Diaram Sa de Cv",
+     "monto": 99273573.31,
+     "inicio": "2022-12-15"
+    },
+    {
+     "titulo": "Construcción de la Planta Potabilizadora delAcueducto Concordia, Sinaloa.",
+     "dependencia": "Ozone Ecological Equipments Sa de Cv",
+     "monto": 61903915.32,
+     "inicio": "2022-11-01"
+    },
+    {
+     "titulo": "Continuidad de Trabajos En Culiacán, Sinaloa.",
+     "dependencia": "Zoan Construccion y Consultoria Sa de Cv",
+     "monto": 40748029.39,
+     "inicio": "2022-12-23"
+    },
+    {
+     "titulo": "Continuidad de (Hae114) En Culiacán, Sinaloa.",
+     "dependencia": "Edificaciones y Desarrollos Arquitectonicos Sa de Cv",
+     "monto": 28830038.46,
+     "inicio": "2021-08-18"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Guayana",
+     "n": 1
+    },
+    {
+     "nombre": "Con el Recurso delPremio Imss a la Competitividad 2020.",
+     "n": 1
+    },
+    {
+     "nombre": "Conforme a la Normatividad En Materia de Impacto Ambiental",
+     "n": 1
+    }
+   ]
+  },
+  "quintana roo": {
+   "n": 35,
+   "monto_total": 917760514.29,
+   "top": [
+    {
+     "titulo": "Construcción delPuente Vehicular Nichupté (Distribuidor) Que Incluye Dos Entron",
+     "dependencia": "Ica Constructora Sa de Cv",
+     "monto": 823349643.84,
+     "inicio": "2022-07-01"
+    },
+    {
+     "titulo": "Ampliación de la Ptar \"Bicentenario\" En la Ciudad de Tulum, Quintana Roo, Para Ampliar Su Capacidad de 120 a 2",
+     "dependencia": "Recostrucciones Actualizadas delPuerto Sa de Cv",
+     "monto": 63015885.62,
+     "inicio": "2022-12-27"
+    },
+    {
+     "titulo": "Supervisión de Los Trabajos de Modernización delEntronque Aeropuerto (Distribui",
+     "dependencia": "Soluciones E Ingenieria En Vias Terrestres Sa de Cv",
+     "monto": 7053818.58,
+     "inicio": "2022-07-01"
+    },
+    {
+     "titulo": "Trabajos de O.C. Para el Mantto. y Mejora delAlmacén Deleg. En Chetumal, Q. Roo",
+     "dependencia": "Consorcio Coinco delSureste Sa de Cv",
+     "monto": 6922088.42,
+     "inicio": "2022-09-27"
+    },
+    {
+     "titulo": "Monitoreo Zona Sureste Camp., Q. Roo, Tab. y Yuc.",
+     "dependencia": "Hq Control, S. de R.L. de C.V.",
+     "monto": 4026573.53,
+     "inicio": "2020-03-17"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Tabasco y Yucatán.",
+     "n": 1
+    },
+    {
+     "nombre": "Para Ampliar Su Capacidad de 120 a 240 Lps. Primera Etapa.",
+     "n": 1
+    }
+   ]
+  },
+  "baja california": {
+   "n": 36,
+   "monto_total": 188412714.95,
+   "top": [
+    {
+     "titulo": "Trabajos de Obra Civil En C.H.29 Ensenada, Baja California.",
+     "dependencia": "Construccion y Edificacion Ama Sa de Cv",
+     "monto": 42796539.12,
+     "inicio": "2022-03-23"
+    },
+    {
+     "titulo": "Trabajos de Obra Civil E Instalaciones En C.H. 29, Ensenada, B.C.",
+     "dependencia": "Construcciones Cimentaciones y Pilas Sa de Cv",
+     "monto": 21405532.32,
+     "inicio": "2021-08-05"
+    },
+    {
+     "titulo": "Mantenimiento de la Canalización delRio Tijuana",
+     "dependencia": "Alejandro Bañuelos Quintero",
+     "monto": 15923564.62,
+     "inicio": "2020-10-30"
+    },
+    {
+     "titulo": "Construcción de Linea de Conducción Cóndor-La Rumorosa y Ampliación de Red de Ag",
+     "dependencia": "Constructora Valencia Sa de Cv",
+     "monto": 15570756.5,
+     "inicio": "2020-07-24"
+    },
+    {
+     "titulo": "Trabajos de Obra Civil Para la Ampliación de la Umf 3 Tecate, B.C.",
+     "dependencia": "Integra, Construcciones Residenciales E Infraestructura Sa de Cv",
+     "monto": 14552273.79,
+     "inicio": "2021-08-12"
+    }
+   ],
+   "municipios": []
+  },
+  "hidalgo": {
+   "n": 17,
+   "monto_total": 74090138.87,
+   "top": [
+    {
+     "titulo": "Mantenimiento a Inmuebles En Transoceánica, Ver, Hgo, Tlax, Pue, Mor, Oax y Gro",
+     "dependencia": "Gavil Ingenieria Sa de Cv",
+     "monto": 23638333.99,
+     "inicio": "2022-10-12"
+    },
+    {
+     "titulo": "Mantenimiento Preventivo y Correctivos a Inmuebles y En Uso de Fgr Transoceanica",
+     "dependencia": "Altakons Sa de Cv",
+     "monto": 11783133.33,
+     "inicio": "2021-05-21"
+    },
+    {
+     "titulo": "Mantenimiento y Adecuación de Espacios Para Cámara Gesell En Transoceanica",
+     "dependencia": "Altakons Sa de Cv",
+     "monto": 6534876.0,
+     "inicio": "2021-12-06"
+    },
+    {
+     "titulo": "Construcción delCentro de Acopio de Tizayuca, Hidalgo",
+     "dependencia": "Construideas Innovacion y Desarrollo",
+     "monto": 6007601.22,
+     "inicio": "2020-05-28"
+    },
+    {
+     "titulo": "Construcción delCentro de Acopio de Tulancingo, Hidalgo",
+     "dependencia": "Majem Construcciones y Servicios Sa de Cv",
+     "monto": 5690990.23,
+     "inicio": "2020-05-28"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Villa Gonzalez Ortega",
+     "n": 1
+    },
+    {
+     "nombre": "Maravatío y Zitacuaro",
+     "n": 1
+    },
+    {
+     "nombre": "Etapa de Dos de Cuatro",
+     "n": 1
+    },
+    {
+     "nombre": "Senguio",
+     "n": 1
+    }
+   ]
+  },
+  "san luis potosi": {
+   "n": 34,
+   "monto_total": 81603565.47,
+   "top": [
+    {
+     "titulo": "Mantto Uhm San Luis Potosi",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 26829140.36,
+     "inicio": "2022-08-15"
+    },
+    {
+     "titulo": "Proyecto Ejecutivo y Construcción de Casetas de Transmisión de Señal de Televisión Digital Terrestre  En Ciuda",
+     "dependencia": "Comercializadora E Ingenieria Islas Sa de Cv",
+     "monto": 10669534.09,
+     "inicio": "2023-02-01"
+    },
+    {
+     "titulo": "Construccion de Colector Sanitario Con Tuberia de Polietileno de Alta Densidad C",
+     "dependencia": "Buga Construcciones Sa de Cv",
+     "monto": 6627974.12,
+     "inicio": "2020-01-08"
+    },
+    {
+     "titulo": "Mantenimiento Mayor a Las Oficinas de Orft, Juntas Especiales y Profedet, Paq 8",
+     "dependencia": "Estudio Narros Sa de Cv",
+     "monto": 5101594.7,
+     "inicio": "2022-09-12"
+    },
+    {
+     "titulo": "Ao E14 Elaboracion Analisis Costo Beneficio En Tamuin",
+     "dependencia": "Altor Finanzas E Infraestructura Sc",
+     "monto": 2999422.08,
+     "inicio": "2021-07-06"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "S.L.P.",
+     "n": 20
+    },
+    {
+     "nombre": "Tabasco y Hidalgo",
+     "n": 1
+    }
+   ]
+  },
+  "tlaxcala": {
+   "n": 98,
+   "monto_total": 193386403.96,
+   "top": [
+    {
+     "titulo": "Mantenimiento de la Uhm Panotla, Tlax.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 28675755.09,
+     "inicio": "2020-09-03"
+    },
+    {
+     "titulo": "Mantenimiento de la Uhm Tlaxcala I, Tlax.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 18308405.78,
+     "inicio": "2022-07-15"
+    },
+    {
+     "titulo": "Contratacion de la Gerencia de Proyectos En el Municipio de Tlaxcala, Tlaxcala",
+     "dependencia": "Roedith Sa de Cv",
+     "monto": 10129952.32,
+     "inicio": "2020-10-09"
+    },
+    {
+     "titulo": "Rehabilitación y Restauración delBien Inmueble Parroquia de San José, Tlaxcala",
+     "dependencia": "Mom Desarrollo En Ingenieria y Arquitectura Sa de Cv",
+     "monto": 8085691.24,
+     "inicio": "2022-07-05"
+    },
+    {
+     "titulo": "Obra: Eac-Reh-Sup-02-2021, Escuela Normal Urbana Federal Lic. Emilio Sanchez",
+     "dependencia": "Constructora y Desarrolladora Daemac S.A. de C.V.",
+     "monto": 4805018.56,
+     "inicio": "2021-11-29"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Rehabilitación General",
+     "n": 22
+    },
+    {
+     "nombre": "Rehabilitacion General",
+     "n": 16
+    },
+    {
+     "nombre": "Rehabilitación",
+     "n": 7
+    },
+    {
+     "nombre": "Mantenimiento",
+     "n": 5
+    },
+    {
+     "nombre": "Rehabilitación y Obra Exterior",
+     "n": 4
+    }
+   ]
+  },
+  "yucatan": {
+   "n": 23,
+   "monto_total": 46711946.52,
+   "top": [
+    {
+     "titulo": "Instalación de Medidores de Gasto Proporcionado Por la Japay",
+     "dependencia": "Fagor Peninsular Sa de Cv",
+     "monto": 7150720.0,
+     "inicio": "2021-10-25"
+    },
+    {
+     "titulo": "Mantenimiento y Conservación de Hospital General de Tekax, Yucatán",
+     "dependencia": "Transformadora Costamaya",
+     "monto": 5444779.74,
+     "inicio": "2022-11-15"
+    },
+    {
+     "titulo": "Mejoramiento y Techumbre En la Escuela  Manuel Crescencio Rejón, Ubicada En la L",
+     "dependencia": "Fasilitas delMayab S de Rl de Cv",
+     "monto": 4540142.82,
+     "inicio": "2021-01-22"
+    },
+    {
+     "titulo": "Const. delSistema de Abastecimiento de Agua Potable de Sudzal Chico",
+     "dependencia": "Constructora Riro Sa de Cv",
+     "monto": 3173798.95,
+     "inicio": "2022-06-03"
+    },
+    {
+     "titulo": "Mejoramiento y Techumbre En la Escuela Hans Christian Andersen, Ubicada En la Lo",
+     "dependencia": "Fm Urbanizadora Sa de Cv",
+     "monto": 3167043.95,
+     "inicio": "2020-11-18"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Consistente En el Cambio de 3 Equipos de Bombeo",
+     "n": 1
+    },
+    {
+     "nombre": "Cct 31Dpr0406G",
+     "n": 1
+    },
+    {
+     "nombre": "Cct 31Epr0152U",
+     "n": 1
+    },
+    {
+     "nombre": "Cct 31Dcc0199J",
+     "n": 1
+    }
+   ]
+  },
+  "durango": {
+   "n": 24,
+   "monto_total": 88441613.37,
+   "top": [
+    {
+     "titulo": "Supervisión Externa de Obra Para la Construcción y Suministro, Instalación y Pru",
+     "dependencia": "Coordinacion de Ingenieria de Proyectos Sc",
+     "monto": 32906787.7,
+     "inicio": "2022-06-30"
+    },
+    {
+     "titulo": "Construcción delCentro de Acopio de Nuevo Ideal, Durango",
+     "dependencia": "Edificadora San German Sa de Cv",
+     "monto": 6080548.21,
+     "inicio": "2020-05-28"
+    },
+    {
+     "titulo": "Construcción delCentro de Acopio de Lerdo, Durango",
+     "dependencia": "Grupo Constructor Forza Creata Sa de Cv",
+     "monto": 5978207.31,
+     "inicio": "2020-05-28"
+    },
+    {
+     "titulo": "Elaboración de Estudios y Proyectos 2020",
+     "dependencia": "Numa Empresarial Sa de Cv",
+     "monto": 5474003.25,
+     "inicio": "2020-08-17"
+    },
+    {
+     "titulo": "1598100 Construc. Andadores,  Estacionamiento. Universidad Politécnica de Durang",
+     "dependencia": "Desarrollos Sahuatoba Sa de Cv",
+     "monto": 5127538.65,
+     "inicio": "2022-10-10"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Dgo.",
+     "n": 12
+    },
+    {
+     "nombre": "Tamaulipas y Nayarit. (El Llano",
+     "n": 1
+    },
+    {
+     "nombre": "Nayarit y Guanajuato.",
+     "n": 1
+    },
+    {
+     "nombre": "Nayarit y Sonora.",
+     "n": 1
+    }
+   ]
+  },
+  "tabasco": {
+   "n": 68,
+   "monto_total": 179391134.5,
+   "top": [
+    {
+     "titulo": "Construcción de la Uhn Frontera Iii, Tab.",
+     "dependencia": "Secretaria de Marina (Digaod)",
+     "monto": 31242132.6,
+     "inicio": "2022-08-22"
+    },
+    {
+     "titulo": "140000151.- Reconstrucción de Pavimento de Concreto, San Fernando Macuspana",
+     "dependencia": "Grupo Argent Sa de Cv",
+     "monto": 11099777.6,
+     "inicio": "2020-08-31"
+    },
+    {
+     "titulo": "14000505.- Reconstrucción Con Pavimento Asfáltico delCamino Tulipán  Cunduacán",
+     "dependencia": "Triturados y Construcciones de Cardenas Sa de Cv",
+     "monto": 10934725.25,
+     "inicio": "2021-08-23"
+    },
+    {
+     "titulo": "11270010.- Construcción delCentro de Asistencia Social, Municipio de Tenosique",
+     "dependencia": "Constructora y Comercializadora Musan Sa de Cv",
+     "monto": 8194238.22,
+     "inicio": "2021-11-27"
+    },
+    {
+     "titulo": "14000103.- Construcción de Pavimento Hidráulico, Guarniciones, Balancan",
+     "dependencia": "Constructora Ai delSureste Sa de Cv",
+     "monto": 6377512.81,
+     "inicio": "2020-09-02"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Zac",
+     "n": 2
+    },
+    {
+     "nombre": "Aguascalientes y México",
+     "n": 1
+    },
+    {
+     "nombre": "Zac. 32Djn0539F",
+     "n": 1
+    },
+    {
+     "nombre": "Zac. 32Djn0708K",
+     "n": 1
+    },
+    {
+     "nombre": "Zac.",
+     "n": 1
+    }
+   ]
+  }
+ },
+ "zonas": {
+  "Ciudad de México": {
+   "entidad": "Ciudad De Mexico",
+   "n": 94,
+   "monto_total": 828027724.23,
+   "top": [
+    {
+     "titulo": "Construccion de la Uhm Santa Fe Vii, Cd. de Mex.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 211360595.28,
+     "inicio": "2022-06-01"
+    },
+    {
+     "titulo": "Construccion Uhn Tepetlapa, Cdmx.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 69359386.98,
+     "inicio": "2020-08-03"
+    },
+    {
+     "titulo": "Construcción de la Uhm Santa Fe Vi, Cd. de Méx.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 64353931.19,
+     "inicio": "2021-08-16"
+    },
+    {
+     "titulo": "Adecuación de Oficinas Abiertas y Espacios Colaborativos delEdificio Sede 2C",
+     "dependencia": "Grupo Constructor Karius Sa de Cv",
+     "monto": 54285677.43,
+     "inicio": "2021-11-02"
+    },
+    {
+     "titulo": "Salud Dgdif Accion de Rehab. Edificio B Hosp. Juárez México",
+     "dependencia": "Darian Edificaciones Sa de Cv",
+     "monto": 27861094.92,
+     "inicio": "2021-05-28"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "C.P. 07760",
+     "n": 4
+    },
+    {
+     "nombre": "a Precio Alzado y Tiempo Determinado.",
+     "n": 2
+    },
+    {
+     "nombre": "C.P. 06720",
+     "n": 2
+    },
+    {
+     "nombre": "Entre Calle Culiacán",
+     "n": 2
+    },
+    {
+     "nombre": "Zona Sur.",
+     "n": 2
+    }
+   ]
+  },
+  "Guadalajara": {
+   "entidad": "Jalisco",
+   "n": 46,
+   "monto_total": 2799154075.31,
+   "top": [
+    {
+     "titulo": "Trabajos Para Llevar a Cabo la Construcción delH.R.A.E. de Tlajomulco de Zuñiga, Jalisco, Bajo la Modalidad de",
+     "dependencia": "Ingenieria y Control de Proyectos, S.A. de C.V.",
+     "monto": 2547533938.13,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Supervisión y Control de Los Trabajos Para Llevar a Cabo la Construcción delH.R.A.E.  de Tlajomulco de Zuñiga,",
+     "dependencia": "Alta Consultoria y Asesoria Sc",
+     "monto": 63011214.0,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Supervisión Adecuaciones a la Presa el Zapotillo",
+     "dependencia": "Sistemas Avanzados En Ingenieria Civil Sa de Cv",
+     "monto": 41789319.82,
+     "inicio": "2022-10-14"
+    },
+    {
+     "titulo": "Trabajos de Conservacion y Mantto Centro de Atención de Hemodiálisis (Cathem) Ubicada En la Calle Tesistan 670",
+     "dependencia": "Odevisa Sa de Cv",
+     "monto": 29842025.32,
+     "inicio": "2021-10-08"
+    },
+    {
+     "titulo": "Trabajos de Obra Civil En Cd. Guzmán, Zapotlán el Grande, Jal.",
+     "dependencia": "Comercializadora Ramysan Sa de Cv",
+     "monto": 23499429.7,
+     "inicio": "2022-04-05"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Michoacán y Oaxaca.",
+     "n": 1
+    },
+    {
+     "nombre": "Entre Calles Calderón de la Barca y Lope de Vega",
+     "n": 1
+    },
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado.",
+     "n": 1
+    },
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado",
+     "n": 1
+    }
+   ]
+  },
+  "Monterrey": {
+   "entidad": "Nuevo Leon",
+   "n": 13,
+   "monto_total": 199131738.37,
+   "top": [
+    {
+     "titulo": "Trabajos de Oc E Inst. Para Nueva Umf 10 Cons. En Juárez, N.L.",
+     "dependencia": "Constructora y Arrendadora San Sebastian S.A. de C.V.",
+     "monto": 71247685.56,
+     "inicio": "2022-08-09"
+    },
+    {
+     "titulo": "Construcción de la Uhm Escobedo Iii, N.L.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 56318094.09,
+     "inicio": "2023-09-04"
+    },
+    {
+     "titulo": "Continuación de Los Trabajos Para  la  Unidad de Medicina Familiar de 10 Consul",
+     "dependencia": "Hornos Industriales Maquinaria y Automatizacion Sa de Cv",
+     "monto": 21333766.34,
+     "inicio": "2021-10-15"
+    },
+    {
+     "titulo": "Lo-E38-20 Construcción de Colector de Drenaje Sanitario de 800 M.",
+     "dependencia": "Rt Conduccion Integral Sa de Cv",
+     "monto": 17973049.98,
+     "inicio": "2021-01-11"
+    },
+    {
+     "titulo": "Estudios de Volúmenes de Tránsito Vehicular En 2,525 Sitios de la Red Carretera",
+     "dependencia": "Servicios de Consultoria En Infraestructura Vial Sa de Cv",
+     "monto": 6680123.94,
+     "inicio": "2022-05-16"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "San Luis Potosí  y Tamaulipas",
+     "n": 1
+    },
+    {
+     "nombre": "(Rehabilitación de Techumbre de Policarbonato) Ot 17012",
+     "n": 1
+    }
+   ]
+  },
+  "Cancún": {
+   "entidad": "Quintana Roo",
+   "n": 35,
+   "monto_total": 917760514.29,
+   "top": [
+    {
+     "titulo": "Construcción delPuente Vehicular Nichupté (Distribuidor) Que Incluye Dos Entron",
+     "dependencia": "Ica Constructora Sa de Cv",
+     "monto": 823349643.84,
+     "inicio": "2022-07-01"
+    },
+    {
+     "titulo": "Ampliación de la Ptar \"Bicentenario\" En la Ciudad de Tulum, Quintana Roo, Para Ampliar Su Capacidad de 120 a 2",
+     "dependencia": "Recostrucciones Actualizadas delPuerto Sa de Cv",
+     "monto": 63015885.62,
+     "inicio": "2022-12-27"
+    },
+    {
+     "titulo": "Supervisión de Los Trabajos de Modernización delEntronque Aeropuerto (Distribui",
+     "dependencia": "Soluciones E Ingenieria En Vias Terrestres Sa de Cv",
+     "monto": 7053818.58,
+     "inicio": "2022-07-01"
+    },
+    {
+     "titulo": "Trabajos de O.C. Para el Mantto. y Mejora delAlmacén Deleg. En Chetumal, Q. Roo",
+     "dependencia": "Consorcio Coinco delSureste Sa de Cv",
+     "monto": 6922088.42,
+     "inicio": "2022-09-27"
+    },
+    {
+     "titulo": "Monitoreo Zona Sureste Camp., Q. Roo, Tab. y Yuc.",
+     "dependencia": "Hq Control, S. de R.L. de C.V.",
+     "monto": 4026573.53,
+     "inicio": "2020-03-17"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Tabasco y Yucatán.",
+     "n": 1
+    },
+    {
+     "nombre": "Para Ampliar Su Capacidad de 120 a 240 Lps. Primera Etapa.",
+     "n": 1
+    }
+   ]
+  },
+  "Mérida": {
+   "entidad": "Yucatan",
+   "n": 23,
+   "monto_total": 46711946.52,
+   "top": [
+    {
+     "titulo": "Instalación de Medidores de Gasto Proporcionado Por la Japay",
+     "dependencia": "Fagor Peninsular Sa de Cv",
+     "monto": 7150720.0,
+     "inicio": "2021-10-25"
+    },
+    {
+     "titulo": "Mantenimiento y Conservación de Hospital General de Tekax, Yucatán",
+     "dependencia": "Transformadora Costamaya",
+     "monto": 5444779.74,
+     "inicio": "2022-11-15"
+    },
+    {
+     "titulo": "Mejoramiento y Techumbre En la Escuela  Manuel Crescencio Rejón, Ubicada En la L",
+     "dependencia": "Fasilitas delMayab S de Rl de Cv",
+     "monto": 4540142.82,
+     "inicio": "2021-01-22"
+    },
+    {
+     "titulo": "Const. delSistema de Abastecimiento de Agua Potable de Sudzal Chico",
+     "dependencia": "Constructora Riro Sa de Cv",
+     "monto": 3173798.95,
+     "inicio": "2022-06-03"
+    },
+    {
+     "titulo": "Mejoramiento y Techumbre En la Escuela Hans Christian Andersen, Ubicada En la Lo",
+     "dependencia": "Fm Urbanizadora Sa de Cv",
+     "monto": 3167043.95,
+     "inicio": "2020-11-18"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Consistente En el Cambio de 3 Equipos de Bombeo",
+     "n": 1
+    },
+    {
+     "nombre": "Cct 31Dpr0406G",
+     "n": 1
+    },
+    {
+     "nombre": "Cct 31Epr0152U",
+     "n": 1
+    },
+    {
+     "nombre": "Cct 31Dcc0199J",
+     "n": 1
+    }
+   ]
+  },
+  "Querétaro": {
+   "entidad": "Queretaro",
+   "n": 22,
+   "monto_total": 222835206.53,
+   "top": [
+    {
+     "titulo": "Lo-009000960-E5-2020 Bernal  Higuerillas 2 Viaductos Km 43+760 y Km 46+010",
+     "dependencia": "Construccion y Electrificacion Logistica Sa de Cv",
+     "monto": 73832579.62,
+     "inicio": "2020-04-08"
+    },
+    {
+     "titulo": "Lo-009000960-E4-2020 Tramo Bernal  Higuerillas delKm 42+100 Al Km 47+808",
+     "dependencia": "Edificadora Lagos Sa de Cv",
+     "monto": 41537095.13,
+     "inicio": "2020-04-08"
+    },
+    {
+     "titulo": "Construcción delCentro de Vinculación Campus Norte, En el Instituto Tecnológico",
+     "dependencia": "Saicer Constructora Inmobiliaria Sa de Cv",
+     "monto": 23092037.13,
+     "inicio": "2021-02-15"
+    },
+    {
+     "titulo": "Lo-009000960-E27-2020 Pavimentación Bernal  Higuerillas",
+     "dependencia": "Grupo Constructor Degeo Sa de Cv",
+     "monto": 17092446.89,
+     "inicio": "2020-09-07"
+    },
+    {
+     "titulo": "Mantenimiento Inmuebles Autopista México - Querétaro",
+     "dependencia": "Late Construcciones, S. A. de C. V.",
+     "monto": 11435384.82,
+     "inicio": "2021-06-01"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Querétaro.",
+     "n": 5
+    },
+    {
+     "nombre": "Qro.",
+     "n": 2
+    },
+    {
+     "nombre": "Incluyendo Material",
+     "n": 1
+    },
+    {
+     "nombre": "Qro.; Conalep \"Nueva Creación\" - 2° Etapa",
+     "n": 1
+    },
+    {
+     "nombre": "Qro.\"",
+     "n": 1
+    }
+   ]
+  },
+  "Tijuana": {
+   "entidad": "Baja California",
+   "n": 36,
+   "monto_total": 188412714.95,
+   "top": [
+    {
+     "titulo": "Trabajos de Obra Civil En C.H.29 Ensenada, Baja California.",
+     "dependencia": "Construccion y Edificacion Ama Sa de Cv",
+     "monto": 42796539.12,
+     "inicio": "2022-03-23"
+    },
+    {
+     "titulo": "Trabajos de Obra Civil E Instalaciones En C.H. 29, Ensenada, B.C.",
+     "dependencia": "Construcciones Cimentaciones y Pilas Sa de Cv",
+     "monto": 21405532.32,
+     "inicio": "2021-08-05"
+    },
+    {
+     "titulo": "Mantenimiento de la Canalización delRio Tijuana",
+     "dependencia": "Alejandro Bañuelos Quintero",
+     "monto": 15923564.62,
+     "inicio": "2020-10-30"
+    },
+    {
+     "titulo": "Construcción de Linea de Conducción Cóndor-La Rumorosa y Ampliación de Red de Ag",
+     "dependencia": "Constructora Valencia Sa de Cv",
+     "monto": 15570756.5,
+     "inicio": "2020-07-24"
+    },
+    {
+     "titulo": "Trabajos de Obra Civil Para la Ampliación de la Umf 3 Tecate, B.C.",
+     "dependencia": "Integra, Construcciones Residenciales E Infraestructura Sa de Cv",
+     "monto": 14552273.79,
+     "inicio": "2021-08-12"
+    }
+   ],
+   "municipios": []
+  },
+  "Puebla": {
+   "entidad": "Puebla",
+   "n": 61,
+   "monto_total": 495512395.5,
+   "top": [
+    {
+     "titulo": "Construcción de la Uhm Puebla Vi, Pue.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 223763119.68,
+     "inicio": "2024-06-12"
+    },
+    {
+     "titulo": "Mantenimiento de la Uhm Puebla I",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 74455095.32,
+     "inicio": "2023-09-14"
+    },
+    {
+     "titulo": "Construcción de Línea de Conducción En Pead 24 Rd 13.5 delCadenamiento 10+827 Al 12+871 En Periférico Ecológi",
+     "dependencia": "Terracerías y Caminos de la Sierra, S.A. de C.V.",
+     "monto": 31410833.87,
+     "inicio": "2022-12-28"
+    },
+    {
+     "titulo": "Prueba de Estimulación Hidráulica En Un Pozo Geotérmico de la Zona de Acoculco.",
+     "dependencia": "Hidrogeologia y Perforaciones Sa de Cv",
+     "monto": 24247666.84,
+     "inicio": "2020-12-23"
+    },
+    {
+     "titulo": "Construcción delCentro de Mezclas En la Umae San José Chiapa, Puebla.",
+     "dependencia": "Construcciones Nirvana Sa de Cv",
+     "monto": 20674002.77,
+     "inicio": "2021-12-10"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Localidad Amozoc de Mota",
+     "n": 3
+    },
+    {
+     "nombre": "Consta de Suministro y Colocacion de Tuberia de Pvc 2",
+     "n": 2
+    },
+    {
+     "nombre": "Querétaro y Tlaxcala",
+     "n": 1
+    },
+    {
+     "nombre": "de Acuerdo a Las Especificaciones Técnicas",
+     "n": 1
+    },
+    {
+     "nombre": "Cuautinchan y Tzicatlacoyan",
+     "n": 1
+    }
+   ]
+  },
+  "León": {
+   "entidad": "Guanajuato",
+   "n": 19,
+   "monto_total": 140822663.27,
+   "top": [
+    {
+     "titulo": "E54-2020",
+     "dependencia": "Anguiano y Wong Asesores Sa de Cv",
+     "monto": 59753814.72,
+     "inicio": "2020-12-03"
+    },
+    {
+     "titulo": "Obras de Remediación de Suelos  Primera Etapa: Tratamiento de 34,400 Ton. de Suelo Contaminado Con Plaguicida",
+     "dependencia": "Obras y Servicios Jisa Sa de Cv",
+     "monto": 25380110.1,
+     "inicio": "2022-11-15"
+    },
+    {
+     "titulo": "Construcción delCentro de Mezclas En la Umae el Bajío, León, Guanajuato.",
+     "dependencia": "Corpomara Constructores Sa de Cv",
+     "monto": 16972668.46,
+     "inicio": "2021-11-17"
+    },
+    {
+     "titulo": "Mantenimiento a Obra Civil E Instalaciones Umae Hgp 48 Bajio",
+     "dependencia": "Constructora Nortag Sa de Cv",
+     "monto": 5787041.0,
+     "inicio": "2022-03-15"
+    },
+    {
+     "titulo": "L.P. Mantenimiento a Obra Publica E Instalaciones Umae Hgp 48 Leon",
+     "dependencia": "Constructora Nortag Sa de Cv",
+     "monto": 5367067.0,
+     "inicio": "2021-03-03"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Relativos a Preliminares",
+     "n": 2
+    },
+    {
+     "nombre": "Gto.",
+     "n": 1
+    },
+    {
+     "nombre": "Guanajuato\".",
+     "n": 1
+    }
+   ]
+  },
+  "San Luis Potosí": {
+   "entidad": "San Luis Potosi",
+   "n": 34,
+   "monto_total": 81603565.47,
+   "top": [
+    {
+     "titulo": "Mantto Uhm San Luis Potosi",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 26829140.36,
+     "inicio": "2022-08-15"
+    },
+    {
+     "titulo": "Proyecto Ejecutivo y Construcción de Casetas de Transmisión de Señal de Televisión Digital Terrestre  En Ciuda",
+     "dependencia": "Comercializadora E Ingenieria Islas Sa de Cv",
+     "monto": 10669534.09,
+     "inicio": "2023-02-01"
+    },
+    {
+     "titulo": "Construccion de Colector Sanitario Con Tuberia de Polietileno de Alta Densidad C",
+     "dependencia": "Buga Construcciones Sa de Cv",
+     "monto": 6627974.12,
+     "inicio": "2020-01-08"
+    },
+    {
+     "titulo": "Mantenimiento Mayor a Las Oficinas de Orft, Juntas Especiales y Profedet, Paq 8",
+     "dependencia": "Estudio Narros Sa de Cv",
+     "monto": 5101594.7,
+     "inicio": "2022-09-12"
+    },
+    {
+     "titulo": "Ao E14 Elaboracion Analisis Costo Beneficio En Tamuin",
+     "dependencia": "Altor Finanzas E Infraestructura Sc",
+     "monto": 2999422.08,
+     "inicio": "2021-07-06"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "S.L.P.",
+     "n": 20
+    },
+    {
+     "nombre": "Tabasco y Hidalgo",
+     "n": 1
+    }
+   ]
+  },
+  "Aguascalientes": {
+   "entidad": "Aguascalientes",
+   "n": 60,
+   "monto_total": 312520659.47,
+   "top": [
+    {
+     "titulo": "Conv. Fed. 002-21",
+     "dependencia": "Ingenieria Civil + Industrial, Firma Sa de Cv",
+     "monto": 29312351.73,
+     "inicio": "2021-07-27"
+    },
+    {
+     "titulo": "Conv. Fed. 001-2020",
+     "dependencia": "Glg Ingenieros Sa de Cv",
+     "monto": 26600073.53,
+     "inicio": "2020-06-02"
+    },
+    {
+     "titulo": "Conv. Fed. 001-2020",
+     "dependencia": "Fernando Rubio Ortiz",
+     "monto": 26269633.78,
+     "inicio": "2020-06-02"
+    },
+    {
+     "titulo": "Conv. Fed. 001-2020",
+     "dependencia": "Jose Luis Telles Peredo",
+     "monto": 25813519.85,
+     "inicio": "2020-04-01"
+    },
+    {
+     "titulo": "Conv. Fed. 001-2020",
+     "dependencia": "Mcb Maquinaria y Construcciones Sa de Cv",
+     "monto": 23900026.72,
+     "inicio": "2020-04-01"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Ags.",
+     "n": 25
+    },
+    {
+     "nombre": "Aguascalientes.",
+     "n": 4
+    },
+    {
+     "nombre": "Ags. (Segundo Procedimiento)",
+     "n": 3
+    },
+    {
+     "nombre": "Calle Mariano Azuela S/N",
+     "n": 2
+    },
+    {
+     "nombre": "Calle Doctor Pedro de Alba No. 357",
+     "n": 1
+    }
+   ]
+  },
+  "La Paz": {
+   "entidad": "Baja California Sur",
+   "n": 29,
+   "monto_total": 549549141.98,
+   "top": [
+    {
+     "titulo": "Trabajos Para Llevar a Cabo la Construcción de la C.H. de Cabo San Lucas, Baja California Sur, Bajo la Modalid",
+     "dependencia": "Gami Ingenieria E Instalaciones Sa de Cv",
+     "monto": 439423643.58,
+     "inicio": "2022-12-06"
+    },
+    {
+     "titulo": "Lo-050Gyr070-E15-2021 Conclusión de Amp y Remod de Ucin delHgz+Mf No 1, Lpz",
+     "dependencia": "Precisa Construcciones",
+     "monto": 14362555.94,
+     "inicio": "2021-11-01"
+    },
+    {
+     "titulo": "Mantenimiento Uhm Cd Constitucion \"B\", B.C.S.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 13218517.85,
+     "inicio": "2020-10-12"
+    },
+    {
+     "titulo": "Supervisión y Control de Los Trabajos Para Llevar a Cabo la Construcción de la C.H. de Cabo San Lucas, Baja Ca",
+     "dependencia": "Kapainar Diseños y Manufacturas Sa de Cv",
+     "monto": 13073155.0,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Lo-050Gyr070-E3-2021 Construcción Est. y Saneam. Umf14+7 Lpz",
+     "dependencia": "Precisa Construcciones",
+     "monto": 8660832.22,
+     "inicio": "2021-06-14"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Sinaloa y Sonora.",
+     "n": 1
+    },
+    {
+     "nombre": "Sonora y Durango.",
+     "n": 1
+    },
+    {
+     "nombre": "Isla de Cedros",
+     "n": 1
+    },
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado",
+     "n": 1
+    },
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado.",
+     "n": 1
+    }
+   ]
+  },
+  "Saltillo": {
+   "entidad": "Coahuila De Zaragoza",
+   "n": 79,
+   "monto_total": 3192145106.48,
+   "top": [
+    {
+     "titulo": "Trabajos Para Llevar a Cabo la Construcción delH.R.A.E. de Torreón, Coahuila, Bajo la Modalidad de Proyecto In",
+     "dependencia": "Ingenieria y Desarrollo Inmobiliario de Mexico Sa de Cv",
+     "monto": 2610890000.0,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Pav. Asfaltica Diversas Calles En San Buenaventura, Coah",
+     "dependencia": "Triturados Castaños,  S.A. de C.V.",
+     "monto": 72133395.67,
+     "inicio": "2020-12-22"
+    },
+    {
+     "titulo": "Supervisión y Control de Los Trabajos Para Llevar a Cabo la Construcción delH.R.A.E. de Torreón, Coahuila, Baj",
+     "dependencia": "Direccion y Desarrollo de Proyectos Sa de Cv",
+     "monto": 67854299.19,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Term. Constr. Paso a Desnivel Carr.57 Cruce Blvd. Alvaro Obregon Sabinas, Coah",
+     "dependencia": "Rotugra Construcciones Sa de Cv",
+     "monto": 35367845.28,
+     "inicio": "2020-09-30"
+    },
+    {
+     "titulo": "Constr. Inf. Ciclista y Parabuses Carret. Frontera-San Buenaventura En Frontera",
+     "dependencia": "Karla Cecilia delBosque de Luna",
+     "monto": 24637931.08,
+     "inicio": "2020-03-03"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Con Un Total de 1",
+     "n": 1
+    },
+    {
+     "nombre": "Gómez Palacio y Lerdo",
+     "n": 1
+    },
+    {
+     "nombre": "Municipio de San Juan de Las Sabinas",
+     "n": 1
+    },
+    {
+     "nombre": "(Reposicion delPozo \"Leal\"",
+     "n": 1
+    },
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado.",
+     "n": 1
+    }
+   ]
+  },
+  "Chihuahua": {
+   "entidad": "Chihuahua",
+   "n": 26,
+   "monto_total": 1686135870.87,
+   "top": [
+    {
+     "titulo": "Proyecto Integral Hospital General Regional 260 Camas,  Ciudad Juárez, Chihuahua",
+     "dependencia": "Ingenieria y Control de Proyectos, S.A. de C.V.",
+     "monto": 1360514986.9,
+     "inicio": "2022-09-09"
+    },
+    {
+     "titulo": "Construcción de la Ptar Norte,Con Una Cap. de 300 Lps, En Localidad de Delicias",
+     "dependencia": "La Peninsular Compañia Constructora S.A. de C.V",
+     "monto": 133526843.72,
+     "inicio": "2020-08-13"
+    },
+    {
+     "titulo": "Construcción de Presa Para el Control de Avenidas \"Filtro Ii\"; En Ciudad Juárez,",
+     "dependencia": "Constructora Figosa Sa de Cv",
+     "monto": 59951029.4,
+     "inicio": "2022-08-24"
+    },
+    {
+     "titulo": "Construcción de Presa Para el Control de Avenidas \"Puerto la Paz\"; En Ciudad Juárez, Chihuahua",
+     "dependencia": "Merp Edificaciones y Terracerias",
+     "monto": 36806616.86,
+     "inicio": "2023-01-19"
+    },
+    {
+     "titulo": "Reposición de la Red de Alcantarillado Sanitario En la Zona Centro de la Ciudad de Ojinaga, Chihuahua",
+     "dependencia": "Construcciones y Agroservicios Sa de Cv",
+     "monto": 26997073.06,
+     "inicio": "2022-12-06"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Durango y Zacatecas.",
+     "n": 1
+    },
+    {
+     "nombre": "Chihuahua; Hospital General Ciudad Juárez",
+     "n": 1
+    },
+    {
+     "nombre": "Primera Etapa de Intervención.",
+     "n": 1
+    },
+    {
+     "nombre": "la Cual Incluye la Instalación de 10",
+     "n": 1
+    },
+    {
+     "nombre": "la Cual Incluye la Instalación de 2",
+     "n": 1
+    }
+   ]
+  },
+  "Culiacán": {
+   "entidad": "Sinaloa",
+   "n": 31,
+   "monto_total": 560886341.91,
+   "top": [
+    {
+     "titulo": "Construcción de la Línea de Conducción y Ramales  delAcueducto Concordia., Sin.",
+     "dependencia": "Edificaciones y Obras Santa Fe Sa de Cv",
+     "monto": 207647765.74,
+     "inicio": "2022-11-01"
+    },
+    {
+     "titulo": "Trabajos de Obra Civil E Instalaciones Electromecánicas Para Cmfe8Q En Guasave, Sinaloa",
+     "dependencia": "Obras y Construcciones  Diaram Sa de Cv",
+     "monto": 99273573.31,
+     "inicio": "2022-12-15"
+    },
+    {
+     "titulo": "Construcción de la Planta Potabilizadora delAcueducto Concordia, Sinaloa.",
+     "dependencia": "Ozone Ecological Equipments Sa de Cv",
+     "monto": 61903915.32,
+     "inicio": "2022-11-01"
+    },
+    {
+     "titulo": "Continuidad de Trabajos En Culiacán, Sinaloa.",
+     "dependencia": "Zoan Construccion y Consultoria Sa de Cv",
+     "monto": 40748029.39,
+     "inicio": "2022-12-23"
+    },
+    {
+     "titulo": "Continuidad de (Hae114) En Culiacán, Sinaloa.",
+     "dependencia": "Edificaciones y Desarrollos Arquitectonicos Sa de Cv",
+     "monto": 28830038.46,
+     "inicio": "2021-08-18"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Guayana",
+     "n": 1
+    },
+    {
+     "nombre": "Con el Recurso delPremio Imss a la Competitividad 2020.",
+     "n": 1
+    },
+    {
+     "nombre": "Conforme a la Normatividad En Materia de Impacto Ambiental",
+     "n": 1
+    }
+   ]
+  },
+  "Hermosillo": {
+   "entidad": "Sonora",
+   "n": 85,
+   "monto_total": 4166004140.51,
+   "top": [
+    {
+     "titulo": "Reposición de 650 Ml de Emisor a Base de Tubería de Pvc de 16\" de Diámetro y 11",
+     "dependencia": "2K17 Ingenieria y Construccion Sa de Cv",
+     "monto": 3368607000.0,
+     "inicio": "2020-05-27"
+    },
+    {
+     "titulo": "Modernización Como Calle Completa delBlvd. Luis Donaldo Colosio En Nogales, Son",
+     "dependencia": "Gluyas Construcciones Sa de Cv",
+     "monto": 228166530.76,
+     "inicio": "2020-03-06"
+    },
+    {
+     "titulo": "Obra Compl. Para la Constr.  delHospital General delEstado de Sonora, En Hmo",
+     "dependencia": "D'Marsella Terracerias Sa de Cv",
+     "monto": 78998061.61,
+     "inicio": "2022-06-20"
+    },
+    {
+     "titulo": "Obra Compl. Para la Constr.  delHospital General delEstado de Sonora, En Hmo",
+     "dependencia": "D'Marsella Terracerias Sa de Cv",
+     "monto": 78998061.6,
+     "inicio": "2022-06-20"
+    },
+    {
+     "titulo": "Construcción de Acueducto Macoyahui-Álamos de 24,553.82 M.",
+     "dependencia": "El Roble Leasing Sa de Cv",
+     "monto": 66891636.27,
+     "inicio": "2022-01-14"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Distrito de Riego 014",
+     "n": 5
+    },
+    {
+     "nombre": "Ubicado En Avenida Morelos",
+     "n": 1
+    },
+    {
+     "nombre": "Xalapa",
+     "n": 1
+    }
+   ]
+  },
+  "Durango": {
+   "entidad": "Durango",
+   "n": 24,
+   "monto_total": 88441613.37,
+   "top": [
+    {
+     "titulo": "Supervisión Externa de Obra Para la Construcción y Suministro, Instalación y Pru",
+     "dependencia": "Coordinacion de Ingenieria de Proyectos Sc",
+     "monto": 32906787.7,
+     "inicio": "2022-06-30"
+    },
+    {
+     "titulo": "Construcción delCentro de Acopio de Nuevo Ideal, Durango",
+     "dependencia": "Edificadora San German Sa de Cv",
+     "monto": 6080548.21,
+     "inicio": "2020-05-28"
+    },
+    {
+     "titulo": "Construcción delCentro de Acopio de Lerdo, Durango",
+     "dependencia": "Grupo Constructor Forza Creata Sa de Cv",
+     "monto": 5978207.31,
+     "inicio": "2020-05-28"
+    },
+    {
+     "titulo": "Elaboración de Estudios y Proyectos 2020",
+     "dependencia": "Numa Empresarial Sa de Cv",
+     "monto": 5474003.25,
+     "inicio": "2020-08-17"
+    },
+    {
+     "titulo": "1598100 Construc. Andadores,  Estacionamiento. Universidad Politécnica de Durang",
+     "dependencia": "Desarrollos Sahuatoba Sa de Cv",
+     "monto": 5127538.65,
+     "inicio": "2022-10-10"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Dgo.",
+     "n": 12
+    },
+    {
+     "nombre": "Tamaulipas y Nayarit. (El Llano",
+     "n": 1
+    },
+    {
+     "nombre": "Nayarit y Guanajuato.",
+     "n": 1
+    },
+    {
+     "nombre": "Nayarit y Sonora.",
+     "n": 1
+    }
+   ]
+  },
+  "Tepic": {
+   "entidad": "Nayarit",
+   "n": 15,
+   "monto_total": 68858728.04,
+   "top": [
+    {
+     "titulo": "Construccion de Cuartos En Hotel-Escuela (6ª Etapa), En U.T. de Ba de Ba",
+     "dependencia": "Grupo Quatro Desarrollos Sa de Cv",
+     "monto": 20947670.49,
+     "inicio": "2021-08-23"
+    },
+    {
+     "titulo": "Reequipamiento de 2 Filtros de Zeolita",
+     "dependencia": "Fonatur Infraestructura Sa de Cv",
+     "monto": 13383199.59,
+     "inicio": "2022-08-01"
+    },
+    {
+     "titulo": "Construcción de Nueva Sala de Hemodinamia En el Hgz No. 1, En el Municipio de Tepic, Nayarit",
+     "dependencia": "Healthcare Systems de Mexico Sa de Cv",
+     "monto": 8862856.72,
+     "inicio": "2022-10-27"
+    },
+    {
+     "titulo": "Construcción de Casetas Para Las Estaciones Transmisoras de Televisión Digital",
+     "dependencia": "Promotora Lindavista Sa de Cv",
+     "monto": 8363837.81,
+     "inicio": "2021-11-05"
+    },
+    {
+     "titulo": "Proyecto Ejecutivo y Construcción de Una Caseta Para la Estación Transmisora De",
+     "dependencia": "Torres y Servicios Para Radiodifusion Sa de Cv",
+     "monto": 8054005.99,
+     "inicio": "2021-05-17"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Periodo 2020.",
+     "n": 1
+    },
+    {
+     "nombre": "Periodo 2021",
+     "n": 1
+    }
+   ]
+  },
+  "Colima": {
+   "entidad": "Colima",
+   "n": 37,
+   "monto_total": 243375620.55,
+   "top": [
+    {
+     "titulo": "Construccion de la Uhn Manzanillo Viii, Col.",
+     "dependencia": "Secretaria de Marina (Digaod)",
+     "monto": 80927697.15,
+     "inicio": "2021-08-16"
+    },
+    {
+     "titulo": "Demolición de Inmueble Hospital General Zona No.10",
+     "dependencia": "Constructora Germer Sa de Cv",
+     "monto": 27454574.36,
+     "inicio": "2022-07-28"
+    },
+    {
+     "titulo": "Mantenimiento a Inmuebles En Occidente, Jal, Col, Gto, Qro, y Mich",
+     "dependencia": "H.I.C. Infraestructura Progresiva Sa de Cv",
+     "monto": 18237326.06,
+     "inicio": "2022-10-04"
+    },
+    {
+     "titulo": "Mantenimiento de la Uhn Manzanillo Ii, Col.",
+     "dependencia": "Secretaria de Marina (Digaod)",
+     "monto": 16884978.07,
+     "inicio": "2021-08-02"
+    },
+    {
+     "titulo": "Mantenimiento Preventivo y Correctivo a Inmuebles de la Fgr En Occidente",
+     "dependencia": "Grupo Constructor Mafyn Sa de Cv",
+     "monto": 14378570.43,
+     "inicio": "2021-08-02"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Col.",
+     "n": 4
+    },
+    {
+     "nombre": "Jalisco y Nayarit",
+     "n": 1
+    },
+    {
+     "nombre": "Colima.- Mejoramiento de la Infraestructura Fisica Educativa",
+     "n": 1
+    },
+    {
+     "nombre": "Segunda Etapa.",
+     "n": 1
+    }
+   ]
+  },
+  "Toluca": {
+   "entidad": "Mexico",
+   "n": 134,
+   "monto_total": 1807129305.69,
+   "top": [
+    {
+     "titulo": "Diseño y Construcción de la Línea de Conducción Ramal Zumpango, Estado de México",
+     "dependencia": "La Peninsular Compañia Constructora S.A. de C.V",
+     "monto": 172360651.4,
+     "inicio": "2022-04-12"
+    },
+    {
+     "titulo": "Proyecto Integral de Obra Pública  Municipio de Zumpango 2",
+     "dependencia": "Tei Construccion, S.A. de C. V.",
+     "monto": 166659215.97,
+     "inicio": "2021-01-26"
+    },
+    {
+     "titulo": "Proyecto Integral de Obra Pública Municipio de Tultitlan 2",
+     "dependencia": "Tadco Constructora Sa de Cv",
+     "monto": 165376356.54,
+     "inicio": "2021-01-27"
+    },
+    {
+     "titulo": "Construcción de Espacio Público y Centro de Desarrollo Comunitario",
+     "dependencia": "Constructora Sogu Sa de Cv",
+     "monto": 126724580.03,
+     "inicio": "2020-06-01"
+    },
+    {
+     "titulo": "Proyecto Integral de Obra Pública Municipio de Tecámac 2",
+     "dependencia": "Mlm Ingenieria y Desarrollo Sa de Cv",
+     "monto": 105539012.13,
+     "inicio": "2021-01-25"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Pertenecientes Al Sistema de Aguas de la Ciudad de México.",
+     "n": 2
+    },
+    {
+     "nombre": "Bajo la Modalidad Mixta (Precio Unitario y Precio Alzado).",
+     "n": 2
+    },
+    {
+     "nombre": "Michoacán y Morelos",
+     "n": 1
+    },
+    {
+     "nombre": "Primera Etapa",
+     "n": 1
+    },
+    {
+     "nombre": "Rehabilitación delCentro de Salud San Juan la Isla",
+     "n": 1
+    }
+   ]
+  },
+  "Morelia": {
+   "entidad": "Michoacan De Ocampo",
+   "n": 384,
+   "monto_total": 500055919.34,
+   "top": [
+    {
+     "titulo": "Edificio de Rectoria (2Da Etapa) Ciudad Universitaria En la Umsnh",
+     "dependencia": "Octavio Rodriguez Lopez",
+     "monto": 39656147.88,
+     "inicio": "2021-02-15"
+    },
+    {
+     "titulo": "Mantenimiento Uhn Lázaro Cárdenas Iii-C, Mich.",
+     "dependencia": "Secretaria de Marina (Digaod)",
+     "monto": 28642197.38,
+     "inicio": "2022-08-08"
+    },
+    {
+     "titulo": "Lpn E1 Mantenimiento Pavimentos Pista Rodajes Uruapan",
+     "dependencia": "Javac Construcciones Sa de Cv",
+     "monto": 18205543.35,
+     "inicio": "2021-05-21"
+    },
+    {
+     "titulo": "Edificio Ud-1, Edificio Lt-1 Edificio Biblioteca, Edificio Ud1, En la Uplc",
+     "dependencia": "Proyectos de Obra Civil Sa de Cv",
+     "monto": 17522692.96,
+     "inicio": "2021-02-15"
+    },
+    {
+     "titulo": "Laboratorio de Biotecnología, Edificio de Artes y Culturales En la Ucemich",
+     "dependencia": "Cocicha Sa de Cv",
+     "monto": 16720560.3,
+     "inicio": "2020-11-17"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Para el Ejercicio 2022",
+     "n": 8
+    },
+    {
+     "nombre": "Para el Ejercicio 2020",
+     "n": 6
+    },
+    {
+     "nombre": "Para el Ejercicio 2021",
+     "n": 4
+    },
+    {
+     "nombre": "Oaxaca y Yucatán.",
+     "n": 1
+    },
+    {
+     "nombre": "Para el Ejercicio 2022.",
+     "n": 1
+    }
+   ]
+  },
+  "Cuernavaca": {
+   "entidad": "Morelos",
+   "n": 55,
+   "monto_total": 322086123.58,
+   "top": [
+    {
+     "titulo": "Reforzamiento de la Estructura, Trabajos de Terracerias, Construccion de Instalaciones Hidraulicas, Sanitarias",
+     "dependencia": "Constructora y Arrendadora San Sebastian, S.A. de C.V.",
+     "monto": 43103432.8,
+     "inicio": "2022-06-03"
+    },
+    {
+     "titulo": "Integracion delTeatro Con el Centro Cultural, Que Contempla la Fachada Actual, Recubrimiento a Muros Que Dan A",
+     "dependencia": "Dahuabe Construcciones Sa de Cv",
+     "monto": 34230480.94,
+     "inicio": "2022-04-21"
+    },
+    {
+     "titulo": "Refuerzos Estructurales, Cancelerias, Herrerias y Señalizacion En Construccion delMercado de la Unidad, Centro",
+     "dependencia": "Lax Constructora, S.A. de C.V.",
+     "monto": 18829448.8,
+     "inicio": "2022-04-07"
+    },
+    {
+     "titulo": "Diseño y Construccion de Un Canal de Concreto Armado Para la Conduccion de Los Volumenes Pluviales En el Centr",
+     "dependencia": "Desarrolladora Glar Sa de Cv",
+     "monto": 17321100.77,
+     "inicio": "2022-05-16"
+    },
+    {
+     "titulo": "Rehabilitacion de Canchas Existentes, Rehabilitacion de Malla En Campo de Futbol, Muro de Contencion de Skate ",
+     "dependencia": "Alz Construcciones Sa de Cv",
+     "monto": 15081052.35,
+     "inicio": "2022-04-21"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Ubicado En la Colonia Centro",
+     "n": 1
+    },
+    {
+     "nombre": "Primera Etapa\"",
+     "n": 1
+    },
+    {
+     "nombre": "Zac. 32Dpr1249M",
+     "n": 1
+    }
+   ]
+  },
+  "Pachuca": {
+   "entidad": "Hidalgo",
+   "n": 17,
+   "monto_total": 74090138.87,
+   "top": [
+    {
+     "titulo": "Mantenimiento a Inmuebles En Transoceánica, Ver, Hgo, Tlax, Pue, Mor, Oax y Gro",
+     "dependencia": "Gavil Ingenieria Sa de Cv",
+     "monto": 23638333.99,
+     "inicio": "2022-10-12"
+    },
+    {
+     "titulo": "Mantenimiento Preventivo y Correctivos a Inmuebles y En Uso de Fgr Transoceanica",
+     "dependencia": "Altakons Sa de Cv",
+     "monto": 11783133.33,
+     "inicio": "2021-05-21"
+    },
+    {
+     "titulo": "Mantenimiento y Adecuación de Espacios Para Cámara Gesell En Transoceanica",
+     "dependencia": "Altakons Sa de Cv",
+     "monto": 6534876.0,
+     "inicio": "2021-12-06"
+    },
+    {
+     "titulo": "Construcción delCentro de Acopio de Tizayuca, Hidalgo",
+     "dependencia": "Construideas Innovacion y Desarrollo",
+     "monto": 6007601.22,
+     "inicio": "2020-05-28"
+    },
+    {
+     "titulo": "Construcción delCentro de Acopio de Tulancingo, Hidalgo",
+     "dependencia": "Majem Construcciones y Servicios Sa de Cv",
+     "monto": 5690990.23,
+     "inicio": "2020-05-28"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Villa Gonzalez Ortega",
+     "n": 1
+    },
+    {
+     "nombre": "Maravatío y Zitacuaro",
+     "n": 1
+    },
+    {
+     "nombre": "Etapa de Dos de Cuatro",
+     "n": 1
+    },
+    {
+     "nombre": "Senguio",
+     "n": 1
+    }
+   ]
+  },
+  "Oaxaca": {
+   "entidad": "Oaxaca",
+   "n": 111,
+   "monto_total": 1063688739.09,
+   "top": [
+    {
+     "titulo": "Reforzamiento de Muelles En el Puerto Comercial de Salina Cruz, Oaxaca",
+     "dependencia": "Jotacu Instalaciones Sa de Cv",
+     "monto": 305533006.46,
+     "inicio": "2022-03-10"
+    },
+    {
+     "titulo": "Ampliación E Intervención Integral delHr No. 18, En Huajuapan de León, Oaxaca",
+     "dependencia": "Arcac Construcciones Sa de Cv",
+     "monto": 159309452.82,
+     "inicio": "2021-12-13"
+    },
+    {
+     "titulo": "Proy. Int. Para la Cosntr. de Las Est. Nav. En Ixtepec, Oax. Tex. Ver.",
+     "dependencia": "Cosol-Construction Solutions S a P I de Cv",
+     "monto": 138448369.08,
+     "inicio": "2022-06-20"
+    },
+    {
+     "titulo": "Retiro de Rompeolas Existente Para Ampliación de la Bocana de Acceso En el Puert",
+     "dependencia": "Obras Maritimas Hb",
+     "monto": 135849577.74,
+     "inicio": "2022-07-01"
+    },
+    {
+     "titulo": "Construcción  de Albergue  Para  la  Atencion  de Niñas,Niños y Adolescentes  Migrantes  Acompañados  En  el M",
+     "dependencia": "Grupo Constructor Diemar Sa de Cv",
+     "monto": 46412239.23,
+     "inicio": "2023-09-06"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Que Fue Validado Por la Dirección de Agua Potable",
+     "n": 1
+    },
+    {
+     "nombre": "2 Etapa.",
+     "n": 1
+    },
+    {
+     "nombre": "2 Etapa",
+     "n": 1
+    },
+    {
+     "nombre": "Gral. Antonio de León",
+     "n": 1
+    },
+    {
+     "nombre": "Intervención delInmueble Capilla delBuen Socorro",
+     "n": 1
+    }
+   ]
+  },
+  "Tuxtla Gutiérrez": {
+   "entidad": "Chiapas",
+   "n": 206,
+   "monto_total": 1028127389.92,
+   "top": [
+    {
+     "titulo": "Trabajos Para Llevar a Cabo la Construcción de la C.H. de Palenque, Chiapas, Bajo la Modalidad de Proyecto Int",
+     "dependencia": "Irkon Holdings Sa de Cv",
+     "monto": 444141830.37,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Trabajos de Obra Civil En C.H.13, San Cristóbal de Las Casas, Chiapas.",
+     "dependencia": "Grupo Triton Consultores y Constructores Sa de Cv",
+     "monto": 40405443.63,
+     "inicio": "2022-03-02"
+    },
+    {
+     "titulo": "Construcción de 2 Edificios (B y C) y Obra Exterior En la Sede Central",
+     "dependencia": "Kasto, Soluciones En Construccion y Acabados Mx Sa de Cv",
+     "monto": 39234812.54,
+     "inicio": "2021-01-04"
+    },
+    {
+     "titulo": "Construcción de Edificios, Demolición de Edificios y Obra Exterior",
+     "dependencia": "Grupo Lorant y Asociados Sa de Cv",
+     "monto": 17838948.13,
+     "inicio": "2022-08-08"
+    },
+    {
+     "titulo": "Construccion de Planta de Tratamiento",
+     "dependencia": "Arfran Construcciones, S.A. de C.V.",
+     "monto": 17064697.37,
+     "inicio": "2020-11-18"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado.",
+     "n": 2
+    },
+    {
+     "nombre": "En la Localidad de Plan de Ayala",
+     "n": 1
+    },
+    {
+     "nombre": "Tramo: Km 0+000 Al Km 7+000 Subtramo: Km 1+875 Al Km 2+175",
+     "n": 1
+    },
+    {
+     "nombre": "Morelos (Incluye Cd. de México)",
+     "n": 1
+    },
+    {
+     "nombre": "C.P. 29000\".",
+     "n": 1
+    }
+   ]
+  },
+  "Villahermosa": {
+   "entidad": "Tabasco",
+   "n": 68,
+   "monto_total": 179391134.5,
+   "top": [
+    {
+     "titulo": "Construcción de la Uhn Frontera Iii, Tab.",
+     "dependencia": "Secretaria de Marina (Digaod)",
+     "monto": 31242132.6,
+     "inicio": "2022-08-22"
+    },
+    {
+     "titulo": "140000151.- Reconstrucción de Pavimento de Concreto, San Fernando Macuspana",
+     "dependencia": "Grupo Argent Sa de Cv",
+     "monto": 11099777.6,
+     "inicio": "2020-08-31"
+    },
+    {
+     "titulo": "14000505.- Reconstrucción Con Pavimento Asfáltico delCamino Tulipán  Cunduacán",
+     "dependencia": "Triturados y Construcciones de Cardenas Sa de Cv",
+     "monto": 10934725.25,
+     "inicio": "2021-08-23"
+    },
+    {
+     "titulo": "11270010.- Construcción delCentro de Asistencia Social, Municipio de Tenosique",
+     "dependencia": "Constructora y Comercializadora Musan Sa de Cv",
+     "monto": 8194238.22,
+     "inicio": "2021-11-27"
+    },
+    {
+     "titulo": "14000103.- Construcción de Pavimento Hidráulico, Guarniciones, Balancan",
+     "dependencia": "Constructora Ai delSureste Sa de Cv",
+     "monto": 6377512.81,
+     "inicio": "2020-09-02"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Zac",
+     "n": 2
+    },
+    {
+     "nombre": "Aguascalientes y México",
+     "n": 1
+    },
+    {
+     "nombre": "Zac. 32Djn0539F",
+     "n": 1
+    },
+    {
+     "nombre": "Zac. 32Djn0708K",
+     "n": 1
+    },
+    {
+     "nombre": "Zac.",
+     "n": 1
+    }
+   ]
+  },
+  "Campeche": {
+   "entidad": "Campeche",
+   "n": 41,
+   "monto_total": 150388923.65,
+   "top": [
+    {
+     "titulo": "Supervisión de la Construcción Para la Segunda Fase de Rehabilitación y Moderniz",
+     "dependencia": "Experiencia Inmobiliaria Total Sa de Cv",
+     "monto": 22868555.74,
+     "inicio": "2022-04-15"
+    },
+    {
+     "titulo": "Sistema de Abastecimiento, Distribución y Almacenamiento de Agua Potable Acueduc",
+     "dependencia": "Marco Magdiel Hernandez Cruz",
+     "monto": 17232723.38,
+     "inicio": "2020-05-21"
+    },
+    {
+     "titulo": "Mantenimiento a Inmuebles En Oriente, Yucatán, Cam, Q. Roo, Tabasco  y Chiapas",
+     "dependencia": "Pircsa",
+     "monto": 13882920.5,
+     "inicio": "2022-10-17"
+    },
+    {
+     "titulo": "Mantenimiento Preventivo y Correctivos a Inmuebles y En Uso de Fgr Oriente",
+     "dependencia": "Ge de Mexico Sa de Cv",
+     "monto": 13195056.48,
+     "inicio": "2021-07-01"
+    },
+    {
+     "titulo": "Sistema de Abastecimiento, Distribucíon y Almacenamiento de Agua Potable(Rehabil",
+     "dependencia": "Suministros Construcciones Consultoria y Proyectos M5 Sa de Cv",
+     "monto": 12927660.76,
+     "inicio": "2021-03-18"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "(Limpieza",
+     "n": 2
+    },
+    {
+     "nombre": "Etapa 2.",
+     "n": 2
+    }
+   ]
+  },
+  "Veracruz": {
+   "entidad": "Veracruz De Ignacio De La Llave",
+   "n": 120,
+   "monto_total": 373208800.03,
+   "top": [
+    {
+     "titulo": "Reconstrucción de Carpeta de Concreto Asfáltico Prolongacion Benito Juarez",
+     "dependencia": "Servi Rent Ariadme Sa de Cv",
+     "monto": 29996265.07,
+     "inicio": "2020-07-15"
+    },
+    {
+     "titulo": "Repavimentación Con Concreto Hidráulico de la Calle Fraternidad...",
+     "dependencia": "Estudio, Costos E Infraestructura Sa de Cv",
+     "monto": 18214037.15,
+     "inicio": "2021-05-07"
+    },
+    {
+     "titulo": "Rehabilitación de Camellones, Fraccionamiento Reforma, Veracruz, Veracruz...",
+     "dependencia": "Consorcio Regional Maren Sa de Cv",
+     "monto": 16379310.35,
+     "inicio": "2020-09-12"
+    },
+    {
+     "titulo": "Pavimentación Con Concreto Hidráulico de Las Calles Adolfo Sugasti de Oriente 6",
+     "dependencia": "Estudio, Costos E Infraestructura Sa de Cv",
+     "monto": 16043439.99,
+     "inicio": "2020-08-25"
+    },
+    {
+     "titulo": "Pavimentación Con Concreto Hidráulico",
+     "dependencia": "Estudio, Costos E Infraestructura Sa de Cv",
+     "monto": 14746063.4,
+     "inicio": "2020-08-25"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Veracruz de Ignacio de la Llave.",
+     "n": 13
+    },
+    {
+     "nombre": "Ver.",
+     "n": 3
+    },
+    {
+     "nombre": "5 de Mayo y Av. Revolucion",
+     "n": 1
+    },
+    {
+     "nombre": "Cebis Ubicado En Niños Héroes No. 204",
+     "n": 1
+    }
+   ]
+  },
+  "Zacatecas": {
+   "entidad": "Zacatecas",
+   "n": 21,
+   "monto_total": 233997233.31,
+   "top": [
+    {
+     "titulo": "E25-2022 Construcción delCentro de Investigación En Biomedicina Molecular, Zacatecas",
+     "dependencia": "- Mag Constructora, S.A. de C.V.",
+     "monto": 116372228.76,
+     "inicio": "2022-12-09"
+    },
+    {
+     "titulo": "Construccion Uhm Zacatecas Iii",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 39720000.0,
+     "inicio": "2021-08-16"
+    },
+    {
+     "titulo": "E1 Sustitución de Red de Agua Potable y Alcantarillado En la Cabecera Municipal",
+     "dependencia": "Excavaciones Profesionales Sa de Cv",
+     "monto": 23766832.64,
+     "inicio": "2020-05-23"
+    },
+    {
+     "titulo": "Mantenimiento a Inmuebles En Noreste, Tamps, Zac, S L P y Ags.",
+     "dependencia": "Impulsora Nacional de Negocios y Proyectos de Infraestructura Sa de Cv",
+     "monto": 13318265.81,
+     "inicio": "2022-11-14"
+    },
+    {
+     "titulo": "Automatizacion y Telemtetria En el Sistema Carrillo y Pardillo; En el Municipio de Fresnillo, Zacatecas",
+     "dependencia": "Proirh Proyectos de Ingenieria Para Redes Hidraulicas S de Rl de Cv",
+     "monto": 6667835.46,
+     "inicio": "2023-01-04"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Zac.",
+     "n": 3
+    },
+    {
+     "nombre": "Para Ejecutarse En Los Municipios de Rio Grande",
+     "n": 2
+    },
+    {
+     "nombre": "Campeche y Chiapas",
+     "n": 1
+    },
+    {
+     "nombre": "Rehabilitación Edifcio \"A\" (1  Aula)",
+     "n": 1
+    },
+    {
+     "nombre": "Zac. C.P. 98000",
+     "n": 1
+    }
+   ]
+  },
+  "Tlaxcala": {
+   "entidad": "Tlaxcala",
+   "n": 98,
+   "monto_total": 193386403.96,
+   "top": [
+    {
+     "titulo": "Mantenimiento de la Uhm Panotla, Tlax.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 28675755.09,
+     "inicio": "2020-09-03"
+    },
+    {
+     "titulo": "Mantenimiento de la Uhm Tlaxcala I, Tlax.",
+     "dependencia": "Secretaria de la Defensa Nacional (Direccion General de Ingenieros)",
+     "monto": 18308405.78,
+     "inicio": "2022-07-15"
+    },
+    {
+     "titulo": "Contratacion de la Gerencia de Proyectos En el Municipio de Tlaxcala, Tlaxcala",
+     "dependencia": "Roedith Sa de Cv",
+     "monto": 10129952.32,
+     "inicio": "2020-10-09"
+    },
+    {
+     "titulo": "Rehabilitación y Restauración delBien Inmueble Parroquia de San José, Tlaxcala",
+     "dependencia": "Mom Desarrollo En Ingenieria y Arquitectura Sa de Cv",
+     "monto": 8085691.24,
+     "inicio": "2022-07-05"
+    },
+    {
+     "titulo": "Obra: Eac-Reh-Sup-02-2021, Escuela Normal Urbana Federal Lic. Emilio Sanchez",
+     "dependencia": "Constructora y Desarrolladora Daemac S.A. de C.V.",
+     "monto": 4805018.56,
+     "inicio": "2021-11-29"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Rehabilitación General",
+     "n": 22
+    },
+    {
+     "nombre": "Rehabilitacion General",
+     "n": 16
+    },
+    {
+     "nombre": "Rehabilitación",
+     "n": 7
+    },
+    {
+     "nombre": "Mantenimiento",
+     "n": 5
+    },
+    {
+     "nombre": "Rehabilitación y Obra Exterior",
+     "n": 4
+    }
+   ]
+  },
+  "Reynosa": {
+   "entidad": "Tamaulipas",
+   "n": 425,
+   "monto_total": 4650066836.63,
+   "top": [
+    {
+     "titulo": "Trabajos Para Llevar a Cabo la Construcción delH.G. de Tampico, Tamaulipas, Bajo la Modalidad de Proyecto Inte",
+     "dependencia": "Gami Ingenieria E Instalaciones Sa de Cv",
+     "monto": 1998808301.22,
+     "inicio": "2022-12-06"
+    },
+    {
+     "titulo": "Construcción de Obra Hidráulica E Infraestructura Vial",
+     "dependencia": "Construcciones Gv de Monterrey Sa de Cv",
+     "monto": 160948006.49,
+     "inicio": "2020-12-29"
+    },
+    {
+     "titulo": "Construcción de Obras Hidráulicas",
+     "dependencia": "Carter Construcciones y Equipos Sa de Cv",
+     "monto": 57090212.14,
+     "inicio": "2021-12-01"
+    },
+    {
+     "titulo": "Supervisión y Control de Los Trabajos Para Llevar a Cabo la Construcción delH.G. de Tampico, Tamaulipas, Bajo ",
+     "dependencia": "Coordinadora y Desarrolladora P&O Sa de Cv",
+     "monto": 52126958.67,
+     "inicio": "2022-12-01"
+    },
+    {
+     "titulo": "Construcción delSistema de Alcantarillado",
+     "dependencia": "Dimarsa Plomeria y Azulejos Sa de Cv",
+     "monto": 25740252.32,
+     "inicio": "2022-08-02"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Derivado de la Epidemia Covid-19",
+     "n": 3
+    },
+    {
+     "nombre": "Bajo la Modalidad de Proyecto Integral a Precio Alzado.",
+     "n": 2
+    },
+    {
+     "nombre": "Incluye: 15.75 Km de Red de Atarjeas",
+     "n": 1
+    },
+    {
+     "nombre": "Inlcuye: 606 Ml de Linea de Conduccion",
+     "n": 1
+    },
+    {
+     "nombre": "Incluye 8.9 Km de Red de Atarjeas",
+     "n": 1
+    }
+   ]
+  },
+  "Chilpancingo": {
+   "entidad": "Guerrero",
+   "n": 41,
+   "monto_total": 92799113.66,
+   "top": [
+    {
+     "titulo": "Construcción de Una Estación  Transmisora de Televisión Digital Terrestre Para E",
+     "dependencia": "Acoisa",
+     "monto": 16978223.65,
+     "inicio": "2020-10-03"
+    },
+    {
+     "titulo": "Estudios de Volúmenes de Tránsito Vehicular En 2,951 Sitios de la Red Carretera",
+     "dependencia": "Impulsora de Investigaciones, Proyectos y Desarrollos S. A. de C. V.",
+     "monto": 8535525.98,
+     "inicio": "2022-05-16"
+    },
+    {
+     "titulo": "Mantenimiento  y Conservación de Área de Hemodialisis de Hospital General Dr. Raymundo Abarca Alarcón, Chilpan",
+     "dependencia": "Grupo Constructor Elixmag S. de R.L. de C.V.",
+     "monto": 8369919.43,
+     "inicio": "2022-11-15"
+    },
+    {
+     "titulo": "Volúmenes de Tránsito Con Clasificación Vehicular En la Red Carretera Nacional C",
+     "dependencia": "Impulsora de Investigaciones, Proyectos y Desarrollos S. A. de C. V.",
+     "monto": 7875568.76,
+     "inicio": "2020-09-01"
+    },
+    {
+     "titulo": "Estudios de Volúmenes Tránsito 2021, Zona 1",
+     "dependencia": "Servicios Mexicanos de Ingenieria Civil S.A. de C.V.",
+     "monto": 7586637.84,
+     "inicio": "2021-04-16"
+    }
+   ],
+   "municipios": [
+    {
+     "nombre": "Guadalupe y Calvo",
+     "n": 6
+    },
+    {
+     "nombre": "Oaxaca y Puebla",
+     "n": 2
+    },
+    {
+     "nombre": "Para el Periodo 2020.",
+     "n": 1
+    },
+    {
+     "nombre": "Consistente En Trabajos de Albañilería",
+     "n": 1
+    },
+    {
+     "nombre": "Hacienda Longoria",
+     "n": 1
+    }
+   ]
+  }
+ }
+}
