@@ -27,6 +27,15 @@
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
+# /mycouple es un juego privado que vive en este dominio pero no forma parte
+# del sitio: no se enlaza desde ninguna página, no está en sitemap.xml y esta
+# cabecera le pide a los buscadores que no lo indexen ni sigan sus enlaces.
+# A propósito NO se pone en robots.txt: ahí la ruta quedaría publicada.
+[[headers]]
+  for = "/mycouple/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
 # Cabeceras básicas de seguridad para todo el sitio
 [[headers]]
   for = "/*"
