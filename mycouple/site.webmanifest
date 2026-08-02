@@ -1,0 +1,15 @@
+{
+  "name": "Carrera del Amor",
+  "short_name": "Fer y José",
+  "description": "Adivina las respuestas de tu pareja y descubre si le atinaste.",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#4d0b26",
+  "theme_color": "#4d0b26",
+  "icons": [
+    { "src": "favicon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
