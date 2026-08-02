@@ -1429,8 +1429,6 @@ function obrasHTML(name){
     const tt=(t.titulo||'').length>60?(t.titulo||'').slice(0,60)+'…':(t.titulo||'');
     return `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:11px;margin-top:5px"><span style="color:#f5ede3;opacity:.8;min-width:0">${escapeHtml(tt)}</span><span style="color:#b7c489;white-space:nowrap;font-family:'Space Mono',monospace">${mdp(t.monto)} mdp</span></div>`;
   }).join('');
-  const mn=(z.municipios||[]).slice(0,3).filter(m=>m&&m.nombre);
-  const muni=mn.length?`<div style="margin-top:7px;font-size:11px;color:#8a9a9e">Se concentra en ${mn.map(m=>`<b style="color:#f5ede3;opacity:.85">${escapeHtml(m.nombre)}</b>`).join(' · ')}</div>`:'';
   return `<div class="ptitle" style="margin-top:18px">🏗️ Obra pública · ${escapeHtml(z.entidad)} (CompraNet)</div>
     <div class="ind-grid">
       <div class="ind-c"><div class="ind-l">Contratos de obra</div><div class="ind-v" style="color:#6fa287">${(+z.n).toLocaleString('es-MX')}</div></div>
