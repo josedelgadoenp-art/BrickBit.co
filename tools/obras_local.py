@@ -22,20 +22,25 @@ script corre EN TU MÁQUINA, mismo patrón que riesgos_local.py y agua_local.py:
 Qué calcula (solo contratos cuyo tipo de contratación contiene "obra"):
   · Por entidad federativa: número de contratos, monto total en pesos y el
     top 5 de contratos por importe (título, dependencia, monto, inicio).
-  · Desglose por año y los municipios que más aparecen (para uso futuro).
 
-DOS ESQUEMAS DISTINTOS, los dos soportados:
-  A) Archivos con columna de ENTIDAD FEDERATIVA explícita → se usa tal cual.
-  B) El export histórico (codigo_contrato, proveedor, titulo_contrato,
-     descripcion_contrato, tipo_contratacion, importe, fecha_inicio…) NO trae
-     columna de entidad, pero la descripción viene como lista de etiquetas que
-     empieza por país, estado y municipio:
-         "México, Morelos, Cuautla, Avalúo, Nuevo, Bienes Inmuebles…"
-     De ahí se lee el estado por coincidencia EXACTA con los 32 nombres (y sus
-     alias). El primer token se ignora cuando es "México" (el país), para no
-     confundirlo con el Estado de México.
-     Los contratos donde no aparece un estado reconocible NO se reparten ni se
-     adivinan: quedan fuera y el script reporta cuántos fueron.
+DE DÓNDE SALE LA ENTIDAD — y por qué el script a veces se niega a escribir:
+  A) Archivos con columna de ENTIDAD FEDERATIVA (o de unidad compradora)
+     explícita → se usa tal cual. Este es el archivo que hay que conseguir.
+  B) Respaldo: el export histórico (codigo_contrato, proveedor,
+     titulo_contrato, descripcion_contrato, tipo_contratacion, importe,
+     fecha_inicio…) NO trae columna de entidad. Algunos contratos describen la
+     ubicación como lista de etiquetas —"México, Morelos, Cuautla, Avalúo…"—
+     y de ahí se puede leer el estado por coincidencia exacta.
+
+     MEDIDO contra el export real (2.36 M de filas, 265 mil de obra): solo el
+     7.3% sigue ese formato. El resto es prosa libre sin lugar. Un ranking por
+     estado construido sobre el 7% no mide inversión pública: mide qué
+     dependencias escriben la ubicación. Por eso, si la cobertura queda por
+     debajo de MIN_COBERTURA, el script imprime el diagnóstico y NO escribe
+     data/obras.json. Preferimos no tener la capa a tenerla mintiendo.
+
+  En ningún caso se reparten los contratos sin estado entre las entidades ni
+  se estima su ubicación: se excluyen y se reporta cuántos fueron.
 
 Honestidad de datos: CompraNet registra la contratación pública FEDERAL; la
 obra estatal/municipal contratada fuera de la plataforma NO aparece. Es una
@@ -105,9 +110,9 @@ ENT_TOKEN = {
     "veracruz llave": "veracruz de ignacio de la llave",
     "yucatan": "yucatan", "zacatecas": "zacatecas",
 }
-# Palabras que NO son un municipio aunque sigan al estado en la lista.
-NO_MUNICIPIO = {"", "nuevo", "usado", "obra", "servicios", "adquisiciones",
-                "arrendamientos", "mexico", "n a", "na", "sin municipio"}
+# Cobertura mínima para publicar: si menos de este porcentaje de los contratos
+# de obra tiene estado identificable, el archivo NO se escribe (ver main()).
+MIN_COBERTURA = 0.60
 
 
 def norm(s):
@@ -126,26 +131,29 @@ def canon_ent(e):
 
 
 def ent_de_etiquetas(texto):
-    """(entidad, municipio) leídos de la lista de etiquetas de la descripción.
+    """Entidad leída de la descripción, o None.
 
-    Formato observado: "País, Estado, Municipio, palabra, palabra…".
-    El token 0 se ignora cuando es "mexico" (el país) para no confundirlo con
-    el Estado de México. Devuelve (None, None) si no hay estado reconocible.
+    Algunos contratos traen la descripción como lista de etiquetas que empieza
+    por país, estado y municipio ("México, Morelos, Cuautla, Avalúo, Nuevo…").
+    Cuando existe, el estado se lee por coincidencia EXACTA de un token con los
+    32 nombres y sus alias; el token 0 se ignora si es "mexico" (el país), para
+    no confundirlo con el Estado de México.
+
+    OJO — medido contra el export real: solo ~7 de cada 100 contratos de obra
+    siguen ese formato; el resto es prosa libre ("Repotenciación de la Línea de
+    Distribución del Circuito Lmx-4012…"), sin lugar. Por eso este camino es
+    un RESPALDO y main() aborta si la cobertura es baja: atribuir el 7% y
+    presentarlo como el mapa de la obra pública del país sería mentir.
     """
     partes = [p.strip() for p in str(texto or "").split(",")]
     if not partes:
-        return None, None
+        return None
     inicio = 1 if norm(partes[0]) == "mexico" else 0
     for i in range(inicio, len(partes)):
         ent = ENT_TOKEN.get(norm(partes[i]))
-        if not ent:
-            continue
-        muni = partes[i + 1].strip() if i + 1 < len(partes) else ""
-        nm = norm(muni)
-        if nm in NO_MUNICIPIO or nm in ENT_TOKEN or len(muni) > 60 or not re.search(r"[a-zA-Z]", muni):
-            muni = ""
-        return ent, (muni or None)
-    return None, None
+        if ent:
+            return ent
+    return None
 
 
 def num(v):
@@ -298,11 +306,10 @@ def main():
                 continue                       # solo obra pública
             dx["obra"] += 1
 
-            muni = None
             if col["ent"]:
                 ent = canon_ent(norm(r.get(col["ent"])))
             else:
-                ent, muni = ent_de_etiquetas(r.get(col["desc"]))
+                ent = ent_de_etiquetas(r.get(col["desc"]))
             if not ent:
                 dx["sin_entidad"] += 1
                 if len(ejemplos_sin_ent) < 3:
@@ -314,11 +321,8 @@ def main():
             inicio = str(r.get(col["ini"]) or "").strip()[:10] if col["ini"] else ""
             m = re.search(r"(?:19|20)\d{2}", inicio)
             anio = int(m.group()) if m else 0
-            a = agg.setdefault(ent, {}).setdefault(
-                anio, {"n": 0, "monto": 0.0, "top": [], "muni": Counter()})
+            a = agg.setdefault(ent, {}).setdefault(anio, {"n": 0, "monto": 0.0, "top": []})
             a["n"] += 1
-            if muni:
-                a["muni"][muni] += 1
 
             moneda = norm(r.get(col["mon"])) if col["mon"] else ""
             if moneda and moneda not in ("mxn", "pesos", "mn", "peso mexicano"):
@@ -345,6 +349,27 @@ def main():
               "de CompraNet (columna de tipo de contratación con 'Obra').")
         sys.exit(1)
 
+    # ---- Corte de honestidad -------------------------------------------------
+    # Una capa que dice "obra pública por estado" tiene que estar construida
+    # sobre CASI TODA la obra, no sobre los contratos que por casualidad
+    # mencionan su estado. Si la cobertura es baja, el ranking mide qué
+    # dependencia redacta mejor sus descripciones, no dónde se invierte: se
+    # imprime el diagnóstico y NO se escribe el archivo.
+    cobertura = (dx["obra"] - dx["sin_entidad"]) / max(dx["obra"], 1)
+    if cobertura < MIN_COBERTURA:
+        print(f"\n✗ NO se escribió data/obras.json.")
+        print(f"  Solo {cobertura * 100:.1f}% de los {dx['obra']:,} contratos de obra trae "
+              f"un estado identificable (mínimo exigido: {MIN_COBERTURA * 100:.0f}%).")
+        print("  Con esa cobertura, el ranking por entidad no mide inversión pública:")
+        print("  mide qué dependencias escriben la ubicación en la descripción.")
+        for e in ejemplos_sin_ent:
+            print(f"    · sin lugar: {e}")
+        print("\n  Este export no sirve para la capa por estado. Busca en datos abiertos")
+        print("  de CompraNet el archivo de CONTRATOS que incluya 'entidad federativa'")
+        print("  o 'unidad compradora' (o el catálogo de unidades compradoras, que trae")
+        print("  el estado de cada clave y permite el cruce).")
+        sys.exit(2)
+
     anios = sorted({a for por in agg.values() for a in por if a})
     if not anios:
         print("Ningún contrato trae fecha legible; no puedo fijar la ventana de años.")
@@ -356,17 +381,16 @@ def main():
     estados, por_anio_nac = {}, Counter()
     for ent, por in agg.items():
         n = monto = 0
-        top, muni = [], Counter()
+        top = []
         for anio, a in por.items():
             if not (desde <= anio <= hasta):
                 continue
-            n += a["n"]; monto += a["monto"]; top += a["top"]; muni += a["muni"]
+            n += a["n"]; monto += a["monto"]; top += a["top"]
             por_anio_nac[anio] += a["n"]
         if not n:
             continue
         top.sort(key=lambda t: -t["monto"])
-        estados[ent] = {"n": n, "monto_total": round(monto, 2), "top": top[:5],
-                        "municipios": [{"nombre": k, "n": v} for k, v in muni.most_common(5)]}
+        estados[ent] = {"n": n, "monto_total": round(monto, 2), "top": top[:5]}
 
     if not estados:
         print(f"No quedaron contratos en la ventana {desde}–{hasta}. "
@@ -384,6 +408,7 @@ def main():
             "atribucion": (" y ".join(sorted(origenes)) +
                            "; los contratos sin estado reconocible quedan fuera"),
             "sin_entidad": dx["sin_entidad"],
+            "cobertura": round(cobertura, 3),
             "nota": ("Contratación pública FEDERAL registrada en CompraNet; la obra "
                      "estatal/municipal fuera de CompraNet no aparece. Es señal de "
                      "inversión pública, no catálogo exhaustivo."),
