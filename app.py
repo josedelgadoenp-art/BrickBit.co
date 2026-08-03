@@ -2361,7 +2361,7 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
     # con las sucursales (terracota) ni con los huecos de cobertura (salvia),
     # y el ámbar queda libre para lo que sí es estimación.
     vista = _vista_calles(df)
-    sitio = sitio_b2b_elegido(suffix)
+    sitio = sitio_marcado(suffix)
     if sitio:
         marca = pd.DataFrame([{
             "pos": [sitio["lng"], sitio["lat"]],
@@ -3125,31 +3125,53 @@ def clave_tabla_b2b(suffix: str) -> str:
     return f"b2b_tabla_{suffix}"
 
 
-def sitio_b2b_elegido(suffix: str):
-    """Fila del top B2B que el usuario seleccionó en la tabla, o None.
+def clave_tabla_gentri(suffix: str) -> str:
+    return f"gentri_tabla_{suffix}"
 
-    Se lee del estado del propio st.dataframe, no de una copia guardada, para
-    que el mapa —que se dibuja ANTES que la tabla en el guion— ya conozca la
-    selección en el mismo rerun del clic. Si se leyera de una copia escrita
-    por la tabla, el mapa iría siempre un clic atrasado.
+
+def _fila_elegida(clave: str):
+    """Índice de la fila seleccionada en un st.dataframe, o None.
+
+    Se lee del estado del propio widget, no de una copia guardada, para que el
+    mapa —que se dibuja ANTES que las tablas en el guion— ya conozca la
+    selección en el mismo rerun del clic. Con una copia iría un clic atrasado.
     """
-    ev = st.session_state.get(clave_tabla_b2b(suffix))
-    giro = st.session_state.get(f"giro_{suffix}")
-    if not ev or not giro:
-        return None
+    ev = st.session_state.get(clave)
     try:
         filas = ev["selection"]["rows"]
     except (KeyError, TypeError):
         return None
-    if not filas:
-        return None
-    top = ubicacion_optima(suffix, giro)
-    if top is None or top.empty or filas[0] >= len(top):
-        return None
-    fila = top.iloc[int(filas[0])]
-    return {"rank": int(filas[0]) + 1, "calle": str(fila["calle"]),
-            "lat": float(fila["lat"]), "lng": float(fila["lng"]),
-            "giro": str(giro)}
+    return int(filas[0]) if filas else None
+
+
+def sitio_marcado(suffix: str):
+    """Calle que el usuario seleccionó en alguna tabla, para marcarla en el mapa.
+
+    Dos tablas pueden marcar el mapa —el selector de sitio B2B y el índice de
+    gentrificación— y comparten el mismo marcador. Gana la última en el guion
+    si ambas tuvieran selección viva.
+    """
+    i = _fila_elegida(clave_tabla_b2b(suffix))
+    giro = st.session_state.get(f"giro_{suffix}")
+    if i is not None and giro:
+        top = ubicacion_optima(suffix, giro)
+        if top is not None and not top.empty and i < len(top):
+            f = top.iloc[i]
+            return {"rank": i + 1, "calle": str(f["calle"]),
+                    "lat": float(f["lat"]), "lng": float(f["lng"]),
+                    "fuente": "b2b", "detalle": str(giro)}
+
+    i = _fila_elegida(clave_tabla_gentri(suffix))
+    if i is not None:
+        g = indice_gentrificacion(suffix)
+        if g is not None and not g.empty and i < len(g):
+            f = g.iloc[i]
+            if pd.notna(f["lat"]) and pd.notna(f["lng"]):
+                return {"rank": i + 1, "calle": str(f["nombre"]),
+                        "lat": float(f["lat"]), "lng": float(f["lng"]),
+                        "fuente": "gentri",
+                        "detalle": f"índice {int(f['indice'])}/100"}
+    return None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -3226,6 +3248,73 @@ def canarios_calle(suffix: str) -> pd.DataFrame | None:
                           ascending=False).head(10)
     return top[["calle", "recientes", "especies", "historico", "score",
                 "lng", "lat"]].reset_index(drop=True)
+
+
+@st.cache_data(show_spinner="Midiendo gentrificación temprana…", max_entries=8)
+def indice_gentrificacion(suffix: str) -> pd.DataFrame | None:
+    """Índice compuesto de gentrificación TEMPRANA, por calle.
+
+    Tres señales observadas del DENUE, no una predicción:
+      · Canarios — llegada reciente (últimos 2 años de alta) de los giros que
+        preceden al despegue, donde antes casi no había. Es la señal adelantada.
+      · Saldo — aperturas menos cierres de la calle. Un tejido que crece neto
+        aguanta el cambio; uno que se vacía no está gentrificándose, se está
+        muriendo, y sin esto el índice confundiría las dos cosas.
+      · Especies indicadoras — cuántos giros del catálogo ya operan ahí.
+
+    Deliberadamente NO entra el precio: el inventario C21 da mediana por ZONA,
+    no por calle, y mezclar una señal de calle con una de ciudad produciría un
+    número que parece más fino de lo que es. El precio se muestra aparte, como
+    contexto de la ciudad.
+
+    Es una SEÑAL, no una predicción validada: con un solo corte del DENUE se
+    puede reconstruir cuándo llegó cada negocio, pero no contrastar el índice
+    contra lo que pasó después con los precios de esa calle.
+    """
+    can = canarios_calle(suffix)
+    sis, real = sismografo_calles(suffix)
+    if not real or sis is None or sis.empty:
+        return None
+
+    base = sis[["nombre", "altas", "bajas", "indicadoras"]].copy()
+    base["saldo"] = base["altas"].to_numpy() - base["bajas"].to_numpy()
+    # el score de canarios vive en celdas de ~300 m, nombradas por su calle más
+    # cercana: se queda el máximo por calle
+    if can is not None and not can.empty:
+        porc = can.groupby("calle").agg(
+            canarios=("score", "max"), recientes=("recientes", "sum"),
+            especies_nuevas=("especies", "first")).reset_index()
+        base = base.merge(porc, left_on="nombre", right_on="calle", how="left")
+    else:
+        base[["canarios", "recientes", "especies_nuevas"]] = [0.0, 0, "—"]
+    base["canarios"] = base["canarios"].fillna(0.0)
+    base["recientes"] = base["recientes"].fillna(0).astype(int)
+    base["especies_nuevas"] = base["especies_nuevas"].fillna("—")
+    # Las coordenadas salen de la GEOMETRÍA de la calle, no de las celdas de
+    # canarios: una calle puede entrar al índice por saldo o por especies ya
+    # instaladas, sin canarios recientes, y aun así hay que poder señalarla en
+    # el mapa. Tomarlas del merge dejaba esas filas sin punto.
+    calles_geo, _, _ = cargar_red_vial(suffix)
+    medio = {str(n): [float(np.mean([p[0] for p in c])),
+                      float(np.mean([p[1] for p in c]))]
+             for n, c in zip(calles_geo["nombre"], calles_geo["camino"])}
+    base["lng"] = [medio.get(str(n), [np.nan, np.nan])[0] for n in base["nombre"]]
+    base["lat"] = [medio.get(str(n), [np.nan, np.nan])[1] for n in base["nombre"]]
+
+    # Sin canarios en toda la ciudad no hay señal adelantada que reportar.
+    if base["canarios"].max() <= 0:
+        return None
+    base["indice"] = (100 * (
+        0.50 * norm01(base["canarios"].to_numpy(float))
+        + 0.30 * norm01(np.clip(base["saldo"].to_numpy(float), 0, None))
+        + 0.20 * norm01(base["indicadoras"].to_numpy(float))
+    )).round(0).astype(int)
+
+    top = base[base["indice"] > 0].sort_values(
+        ["indice", "recientes"], ascending=False).head(12)
+    return top[["nombre", "indice", "canarios", "recientes", "saldo",
+                "indicadoras", "especies_nuevas", "lng", "lat"]].reset_index(
+        drop=True)
 
 
 @st.cache_data(max_entries=8)
@@ -3778,7 +3867,7 @@ def tab_huecos(suffix: str = "azcapotzalco") -> None:
                     column_config={"Score de hueco":
                                    st.column_config.ProgressColumn(
                                        min_value=0, max_value=1)})
-                _sel = sitio_b2b_elegido(suffix)
+                _sel = sitio_marcado(suffix)
                 if _sel:
                     st.markdown(
                         f"<div class='leyenda'>📍 <b>{_sel['calle']}</b> "
@@ -3804,7 +3893,64 @@ def tab_huecos(suffix: str = "azcapotzalco") -> None:
                          "análisis del top-10, contexto del municipio y "
                          "metodología.")
 
-        # ── Canarios de la plusvalía (time machine comercial) ────────────────
+        # ── Índice de gentrificación temprana (canarios + saldo + especies) ──
+        st.markdown("---")
+        st.markdown("#### Gentrificación temprana · índice compuesto por calle")
+        gen = indice_gentrificacion(suffix)
+        if gen is not None and not gen.empty:
+            lider_g = gen.iloc[0]
+            st.markdown(
+                f"<div class='leyenda'>🔎 <b>{lider_g['nombre']}</b> encabeza "
+                f"con {int(lider_g['indice'])}/100: "
+                f"{int(lider_g['recientes'])} negocios canario recién "
+                f"llegados, saldo de {int(lider_g['saldo']):+d} negocios "
+                f"(aperturas menos cierres) y {int(lider_g['indicadoras'])} "
+                "especies indicadoras ya operando.</div>",
+                unsafe_allow_html=True)
+            st.caption("Haz clic en una fila para ubicarla en el mapa de arriba.")
+            st.dataframe(
+                gen[["nombre", "indice", "recientes", "saldo", "indicadoras",
+                     "especies_nuevas"]].rename(columns={
+                    "nombre": "Calle",
+                    "indice": "Índice de gentrificación",
+                    "recientes": "Canarios recién llegados",
+                    "saldo": "Saldo de negocios",
+                    "indicadoras": "Especies indicadoras",
+                    "especies_nuevas": "Qué llegó"}),
+                hide_index=True, width="stretch",
+                key=clave_tabla_gentri(suffix),
+                on_select="rerun", selection_mode="single-row",
+                column_config={"Índice de gentrificación":
+                               st.column_config.ProgressColumn(
+                                   format="%d", min_value=0, max_value=100)})
+            _selg = sitio_marcado(suffix)
+            if _selg and _selg["fuente"] == "gentri":
+                st.markdown(
+                    f"<div class='leyenda'>📍 <b>{_selg['calle']}</b> "
+                    f"({_selg['detalle']}) marcada en el mapa · "
+                    f"{_selg['lat']:.4f}, {_selg['lng']:.4f}</div>",
+                    unsafe_allow_html=True)
+            st.markdown(
+                "<div class='leyenda'>Se compone de tres señales observadas "
+                "del DENUE: llegada reciente de giros canario (50%), saldo de "
+                "aperturas menos cierres (30%) y especies indicadoras ya "
+                "instaladas (20%). El <b>saldo</b> está para no confundir "
+                "gentrificación con vaciamiento: una calle que pierde "
+                "negocios no se está encareciendo, se está apagando."
+                "</div>", unsafe_allow_html=True)
+            st.warning(
+                "**Es una señal, no una predicción validada.** Con un solo "
+                "corte del DENUE se reconstruye cuándo llegó cada negocio, "
+                "pero no se puede contrastar el índice contra lo que pasó "
+                "después con los precios de esa calle. El precio no entra en "
+                "el índice: el inventario C21 da mediana por zona, no por "
+                "calle, y mezclarlos daría un número más fino de lo que es.",
+                icon="⚠️")
+        else:
+            st.info("Sin señal de gentrificación medible aquí: hacen falta "
+                    "nombres y años de alta del DENUE con giros canario.")
+
+        # ── Canarios de la plusvalía (detalle de la señal adelantada) ────────
         st.markdown("---")
         st.markdown("#### Canarios de la plusvalía · llegada temprana de "
                     "giros indicadores")
@@ -4699,7 +4845,7 @@ def main() -> None:
             return construir_deck_calles(vv, a, f, mostrar_estab,
                                          mostrar_flujos, suf)
 
-        _sitio = sitio_b2b_elegido(suf)
+        _sitio = sitio_marcado(suf)
         render_mapa(lienzo, fabricar, año_idx, reproducir, 60,
                     float(vv.shape[0] - 1), clic_activo,
                     f"deck_calle_{suf}_{_sitio['rank'] if _sitio else 0}")
