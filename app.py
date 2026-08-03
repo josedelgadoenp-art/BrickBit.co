@@ -2361,7 +2361,7 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
     # con las sucursales (terracota) ni con los huecos de cobertura (salvia),
     # y el ámbar queda libre para lo que sí es estimación.
     vista = _vista_calles(df)
-    sitio = sitio_b2b_elegido(suffix)
+    sitio = sitio_marcado(suffix)
     if sitio:
         marca = pd.DataFrame([{
             "pos": [sitio["lng"], sitio["lat"]],
@@ -3125,31 +3125,53 @@ def clave_tabla_b2b(suffix: str) -> str:
     return f"b2b_tabla_{suffix}"
 
 
-def sitio_b2b_elegido(suffix: str):
-    """Fila del top B2B que el usuario seleccionó en la tabla, o None.
+def clave_tabla_gentri(suffix: str) -> str:
+    return f"gentri_tabla_{suffix}"
 
-    Se lee del estado del propio st.dataframe, no de una copia guardada, para
-    que el mapa —que se dibuja ANTES que la tabla en el guion— ya conozca la
-    selección en el mismo rerun del clic. Si se leyera de una copia escrita
-    por la tabla, el mapa iría siempre un clic atrasado.
+
+def _fila_elegida(clave: str):
+    """Índice de la fila seleccionada en un st.dataframe, o None.
+
+    Se lee del estado del propio widget, no de una copia guardada, para que el
+    mapa —que se dibuja ANTES que las tablas en el guion— ya conozca la
+    selección en el mismo rerun del clic. Con una copia iría un clic atrasado.
     """
-    ev = st.session_state.get(clave_tabla_b2b(suffix))
-    giro = st.session_state.get(f"giro_{suffix}")
-    if not ev or not giro:
-        return None
+    ev = st.session_state.get(clave)
     try:
         filas = ev["selection"]["rows"]
     except (KeyError, TypeError):
         return None
-    if not filas:
-        return None
-    top = ubicacion_optima(suffix, giro)
-    if top is None or top.empty or filas[0] >= len(top):
-        return None
-    fila = top.iloc[int(filas[0])]
-    return {"rank": int(filas[0]) + 1, "calle": str(fila["calle"]),
-            "lat": float(fila["lat"]), "lng": float(fila["lng"]),
-            "giro": str(giro)}
+    return int(filas[0]) if filas else None
+
+
+def sitio_marcado(suffix: str):
+    """Calle que el usuario seleccionó en alguna tabla, para marcarla en el mapa.
+
+    Dos tablas pueden marcar el mapa —el selector de sitio B2B y el índice de
+    gentrificación— y comparten el mismo marcador. Gana la última en el guion
+    si ambas tuvieran selección viva.
+    """
+    i = _fila_elegida(clave_tabla_b2b(suffix))
+    giro = st.session_state.get(f"giro_{suffix}")
+    if i is not None and giro:
+        top = ubicacion_optima(suffix, giro)
+        if top is not None and not top.empty and i < len(top):
+            f = top.iloc[i]
+            return {"rank": i + 1, "calle": str(f["calle"]),
+                    "lat": float(f["lat"]), "lng": float(f["lng"]),
+                    "fuente": "b2b", "detalle": str(giro)}
+
+    i = _fila_elegida(clave_tabla_gentri(suffix))
+    if i is not None:
+        g = indice_gentrificacion(suffix)
+        if g is not None and not g.empty and i < len(g):
+            f = g.iloc[i]
+            if pd.notna(f["lat"]) and pd.notna(f["lng"]):
+                return {"rank": i + 1, "calle": str(f["nombre"]),
+                        "lat": float(f["lat"]), "lng": float(f["lng"]),
+                        "fuente": "gentri",
+                        "detalle": f"índice {int(f['indice'])}/100"}
+    return None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -3226,6 +3248,154 @@ def canarios_calle(suffix: str) -> pd.DataFrame | None:
                           ascending=False).head(10)
     return top[["calle", "recientes", "especies", "historico", "score",
                 "lng", "lat"]].reset_index(drop=True)
+
+
+@st.cache_data(show_spinner=False, ttl=3600, max_entries=8)
+def _listados_zona(slug: str) -> list:
+    """Inventario C21 vivo de una zona. Cualquier fallo devuelve [] en
+    silencio: esta capa nunca debe tumbar la app."""
+    try:
+        import requests
+        import urllib.parse
+        r = requests.get(URL_MERCADO_VIVO.split("?", 1)[0]
+                         + "?zona=" + urllib.parse.quote(slug), timeout=8)
+        r.raise_for_status()
+        d = r.json()
+        return d if isinstance(d, list) else []
+    except Exception:                                          # noqa: BLE001
+        return []
+
+
+@st.cache_data(show_spinner="Midiendo el gradiente de precio…", ttl=3600,
+               max_entries=8)
+def gradiente_hedonico(suffix: str, nombre_muni: str) -> dict | None:
+    """Cuánto cae el precio/m² por cada km de distancia al foco de empleo.
+
+    MEDIDO, no supuesto. Los catalizadores del simulador usan hoy una `fuerza`
+    y un `radio` que alguien eligió a mano; esto es la contraparte empírica:
+    se toma el inventario C21 vivo de la zona (precio y coordenadas reales),
+    se calcula la distancia de cada propiedad al ancla de empleo más cercana
+    del DENUE, y se ajusta log(precio/m²) = a + b·km por mínimos cuadrados.
+
+    Devuelve el gradiente en % por km con su R², el n y el intervalo del 90%
+    del coeficiente. Es CORRELACIONAL: mide cómo varían hoy los precios con la
+    distancia, no lo que pasaría si se construyera un ancla nueva. Con menos de
+    40 propiedades no devuelve nada, porque el ajuste no se sostendría.
+    """
+    props = _listados_zona(slugificar(nombre_muni))
+    if not props or len(props) < 40:
+        return None
+    filas = [p for p in props
+             if isinstance(p, dict) and p.get("operacion") == "venta"
+             and isinstance(p.get("pm2"), (int, float)) and 3000 < p["pm2"] < 200000
+             and isinstance(p.get("lat"), (int, float))
+             and isinstance(p.get("lng"), (int, float))]
+    if len(filas) < 40:
+        return None
+    anc = anclas_municipio(suffix)
+    if anc is None or anc.empty:
+        return None
+
+    lat = np.radians(np.array([f["lat"] for f in filas], dtype=float))
+    lng = np.radians(np.array([f["lng"] for f in filas], dtype=float))
+    ala = np.radians(anc["lat"].to_numpy(dtype=float))[None, :]
+    alo = np.radians(anc["lng"].to_numpy(dtype=float))[None, :]
+    h = (np.sin((ala - lat[:, None]) / 2) ** 2
+         + np.cos(lat[:, None]) * np.cos(ala) * np.sin((alo - lng[:, None]) / 2) ** 2)
+    km = (2 * 6371.0 * np.arcsin(np.sqrt(h))).min(axis=1)
+    y = np.log(np.array([f["pm2"] for f in filas], dtype=float))
+
+    # recorte de colas: un outlier de precio o una propiedad a 60 km del centro
+    # dominarían la pendiente de una muestra de unos cientos
+    ok = (km <= np.quantile(km, 0.97)) & (y >= np.quantile(y, 0.02)) \
+        & (y <= np.quantile(y, 0.98))
+    km, y = km[ok], y[ok]
+    n = int(len(km))
+    if n < 40 or km.std() < 0.2:
+        return None
+
+    b, a = np.polyfit(km, y, 1)
+    pred = a + b * km
+    ss_res = float(((y - pred) ** 2).sum())
+    ss_tot = float(((y - y.mean()) ** 2).sum())
+    r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0.0
+    # error estándar de la pendiente e intervalo del 90% (t≈1.645 con n grande)
+    se = float(np.sqrt(ss_res / max(n - 2, 1) / ((km - km.mean()) ** 2).sum()))
+    return {
+        "pct_km": float((np.exp(b) - 1) * 100),
+        "ic_bajo": float((np.exp(b - 1.645 * se) - 1) * 100),
+        "ic_alto": float((np.exp(b + 1.645 * se) - 1) * 100),
+        "r2": float(r2), "n": n,
+        "km_medio": float(km.mean()), "km_max": float(km.max()),
+        "pm2_en_ancla": float(np.exp(a)),
+    }
+
+
+@st.cache_data(show_spinner="Midiendo gentrificación temprana…", max_entries=8)
+def indice_gentrificacion(suffix: str) -> pd.DataFrame | None:
+    """Índice compuesto de gentrificación TEMPRANA, por calle.
+
+    Tres señales observadas del DENUE, no una predicción:
+      · Canarios — llegada reciente (últimos 2 años de alta) de los giros que
+        preceden al despegue, donde antes casi no había. Es la señal adelantada.
+      · Saldo — aperturas menos cierres de la calle. Un tejido que crece neto
+        aguanta el cambio; uno que se vacía no está gentrificándose, se está
+        muriendo, y sin esto el índice confundiría las dos cosas.
+      · Especies indicadoras — cuántos giros del catálogo ya operan ahí.
+
+    Deliberadamente NO entra el precio: el inventario C21 da mediana por ZONA,
+    no por calle, y mezclar una señal de calle con una de ciudad produciría un
+    número que parece más fino de lo que es. El precio se muestra aparte, como
+    contexto de la ciudad.
+
+    Es una SEÑAL, no una predicción validada: con un solo corte del DENUE se
+    puede reconstruir cuándo llegó cada negocio, pero no contrastar el índice
+    contra lo que pasó después con los precios de esa calle.
+    """
+    can = canarios_calle(suffix)
+    sis, real = sismografo_calles(suffix)
+    if not real or sis is None or sis.empty:
+        return None
+
+    base = sis[["nombre", "altas", "bajas", "indicadoras"]].copy()
+    base["saldo"] = base["altas"].to_numpy() - base["bajas"].to_numpy()
+    # el score de canarios vive en celdas de ~300 m, nombradas por su calle más
+    # cercana: se queda el máximo por calle
+    if can is not None and not can.empty:
+        porc = can.groupby("calle").agg(
+            canarios=("score", "max"), recientes=("recientes", "sum"),
+            especies_nuevas=("especies", "first")).reset_index()
+        base = base.merge(porc, left_on="nombre", right_on="calle", how="left")
+    else:
+        base[["canarios", "recientes", "especies_nuevas"]] = [0.0, 0, "—"]
+    base["canarios"] = base["canarios"].fillna(0.0)
+    base["recientes"] = base["recientes"].fillna(0).astype(int)
+    base["especies_nuevas"] = base["especies_nuevas"].fillna("—")
+    # Las coordenadas salen de la GEOMETRÍA de la calle, no de las celdas de
+    # canarios: una calle puede entrar al índice por saldo o por especies ya
+    # instaladas, sin canarios recientes, y aun así hay que poder señalarla en
+    # el mapa. Tomarlas del merge dejaba esas filas sin punto.
+    calles_geo, _, _ = cargar_red_vial(suffix)
+    medio = {str(n): [float(np.mean([p[0] for p in c])),
+                      float(np.mean([p[1] for p in c]))]
+             for n, c in zip(calles_geo["nombre"], calles_geo["camino"])}
+    base["lng"] = [medio.get(str(n), [np.nan, np.nan])[0] for n in base["nombre"]]
+    base["lat"] = [medio.get(str(n), [np.nan, np.nan])[1] for n in base["nombre"]]
+
+    # Sin canarios en toda la ciudad no hay señal adelantada que reportar.
+    if base["canarios"].max() <= 0:
+        return None
+    base["indice"] = (100 * (
+        0.50 * norm01(base["canarios"].to_numpy(float))
+        + 0.30 * norm01(np.clip(base["saldo"].to_numpy(float), 0, None))
+        + 0.20 * norm01(base["indicadoras"].to_numpy(float))
+    )).round(0).astype(int)
+
+    top = base[base["indice"] > 0].sort_values(
+        ["indice", "recientes"], ascending=False).head(12)
+    return top[["nombre", "indice", "canarios", "recientes", "saldo",
+                "indicadoras", "especies_nuevas", "lng", "lat"]].reset_index(
+        drop=True)
 
 
 @st.cache_data(max_entries=8)
@@ -3691,6 +3861,50 @@ def impacto_anclas(suffix: str) -> pd.DataFrame | None:
                                            ascending=False)
 
 
+def bloque_gradiente(suffix: str, nombre_muni: str) -> None:
+    """El precio contra la distancia al foco de empleo, MEDIDO en el mercado.
+
+    Es la contraparte empírica de los catalizadores del simulador, cuya fuerza
+    y radio son parámetros elegidos a mano. Aquí no hay perilla: la pendiente
+    sale del inventario C21 vivo de esta ciudad.
+    """
+    g = gradiente_hedonico(suffix, nombre_muni)
+    st.markdown("##### Gradiente de precio por distancia · medido en el mercado")
+    if not g:
+        st.info("Aún no hay inventario C21 suficiente en esta ciudad para "
+                "medir el gradiente (se necesitan 40+ propiedades en venta "
+                "con precio/m² y coordenadas). En cuanto el inventario diario "
+                "las acumule, aparece solo.")
+        return
+    signo = "menos" if g["pct_km"] < 0 else "más"
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Gradiente", f"{g['pct_km']:+.1f}% / km",
+              f"IC 90%: {g['ic_bajo']:+.1f}% a {g['ic_alto']:+.1f}%")
+    c2.metric("Ajuste (R²)", f"{g['r2']:.2f}",
+              f"{g['n']} propiedades")
+    c3.metric("Precio/m² junto al ancla", f"${g['pm2_en_ancla']:,.0f}",
+              f"alcance medido: {g['km_max']:.1f} km")
+    st.markdown(
+        f"<div class='leyenda'>En <b>{nombre_muni}</b>, cada kilómetro de "
+        f"distancia al foco de empleo más cercano se asocia con "
+        f"<b>{abs(g['pct_km']):.1f}% {signo}</b> de precio por m², sobre "
+        f"{g['n']} propiedades reales en venta del inventario Century 21. "
+        "Este número sustituye a la intuición: los catalizadores del simulador "
+        "usan una fuerza y un radio elegidos a mano; esto es lo que el mercado "
+        "de esta ciudad realmente hace.</div>", unsafe_allow_html=True)
+    if g["r2"] < 0.15:
+        st.warning(
+            f"El ajuste es débil (R² {g['r2']:.2f}): la distancia al empleo "
+            "explica poco del precio aquí. En ciudades policéntricas o "
+            "turísticas manda más la playa, la vista o la colonia que la "
+            "cercanía al trabajo. Tómalo como referencia floja, no como regla.",
+            icon="⚠️")
+    st.caption("Es CORRELACIONAL: mide cómo varían hoy los precios con la "
+               "distancia, no lo que pasaría si se construyera un ancla nueva. "
+               "No controla por antigüedad, superficie ni calidad del inmueble.")
+    st.markdown("---")
+
+
 def tab_impacto(suffix: str) -> None:
     """🧪 El detonante deja de ser hipótesis: impacto medido de anclas reales."""
     df = impacto_anclas(suffix)
@@ -3778,7 +3992,7 @@ def tab_huecos(suffix: str = "azcapotzalco") -> None:
                     column_config={"Score de hueco":
                                    st.column_config.ProgressColumn(
                                        min_value=0, max_value=1)})
-                _sel = sitio_b2b_elegido(suffix)
+                _sel = sitio_marcado(suffix)
                 if _sel:
                     st.markdown(
                         f"<div class='leyenda'>📍 <b>{_sel['calle']}</b> "
@@ -3804,7 +4018,64 @@ def tab_huecos(suffix: str = "azcapotzalco") -> None:
                          "análisis del top-10, contexto del municipio y "
                          "metodología.")
 
-        # ── Canarios de la plusvalía (time machine comercial) ────────────────
+        # ── Índice de gentrificación temprana (canarios + saldo + especies) ──
+        st.markdown("---")
+        st.markdown("#### Gentrificación temprana · índice compuesto por calle")
+        gen = indice_gentrificacion(suffix)
+        if gen is not None and not gen.empty:
+            lider_g = gen.iloc[0]
+            st.markdown(
+                f"<div class='leyenda'>🔎 <b>{lider_g['nombre']}</b> encabeza "
+                f"con {int(lider_g['indice'])}/100: "
+                f"{int(lider_g['recientes'])} negocios canario recién "
+                f"llegados, saldo de {int(lider_g['saldo']):+d} negocios "
+                f"(aperturas menos cierres) y {int(lider_g['indicadoras'])} "
+                "especies indicadoras ya operando.</div>",
+                unsafe_allow_html=True)
+            st.caption("Haz clic en una fila para ubicarla en el mapa de arriba.")
+            st.dataframe(
+                gen[["nombre", "indice", "recientes", "saldo", "indicadoras",
+                     "especies_nuevas"]].rename(columns={
+                    "nombre": "Calle",
+                    "indice": "Índice de gentrificación",
+                    "recientes": "Canarios recién llegados",
+                    "saldo": "Saldo de negocios",
+                    "indicadoras": "Especies indicadoras",
+                    "especies_nuevas": "Qué llegó"}),
+                hide_index=True, width="stretch",
+                key=clave_tabla_gentri(suffix),
+                on_select="rerun", selection_mode="single-row",
+                column_config={"Índice de gentrificación":
+                               st.column_config.ProgressColumn(
+                                   format="%d", min_value=0, max_value=100)})
+            _selg = sitio_marcado(suffix)
+            if _selg and _selg["fuente"] == "gentri":
+                st.markdown(
+                    f"<div class='leyenda'>📍 <b>{_selg['calle']}</b> "
+                    f"({_selg['detalle']}) marcada en el mapa · "
+                    f"{_selg['lat']:.4f}, {_selg['lng']:.4f}</div>",
+                    unsafe_allow_html=True)
+            st.markdown(
+                "<div class='leyenda'>Se compone de tres señales observadas "
+                "del DENUE: llegada reciente de giros canario (50%), saldo de "
+                "aperturas menos cierres (30%) y especies indicadoras ya "
+                "instaladas (20%). El <b>saldo</b> está para no confundir "
+                "gentrificación con vaciamiento: una calle que pierde "
+                "negocios no se está encareciendo, se está apagando."
+                "</div>", unsafe_allow_html=True)
+            st.warning(
+                "**Es una señal, no una predicción validada.** Con un solo "
+                "corte del DENUE se reconstruye cuándo llegó cada negocio, "
+                "pero no se puede contrastar el índice contra lo que pasó "
+                "después con los precios de esa calle. El precio no entra en "
+                "el índice: el inventario C21 da mediana por zona, no por "
+                "calle, y mezclarlos daría un número más fino de lo que es.",
+                icon="⚠️")
+        else:
+            st.info("Sin señal de gentrificación medible aquí: hacen falta "
+                    "nombres y años de alta del DENUE con giros canario.")
+
+        # ── Canarios de la plusvalía (detalle de la señal adelantada) ────────
         st.markdown("---")
         st.markdown("#### Canarios de la plusvalía · llegada temprana de "
                     "giros indicadores")
@@ -4699,7 +4970,7 @@ def main() -> None:
             return construir_deck_calles(vv, a, f, mostrar_estab,
                                          mostrar_flujos, suf)
 
-        _sitio = sitio_b2b_elegido(suf)
+        _sitio = sitio_marcado(suf)
         render_mapa(lienzo, fabricar, año_idx, reproducir, 60,
                     float(vv.shape[0] - 1), clic_activo,
                     f"deck_calle_{suf}_{_sitio['rank'] if _sitio else 0}")
@@ -4730,6 +5001,7 @@ def main() -> None:
                            "apertura reciente: el inverso del sismógrafo — "
                            "alerta de declive.")
         with t3:
+            bloque_gradiente(suf, muni_nom)
             tab_impacto(suf)
         with t4:
             tab_huecos(suf)
