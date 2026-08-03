@@ -906,7 +906,8 @@ async function handleBuscar(request, env) {
 Ciudades principales (usa el slug exacto): ${lista}.
 Reglas: "para N personas" ⇒ recamaras_min ≈ redondeo(N/2) (mínimo 1). Si piden rendimiento/plusvalía/"que me dé X% anual" ⇒ yield_min y, si no nombran ciudad, deja zonas vacío. Si nombran colonia/ciudad, mapea a la zona BrickBit más cercana. Presupuestos en pesos MXN ("2 millones" = 2000000).
 Responde SOLO con un objeto JSON válido (sin texto extra, sin markdown) con esta forma, omitiendo o poniendo null lo que no aplique:
-{"operacion": "venta"|"renta"|null, "tipo": "casa"|"departamento"|"terreno"|"local"|"oficina"|"bodega"|null, "zonas": ["slug", ...] (0 a 3), "recamaras_min": número|null, "banos_min": número|null, "presupuesto_min": número|null, "presupuesto_max": número|null, "m2_min": número|null, "yield_min": número|null, "orden": "precio_justo"|"yield"|"precio_asc"|"precio_desc"|null, "interpretacion": "frase breve y cálida de cómo entendiste la búsqueda"}`;
+{"operacion": "venta"|"renta"|null, "tipo": "casa"|"departamento"|"terreno"|"local"|"oficina"|"bodega"|null, "zonas": ["slug", ...] (0 a 3), "recamaras_min": número|null, "banos_min": número|null, "presupuesto_min": número|null, "presupuesto_max": número|null, "m2_min": número|null, "yield_min": número|null, "orden": "precio_justo"|"yield"|"precio_asc"|"precio_desc"|null, "intencion": "buscar"|"invertir", "objetivo": "plusvalia"|"renta"|"mixto"|null, "interpretacion": "frase breve y cálida de cómo entendiste la búsqueda"}
+"intencion" es "invertir" SOLO cuando la persona expresa que quiere INVERTIR una cantidad o armar un portafolio ("quiero invertir 2 millones", "en qué pongo 5 mdp", "arma un portafolio"), no cuando busca un inmueble para vivir. Con "invertir", el presupuesto va en presupuesto_max y zonas queda vacío salvo que nombren ciudad. "objetivo" distingue si busca plusvalía (revalorización), renta (flujo mensual) o mixto.`;
 
   let f;
   try { f = await askClaudeJSON(env, system, q); }
@@ -954,7 +955,137 @@ Responde SOLO con un objeto JSON válido (sin texto extra, sin markdown) con est
     return (a.vs ?? 999) - (b.vs ?? 999); // precio_justo: oportunidades primero
   });
 
-  return json({ interpretacion: f.interpretacion || '', filtros: f, zonas: slugs, total: res.length, resultados: res.slice(0, 24) }, 200, headers);
+  // ── Asesor de portafolio ────────────────────────────────────────────────
+  // Cuando la intención es INVERTIR y hay presupuesto, no basta una lista: se
+  // arma un portafolio real. La SELECCIÓN es determinista y sale de los datos
+  // (veredicto de precio vs mediana de su zona, yield de la zona, recortes de
+  // precio y días publicada del seguimiento). Claude solo REDACTA la tesis con
+  // esos números; no elige ni inventa cifras.
+  let portafolio = null;
+  if (f.intencion === 'invertir' && f.presupuesto_max > 0) {
+    try {
+      portafolio = await armarPortafolio(env, res, slugs, f, zonas);
+    } catch (e) {
+      portafolio = { error: 'No se pudo armar el portafolio: ' + e.message };
+    }
+  }
+
+  return json({ interpretacion: f.interpretacion || '', filtros: f, zonas: slugs, total: res.length, portafolio, resultados: res.slice(0, 24) }, 200, headers);
+}
+
+/* --- Asesor de portafolio: selección con datos, redacción con IA --- */
+async function armarPortafolio(env, res, slugs, f, zonas) {
+  const presupuesto = f.presupuesto_max;
+  // Seguimiento del mercado por zona: recortes de precio y días publicada.
+  const segs = {};
+  await Promise.all(slugs.map(async (s) => {
+    try {
+      const v = await env.SHARES.get('listados:_seg-' + s);
+      const j = v ? JSON.parse(v) : null;
+      segs[s] = (Array.isArray(j) && j[0] && j[0].items) ? j[0] : null;
+    } catch { segs[s] = null; }
+  }));
+  const segDe = (x) => {
+    const s = segs[slugZona(x.zona || '')];
+    const it = s && s.items && s.items[String(x.id)];
+    if (!it) return {};
+    const dias = Math.max(0, Math.round((new Date(s.act) - new Date(it.alta)) / 864e5));
+    const o = { dias, diasCens: it.alta === s.base };
+    if (it.cambios && it.cambios.length && it.cambios[0].de > 0) {
+      o.rec = Math.round((it.p / it.cambios[0].de - 1) * 100);
+    }
+    return o;
+  };
+
+  // Puntuación con señales REALES; el peso cambia según el objetivo declarado.
+  const pesoRenta = f.objetivo === 'renta' ? 1.6 : f.objetivo === 'plusvalia' ? 0.6 : 1.0;
+  const cand = res
+    .filter((x) => x.operacion === 'venta' && x.precio > 0 && x.precio <= presupuesto)
+    .map((x) => {
+      const sg = segDe(x);
+      // descuento vs la mediana de SU zona (vs<0 = bajo la mediana)
+      const dsc = x.vs == null ? 0 : Math.max(-40, Math.min(40, -x.vs)) / 40;
+      const rnd = (x.zona_yield || 0) / 12;                  // yield de zona
+      const rec = sg.rec != null && sg.rec < 0 ? Math.min(1, Math.abs(sg.rec) / 15) : 0;
+      const neg = sg.dias != null ? Math.min(1, sg.dias / 180) : 0;  // margen de negociación
+      return { ...x, ...sg, _score: 1.0 * dsc + pesoRenta * rnd + 0.5 * rec + 0.35 * neg };
+    })
+    .sort((a, b) => b._score - a._score);
+
+  // Selección voraz con diversificación: máximo una propiedad por zona, para
+  // que el portafolio no quede concentrado en un solo mercado.
+  const piezas = [];
+  const usadas = new Set();
+  let gastado = 0;
+  for (const c of cand) {
+    if (piezas.length >= 3) break;
+    const z = slugZona(c.zona || '');
+    if (usadas.has(z)) continue;
+    if (gastado + c.precio > presupuesto) continue;
+    piezas.push(c); usadas.add(z); gastado += c.precio;
+  }
+  // Si la diversificación dejó dinero sin usar, se completa sin esa restricción.
+  if (piezas.length < 3) {
+    for (const c of cand) {
+      if (piezas.length >= 3) break;
+      if (piezas.some((p) => p.id === c.id)) continue;
+      if (gastado + c.precio > presupuesto) continue;
+      piezas.push(c); gastado += c.precio;
+    }
+  }
+  if (!piezas.length) return { vacio: true, presupuesto };
+
+  const ficha = (p, i) => {
+    const partes = [
+      `#${i + 1} ${p.tipo || 'inmueble'} en ${p.municipio || ''}${p.zona ? ', ' + p.zona : ''}`,
+      `precio ${Math.round(p.precio).toLocaleString('es-MX')} MXN`,
+      p.m2_construccion ? `${p.m2_construccion} m² construidos` : null,
+      p.pm2 ? `${Math.round(p.pm2).toLocaleString('es-MX')} $/m²` : null,
+      p.vs != null ? `${p.vs > 0 ? '+' : ''}${p.vs}% vs la mediana de su zona` : null,
+      p.zona_yield != null ? `rendimiento observado de la zona ${p.zona_yield}%` : null,
+      p.rec != null && p.rec < 0 ? `ya bajó ${Math.abs(p.rec)}% desde su publicación` : null,
+      p.dias != null && p.dias >= 1 ? `${p.diasCens ? 'al menos ' : ''}${p.dias} días publicada` : null,
+      p.recamaras ? `${p.recamaras} recámaras` : null,
+    ].filter(Boolean);
+    return partes.join(' · ');
+  };
+
+  const system = `Eres el asesor de inversión inmobiliaria de BrickBit. Te doy un portafolio YA SELECCIONADO con datos reales del inventario de Century 21 y del seguimiento de mercado de BrickBit. Tu trabajo es EXPLICAR por qué cada pieza tiene sentido, usando ÚNICAMENTE los números que te doy.
+REGLAS INQUEBRANTABLES:
+- No inventes cifras. Si un dato no está en la ficha, no lo menciones.
+- No proyectes rendimientos futuros ni porcentajes de plusvalía a X años: no te los estoy dando y no se pueden verificar.
+- El rendimiento que te doy es OBSERVADO de la zona, no una promesa.
+- Menciona el riesgo real de cada pieza (concentración, liquidez, que el dato es de zona y no del inmueble exacto).
+- Español de México, tono de asesor serio, sin euforia ni emojis.
+Responde SOLO con JSON válido:
+{"resumen": "2 a 3 frases sobre la lógica del portafolio en conjunto", "piezas": [{"tesis": "2 frases de por qué esta propiedad", "riesgo": "1 frase del principal riesgo"}], "siguiente_paso": "1 frase con la acción concreta a seguir"}
+El arreglo "piezas" debe tener exactamente ${piezas.length} elementos, en el mismo orden.`;
+
+  const usuario = `Presupuesto: ${Math.round(presupuesto).toLocaleString('es-MX')} MXN. Objetivo declarado: ${f.objetivo || 'no especificado'}.
+Portafolio seleccionado (invierte ${Math.round(gastado).toLocaleString('es-MX')} MXN, quedan ${Math.round(presupuesto - gastado).toLocaleString('es-MX')} MXN sin asignar):
+${piezas.map(ficha).join('\n')}`;
+
+  let redaccion = {};
+  try { redaccion = await askClaudeJSON(env, system, usuario); } catch { redaccion = {}; }
+  const textos = Array.isArray(redaccion.piezas) ? redaccion.piezas : [];
+
+  return {
+    presupuesto,
+    invertido: Math.round(gastado),
+    sin_asignar: Math.round(presupuesto - gastado),
+    objetivo: f.objetivo || null,
+    resumen: redaccion.resumen || '',
+    siguiente_paso: redaccion.siguiente_paso || '',
+    piezas: piezas.map((p, i) => ({
+      id: p.id, titulo: p.titulo, tipo: p.tipo, url: p.url, imagen: p.imagen,
+      precio: p.precio, moneda: p.moneda || 'MXN', municipio: p.municipio, zona: p.zona,
+      pm2: p.pm2, m2_construccion: p.m2_construccion, recamaras: p.recamaras,
+      vs: p.vs, veredicto: p.veredicto, zona_yield: p.zona_yield,
+      rec: p.rec ?? null, dias: p.dias ?? null, diasCens: !!p.diasCens,
+      tesis: (textos[i] && textos[i].tesis) || '',
+      riesgo: (textos[i] && textos[i].riesgo) || '',
+    })),
+  };
 }
 
 /* --- Ingesta y consulta del inventario en KV --- */
