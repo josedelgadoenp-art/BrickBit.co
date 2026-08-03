@@ -3266,6 +3266,71 @@ def _listados_zona(slug: str) -> list:
         return []
 
 
+@st.cache_data(show_spinner=False, ttl=3600, max_entries=1)
+def _registro_zonas() -> list:
+    """Registro vivo de municipios con inventario C21 (_zonas del Worker)."""
+    d = _listados_zona("_zonas")
+    return [z for z in d if isinstance(z, dict) and z.get("nombre")]
+
+
+@st.cache_data(show_spinner=False, max_entries=1)
+def _zonas_ancla() -> list:
+    """Las 32 zonas BrickBit con sus coordenadas (data/estados.json)."""
+    try:
+        with open(os.path.join(_DIR, "data", "estados.json"), encoding="utf-8") as f:
+            d = json.load(f)
+        z = d if isinstance(d, list) else (d.get("zonas") or d.get("estados") or [])
+        return [x for x in z if x.get("nombre") and x.get("lat") and x.get("lng")]
+    except Exception:                                          # noqa: BLE001
+        return []
+
+
+def _slugs_inventario(suffix: str, nombre_muni: str) -> list:
+    """Slugs bajo los que puede vivir el inventario C21 de este municipio.
+
+    El nombre OFICIAL del municipio y el nombre COMERCIAL de la zona C21 no
+    siempre coinciden: Cancún es el municipio de Benito Juárez, Playa del
+    Carmen es Solidaridad. Pedir el inventario por el nombre oficial devuelve
+    vacío justo en las plazas más grandes.
+
+    Se resuelve por GEOGRAFÍA en vez de con una tabla de alias, que además
+    sería ambigua: hay un Benito Juárez en Quintana Roo y otro en la CDMX, y
+    solo las coordenadas los distinguen. Se toma el centro del municipio ya
+    ingerido y se busca la zona ancla más cercana dentro de 60 km.
+    """
+    cands = [slugificar(nombre_muni)]
+    # 2) El registro vivo de zonas C21: sus nombres son "Municipio, Estado", y
+    #    el municipio puede traer la marca comercial pegada con diagonal
+    #    ("Solidaridad / Riviera Maya"). Ahí vive la plaza más grande del
+    #    inventario, que por nombre oficial no se encontraría nunca.
+    objetivo = slugificar(nombre_muni)
+    for z in _registro_zonas():
+        nom = str(z.get("nombre") or "")
+        muni = nom.split(",", 1)[0]
+        partes = [p.strip() for p in muni.split("/")] if "/" in muni else [muni]
+        if any(slugificar(p) == objetivo for p in partes):
+            s = str(z.get("slug") or slugificar(nom))
+            if s and s not in cands:
+                cands.append(s)
+    try:
+        calles, _, _ = cargar_red_vial(suffix)
+        pts = np.array([np.mean(c, axis=0) for c in calles["camino"]])
+        lng, lat = float(np.mean(pts[:, 0])), float(np.mean(pts[:, 1]))
+    except Exception:                                          # noqa: BLE001
+        return cands
+    mejor, mejor_km = None, 1e9
+    for z in _zonas_ancla():
+        d_km = np.hypot((float(z["lng"]) - lng) * 111 * np.cos(np.radians(lat)),
+                        (float(z["lat"]) - lat) * 111)
+        if d_km < mejor_km:
+            mejor, mejor_km = z["nombre"], float(d_km)
+    if mejor and mejor_km <= 60:
+        s = slugificar(mejor)
+        if s not in cands:
+            cands.append(s)
+    return cands
+
+
 @st.cache_data(show_spinner="Midiendo el gradiente de precio…", ttl=3600,
                max_entries=8)
 def gradiente_hedonico(suffix: str, nombre_muni: str) -> dict | None:
@@ -3282,7 +3347,12 @@ def gradiente_hedonico(suffix: str, nombre_muni: str) -> dict | None:
     distancia, no lo que pasaría si se construyera un ancla nueva. Con menos de
     40 propiedades no devuelve nada, porque el ajuste no se sostendría.
     """
-    props = _listados_zona(slugificar(nombre_muni))
+    props, zona_usada = [], None
+    for s in _slugs_inventario(suffix, nombre_muni):
+        props = _listados_zona(s)
+        if len(props) >= 40:
+            zona_usada = s
+            break
     if not props or len(props) < 40:
         return None
     filas = [p for p in props
@@ -3326,6 +3396,11 @@ def gradiente_hedonico(suffix: str, nombre_muni: str) -> dict | None:
         "ic_bajo": float((np.exp(b - 1.645 * se) - 1) * 100),
         "ic_alto": float((np.exp(b + 1.645 * se) - 1) * 100),
         "r2": float(r2), "n": n,
+        # De qué zona C21 salieron las propiedades. Si no es la del municipio
+        # elegido, la interfaz TIENE que decirlo: un gradiente de Monterrey
+        # etiquetado como de San Pedro es un dato equivocado, no un detalle.
+        "zona": zona_usada,
+        "zona_propia": zona_usada == slugificar(nombre_muni),
         "km_medio": float(km.mean()), "km_max": float(km.max()),
         "pm2_en_ancla": float(np.exp(a)),
     }
@@ -3892,6 +3967,13 @@ def bloque_gradiente(suffix: str, nombre_muni: str) -> None:
         "Este número sustituye a la intuición: los catalizadores del simulador "
         "usan una fuerza y un radio elegidos a mano; esto es lo que el mercado "
         "de esta ciudad realmente hace.</div>", unsafe_allow_html=True)
+    if not g.get("zona_propia"):
+        st.warning(
+            f"Las propiedades salieron de la zona Century 21 "
+            f"**{str(g.get('zona') or '').replace('-', ' ').title()}**, no de "
+            f"un inventario propio de {nombre_muni}. Es el mercado de la plaza "
+            "a la que pertenece, no el del municipio exacto — úsalo como "
+            "referencia de la zona metropolitana.", icon="⚠️")
     if g["r2"] < 0.15:
         st.warning(
             f"El ajuste es débil (R² {g['r2']:.2f}): la distancia al empleo "
