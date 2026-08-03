@@ -25,12 +25,15 @@ Peso esperado: ~1.15 MB por ciudad, medido sobre las 83 ya ingeridas (242 KB
 de calles + 665 KB de establecimientos + 247 KB del sismógrafo). Llegar a 200
 ciudades suma ~135 MB a data/, que pasa de 99 MB a ~235 MB.
 """
-import argparse, glob, json, os, subprocess, sys, time, unicodedata, zipfile
+import argparse, errno, glob, json, os, shutil, subprocess, sys, time, unicodedata, zipfile
 import urllib.error, urllib.request
 
 _DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKEND = "https://brickbit-api.jose-delgado-enp.workers.dev"
 CACHE = os.path.join(_DIR, "denue_cache")
+# Piso de disco libre para no dejar descargas a medias: el CSV de un estado
+# grande y su ZIP conviven un momento durante la extraccion.
+MIN_LIBRE_GB = 3.0
 PATRONES_URL = [
     "https://www.inegi.org.mx/contenidos/masiva/denue/denue_{ee}_csv.zip",
     "https://www.inegi.org.mx/contenidos/masiva/denue/denue_{ee}_shp_csv.zip",
@@ -126,8 +129,26 @@ def clave_estado(texto):
     return None
 
 
+def borrar(*rutas):
+    for r in rutas:
+        try:
+            os.remove(r)
+        except OSError:
+            pass
+
+
+def libre_gb():
+    return shutil.disk_usage(_DIR).free / 2**30
+
+
 def csv_estado(ee):
-    """Descarga (una vez) el DENUE del estado `ee` y devuelve la ruta del CSV."""
+    """Descarga el DENUE del estado `ee` y devuelve la ruta del CSV extraído.
+
+    El ZIP se borra en cuanto el CSV queda escrito: ya no sirve para nada y
+    entre los dos duplican el espacio ocupado. El CSV lo borra el llamador al
+    terminar con ese estado (ver main), así que el disco solo carga un estado
+    a la vez en vez de los 20 y pico del lote completo.
+    """
     os.makedirs(CACHE, exist_ok=True)
     ruta_csv = os.path.join(CACHE, f"denue_{ee}.csv")
     if os.path.exists(ruta_csv) and os.path.getsize(ruta_csv) > 1_000_000:
@@ -146,6 +167,11 @@ def csv_estado(ee):
                             break
                         f.write(b)
                 break
+            except OSError as e:
+                if getattr(e, "errno", None) == errno.ENOSPC:
+                    borrar(ruta_zip)          # el parcial no sirve y estorba
+                    raise
+                print(f"      no respondió: {e}")
             except Exception as e:
                 print(f"      no respondió: {e}")
         else:
@@ -162,10 +188,15 @@ def csv_estado(ee):
                     if not b:
                         break
                     dst.write(b)
+        borrar(ruta_zip)                       # extraído: el ZIP ya sobra
         return ruta_csv
     except zipfile.BadZipFile:
-        os.remove(ruta_zip)
+        borrar(ruta_zip)
         return None
+    except OSError as e:
+        if getattr(e, "errno", None) == errno.ENOSPC:
+            borrar(ruta_csv)
+        raise
 
 
 def main():
@@ -176,6 +207,9 @@ def main():
                     help="mínimo de propiedades C21 para que un municipio califique")
     ap.add_argument("--solo-listar", action="store_true",
                     help="muestra el plan sin ingerir nada")
+    ap.add_argument("--conservar-cache", action="store_true",
+                    help="no borrar los CSV del DENUE al terminar cada estado "
+                         "(ocupa varios GB; solo si vas a reprocesar)")
     ap.add_argument("--zonas-json", default=None,
                     help="ruta a un archivo con la respuesta de _zonas guardada "
                          "desde el navegador (evita la llamada al Worker)")
@@ -249,8 +283,22 @@ def main():
     estados_orden = sorted({o["ee"] for o in objetivos})
     for ee in estados_orden:   # estado por estado: un download, N municipios
         del_estado = [o for o in objetivos if o["ee"] == ee]
-        print(f"\n== Estado {ee} · {len(del_estado)} municipios ==")
-        csv = csv_estado(ee)
+        print(f"\n== Estado {ee} · {len(del_estado)} municipios · "
+              f"{libre_gb():.1f} GB libres ==")
+        if libre_gb() < MIN_LIBRE_GB:
+            print(f"  ✗ Menos de {MIN_LIBRE_GB} GB libres: se detiene aquí para no dejar")
+            print("    archivos a medias. Libera espacio y vuelve a correr el mismo")
+            print("    comando; retoma en las ciudades que falten.")
+            break
+        try:
+            csv = csv_estado(ee)
+        except OSError as e:
+            if getattr(e, "errno", None) != errno.ENOSPC:
+                raise
+            print("  ✗ Se acabó el espacio en disco a media descarga.")
+            print(f"    Borra la carpeta {CACHE} y vuelve a correr el mismo comando:")
+            print("    lo ya ingerido se conserva y retoma donde quedó.")
+            break
         if not csv:
             print(f"  ✗ no se pudo obtener el DENUE del estado {ee}; se saltan sus municipios")
             fallidos += [o["municipio"] for o in del_estado]
@@ -276,6 +324,8 @@ def main():
             if not logrado:
                 fallidos.append(o["municipio"])
                 print(f"    ✗ falló: {ultimo}")
+        if not args.conservar_cache:
+            borrar(csv)      # este estado ya no se necesita; libera el disco
 
     print("\n================= RESUMEN =================")
     print(f"  Ingeridos: {len(ok)}  ·  Fallidos: {len(fallidos)}")
