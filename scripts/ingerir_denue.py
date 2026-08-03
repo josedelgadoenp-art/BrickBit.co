@@ -237,9 +237,20 @@ def resolver_municipio(serie, pedido: str):
                   f"{cand}. No se elige ninguno.")
             return None
 
-    parecidos = difflib.get_close_matches(pedido, nombres, n=8, cutoff=0.6)
     print(f"✗ '{pedido}' no existe en el DENUE de este estado.")
-    print(f"  ¿Quisiste alguno de estos? {parecidos or 'ninguno parecido'}")
+    parecidos = difflib.get_close_matches(pedido, nombres, n=8, cutoff=0.6)
+    if parecidos:
+        print(f"  ¿Quisiste alguno de estos? {parecidos}")
+    # difflib compara la cadena completa y se le escapan las abreviaturas
+    # fuertes; enseñar también los nombres que COMPARTEN alguna palabra revela
+    # la grafía real del archivo ("Trias" encuentra a "Gral. Trias").
+    tokens = {t for t in p_letras.split() if len(t) > 3}
+    con_token = [n for n in nombres
+                 if tokens & set(_solo_letras(n).split())][:8]
+    if con_token and con_token != parecidos:
+        print(f"  Con alguna palabra en común: {con_token}")
+    if not parecidos and not con_token:
+        print("  Ningún nombre parecido en el archivo.")
     return None
 
 
