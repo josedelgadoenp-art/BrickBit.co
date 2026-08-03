@@ -25,7 +25,8 @@ Peso esperado: ~1.15 MB por ciudad, medido sobre las 83 ya ingeridas (242 KB
 de calles + 665 KB de establecimientos + 247 KB del sismógrafo). Llegar a 200
 ciudades suma ~135 MB a data/, que pasa de 99 MB a ~235 MB.
 """
-import argparse, glob, io, json, os, re, subprocess, sys, unicodedata, urllib.request, zipfile
+import argparse, glob, json, os, subprocess, sys, time, unicodedata, zipfile
+import urllib.error, urllib.request
 
 _DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKEND = "https://brickbit-api.jose-delgado-enp.workers.dev"
@@ -68,9 +69,35 @@ def sufijo(municipio):
     return norm(municipio).replace(" ", "_")
 
 
-def jget(url):
-    with urllib.request.urlopen(url, timeout=30) as r:
-        return json.loads(r.read().decode("utf-8"))
+# Cloudflare (que es quien recibe las peticiones al Worker antes que el código)
+# responde 403 a los User-Agent obviamente automatizados, y el de Python lo es:
+# "Python-urllib/3.14". El navegador sí pasa, por eso el mapa carga el
+# inventario mientras el script no. Con cabeceras de navegador pasa igual.
+NAVEGADOR = {
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"),
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "es-MX,es;q=0.9",
+    "Referer": "https://brickbit.co/",
+}
+
+
+def jget(url, intentos=3):
+    ultimo = None
+    for i in range(intentos):
+        try:
+            req = urllib.request.Request(url, headers=NAVEGADOR)
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            ultimo = e
+            if e.code in (403, 404):
+                break            # no lo arregla reintentar
+        except Exception as e:    # timeouts, DNS, cortes de red
+            ultimo = e
+        if i < intentos - 1:
+            time.sleep(2 ** i)
+    raise ultimo
 
 
 def clave_estado(texto):
@@ -133,14 +160,36 @@ def main():
                     help="mínimo de propiedades C21 para que un municipio califique")
     ap.add_argument("--solo-listar", action="store_true",
                     help="muestra el plan sin ingerir nada")
+    ap.add_argument("--zonas-json", default=None,
+                    help="ruta a un archivo con la respuesta de _zonas guardada "
+                         "desde el navegador (evita la llamada al Worker)")
     args = ap.parse_args()
 
     existentes = {os.path.basename(p)[len("calles_"):-len(".json")]
                   for p in glob.glob(os.path.join(_DIR, "data", "calles_*.json"))}
     print(f"Escala calle actual: {len(existentes)} ciudades.")
 
-    print("Consultando el inventario C21 vivo…")
-    reg = jget(BACKEND + "/api/listados?zona=_zonas")           # municipios
+    URL_ZONAS = BACKEND + "/api/listados?zona=_zonas"
+    if args.zonas_json:
+        print(f"Leyendo el inventario C21 de {args.zonas_json}…")
+        with open(args.zonas_json, encoding="utf-8") as f:
+            reg = json.load(f)
+    else:
+        print("Consultando el inventario C21 vivo…")
+        try:
+            reg = jget(URL_ZONAS)
+        except Exception as e:
+            codigo = getattr(e, "code", None)
+            print(f"\n✗ No pude consultar el inventario: {e}")
+            if codigo == 403:
+                print("  Un 403 aquí casi siempre es Cloudflare filtrando peticiones")
+                print("  automatizadas, no un problema del Worker: desde el navegador la")
+                print("  misma URL responde bien.")
+            print("\n  Salida de emergencia (funciona siempre):")
+            print(f"   1. Abre esta URL en tu navegador:\n      {URL_ZONAS}")
+            print("   2. Guarda la página como  zonas.json  (Ctrl+S) en esta carpeta.")
+            print("   3. Vuelve a correr agregando:  --zonas-json zonas.json")
+            sys.exit(1)
     if not isinstance(reg, list):
         print("El registro _zonas no respondió como lista. ¿Worker arriba?"); sys.exit(1)
 
