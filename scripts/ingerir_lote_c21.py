@@ -73,6 +73,16 @@ def sufijo(municipio):
     return norm(municipio).replace(" ", "_")
 
 
+# C21 → nombre con el que el DENUE sí encuentra el municipio, para los casos
+# que ninguna regla automática puede resolver sin adivinar.
+# San Pedro Mixtepec existe DOS veces en Oaxaca (distritos 22 y 26) y el DENUE
+# los distingue por número; "Juquila" es el distrito 22 (la costa de Puerto
+# Escondido, que es donde está el inventario C21: lat 15.91, lng -97.09).
+ALIAS_C21 = {
+    "san pedro mixtepec juquila": ["San Pedro Mixtepec Dto 22"],
+}
+
+
 def candidatos(municipio):
     """Nombres con los que vale la pena buscar el municipio en el DENUE.
 
@@ -83,6 +93,9 @@ def candidatos(municipio):
     dos y el DENUE decide cuál existe. De paso esto evita el otro problema de
     la diagonal: "calles_cancun/benito_juarez.json" no es una ruta válida.
     """
+    alias = ALIAS_C21.get(norm(municipio))
+    if alias:
+        return alias
     if "/" not in municipio:
         return [municipio]
     partes = [p.strip() for p in municipio.split("/") if p.strip()]
@@ -318,10 +331,19 @@ def main():
         for linea in salida.splitlines():
             if linea.lstrip().startswith(("(", "✓", "✗")):
                 print(f"    {linea.strip()}")
+        antes = len(ok)
         for o in del_estado:
             hecho = next((c for c in o["cands"] if os.path.exists(
                 os.path.join(_DIR, "data", f"calles_{sufijo(c)}.json"))), None)
             (ok.append(hecho) if hecho else fallidos.append(o["municipio"]))
+        if len(ok) == antes and del_estado:
+            # Ningún municipio del estado salió: el problema es del estado
+            # (memoria, archivo corrupto…), no de los nombres. Mostrar el final
+            # de la salida del hijo, que es donde vive el error real.
+            print("    — Ningún municipio de este estado se ingirió. Últimas "
+                  "líneas del proceso:")
+            for linea in salida.strip().splitlines()[-6:]:
+                print(f"      | {linea.strip()[:110]}")
         if not args.conservar_cache:
             borrar(csv)      # el ZIP de este estado ya no se necesita
 
