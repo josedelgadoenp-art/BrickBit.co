@@ -867,8 +867,19 @@ async function askClaudeJSON(env, system, userText) {
     headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
     body: JSON.stringify({ model: ANTHROPIC_MODEL, max_tokens: 800, system, messages: [{ role: 'user', content: userText }] }),
   });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error('IA ' + r.status + ': ' + ((data.error && data.error.message) || ''));
+  // Leer el cuerpo como TEXTO primero: si la respuesta no es el JSON que
+  // esperamos (un error de la pasarela, un cuerpo vacío, HTML), r.json()
+  // reventaba y el mensaje quedaba en "IA 400:" — un error mudo, imposible de
+  // diagnosticar. Con el texto crudo siempre se ve QUÉ contestó la API.
+  const crudo = await r.text();
+  let data = {};
+  try { data = JSON.parse(crudo); } catch { /* no era JSON: queda el crudo */ }
+  if (!r.ok) {
+    const detalle = (data.error && data.error.message)
+      || (crudo || '').trim().slice(0, 300)
+      || 'sin cuerpo en la respuesta';
+    throw new Error('IA ' + r.status + ': ' + detalle);
+  }
   let txt = (data.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
   txt = txt.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
   const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
