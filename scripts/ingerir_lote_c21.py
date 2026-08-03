@@ -89,6 +89,18 @@ def candidatos(municipio):
     return partes or [municipio.replace("/", " ").strip()]
 
 
+# Windows: cuando la salida del hijo se captura por tubería, Python usa la
+# codificación del sistema (cp1252) y revienta con UnicodeEncodeError al
+# imprimir una flecha o una palomita. PYTHONIOENCODING lo obliga a UTF-8 en el
+# hijo y aquí se decodifica igual; errors="replace" para que un carácter raro
+# nunca tumbe una ingesta que sí funcionó.
+TEXTO_UTF8 = {
+    "text": True,
+    "encoding": "utf-8",
+    "errors": "replace",
+    "env": {**os.environ, "PYTHONIOENCODING": "utf-8"},
+}
+
 # Cloudflare (que es quien recibe las peticiones al Worker antes que el código)
 # responde 403 a los User-Agent obviamente automatizados, y el de Python lo es:
 # "Python-urllib/3.14". El navegador sí pasa, por eso el mapa carga el
@@ -292,25 +304,24 @@ def main():
             continue
         for o in del_estado:
             print(f"  → {o['municipio']} ({o['n']} props C21)")
-            logrado, ultimo = False, ""
-            for cand in o["cands"]:   # "Solidaridad / Riviera Maya" → prueba las dos
-                r = subprocess.run([sys.executable, ingeridor, "--estado", ee,
-                                    "--municipio", cand, "--csv", csv],
-                                   capture_output=True, text=True)
-                salida = (r.stdout or "") + (r.stderr or "")
-                for linea in salida.splitlines():
-                    if linea.startswith("   ("):    # regla con la que se resolvió
-                        print(f"  {linea.strip()}")
-                if r.returncode == 0 and os.path.exists(
-                        os.path.join(_DIR, "data", f"calles_{sufijo(cand)}.json")):
-                    ok.append(cand)
-                    logrado = True
-                    break
-                cola = salida.strip().splitlines()
-                ultimo = cola[-1] if cola else "sin detalle"
-            if not logrado:
-                fallidos.append(o["municipio"])
-                print(f"    ✗ falló: {ultimo}")
+        # Una sola llamada por estado: el DENUE estatal se lee UNA vez para
+        # todos sus municipios. Antes se lanzaba un proceso por municipio, y
+        # cada uno volvía a parsear el archivo completo — en un estado con 10
+        # ciudades eso son 10 lecturas del mismo CSV y 10 picos de memoria.
+        # Las candidatas de un nombre con diagonal van todas: la que no exista
+        # en el DENUE simplemente no produce archivo.
+        munis = [c for o in del_estado for c in o["cands"]]
+        r = subprocess.run([sys.executable, ingeridor, "--estado", ee,
+                            "--municipios", "|".join(munis), "--csv", csv],
+                           capture_output=True, **TEXTO_UTF8)
+        salida = (r.stdout or "") + (r.stderr or "")
+        for linea in salida.splitlines():
+            if linea.lstrip().startswith(("(", "✓", "✗")):
+                print(f"    {linea.strip()}")
+        for o in del_estado:
+            hecho = next((c for c in o["cands"] if os.path.exists(
+                os.path.join(_DIR, "data", f"calles_{sufijo(c)}.json"))), None)
+            (ok.append(hecho) if hecho else fallidos.append(o["municipio"]))
         if not args.conservar_cache:
             borrar(csv)      # el ZIP de este estado ya no se necesita
 

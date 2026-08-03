@@ -375,6 +375,10 @@ def main() -> None:
     ap.add_argument("--estado", default="09",
                     help="clave INEGI de entidad (09 = CDMX)")
     ap.add_argument("--municipio", default="Azcapotzalco")
+    ap.add_argument("--municipios", default=None,
+                    help="varios municipios separados por '|': se procesan TODOS "
+                         "con una sola lectura del DENUE (el archivo estatal es "
+                         "grande; releerlo por municipio es lo que tarda)")
     ap.add_argument("--csv", default=None,
                     help="ruta a un CSV o ZIP del DENUE ya descargado (omite "
                          "la descarga; el ZIP se lee sin extraer)")
@@ -386,6 +390,24 @@ def main() -> None:
     args = ap.parse_args()
 
     df = leer_fuente(args.csv) if args.csv else descargar_denue(args.estado)
+
+    if args.municipios:
+        # Modo lote: una sola lectura del DENUE para todos los municipios del
+        # estado. Un municipio que no se resuelve no tumba a los demás.
+        pedidos = [m.strip() for m in args.municipios.split("|") if m.strip()]
+        hechos = 0
+        for muni in pedidos:
+            try:
+                procesar(df, muni, args.salida,
+                         sin_acentos(muni).lower().replace(" ", "_"))
+                hechos += 1
+            except SystemExit:            # procesar() se rinde con ese nombre
+                continue
+            except Exception as e:        # noqa: BLE001 — un municipio no cancela el lote
+                print(f"✗ {muni}: {type(e).__name__}: {e}")
+        print(f"== {hechos}/{len(pedidos)} municipios ingeridos ==")
+        sys.exit(0 if hechos else 1)
+
     sufijo = sin_acentos(args.municipio).lower().replace(" ", "_")
     procesar(df, args.municipio, args.salida, sufijo)
 
