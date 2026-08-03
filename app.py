@@ -2354,7 +2354,40 @@ def construir_deck_calles(valores: np.ndarray, año: float, fase: float,
                 line_width_min_pixels=2, radius_min_pixels=9,
                 radius_max_pixels=26))
 
-    return pdk.Deck(layers=capas, initial_view_state=_vista_calles(df),
+    # ── Sitio elegido en la tabla "¿Dónde abro mi negocio?" ──────────────────
+    # Sin esto, el top-10 del selector B2B es una lista de nombres de calle que
+    # hay que buscar a ojo en la retícula. Al marcarlo, la tabla y el mapa
+    # hablan del mismo lugar. Oliva #b7c489 con borde crema: no se confunde ni
+    # con las sucursales (terracota) ni con los huecos de cobertura (salvia),
+    # y el ámbar queda libre para lo que sí es estimación.
+    vista = _vista_calles(df)
+    sitio = sitio_b2b_elegido(suffix)
+    if sitio:
+        marca = pd.DataFrame([{
+            "pos": [sitio["lng"], sitio["lat"]],
+            "etiqueta": f"{sitio['rank']}° · {sitio['calle']}"}])
+        capas.append(pdk.Layer(
+            "ScatterplotLayer", id="b2b-sitio-halo", data=marca,
+            get_position="pos", get_radius=210,
+            get_fill_color=[183, 196, 137, 55],            # oliva translúcido
+            stroked=True, get_line_color=[183, 196, 137, 200],
+            line_width_min_pixels=2, radius_min_pixels=16, radius_max_pixels=52))
+        capas.append(pdk.Layer(
+            "ScatterplotLayer", id="b2b-sitio", data=marca,
+            get_position="pos", get_radius=55,
+            get_fill_color=[183, 196, 137, 240],
+            stroked=True, get_line_color=RGB_CREMA + [255],
+            line_width_min_pixels=2, radius_min_pixels=6, radius_max_pixels=13))
+        capas.append(pdk.Layer(
+            "TextLayer", id="b2b-sitio-txt", data=marca, get_position="pos",
+            get_text="etiqueta", get_size=13, get_color=RGB_CREMA + [245],
+            get_alignment_baseline="'bottom'", get_pixel_offset=[0, -18]))
+        # acercar la cámara al sitio: de nada sirve marcarlo si queda fuera de
+        # cuadro en un municipio grande
+        vista = pdk.ViewState(longitude=sitio["lng"], latitude=sitio["lat"],
+                              zoom=14.6, pitch=vista.pitch, bearing=vista.bearing)
+
+    return pdk.Deck(layers=capas, initial_view_state=vista,
                     map_style=ESTILO_MAPA, tooltip=_tooltip())
 
 
@@ -3029,6 +3062,7 @@ def _txt_comp_cercano(m) -> str:
     return f"competencia más cercana a {int(m):,} m"
 
 
+@st.cache_data(show_spinner=False)
 def ubicacion_optima(suffix: str, giro: str) -> pd.DataFrame | None:
     """
     📍 MOTOR DE UBICACIÓN B2B: rejilla ~300 m sobre la ciudad; demanda =
@@ -3085,6 +3119,37 @@ def ubicacion_optima(suffix: str, giro: str) -> pd.DataFrame | None:
     else:
         top["comp_cercano_m"] = np.nan
     return top
+
+
+def clave_tabla_b2b(suffix: str) -> str:
+    return f"b2b_tabla_{suffix}"
+
+
+def sitio_b2b_elegido(suffix: str):
+    """Fila del top B2B que el usuario seleccionó en la tabla, o None.
+
+    Se lee del estado del propio st.dataframe, no de una copia guardada, para
+    que el mapa —que se dibuja ANTES que la tabla en el guion— ya conozca la
+    selección en el mismo rerun del clic. Si se leyera de una copia escrita
+    por la tabla, el mapa iría siempre un clic atrasado.
+    """
+    ev = st.session_state.get(clave_tabla_b2b(suffix))
+    giro = st.session_state.get(f"giro_{suffix}")
+    if not ev or not giro:
+        return None
+    try:
+        filas = ev["selection"]["rows"]
+    except (KeyError, TypeError):
+        return None
+    if not filas:
+        return None
+    top = ubicacion_optima(suffix, giro)
+    if top is None or top.empty or filas[0] >= len(top):
+        return None
+    fila = top.iloc[int(filas[0])]
+    return {"rank": int(filas[0]) + 1, "calle": str(fila["calle"]),
+            "lat": float(fila["lat"]), "lng": float(fila["lng"]),
+            "giro": str(giro)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -3697,6 +3762,8 @@ def tab_huecos(suffix: str = "azcapotzalco") -> None:
                                                      [float("nan")] * len(top)))]
             c1, c2 = st.columns([3, 2])
             with c1:
+                st.caption("Haz clic en una fila para ubicarla en el mapa de "
+                           "arriba.")
                 st.dataframe(
                     top[["calle", "demanda", "competidores", "porque",
                          "score"]].rename(
@@ -3706,9 +3773,18 @@ def tab_huecos(suffix: str = "azcapotzalco") -> None:
                                  "porque": "Por qué",
                                  "score": "Score de hueco"}),
                     hide_index=True, width="stretch",
+                    key=clave_tabla_b2b(suffix),
+                    on_select="rerun", selection_mode="single-row",
                     column_config={"Score de hueco":
                                    st.column_config.ProgressColumn(
                                        min_value=0, max_value=1)})
+                _sel = sitio_b2b_elegido(suffix)
+                if _sel:
+                    st.markdown(
+                        f"<div class='leyenda'>📍 <b>{_sel['calle']}</b> "
+                        f"(sitio {_sel['rank']}° para {_sel['giro']}) marcado "
+                        f"en el mapa · {_sel['lat']:.4f}, {_sel['lng']:.4f}"
+                        "</div>", unsafe_allow_html=True)
             with c2:
                 st.metric("Mejor ubicación", str(top["calle"].iloc[0])[:28],
                           f"{int(top['demanda'].iloc[0]):,} empleos cerca · "
@@ -4107,7 +4183,10 @@ def render_mapa(lienzo, fabricar, año_idx: float, reproducir: bool,
         return
     deck = fabricar(año_idx, (año_idx * 0.4) % 1.0)
     if not clic_activo:
-        lienzo.pydeck_chart(deck, width="stretch")
+        # con `key` explícita: cuando la clave cambia (p. ej. al elegir un
+        # sitio B2B), el componente se remonta y sí obedece el encuadre nuevo,
+        # en vez de conservar la cámara donde el usuario la había dejado
+        lienzo.pydeck_chart(deck, width="stretch", key=clave)
         return
     ev = lienzo.pydeck_chart(deck, width="stretch", on_select="rerun",
                              selection_mode="single-object", key=clave)
@@ -4620,8 +4699,10 @@ def main() -> None:
             return construir_deck_calles(vv, a, f, mostrar_estab,
                                          mostrar_flujos, suf)
 
+        _sitio = sitio_b2b_elegido(suf)
         render_mapa(lienzo, fabricar, año_idx, reproducir, 60,
-                    float(vv.shape[0] - 1), clic_activo, f"deck_calle_{suf}")
+                    float(vv.shape[0] - 1), clic_activo,
+                    f"deck_calle_{suf}_{_sitio['rank'] if _sitio else 0}")
 
         banda_c = banda_calles(rho, detonante, clic, suf)
         t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs(
