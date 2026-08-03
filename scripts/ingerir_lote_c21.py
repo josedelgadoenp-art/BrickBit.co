@@ -75,11 +75,16 @@ def sufijo(municipio):
 
 # C21 → nombre con el que el DENUE sí encuentra el municipio, para los casos
 # que ninguna regla automática puede resolver sin adivinar.
-# San Pedro Mixtepec existe DOS veces en Oaxaca (distritos 22 y 26) y el DENUE
-# los distingue por número; "Juquila" es el distrito 22 (la costa de Puerto
-# Escondido, que es donde está el inventario C21: lat 15.91, lng -97.09).
+# San Pedro Mixtepec: C21 le agrega el distrito ("Juquila"); el DENUE actual lo
+# lista a secas (verificado en la corrida real: la sugerencia del propio
+# archivo fue 'San Pedro Mixtepec', sin número de distrito).
 ALIAS_C21 = {
-    "san pedro mixtepec juquila": ["San Pedro Mixtepec Dto 22"],
+    "san pedro mixtepec juquila": ["San Pedro Mixtepec"],
+    # El municipio General Trías (Chihuahua) se llamó Santa Isabel hasta que se
+    # renombró en honor al general; INEGI ha usado ambos según el corte. La
+    # corrida real no encontró "General Trias" ni "Gral. Trias" en el DENUE
+    # estatal, así que se prueba también el nombre viejo — el que exista gana.
+    "general trias": ["General Trias", "Santa Isabel"],
 }
 
 
@@ -178,37 +183,46 @@ def csv_estado(ee):
     os.makedirs(CACHE, exist_ok=True)
     borrar(os.path.join(CACHE, f"denue_{ee}.csv"))   # sobras de versiones previas
     ruta_zip = os.path.join(CACHE, f"denue_{ee}_csv.zip")
-    if not (os.path.exists(ruta_zip) and os.path.getsize(ruta_zip) > 1_000_000):
-        for patron in PATRONES_URL:
-            url = patron.format(ee=ee)
-            try:
-                print(f"    Descargando DENUE estado {ee} … ({url})")
-                req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-                with urllib.request.urlopen(req, timeout=600) as r, open(ruta_zip, "wb") as f:
-                    while True:
-                        b = r.read(1 << 20)
-                        if not b:
-                            break
-                        f.write(b)
-                break
-            except OSError as e:
-                if getattr(e, "errno", None) == errno.ENOSPC:
-                    borrar(ruta_zip)          # el parcial no sirve y estorba
-                    raise
-                print(f"      no respondió: {e}")
-            except Exception as e:
-                print(f"      no respondió: {e}")
-        else:
-            return None
-    try:                                        # solo validar que sirva
-        with zipfile.ZipFile(ruta_zip) as z:
-            if not any(n.lower().endswith(".csv") for n in z.namelist()):
-                print(f"      el ZIP del estado {ee} no trae ningún CSV")
+    # Hasta 2 vueltas completas: si la descarga llega cortada (pasa con los
+    # estados grandes en conexiones flojas), se borra y se intenta UNA vez más
+    # en la misma corrida en vez de rendirse en silencio.
+    for vuelta in range(2):
+        if not (os.path.exists(ruta_zip) and os.path.getsize(ruta_zip) > 1_000_000):
+            for patron in PATRONES_URL:
+                url = patron.format(ee=ee)
+                try:
+                    print(f"    Descargando DENUE estado {ee} … ({url})")
+                    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+                    with urllib.request.urlopen(req, timeout=600) as r, open(ruta_zip, "wb") as f:
+                        while True:
+                            b = r.read(1 << 20)
+                            if not b:
+                                break
+                            f.write(b)
+                    break
+                except OSError as e:
+                    if getattr(e, "errno", None) == errno.ENOSPC:
+                        borrar(ruta_zip)          # el parcial no sirve y estorba
+                        raise
+                    print(f"      no respondió: {e}")
+                except Exception as e:
+                    print(f"      no respondió: {e}")
+            else:
                 return None
-        return ruta_zip
-    except zipfile.BadZipFile:
-        borrar(ruta_zip)                        # descarga cortada: que se repita
-        return None
+        try:                                        # solo validar que sirva
+            with zipfile.ZipFile(ruta_zip) as z:
+                if not any(n.lower().endswith(".csv") for n in z.namelist()):
+                    print(f"      el ZIP del estado {ee} no trae ningún CSV")
+                    return None
+            return ruta_zip
+        except zipfile.BadZipFile:
+            borrar(ruta_zip)
+            if vuelta == 0:
+                print(f"      la descarga del estado {ee} llegó corrupta o "
+                      "incompleta; reintentando…")
+    print(f"      la descarga del estado {ee} volvió a llegar corrupta. "
+          "Reintenta la corrida más tarde (suele ser la conexión).")
+    return None
 
 
 def main():
