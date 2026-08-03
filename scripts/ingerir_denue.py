@@ -30,6 +30,7 @@ import gzip
 import io
 import json
 import os
+import re
 import sys
 import unicodedata
 import urllib.request
@@ -147,6 +148,53 @@ def descargar_denue(estado: str) -> pd.DataFrame:
     sys.exit(1)
 
 
+def _solo_letras(s: str) -> str:
+    """SIN_ACENTOS y sin puntuación: 'Othón P. Blanco' → 'OTHON P BLANCO'."""
+    return " ".join(re.sub(r"[^A-Z0-9]+", " ", sin_acentos(s)).split())
+
+
+def resolver_municipio(serie, pedido: str):
+    """Nombre oficial del DENUE que corresponde a `pedido`, o None.
+
+    Century 21 escribe los municipios como los conoce el mercado y el INEGI
+    como los conoce la ley: "Othon P Blanco" vs "Othón P. Blanco", "Silao" vs
+    "Silao de la Victoria", "Manzanilla De La Paz" vs "La Manzanilla de la
+    Paz". La cascada resuelve esos casos SIN adivinar: cada regla exige que
+    quede EXACTAMENTE UN candidato; si quedan dos o más, se rinde y los lista
+    en vez de escoger uno. Siempre imprime con qué regla resolvió, para que el
+    nombre elegido se pueda auditar.
+    """
+    import difflib
+    nombres = sorted({str(x) for x in serie.dropna().unique()})
+    p_exacto, p_letras = sin_acentos(pedido), _solo_letras(pedido)
+    p_tokens = frozenset(p_letras.split())
+
+    reglas = (
+        ("nombre exacto", lambda n: sin_acentos(n) == p_exacto),
+        ("sin puntuación", lambda n: _solo_letras(n) == p_letras),
+        ("mismas palabras en otro orden",
+         lambda n: frozenset(_solo_letras(n).split()) == p_tokens),
+        ("nombre oficial más largo",
+         lambda n: _solo_letras(n).startswith(p_letras + " ")
+         or _solo_letras(n).endswith(" " + p_letras)),
+    )
+    for etiqueta, prueba in reglas:
+        cand = [n for n in nombres if prueba(n)]
+        if len(cand) == 1:
+            if etiqueta != "nombre exacto":
+                print(f"   ({etiqueta}: '{pedido}' → '{cand[0]}')")
+            return cand[0]
+        if len(cand) > 1:
+            print(f"✗ '{pedido}' empata con varios municipios por {etiqueta}: "
+                  f"{cand}. No se elige ninguno.")
+            return None
+
+    parecidos = difflib.get_close_matches(pedido, nombres, n=8, cutoff=0.6)
+    print(f"✗ '{pedido}' no existe en el DENUE de este estado.")
+    print(f"  ¿Quisiste alguno de estos? {parecidos or 'ninguno parecido'}")
+    return None
+
+
 def procesar(df: pd.DataFrame, municipio: str, salida_dir: str,
              sufijo: str) -> None:
     """Filtra el municipio, sintetiza calles desde los puntos y escribe salidas."""
@@ -159,12 +207,13 @@ def procesar(df: pd.DataFrame, municipio: str, salida_dir: str,
         raise KeyError(f"columna no encontrada: {candidatas}")
 
     c_mun = col("municipio", "nom_mun")
-    mask = df[c_mun].map(sin_acentos) == sin_acentos(municipio)
-    d = df[mask].copy()
-    print(f"→ {len(d):,} establecimientos en {municipio}")
+    oficial = resolver_municipio(df[c_mun], municipio)
+    if oficial is None:
+        sys.exit(1)
+    d = df[df[c_mun].map(sin_acentos) == sin_acentos(oficial)].copy()
+    print(f"→ {len(d):,} establecimientos en {oficial}")
     if d.empty:
-        print("Municipios disponibles:",
-              sorted(df[c_mun].dropna().unique())[:30])
+        print(f"El municipio {oficial} existe en el DENUE pero no trae registros.")
         sys.exit(1)
 
     d["sector"] = d[col("codigo_act", "cod_actividad")].astype(str).str[:2] \

@@ -69,6 +69,22 @@ def sufijo(municipio):
     return norm(municipio).replace(" ", "_")
 
 
+def candidatos(municipio):
+    """Nombres con los que vale la pena buscar el municipio en el DENUE.
+
+    Century 21 nombra algunas plazas con el municipio Y la marca turística:
+    "Solidaridad / Riviera Maya" (el municipio es Solidaridad) y
+    "Cancún/Benito Juárez" (el municipio es Benito Juárez). Como la parte
+    oficial unas veces va antes y otras después de la diagonal, se prueban las
+    dos y el DENUE decide cuál existe. De paso esto evita el otro problema de
+    la diagonal: "calles_cancun/benito_juarez.json" no es una ruta válida.
+    """
+    if "/" not in municipio:
+        return [municipio]
+    partes = [p.strip() for p in municipio.split("/") if p.strip()]
+    return partes or [municipio.replace("/", " ").strip()]
+
+
 # Cloudflare (que es quien recibe las peticiones al Worker antes que el código)
 # responde 403 a los User-Agent obviamente automatizados, y el de Python lo es:
 # "Python-urllib/3.14". El navegador sí pasa, por eso el mapa carga el
@@ -199,18 +215,19 @@ def main():
         if "," not in nombre or (m.get("n") or 0) < args.min_inv:
             continue
         municipio, estado = [p.strip() for p in nombre.split(",", 1)]
-        suf = sufijo(municipio)
-        if suf in existentes:
+        cands = candidatos(municipio)
+        sufs = [sufijo(c) for c in cands]
+        if any(s in existentes for s in sufs):
             continue
         ee = clave_estado(estado)
         if not ee:
             print(f"  ? entidad no reconocida: {estado} ({nombre}) — se salta")
             continue
-        if any(o["suf"] == suf for o in objetivos):   # homónimos entre estados
+        if any(o["suf"] in sufs for o in objetivos):   # homónimos entre estados
             print(f"  ! homónimo detectado ({municipio}): se conserva el de más inventario")
             continue
-        objetivos.append({"municipio": municipio, "estado": estado,
-                          "ee": ee, "suf": suf, "n": m.get("n", 0)})
+        objetivos.append({"municipio": municipio, "estado": estado, "cands": cands,
+                          "ee": ee, "suf": sufs[0], "n": m.get("n", 0)})
 
     cupo = max(0, args.max - len(existentes))
     objetivos = objetivos[:cupo]
@@ -240,16 +257,25 @@ def main():
             continue
         for o in del_estado:
             print(f"  → {o['municipio']} ({o['n']} props C21)")
-            r = subprocess.run([sys.executable, ingeridor, "--estado", ee,
-                                "--municipio", o["municipio"], "--csv", csv],
-                               capture_output=True, text=True)
-            if r.returncode == 0 and os.path.exists(
-                    os.path.join(_DIR, "data", f"calles_{o['suf']}.json")):
-                ok.append(o["municipio"])
-            else:
+            logrado, ultimo = False, ""
+            for cand in o["cands"]:   # "Solidaridad / Riviera Maya" → prueba las dos
+                r = subprocess.run([sys.executable, ingeridor, "--estado", ee,
+                                    "--municipio", cand, "--csv", csv],
+                                   capture_output=True, text=True)
+                salida = (r.stdout or "") + (r.stderr or "")
+                for linea in salida.splitlines():
+                    if linea.startswith("   ("):    # regla con la que se resolvió
+                        print(f"  {linea.strip()}")
+                if r.returncode == 0 and os.path.exists(
+                        os.path.join(_DIR, "data", f"calles_{sufijo(cand)}.json")):
+                    ok.append(cand)
+                    logrado = True
+                    break
+                cola = salida.strip().splitlines()
+                ultimo = cola[-1] if cola else "sin detalle"
+            if not logrado:
                 fallidos.append(o["municipio"])
-                cola = (r.stderr or r.stdout or "").strip().splitlines()
-                print(f"    ✗ falló: {cola[-1] if cola else 'sin detalle'}")
+                print(f"    ✗ falló: {ultimo}")
 
     print("\n================= RESUMEN =================")
     print(f"  Ingeridos: {len(ok)}  ·  Fallidos: {len(fallidos)}")
