@@ -13,11 +13,12 @@ Corre EN TU MÁQUINA (INEGI bloquea IPs de nube; desde tu PC descarga bien):
 Qué hace:
   1) Pregunta al Worker de BrickBit qué municipios tienen inventario C21 vivo
      (registro _zonas + índice) y los ordena por número de propiedades.
-  2) Descarga el DENUE de cada ESTADO necesario UNA sola vez (caché en
-     denue_cache/ — los ZIP estatales pesan cientos de MB; sin caché, un lote
-     de 150 ciudades re-descargaría lo mismo decenas de veces).
+  2) Descarga el DENUE de cada ESTADO necesario UNA sola vez (a denue_cache/;
+     sin ese caché, un lote de 150 ciudades re-descargaría lo mismo decenas de
+     veces). El ZIP no se extrae —se lee por dentro— y se borra al terminar el
+     estado, así que el disco solo carga un estado a la vez.
   3) Corre scripts/ingerir_denue.py por cada municipio faltante (los que ya
-     tienen data/calles_*.json se saltan) usando el CSV cacheado.
+     tienen data/calles_*.json se saltan) leyendo ese ZIP.
   4) Resume: ingeridos, saltados y fallidos. Después: revisa `git status`,
      agrega los data/ nuevos, commit y push — Streamlit Cloud se actualiza solo.
 
@@ -31,9 +32,9 @@ import urllib.error, urllib.request
 _DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKEND = "https://brickbit-api.jose-delgado-enp.workers.dev"
 CACHE = os.path.join(_DIR, "denue_cache")
-# Piso de disco libre para no dejar descargas a medias: el CSV de un estado
-# grande y su ZIP conviven un momento durante la extraccion.
-MIN_LIBRE_GB = 3.0
+# Piso de disco libre. Como ya no se extrae nada, lo unico que baja es el ZIP
+# del estado (decenas de MB), asi que con 1 GB de holgura sobra.
+MIN_LIBRE_GB = 1.0
 PATRONES_URL = [
     "https://www.inegi.org.mx/contenidos/masiva/denue/denue_{ee}_csv.zip",
     "https://www.inegi.org.mx/contenidos/masiva/denue/denue_{ee}_shp_csv.zip",
@@ -142,17 +143,15 @@ def libre_gb():
 
 
 def csv_estado(ee):
-    """Descarga el DENUE del estado `ee` y devuelve la ruta del CSV extraído.
+    """Descarga el DENUE del estado `ee` y devuelve la ruta del ZIP.
 
-    El ZIP se borra en cuanto el CSV queda escrito: ya no sirve para nada y
-    entre los dos duplican el espacio ocupado. El CSV lo borra el llamador al
-    terminar con ese estado (ver main), así que el disco solo carga un estado
-    a la vez en vez de los 20 y pico del lote completo.
+    NO se extrae: ingerir_denue.py lee el CSV desde dentro del ZIP. Extraerlo
+    costaba más de un GB por estado grande, y duplicado mientras el ZIP seguía
+    ahí. Así el pico de disco es solo el ZIP —decenas de MB—, y el llamador lo
+    borra al terminar ese estado.
     """
     os.makedirs(CACHE, exist_ok=True)
-    ruta_csv = os.path.join(CACHE, f"denue_{ee}.csv")
-    if os.path.exists(ruta_csv) and os.path.getsize(ruta_csv) > 1_000_000:
-        return ruta_csv
+    borrar(os.path.join(CACHE, f"denue_{ee}.csv"))   # sobras de versiones previas
     ruta_zip = os.path.join(CACHE, f"denue_{ee}_csv.zip")
     if not (os.path.exists(ruta_zip) and os.path.getsize(ruta_zip) > 1_000_000):
         for patron in PATRONES_URL:
@@ -176,27 +175,15 @@ def csv_estado(ee):
                 print(f"      no respondió: {e}")
         else:
             return None
-    try:
+    try:                                        # solo validar que sirva
         with zipfile.ZipFile(ruta_zip) as z:
-            candidatos = [n for n in z.namelist() if n.lower().endswith(".csv")]
-            if not candidatos:
+            if not any(n.lower().endswith(".csv") for n in z.namelist()):
+                print(f"      el ZIP del estado {ee} no trae ningún CSV")
                 return None
-            mayor = max(candidatos, key=lambda n: z.getinfo(n).file_size)
-            with z.open(mayor) as src, open(ruta_csv, "wb") as dst:
-                while True:
-                    b = src.read(1 << 20)
-                    if not b:
-                        break
-                    dst.write(b)
-        borrar(ruta_zip)                       # extraído: el ZIP ya sobra
-        return ruta_csv
+        return ruta_zip
     except zipfile.BadZipFile:
-        borrar(ruta_zip)
+        borrar(ruta_zip)                        # descarga cortada: que se repita
         return None
-    except OSError as e:
-        if getattr(e, "errno", None) == errno.ENOSPC:
-            borrar(ruta_csv)
-        raise
 
 
 def main():
@@ -325,7 +312,7 @@ def main():
                 fallidos.append(o["municipio"])
                 print(f"    ✗ falló: {ultimo}")
         if not args.conservar_cache:
-            borrar(csv)      # este estado ya no se necesita; libera el disco
+            borrar(csv)      # el ZIP de este estado ya no se necesita
 
     print("\n================= RESUMEN =================")
     print(f"  Ingeridos: {len(ok)}  ·  Fallidos: {len(fallidos)}")
