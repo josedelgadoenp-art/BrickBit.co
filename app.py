@@ -3250,6 +3250,87 @@ def canarios_calle(suffix: str) -> pd.DataFrame | None:
                 "lng", "lat"]].reset_index(drop=True)
 
 
+@st.cache_data(show_spinner=False, ttl=3600, max_entries=8)
+def _listados_zona(slug: str) -> list:
+    """Inventario C21 vivo de una zona. Cualquier fallo devuelve [] en
+    silencio: esta capa nunca debe tumbar la app."""
+    try:
+        import requests
+        import urllib.parse
+        r = requests.get(URL_MERCADO_VIVO.split("?", 1)[0]
+                         + "?zona=" + urllib.parse.quote(slug), timeout=8)
+        r.raise_for_status()
+        d = r.json()
+        return d if isinstance(d, list) else []
+    except Exception:                                          # noqa: BLE001
+        return []
+
+
+@st.cache_data(show_spinner="Midiendo el gradiente de precio…", ttl=3600,
+               max_entries=8)
+def gradiente_hedonico(suffix: str, nombre_muni: str) -> dict | None:
+    """Cuánto cae el precio/m² por cada km de distancia al foco de empleo.
+
+    MEDIDO, no supuesto. Los catalizadores del simulador usan hoy una `fuerza`
+    y un `radio` que alguien eligió a mano; esto es la contraparte empírica:
+    se toma el inventario C21 vivo de la zona (precio y coordenadas reales),
+    se calcula la distancia de cada propiedad al ancla de empleo más cercana
+    del DENUE, y se ajusta log(precio/m²) = a + b·km por mínimos cuadrados.
+
+    Devuelve el gradiente en % por km con su R², el n y el intervalo del 90%
+    del coeficiente. Es CORRELACIONAL: mide cómo varían hoy los precios con la
+    distancia, no lo que pasaría si se construyera un ancla nueva. Con menos de
+    40 propiedades no devuelve nada, porque el ajuste no se sostendría.
+    """
+    props = _listados_zona(slugificar(nombre_muni))
+    if not props or len(props) < 40:
+        return None
+    filas = [p for p in props
+             if isinstance(p, dict) and p.get("operacion") == "venta"
+             and isinstance(p.get("pm2"), (int, float)) and 3000 < p["pm2"] < 200000
+             and isinstance(p.get("lat"), (int, float))
+             and isinstance(p.get("lng"), (int, float))]
+    if len(filas) < 40:
+        return None
+    anc = anclas_municipio(suffix)
+    if anc is None or anc.empty:
+        return None
+
+    lat = np.radians(np.array([f["lat"] for f in filas], dtype=float))
+    lng = np.radians(np.array([f["lng"] for f in filas], dtype=float))
+    ala = np.radians(anc["lat"].to_numpy(dtype=float))[None, :]
+    alo = np.radians(anc["lng"].to_numpy(dtype=float))[None, :]
+    h = (np.sin((ala - lat[:, None]) / 2) ** 2
+         + np.cos(lat[:, None]) * np.cos(ala) * np.sin((alo - lng[:, None]) / 2) ** 2)
+    km = (2 * 6371.0 * np.arcsin(np.sqrt(h))).min(axis=1)
+    y = np.log(np.array([f["pm2"] for f in filas], dtype=float))
+
+    # recorte de colas: un outlier de precio o una propiedad a 60 km del centro
+    # dominarían la pendiente de una muestra de unos cientos
+    ok = (km <= np.quantile(km, 0.97)) & (y >= np.quantile(y, 0.02)) \
+        & (y <= np.quantile(y, 0.98))
+    km, y = km[ok], y[ok]
+    n = int(len(km))
+    if n < 40 or km.std() < 0.2:
+        return None
+
+    b, a = np.polyfit(km, y, 1)
+    pred = a + b * km
+    ss_res = float(((y - pred) ** 2).sum())
+    ss_tot = float(((y - y.mean()) ** 2).sum())
+    r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0.0
+    # error estándar de la pendiente e intervalo del 90% (t≈1.645 con n grande)
+    se = float(np.sqrt(ss_res / max(n - 2, 1) / ((km - km.mean()) ** 2).sum()))
+    return {
+        "pct_km": float((np.exp(b) - 1) * 100),
+        "ic_bajo": float((np.exp(b - 1.645 * se) - 1) * 100),
+        "ic_alto": float((np.exp(b + 1.645 * se) - 1) * 100),
+        "r2": float(r2), "n": n,
+        "km_medio": float(km.mean()), "km_max": float(km.max()),
+        "pm2_en_ancla": float(np.exp(a)),
+    }
+
+
 @st.cache_data(show_spinner="Midiendo gentrificación temprana…", max_entries=8)
 def indice_gentrificacion(suffix: str) -> pd.DataFrame | None:
     """Índice compuesto de gentrificación TEMPRANA, por calle.
@@ -3778,6 +3859,50 @@ def impacto_anclas(suffix: str) -> pd.DataFrame | None:
         return pd.DataFrame()
     return pd.DataFrame(filas).sort_values("Multiplicador medido",
                                            ascending=False)
+
+
+def bloque_gradiente(suffix: str, nombre_muni: str) -> None:
+    """El precio contra la distancia al foco de empleo, MEDIDO en el mercado.
+
+    Es la contraparte empírica de los catalizadores del simulador, cuya fuerza
+    y radio son parámetros elegidos a mano. Aquí no hay perilla: la pendiente
+    sale del inventario C21 vivo de esta ciudad.
+    """
+    g = gradiente_hedonico(suffix, nombre_muni)
+    st.markdown("##### Gradiente de precio por distancia · medido en el mercado")
+    if not g:
+        st.info("Aún no hay inventario C21 suficiente en esta ciudad para "
+                "medir el gradiente (se necesitan 40+ propiedades en venta "
+                "con precio/m² y coordenadas). En cuanto el inventario diario "
+                "las acumule, aparece solo.")
+        return
+    signo = "menos" if g["pct_km"] < 0 else "más"
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Gradiente", f"{g['pct_km']:+.1f}% / km",
+              f"IC 90%: {g['ic_bajo']:+.1f}% a {g['ic_alto']:+.1f}%")
+    c2.metric("Ajuste (R²)", f"{g['r2']:.2f}",
+              f"{g['n']} propiedades")
+    c3.metric("Precio/m² junto al ancla", f"${g['pm2_en_ancla']:,.0f}",
+              f"alcance medido: {g['km_max']:.1f} km")
+    st.markdown(
+        f"<div class='leyenda'>En <b>{nombre_muni}</b>, cada kilómetro de "
+        f"distancia al foco de empleo más cercano se asocia con "
+        f"<b>{abs(g['pct_km']):.1f}% {signo}</b> de precio por m², sobre "
+        f"{g['n']} propiedades reales en venta del inventario Century 21. "
+        "Este número sustituye a la intuición: los catalizadores del simulador "
+        "usan una fuerza y un radio elegidos a mano; esto es lo que el mercado "
+        "de esta ciudad realmente hace.</div>", unsafe_allow_html=True)
+    if g["r2"] < 0.15:
+        st.warning(
+            f"El ajuste es débil (R² {g['r2']:.2f}): la distancia al empleo "
+            "explica poco del precio aquí. En ciudades policéntricas o "
+            "turísticas manda más la playa, la vista o la colonia que la "
+            "cercanía al trabajo. Tómalo como referencia floja, no como regla.",
+            icon="⚠️")
+    st.caption("Es CORRELACIONAL: mide cómo varían hoy los precios con la "
+               "distancia, no lo que pasaría si se construyera un ancla nueva. "
+               "No controla por antigüedad, superficie ni calidad del inmueble.")
+    st.markdown("---")
 
 
 def tab_impacto(suffix: str) -> None:
@@ -4876,6 +5001,7 @@ def main() -> None:
                            "apertura reciente: el inverso del sismógrafo — "
                            "alerta de declive.")
         with t3:
+            bloque_gradiente(suf, muni_nom)
             tab_impacto(suf)
         with t4:
             tab_huecos(suf)
