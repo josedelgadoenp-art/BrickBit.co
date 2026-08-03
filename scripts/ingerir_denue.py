@@ -122,6 +122,27 @@ def sismografo_altas(d: pd.DataFrame, salida_dir: str, sufijo: str) -> None:
           f"altas recientes · especies indicadoras detectadas)")
 
 
+# Únicas columnas que usa el pipeline (con sus nombres alternos entre años).
+# El DENUE trae ~40 por establecimiento; cargarlas todas es lo que hace
+# reventar por memoria a los estados grandes (Edomex: ~700 mil registros).
+COLUMNAS_UTILES = {
+    "municipio", "nom_mun", "codigo_act", "cod_actividad", "per_ocu",
+    "personal_ocupado", "tipo_vial", "nom_vial", "nombre_vialidad",
+    "latitud", "lat", "longitud", "lng", "lon", "nom_estab", "nombre",
+    "fecha_alta", "nombre_act", "nombre_actividad", "entidad",
+}
+
+
+def _leer_csv(abrir):
+    """Lee un CSV DENUE cargando SOLO las columnas útiles (~12 de ~40)."""
+    with abrir() as f:
+        encabezado = pd.read_csv(f, encoding="latin-1", nrows=0)
+    usar = [c for c in encabezado.columns if c.lower().strip() in COLUMNAS_UTILES]
+    with abrir() as f:
+        return pd.read_csv(f, encoding="latin-1", low_memory=False,
+                           usecols=usar or None)
+
+
 def leer_fuente(ruta: str) -> pd.DataFrame:
     """Lee el DENUE de un CSV suelto o DIRECTAMENTE de un ZIP, sin extraerlo.
 
@@ -131,15 +152,15 @@ def leer_fuente(ruta: str) -> pd.DataFrame:
     que el lote corra o no en una máquina con poco espacio.
     """
     if ruta.lower().endswith(".zip"):
-        with zipfile.ZipFile(ruta) as z:
-            # el ZIP del DENUE trae diccionario y metadatos además del dataset:
-            # el más grande es el conjunto de datos
-            csvs = [n for n in z.namelist() if n.lower().endswith(".csv")]
-            if not csvs:
-                print(f"✗ {ruta} no contiene ningún CSV."); sys.exit(1)
-            with z.open(max(csvs, key=lambda n: z.getinfo(n).file_size)) as f:
-                return pd.read_csv(f, encoding="latin-1", low_memory=False)
-    return pd.read_csv(ruta, encoding="latin-1", low_memory=False)
+        z = zipfile.ZipFile(ruta)
+        # el ZIP del DENUE trae diccionario y metadatos además del dataset:
+        # el más grande es el conjunto de datos
+        csvs = [n for n in z.namelist() if n.lower().endswith(".csv")]
+        if not csvs:
+            print(f"✗ {ruta} no contiene ningún CSV."); sys.exit(1)
+        mayor = max(csvs, key=lambda n: z.getinfo(n).file_size)
+        return _leer_csv(lambda: z.open(mayor))
+    return _leer_csv(lambda: open(ruta, "rb"))
 
 
 def descargar_denue(estado: str) -> pd.DataFrame:
@@ -168,9 +189,16 @@ def descargar_denue(estado: str) -> pd.DataFrame:
     sys.exit(1)
 
 
+# Abreviaturas que el INEGI usa en nombres de municipio ↔ su forma larga.
+# Se expanden en AMBOS lados de la comparación ("Gral. Trias" ↔ "General Trias").
+ABREV = {"GRAL": "GENERAL", "PTE": "PRESIDENTE", "DR": "DOCTOR", "STA": "SANTA"}
+
+
 def _solo_letras(s: str) -> str:
-    """SIN_ACENTOS y sin puntuación: 'Othón P. Blanco' → 'OTHON P BLANCO'."""
-    return " ".join(re.sub(r"[^A-Z0-9]+", " ", sin_acentos(s)).split())
+    """SIN_ACENTOS, sin puntuación y con abreviaturas expandidas:
+    'Gral. Trías' → 'GENERAL TRIAS'."""
+    palabras = re.sub(r"[^A-Z0-9]+", " ", sin_acentos(s)).split()
+    return " ".join(ABREV.get(p, p) for p in palabras)
 
 
 def resolver_municipio(serie, pedido: str):
