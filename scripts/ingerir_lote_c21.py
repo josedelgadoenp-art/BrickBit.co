@@ -21,7 +21,9 @@ Qué hace:
   4) Resume: ingeridos, saltados y fallidos. Después: revisa `git status`,
      agrega los data/ nuevos, commit y push — Streamlit Cloud se actualiza solo.
 
-Peso esperado: ~250 KB por ciudad (~40 MB por 150 ciudades nuevas).
+Peso esperado: ~1.15 MB por ciudad, medido sobre las 83 ya ingeridas (242 KB
+de calles + 665 KB de establecimientos + 247 KB del sismógrafo). Llegar a 200
+ciudades suma ~135 MB a data/, que pasa de 99 MB a ~235 MB.
 """
 import argparse, glob, io, json, os, re, subprocess, sys, unicodedata, urllib.request, zipfile
 
@@ -54,8 +56,16 @@ def norm(s):
 
 
 def sufijo(municipio):
-    """Réplica del sufijo de archivo que usa ingerir_denue.py."""
-    return re.sub(r"[^a-z0-9]+", "_", norm(municipio)).strip("_")
+    """Réplica EXACTA del sufijo que usa ingerir_denue.py para nombrar sus
+    archivos: sin acentos, minúsculas y solo los espacios pasan a "_".
+
+    Tiene que ser idéntica, no parecida. Si aquí se normalizara además la
+    puntuación, "Gral. Escobedo" daría "gral_escobedo" mientras el ingeridor
+    escribe "calles_gral._escobedo.json": el lote no reconocería el archivo
+    recién creado y reportaría como fallido un municipio que sí se ingirió
+    (y en la siguiente corrida lo volvería a descargar).
+    """
+    return norm(municipio).replace(" ", "_")
 
 
 def jget(url):
@@ -157,6 +167,10 @@ def main():
     objetivos = objetivos[:cupo]
     print(f"Plan: {len(objetivos)} municipios nuevos (cupo {cupo}, mínimo "
           f"{args.min_inv} propiedades C21).")
+    # Medido sobre las 83 ciudades ya ingeridas: 242 KB de calles + 665 KB de
+    # establecimientos + 247 KB del sismógrafo ≈ 1.15 MB por ciudad.
+    print(f"Peso estimado: ~{len(objetivos) * 1.15:.0f} MB nuevos en data/ "
+          f"(~1.15 MB por ciudad: calles + establecimientos + sismógrafo).")
     for o in objetivos[:15]:
         print(f"  · {o['municipio']}, {o['estado']} ({o['n']} props)")
     if len(objetivos) > 15:
