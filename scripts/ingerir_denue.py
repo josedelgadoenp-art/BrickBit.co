@@ -122,6 +122,26 @@ def sismografo_altas(d: pd.DataFrame, salida_dir: str, sufijo: str) -> None:
           f"altas recientes · especies indicadoras detectadas)")
 
 
+def leer_fuente(ruta: str) -> pd.DataFrame:
+    """Lee el DENUE de un CSV suelto o DIRECTAMENTE de un ZIP, sin extraerlo.
+
+    Extraer el CSV de un estado grande cuesta más de un GB en disco, y encima
+    duplicado mientras el ZIP sigue ahí. Leyendo el miembro dentro del ZIP el
+    pico de disco es solo el ZIP (decenas de MB), que es la diferencia entre
+    que el lote corra o no en una máquina con poco espacio.
+    """
+    if ruta.lower().endswith(".zip"):
+        with zipfile.ZipFile(ruta) as z:
+            # el ZIP del DENUE trae diccionario y metadatos además del dataset:
+            # el más grande es el conjunto de datos
+            csvs = [n for n in z.namelist() if n.lower().endswith(".csv")]
+            if not csvs:
+                print(f"✗ {ruta} no contiene ningún CSV."); sys.exit(1)
+            with z.open(max(csvs, key=lambda n: z.getinfo(n).file_size)) as f:
+                return pd.read_csv(f, encoding="latin-1", low_memory=False)
+    return pd.read_csv(ruta, encoding="latin-1", low_memory=False)
+
+
 def descargar_denue(estado: str) -> pd.DataFrame:
     """Intenta descargar el CSV masivo del DENUE para la entidad `estado`."""
     errores = []
@@ -356,7 +376,8 @@ def main() -> None:
                     help="clave INEGI de entidad (09 = CDMX)")
     ap.add_argument("--municipio", default="Azcapotzalco")
     ap.add_argument("--csv", default=None,
-                    help="ruta a un CSV DENUE ya descargado (omite descarga)")
+                    help="ruta a un CSV o ZIP del DENUE ya descargado (omite "
+                         "la descarga; el ZIP se lee sin extraer)")
     ap.add_argument("--csv-anterior", default=None,
                     help="CSV DENUE de un corte anterior → activa el "
                          "sismógrafo de gentrificación (altas/bajas)")
@@ -364,8 +385,7 @@ def main() -> None:
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data"))
     args = ap.parse_args()
 
-    df = pd.read_csv(args.csv, encoding="latin-1", low_memory=False) \
-        if args.csv else descargar_denue(args.estado)
+    df = leer_fuente(args.csv) if args.csv else descargar_denue(args.estado)
     sufijo = sin_acentos(args.municipio).lower().replace(" ", "_")
     procesar(df, args.municipio, args.salida, sufijo)
 
