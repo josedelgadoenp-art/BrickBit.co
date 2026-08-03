@@ -120,6 +120,16 @@ export default {
     if (url.pathname === '/api/buscar' && request.method === 'POST') {
       return handleBuscar(request, env);
     }
+    /* ---- Diagnóstico de la llave de IA. Protegido con INGEST_SECRET porque
+       revela la forma del secreto (nunca el secreto). Un 400 con cuerpo VACÍO
+       de la API no se puede diagnosticar a ciegas: esta ruta hace la llamada
+       más pequeña posible y devuelve exactamente qué contestó. ---- */
+    if (url.pathname === '/api/diag' && request.method === 'GET') {
+      if (!env.INGEST_SECRET || url.searchParams.get('key') !== env.INGEST_SECRET) {
+        return json({ error: 'no_autorizado' }, 403, headers);
+      }
+      return handleDiag(env, headers);
+    }
     if (url.pathname === '/api/listados-ingest' && request.method === 'POST') {
       return handleListadosIngest(request, env);
     }
@@ -886,6 +896,58 @@ async function askClaudeJSON(env, system, userText) {
   if (a >= 0 && b > a) txt = txt.slice(a, b + 1);
   return JSON.parse(txt);
 }
+/* --- Diagnóstico: aísla si el problema es la llave, el modelo o el payload --- */
+async function handleDiag(env, headers) {
+  const k = env.ANTHROPIC_API_KEY || '';
+  // Forma del secreto, NUNCA el secreto. Espacios o saltos de línea pegados por
+  // accidente son una causa clásica de peticiones malformadas.
+  const llave = {
+    presente: !!k,
+    longitud: k.length,
+    empieza_con: k.slice(0, 7),
+    termina_con: k.slice(-4),
+    tiene_espacios_alrededor: k !== k.trim(),
+    tiene_salto_de_linea: /[\r\n]/.test(k),
+    tiene_no_ascii: /[^\x20-\x7E]/.test(k),
+  };
+
+  const probar = async (etiqueta, cuerpo) => {
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': k.trim(),
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(cuerpo),
+      });
+      const texto = await r.text();
+      return {
+        prueba: etiqueta, status: r.status,
+        request_id: r.headers.get('request-id') || null,
+        cuerpo: texto ? texto.slice(0, 400) : '(vacío)',
+      };
+    } catch (e) {
+      return { prueba: etiqueta, error: String(e && e.message || e) };
+    }
+  };
+
+  const minima = { model: ANTHROPIC_MODEL, max_tokens: 16,
+                   messages: [{ role: 'user', content: 'ping' }] };
+  return json({
+    modelo_configurado: ANTHROPIC_MODEL,
+    llave,
+    kv_shares: !!env.SHARES,
+    pruebas: [
+      await probar('mínima', minima),
+      // Mismo cuerpo con un modelo distinto: si esta pasa y la de arriba no,
+      // el problema es el acceso a ese modelo, no la llave.
+      await probar('modelo alterno', { ...minima, model: 'claude-sonnet-4-5' }),
+    ],
+  }, 200, headers);
+}
+
 async function handleBuscar(request, env) {
   const headers = { 'access-control-allow-origin': '*', 'content-type': 'application/json' };
   let body; try { body = await request.json(); } catch { body = {}; }
