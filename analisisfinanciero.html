@@ -231,6 +231,54 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
 .link{background:none;border:none;font-family:inherit;font-size:11.5px;color:var(--faint);cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:0}
 .link:hover{color:var(--accent)}
 
+/* ============================================================
+   AGENDA · CALENDLY
+   Iframe directo en vez del widget.js de Calendly: mismo calendario,
+   sin cargar código de terceros en la página.
+   ============================================================ */
+.res-acc{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.res-acc .btn{padding:9px 18px;font-size:13.5px}
+.cal-box{position:relative;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+  background:var(--soft);min-height:680px}
+.cal-box iframe{position:relative;z-index:2;display:block;width:100%;height:680px;border:0;
+  background:#fff;opacity:0;transition:opacity .35s}
+.cal-box iframe.cargado{opacity:1}
+.cal-fallback{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;text-align:center;padding:24px}
+.cal-fallback p{font-size:13px;color:var(--muted);max-width:34ch}
+.cal-fallback .btn{width:auto}
+@media (max-width:760px){ .cal-box,.cal-box iframe{min-height:760px;height:760px} }
+
+/* ============================================================
+   IMPRESIÓN · el PDF que se lleva el cliente
+   ============================================================ */
+@media print{
+  @page{margin:14mm 12mm}
+  html,body{background:#fff !important}
+  body{font-size:11.5px}
+  *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+  .wrap{max-width:none;margin:0;padding:0;border-radius:0;box-shadow:none}
+  /* fuera lo que no es el análisis */
+  #intro,#wizard,#agenda,#admin,.res-acc,.foot .link,.top-note{display:none !important}
+  .res-bar{border-color:var(--line);background:#fff;margin-bottom:22px;padding:0 0 12px;border-width:0 0 1px}
+  .top{margin-bottom:26px;padding-top:0}
+  .print-firma{display:block !important}
+  /* nada se parte a la mitad */
+  .kpi,.verdict,.scen-card,.chart-box,.callout,.tax,.ns,.next-card,.est-nota,.assump,
+  .intro-strip,tr,li{break-inside:avoid;page-break-inside:avoid}
+  .sec{break-before:auto;margin-top:26px}
+  .sec-head{break-after:avoid;page-break-after:avoid}
+  h1,h2,h3{break-after:avoid;page-break-after:avoid}
+  .next-card{margin-top:26px}
+  .notes{margin-top:26px}
+  .cv{height:250px}
+  .cv-sm{height:165px}
+  a{text-decoration:none;color:inherit}
+}
+/* Más específico que .brand-txt span, que si no lo pinta en pantalla. */
+.brand-txt .print-firma{display:none;font-family:var(--mono);font-size:9px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--faint);margin-top:6px}
+
 #admin{display:none;margin-top:20px;border:1px solid var(--line);border-radius:var(--r);padding:22px 24px;background:var(--soft)}
 #adminLogin{margin-bottom:6px}
 #adminLogin .err-msg{margin-top:10px}
@@ -259,7 +307,8 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
   <header class="top">
     <a class="brand" href="/financial" aria-label="BrickBit Financial">
       <img class="logo" src="/assets/brickbit-financial.png" alt="BrickBit · Finance &amp; Strategy" width="207" height="80">
-      <span class="brand-txt"><b>Análisis financiero de retiro</b><span>Diagnóstico personal</span></span>
+      <span class="brand-txt"><b>Análisis financiero de retiro</b><span>Diagnóstico personal</span>
+        <span class="print-firma" id="printFirma"></span></span>
     </a>
     <div class="top-note">
       <span class="badge-gnp">Agente GNP</span><br>
@@ -444,7 +493,10 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
 
     <div class="res-bar">
       <p id="resBarTxt"></p>
-      <button class="btn-s" id="editBtn">Editar mis datos</button>
+      <div class="res-acc">
+        <button class="btn btn-a" id="pdfBtn"><span aria-hidden="true">↓</span> Descargar en PDF</button>
+        <button class="btn-s" id="editBtn">Editar mis datos</button>
+      </div>
     </div>
 
     <section>
@@ -610,6 +662,25 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
         <div class="ns"><span class="n">3</span><b>Recibes tu plan</b><span>Escenarios concretos y comparados. Sin costo y sin compromiso de contratación.</span></div>
       </div>
     </div>
+
+    <!-- ============ AGENDA ============ -->
+    <section class="sec" id="agenda">
+      <div class="sec-head">
+        <div class="eyebrow">Agenda</div>
+        <h2>O elige tú mismo el día y la hora</h2>
+        <p>Si prefieres no esperar la llamada, aparta aquí tu sesión de 30 minutos. Es la misma
+          asesoría gratuita: revisamos tu Afore, tu pensión real y tu capacidad de ahorro, y sales
+          con un plan claro, contrates o no.</p>
+      </div>
+      <div class="cal-box">
+        <div class="cal-fallback" id="calFallback">
+          <p>Si el calendario no carga, puedes abrirlo en una pestaña nueva.</p>
+          <a class="btn btn-a" id="calLink" href="#" target="_blank" rel="noopener">Abrir el calendario</a>
+        </div>
+        <iframe id="calFrame" title="Calendario para agendar tu asesoría gratuita"
+          loading="lazy" src="about:blank"></iframe>
+      </div>
+    </section>
 
     <div class="est-nota" style="margin-top:48px">
       <span aria-hidden="true">⚠️</span>
@@ -1054,6 +1125,7 @@ $('edadFin').addEventListener('input',function(){ $('edadFinV').textContent=this
    Si el envío falla, el registro NO se pierde en silencio: queda en una
    cola local y se reintenta en la siguiente visita, igual que en /financial. */
 var API='/api/diagnostico';
+var ultimoRegistro=null;
 var COLA='bb_diag_pendientes';
 
 function leerCola(){ try{ return JSON.parse(localStorage.getItem(COLA)||'[]'); }catch(e){ return []; } }
@@ -1105,6 +1177,7 @@ $('calcBtn').addEventListener('click',function(){
     ahorroFiscal:Math.round(R.ahorroFiscal), origen:'analisisfinanciero',
     ref:(document.referrer||'').slice(0,180)
   };
+  ultimoRegistro=registro;
   guardarRegistro(registro).catch(function(){
     /* El análisis se muestra igual: lo que falló fue el envío, no el cálculo.
        Se dice con todas sus letras en vez de prometer un contacto que no llegará. */
@@ -1115,6 +1188,9 @@ $('calcBtn').addEventListener('click',function(){
   });
 
   render(R,nom);
+  $('printFirma').textContent='Preparado para '+nom+' · '+
+    new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+  montarCalendario(nom);
   $('intro').classList.add('hide');
   $('wizard').classList.add('hide');
   $('results').classList.remove('hide');
@@ -1127,6 +1203,70 @@ $('editBtn').addEventListener('click',function(){
   $('wizard').classList.remove('hide');
   $('results').classList.add('hide');
   irA(1);
+});
+
+/* ===== AGENDA (Calendly) =====
+   El mismo calendario que ya usa /financial, pero embebido: se agenda sin
+   salir del análisis. Se carga hasta que hay resultados, para no pedirle a
+   Calendly nada mientras la persona apenas está contestando. */
+var CALENDLY='https://calendly.com/jose-delgado-enp/asesoria-financiera-personalizada';
+var calListo=false;
+
+function montarCalendario(nombre){
+  if(calListo) return;
+  calListo=true;
+  $('calLink').href=CALENDLY;
+  var q='?embed_domain='+encodeURIComponent(location.hostname)+
+        '&embed_type=Inline&hide_gdpr_banner=1'+
+        '&background_color=ffffff&text_color=231a13&primary_color=FF751F'+
+        (nombre?'&name='+encodeURIComponent(nombre):'');
+  var marco=$('calFrame');
+  /* El respaldo se ve mientras Calendly carga; el iframe aparece encima
+     solo cuando de verdad trajo algo. */
+  marco.addEventListener('load',function(){
+    if(String(marco.src).indexOf('calendly.com')>=0) marco.classList.add('cargado');
+  });
+  marco.src=CALENDLY+q;
+}
+/* Calendly avisa por postMessage cuando alguien agenda de verdad.
+   Ese registro vale más que el del formulario: es una cita en firme. */
+window.addEventListener('message',function(e){
+  if(String(e.origin).indexOf('calendly.com')<0) return;
+  var d=e.data;
+  if(!d||typeof d!=='object'||d.event!=='calendly.event_scheduled') return;
+  if(!ultimoRegistro) return;
+  var copia={}; for(var k in ultimoRegistro) copia[k]=ultimoRegistro[k];
+  copia.fecha=new Date().toISOString();
+  copia.origen='analisisfinanciero-calendly';
+  guardarRegistro(copia).catch(function(){});
+});
+
+/* ===== DESCARGAR EN PDF =====
+   Se usa la impresión del navegador: sale un PDF con texto seleccionable,
+   con las gráficas incluidas, y funciona igual en celular (Compartir →
+   Imprimir → Guardar como PDF). Sin librerías ni capturas borrosas. */
+function nombreArchivo(){
+  var quien=(ultimoRegistro&&ultimoRegistro.nombre?ultimoRegistro.nombre:'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z ]/g,'').trim();
+  var f=new Date().toISOString().slice(0,10);
+  return 'Analisis de retiro'+(quien?' - '+quien:'')+' - '+f;
+}
+function antesDeImprimir(){
+  /* Chart.js redimensiona con la ventana; al imprimir hay que fijarle un
+     tamaño o los lienzos salen aplastados. */
+  Object.keys(charts).forEach(function(k){ if(charts[k]) charts[k].resize(680,charts[k].height); });
+}
+function despuesDeImprimir(){
+  Object.keys(charts).forEach(function(k){ if(charts[k]) charts[k].resize(); });
+}
+window.addEventListener('beforeprint',antesDeImprimir);
+window.addEventListener('afterprint',despuesDeImprimir);
+
+$('pdfBtn').addEventListener('click',function(){
+  var titulo=document.title;
+  document.title=nombreArchivo();   /* el navegador nombra el PDF con el título */
+  window.print();
+  setTimeout(function(){ document.title=titulo; },800);
 });
 
 /* ===== PANEL PRIVADO =====
