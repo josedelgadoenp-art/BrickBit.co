@@ -263,7 +263,7 @@ body[data-screen="setup"] .net span,body[data-screen="play"] .net span{display:n
 .corredor.sel .lienzo::after{content:'';position:absolute;inset:0;
   background:radial-gradient(circle at 50% 100%,rgba(255,220,150,.5),transparent 65%)}
 
-.acciones{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.acciones{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .accion{display:flex;flex-direction:column;align-items:center;gap:5px;background:none;border:none;
   padding:0;cursor:pointer;font-family:var(--texto);font-size:9.5px;font-weight:800;line-height:1.2;
   color:#ffe6ee;text-align:center;text-shadow:0 1px 3px rgba(60,0,30,.9);transition:transform .2s}
@@ -594,6 +594,80 @@ body[data-screen="setup"] .net span,body[data-screen="play"] .net span{display:n
 .repaso .c{margin-top:6px;font-size:12.5px;font-weight:700;color:#8d6440}
 .repaso .c b{color:#7a2247}
 
+/* ============================================================
+   LABERINTO DEL AMOR
+   ============================================================ */
+.sendero{position:relative;display:flex;align-items:center;gap:9px;width:100%;padding:6px 12px 6px 6px;
+  border:none;cursor:pointer;border-radius:999px;font-family:var(--texto);color:#eafce6;
+  background:linear-gradient(180deg,rgba(120,200,140,.3),rgba(20,58,32,.6));
+  box-shadow:0 0 0 2px var(--oro-sombra),0 0 0 3.5px var(--oro),inset 0 2px 6px rgba(8,26,14,.55);
+  transition:transform .2s}
+.sendero:active{transform:scale(.985)}
+.sendero .emblema{width:40px;height:40px;flex:none;border-radius:50%;padding:2.5px;
+  background:var(--oro-borde);box-shadow:0 4px 10px rgba(10,26,14,.5)}
+.sendero .emblema svg{width:100%;height:100%;border-radius:50%;display:block}
+.sendero .losas{flex:1;min-width:0;display:flex;gap:3px;align-items:center}
+.sendero .losas i{flex:1;height:10px;border-radius:3px;background:rgba(255,255,255,.15);transition:.45s}
+.sendero .losas i.on{background:linear-gradient(180deg,#fdf3d8,#dfc287);
+  box-shadow:0 0 8px rgba(255,225,160,.75)}
+.sendero .losas i.aqui{height:15px;background:linear-gradient(180deg,#ffe1ea,#ff7fa8);
+  box-shadow:0 0 12px rgba(255,140,180,.95)}
+.sendero .marca{flex:none;font-family:var(--rotulo);font-weight:600;font-size:10.5px;letter-spacing:1.1px;
+  color:var(--oro-luz);text-shadow:0 1px 2px rgba(8,26,14,.8)}
+
+.telon.pleno{padding:11px}
+.hojaLab{position:relative;width:min(430px,100%);height:min(93vh,900px);display:flex;flex-direction:column;
+  border-radius:16px;overflow:hidden;background:#12301a;
+  box-shadow:0 0 0 2px var(--oro-sombra),0 0 0 4px var(--oro),0 24px 54px rgba(20,0,10,.75)}
+.hojaLab .estandarte{flex:none;clip-path:none;border-top:none;border-bottom:2px solid var(--oro);
+  padding:9px 18px 10px}
+.escenaLab{position:relative;flex:1;min-height:0;overflow:hidden;background:#1a3a20}
+.escenaLab svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.losaLab{fill:url(#labPiedra);transition:fill .5s}
+.losaLab.on{fill:url(#labPiedraOn)}
+.selloLab{opacity:0;transition:opacity .5s}
+.losaLab.on+.selloLab{opacity:.95}
+#labPareja{transition:transform 1.5s cubic-bezier(.34,1.05,.4,1)}
+.pieLab{flex:none;display:flex;flex-direction:column;gap:8px;
+  padding:10px 13px calc(12px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,rgba(12,32,18,.15),rgba(10,26,15,.94) 46%)}
+.pieLab .cifra{display:flex;align-items:center;justify-content:center;gap:9px;font-family:var(--gala);
+  font-size:clamp(13px,4.2vw,17px);color:var(--oro-luz);text-shadow:0 2px 0 rgba(6,22,12,.9)}
+.pieLab .cifra .ico{font-size:22px}
+.pieLab .cuento{margin:0;text-align:center;font-size:11.5px;font-weight:700;line-height:1.45;
+  color:rgba(228,252,228,.82)}
+.sellos{display:flex;flex-wrap:wrap;gap:4px;justify-content:center}
+.sellos b{font-family:var(--rotulo);font-weight:600;font-size:8.5px;letter-spacing:1px;padding:3px 8px;
+  border-radius:999px;color:#3a2410;background:linear-gradient(180deg,#fdf0c8,#e0c489);
+  box-shadow:0 0 0 1px rgba(90,60,10,.35)}
+.sellos b.f{background:linear-gradient(180deg,#f7e0ff,#c79ae0)}
+.sellos b.d{background:linear-gradient(180deg,#ffe1ea,#f3a2bd)}
+.btn.pulso{animation:pulsoLab 1.9s ease-in-out infinite}
+@keyframes pulsoLab{50%{box-shadow:0 0 0 2px var(--oro-sombra),0 0 0 4px var(--oro),
+  0 5px 0 rgba(70,6,32,.4),0 0 26px rgba(255,212,140,.8)}}
+
+/* ============================================================
+   LIBRO DE RESPUESTAS
+   ============================================================ */
+.pestanas{display:flex;gap:7px;margin-bottom:12px}
+.pestanas button{flex:1;padding:9px 6px;border:none;cursor:pointer;border-radius:9px;
+  font-family:var(--rotulo);font-weight:600;font-size:11px;letter-spacing:1.1px;color:#8d6440;
+  background:rgba(255,255,255,.45);box-shadow:inset 0 0 0 1px rgba(160,120,70,.35)}
+.pestanas button.on{color:#7a2247;background:linear-gradient(180deg,#fff4d8,#e7c98f);
+  box-shadow:0 0 0 1.5px var(--oro-medio),inset 0 1px 0 rgba(255,255,255,.8)}
+.repaso .v{font-family:var(--letra);font-size:clamp(24px,7vw,32px);line-height:1.14;color:#7a2247;
+  word-break:break-word;text-shadow:0 1px 0 rgba(255,255,255,.6)}
+.repaso .cuando{margin-top:5px;font-family:var(--rotulo);font-weight:600;font-size:8.5px;
+  letter-spacing:1.4px;color:#a8663a}
+
+/* En pantallas bajitas el pie del laberinto se encoge para que el paisaje respire. */
+@media(max-height:720px){
+  .pieLab{gap:6px;padding-top:8px}
+  .pieLab .cuento{display:none}
+  .sellos{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;padding-bottom:2px}
+  .sellos b{flex:none}
+  .hojaLab .estandarte{padding:7px 16px 8px}
+}
 @media(max-height:680px){
   .cabecera .medallon{width:56px;height:56px}
   .relojFila .reloj{width:44px;height:50px}
@@ -868,6 +942,26 @@ body[data-screen="setup"] .net span,body[data-screen="play"] .net span{display:n
   <circle cx="43" cy="28" r="4" fill="#e4548d"/><circle cx="51" cy="35" r="4" fill="#c47ad6"/>
   <circle cx="43" cy="42" r="4" fill="url(#gOro)"/><circle cx="35" cy="35" r="4" fill="#3fae7a"/>
 </symbol>
+
+<symbol id="i-laberinto" viewBox="0 0 64 64">
+  <rect x="3" y="3" width="58" height="58" rx="11" fill="#2f6234"/>
+  <path d="M11 58V21a9 9 0 0 1 9-9h24a9 9 0 0 1 9 9v37" fill="none" stroke="#6fbf6a" stroke-width="5"/>
+  <path d="M21 58V28a5 5 0 0 1 5-5h12a5 5 0 0 1 5 5v30" fill="none" stroke="#8fd08a" stroke-width="4.4"/>
+  <path d="M32 47c-6.4-5.6-8-8.8-5.4-11.4 2.6-2.6 5.4-1.4 5.4 1.3 0-2.7 2.8-3.9 5.4-1.3 2.6 2.6 1 5.8-5.4 11.4z" fill="url(#gRojo)"/>
+  <rect x="29" y="49" width="6" height="12" rx="2" fill="#efe2c2"/>
+</symbol>
+
+<symbol id="i-kiosco" viewBox="0 0 64 64">
+  <path d="M32 8 L54 30 L10 30Z" fill="#8b8fae"/>
+  <path d="M32 8 L54 30 L32 30Z" fill="#6f7591"/>
+  <circle cx="32" cy="7" r="3.4" fill="url(#gOro)"/>
+  <rect x="13" y="30" width="4.5" height="24" fill="#a8763f"/>
+  <rect x="24" y="30" width="4.5" height="24" fill="#a8763f"/>
+  <rect x="35.5" y="30" width="4.5" height="24" fill="#a8763f"/>
+  <rect x="46.5" y="30" width="4.5" height="24" fill="#a8763f"/>
+  <ellipse cx="32" cy="55" rx="26" ry="5" fill="#cbb894"/>
+  <circle cx="32" cy="42" r="7" fill="url(#gOro)"/>
+</symbol>
 </svg>
 
 <canvas id="fx"></canvas>
@@ -895,6 +989,12 @@ body[data-screen="setup"] .net span,body[data-screen="play"] .net span{display:n
       <span class="pista"><i id="afectoBar" style="width:0%"></i></span>
       <span class="txt">Corazón de Afecto</span>
     </div>
+
+    <button class="sendero" id="senderoBtn" aria-label="Abrir el laberinto del amor">
+      <span class="emblema"><svg viewBox="0 0 64 64"><use href="#i-laberinto"/></svg></span>
+      <span class="losas" id="senderoLosas"></span>
+      <span class="marca" id="senderoTxt">0/14</span>
+    </button>
 
     <div id="cardPick" class="panelJoya" style="display:flex;flex-direction:column;gap:11px">
       <div class="corredores">
@@ -933,8 +1033,10 @@ body[data-screen="setup"] .net span,body[data-screen="play"] .net span{display:n
     </div>
 
     <div class="acciones">
-      <button class="accion" id="accDemo"><span class="disco"><span><svg><use href="#i-mando"/></svg></span></span>Modo demo</button>
+      <button class="accion" id="accLab"><span class="disco"><span><svg><use href="#i-laberinto"/></svg></span></span>El laberinto</button>
+      <button class="accion" id="accLibro"><span class="disco"><span><svg><use href="#i-album"/></svg></span></span>Nuestras respuestas</button>
       <button class="accion" id="accReglas"><span class="disco"><span><svg><use href="#i-libro"/></svg></span></span>Cómo se juega</button>
+      <button class="accion" id="accDemo"><span class="disco"><span><svg><use href="#i-mando"/></svg></span></span>Modo demo</button>
       <button class="accion" id="accRetomar" disabled><span class="disco"><span><svg><use href="#i-sala"/></svg></span></span>Retomar sala</button>
       <button class="accion" id="accCopiar" disabled><span class="disco"><span><svg><use href="#i-copiar"/></svg></span></span>Compartir liga</button>
     </div>
@@ -1041,8 +1143,10 @@ body[data-screen="setup"] .net span,body[data-screen="play"] .net span{display:n
       <div class="placas" id="podium"></div>
     </div>
     <div class="pieResultado">
+      <button class="btn suave" id="verLab"><svg class="ico"><use href="#i-laberinto"/></svg> Avanzar en el laberinto</button>
       <button class="btn suave" id="verResumen"><svg class="ico"><use href="#i-libro"/></svg> Ver nuestras respuestas</button>
       <button class="btn oroBtn" id="siguiente"><svg class="ico"><use href="#i-siguiente"/></svg> Siguiente ronda</button>
+      <p class="nota" id="guardadoTxt" style="display:none"></p>
     </div>
   </div>
 </section>
@@ -1054,6 +1158,35 @@ body[data-screen="setup"] .net span,body[data-screen="play"] .net span{display:n
     <p class="sub" id="resumenSub">LO QUE ADIVINASTE</p>
     <div class="repaso" id="resumenLista"></div>
     <button class="btn suave cerrar" id="cerrarResumen">Cerrar</button>
+  </div>
+</div>
+
+<!-- ============================ LABERINTO ============================ -->
+<div class="telon pleno" id="telonLab">
+  <div class="hojaLab">
+    <div class="estandarte">EL LABERINTO DEL AMOR<small id="labVuelta">VUELTA 1</small></div>
+    <div class="escenaLab" id="escenaLab"></div>
+    <div class="pieLab">
+      <div class="cifra"><svg class="ico"><use href="#i-kiosco"/></svg><span id="labPasoTxt">Casilla 0 de 14</span></div>
+      <p class="cuento" id="labCuento">Cada ronda que terminan los acerca una casilla al kiosco.</p>
+      <div class="sellos" id="labSellos"></div>
+      <button class="btn suave cerrar" id="cerrarLab">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================ LIBRO ============================ -->
+<div class="telon" id="telonLibro">
+  <div class="hoja">
+    <h2>Nuestras respuestas</h2>
+    <p class="sub" id="libroSub">EL LIBRO DE LOS DOS</p>
+    <div class="pestanas">
+      <button id="tabJ">JOSÉ</button>
+      <button id="tabF">FER</button>
+    </div>
+    <div class="repaso" id="libroLista"></div>
+    <button class="btn suave" id="copiarLibro" style="margin-top:14px"><svg class="ico"><use href="#i-copiar"/></svg> Copiar todo</button>
+    <button class="btn suave cerrar" id="cerrarLibro">Cerrar</button>
   </div>
 </div>
 
@@ -1071,8 +1204,13 @@ body[data-screen="setup"] .net span,body[data-screen="play"] .net span{display:n
       <li>Tú decides si le atinó: <b>Sí</b> o <b>No era</b>. Cada “sí” avanza una casilla en el
           carril de tu pareja. Si falló, puedes anotarle <b>cuál era la respuesta</b>.</li>
       <li>Gana quien tenga más aciertos. Si empatan, <b>ganan los dos</b>.</li>
-      <li>Al final pueden ver <b>Nuestras respuestas</b>: qué escribiste, si le atinaste y la
-          respuesta verdadera.</li>
+      <li>Cada ronda que terminan los avanza <b>una casilla en el Laberinto del Amor</b>. Son
+          <b>14 casillas</b> desde donde empiezan hasta el kiosco del centro; el laberinto es de
+          los dos y no se borra entre partidas.</li>
+      <li>Todas las respuestas verdaderas se guardan solitas en <b>Nuestras respuestas</b>, el
+          botón del inicio: lo que sí le atinó el otro y lo que corregiste cuando falló.</li>
+      <li>Al terminar cada ronda también pueden ver <b>el repaso</b>: qué escribiste, si le
+          atinaste y la respuesta verdadera.</li>
     </ol>
     <button class="btn suave cerrar" id="cerrarReglas">Cerrar</button>
   </div>
@@ -1175,7 +1313,9 @@ const API='/api/sala', PREGUNTAS=10, SETUP_SEG=180, META_AFECTO=100, ESPERA_CALI
 const RITMO={lobby:2500,setup:2500,swap:1500,play:1100,result:2500};
 
 let ME='J',OTRO='F',HOST=false,CODE='',DEMO=false,sinServidor=false;
-let room={phase:'lobby',round:1,wins:{J:0,F:0},q:{J:[],F:[]},target:PREGUNTAS,result:null,rid:1,used:[],corazones:0};
+/* room.camino (el laberinto) se rellena al final, cuando ya existe leerCamino */
+let room={phase:'lobby',round:1,wins:{J:0,F:0},q:{J:[],F:[]},target:PREGUNTAS,result:null,rid:1,used:[],
+  corazones:0,camino:null};
 const nuevoJugador=rid=>({rid,ready:false,ans:[],calif:[],corr:[],hechas:0,done:false});
 const aciertosDe=a=>(a||[]).filter(v=>v===true).length;
 let mine=nuevoJugador(1);
@@ -1394,7 +1534,9 @@ $('crear').onclick=async()=>{
   if(!document.querySelector('.corredor.sel'))return;
   $('err').textContent='Abriendo la sala…';
   HOST=true;CODE=codigo();
-  room={phase:'lobby',round:1,wins:{J:0,F:0},q:{J:[],F:[]},target:PREGUNTAS,result:null,rid:1,used:[],corazones:0};
+  /* el laberinto no se reinicia: la sala nueva retoma el camino guardado */
+  room={phase:'lobby',round:1,wins:{J:0,F:0},q:{J:[],F:[]},target:PREGUNTAS,result:null,rid:1,used:[],
+    corazones:0,camino:leerCamino()};
   mine=nuevoJugador(1);
   try{
     const r=await fetch(API,{method:'POST',headers:{'content-type':'application/json'},
@@ -1514,6 +1656,7 @@ function resolver(){
   room.result={w,pJ:(ME==='J'?mio:suyo),pF:(ME==='F'?mio:suyo)};
   room.corazones=(room.corazones||0)+room.result.pJ+room.result.pF;
   if(w!=='tie') room.wins[w]=(room.wins[w]||0)+1;
+  avanzarCamino(w);            /* una casilla del laberinto por ronda terminada */
   room.phase='result';
   sync(true);aplicarRoom(room);
 }
@@ -1610,6 +1753,7 @@ $('listo').onclick=()=>marcarListo();
 function pintarEstado(){
   if(localPhase==='lobby'){
     pintarAfecto();
+    actualizarSendero();
     $('marcadorLobby').innerHTML=ico('#i-copa')+'JOSÉ '+(room.wins.J||0)+' — '+(room.wins.F||0)+' FER';
     if(opp.visto){ $('waitTxt').classList.remove('puntos');
       $('waitTxt').textContent='¡'+NAMES[OTRO]+' llegó! Arrancando…';
@@ -1805,8 +1949,366 @@ function abrirResult(){
   const btn=$('siguiente');
   btn.innerHTML=HOST?ico('#i-siguiente')+' Siguiente ronda':ico('#i-reloj')+' Esperando a '+NAMES[OTRO];
   btn.disabled=!HOST;
+
+  /* El laberinto avanzó y las respuestas verdaderas se guardan solas. */
+  guardarCamino(camino());
+  actualizarSendero();
+  $('verLab').classList.toggle('pulso',hayPendiente());
+  const guardadas=archivarRespuestas();
+  const aviso=$('guardadoTxt');
+  aviso.style.display=guardadas?'block':'none';
+  if(guardadas) aviso.textContent=guardadas===1
+    ? 'Se guardó 1 respuesta nueva en Nuestras respuestas.'
+    : 'Se guardaron '+guardadas+' respuestas nuevas en Nuestras respuestas.';
 }
 $('siguiente').onclick=()=>{if(HOST){resolviendo=false;nuevaRonda();}};
+
+/* ============================================================
+   EL LABERINTO DEL AMOR
+   Una casilla por ronda terminada. El camino es de los dos y
+   sobrevive a la sala: se guarda en el propio celular.
+   ============================================================ */
+const LAB_PASOS=14;
+const LLAVE_CAM='carrera:camino', LLAVE_LIB='carrera:libro', LLAVE_VIS='carrera:laberinto-visto';
+
+const totalPasos=c=>((c&&c.vuelta||1)-1)*LAB_PASOS+((c&&c.paso)||0);
+const caminoLimpio=c=>({
+  paso:Math.max(0,Math.min(LAB_PASOS,(c&&c.paso)|0)),
+  vuelta:Math.max(1,(c&&c.vuelta)|0),
+  sellos:Array.isArray(c&&c.sellos)?c.sellos.slice(-LAB_PASOS):[]
+});
+function leerCamino(){
+  try{ return caminoLimpio(JSON.parse(localStorage.getItem(LLAVE_CAM)||'null')); }
+  catch(e){ return caminoLimpio(null); }
+}
+function guardarCamino(c){
+  if(DEMO)return;                                  /* el demo no toca el camino de verdad */
+  try{ if(totalPasos(c)>=totalPasos(leerCamino())) localStorage.setItem(LLAVE_CAM,JSON.stringify(c)); }catch(e){}
+}
+function camino(){
+  room.camino=caminoLimpio(room.camino);
+  return room.camino;
+}
+function avanzarCamino(w){
+  const c=camino();
+  if(c.paso>=LAB_PASOS){c.vuelta++;c.paso=0;c.sellos=[];}   /* llegaron al kiosco: vuelta nueva */
+  c.paso++;c.sellos.push(w==='tie'?'D':w);
+  c.sellos=c.sellos.slice(-LAB_PASOS);
+  guardarCamino(c);
+}
+let vistoDemo=0;
+function pasoVisto(){
+  if(DEMO)return vistoDemo;
+  try{return +(localStorage.getItem(LLAVE_VIS)||0)||0;}catch(e){return 0;}
+}
+function marcarVisto(n){
+  if(DEMO){vistoDemo=n;return;}
+  try{localStorage.setItem(LLAVE_VIS,String(n));}catch(e){}
+}
+const hayPendiente=()=>totalPasos(camino())>pasoVisto();
+
+/* Perspectiva del sendero: las losas se juntan y encogen al alejarse. */
+function losaPunto(i){
+  const t=i/LAB_PASOS;
+  const k=t<0?-Math.pow(-t,.72):Math.pow(t,.72);
+  return {y:620-220*k, w:86-58*k};
+}
+/* Azar con semilla fija: el bosque se ve igual cada vez que se abre. */
+function azarLab(s){let x=s>>>0;return()=>((x=(x*1664525+1013904223)>>>0)/4294967296);}
+const n1=v=>(Math.round(v*10)/10);
+
+function pinoLab(x,y,h,col){
+  let s='<g>';
+  for(let k=0;k<3;k++){
+    const yb=y-h*.13*k, cima=yb-h*(.52+.18*k), w=h*.46*(1-.22*k);
+    s+='<path d="M'+n1(x)+' '+n1(cima)+' L'+n1(x+w)+' '+n1(yb)+' L'+n1(x-w)+' '+n1(yb)+'Z" fill="'+col+'"/>';
+  }
+  return s+'<rect x="'+n1(x-h*.045)+'" y="'+n1(y-h*.1)+'" width="'+n1(h*.09)+'" height="'+n1(h*.13)+
+    '" fill="#4a3421"/></g>';
+}
+function nubeLab(x,y,w){
+  return '<g><ellipse cx="'+x+'" cy="'+y+'" rx="'+w+'" ry="'+n1(w*.3)+'"/>'+
+    '<ellipse cx="'+n1(x-w*.38)+'" cy="'+n1(y+w*.11)+'" rx="'+n1(w*.5)+'" ry="'+n1(w*.22)+'"/>'+
+    '<ellipse cx="'+n1(x+w*.42)+'" cy="'+n1(y+w*.09)+'" rx="'+n1(w*.44)+'" ry="'+n1(w*.2)+'"/></g>';
+}
+function corazonSeto(x,y,s,col){
+  return '<path d="M'+x+' '+n1(y+s*.62)+' C'+n1(x-s*1.05)+' '+n1(y-s*.22)+' '+n1(x-s*.52)+' '+n1(y-s*.98)+
+    ' '+x+' '+n1(y-s*.3)+' C'+n1(x+s*.52)+' '+n1(y-s*.98)+' '+n1(x+s*1.05)+' '+n1(y-s*.22)+
+    ' '+x+' '+n1(y+s*.62)+'Z" fill="none" stroke="'+col+'" stroke-width="'+n1(s*.34)+
+    '" stroke-linejoin="round"/>';
+}
+function castilloLab(){
+  const claro='#e2e6f2', medio='#aab3ca', techo='#6f7c9e';
+  let s='<g><path d="M232 258 C256 222 288 214 316 219 C348 224 374 236 400 231 L400 258Z" fill="#6f9260"/>'+
+    '<rect x="272" y="182" width="94" height="76" fill="'+claro+'"/>'+
+    '<rect x="322" y="182" width="44" height="76" fill="'+medio+'" opacity=".5"/>'+
+    '<path d="M272 182 h94 v-7 h-8 v5 h-10 v-5 h-10 v5 h-10 v-5 h-10 v5 h-10 v-5 h-10 v5 h-10 v-5 h-8z" fill="'+claro+'"/>'+
+    '<path d="M304 258 v-30 a14 14 0 0 1 28 0 v30z" fill="#5c4a3a"/>';
+  [[258,166,25],[298,146,23],[342,158,24],[376,174,20]].forEach(([x,y,w])=>{
+    s+='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+(258-y)+'" fill="'+claro+'"/>'+
+      '<rect x="'+n1(x+w*.58)+'" y="'+y+'" width="'+n1(w*.42)+'" height="'+(258-y)+'" fill="'+medio+'" opacity=".45"/>'+
+      '<path d="M'+(x-5)+' '+y+' L'+n1(x+w/2)+' '+(y-28)+' L'+(x+w+5)+' '+y+'Z" fill="'+techo+'"/>'+
+      '<path d="M'+n1(x+w/2)+' '+(y-28)+' l0 -11 l10 4.5 l-10 4.5" fill="#c8484f"/>'+
+      '<rect x="'+n1(x+w*.3)+'" y="'+(y+16)+'" width="'+n1(w*.4)+'" height="9" rx="2.4" fill="#ffd98a"/>';
+  });
+  return s+'</g>';
+}
+function kioscoLab(){
+  return '<g><ellipse cx="200" cy="404" rx="35" ry="12" fill="#cdba96"/>'+
+    '<rect x="172" y="378" width="56" height="24" fill="#7f6a4a" opacity=".55"/>'+
+    '<rect x="174" y="374" width="4" height="30" fill="#a8763f"/>'+
+    '<rect x="190" y="374" width="4" height="30" fill="#a8763f"/>'+
+    '<rect x="206" y="374" width="4" height="30" fill="#a8763f"/>'+
+    '<rect x="222" y="374" width="4" height="30" fill="#a8763f"/>'+
+    '<path d="M200 340 L238 377 L162 377Z" fill="#9095b4"/>'+
+    '<path d="M200 340 L238 377 L200 377Z" fill="#767c9a"/>'+
+    '<circle cx="200" cy="337" r="4" fill="#e7c163"/>'+
+    '<circle cx="200" cy="389" r="24" fill="#ffd98a" opacity=".3"/>'+
+    '<circle cx="200" cy="389" r="8" fill="#fff0bd"/></g>';
+}
+function parejaLab(){
+  return '<g id="labPareja">'+
+    '<ellipse cx="0" cy="1" rx="15" ry="4" fill="#14320f" opacity=".32"/>'+
+    '<g transform="translate(-8,0)">'+
+      '<path d="M-6 0 L-6 -20 L6 -20 L6 0 L2 0 L2 -10 L-2 -10 L-2 0Z" fill="#3d4a6b"/>'+
+      '<path d="M-7.5 -19 C-9.5 -30 -8 -36.5 0 -36.5 C8 -36.5 9.5 -30 7.5 -19Z" fill="#6b4b3a"/>'+
+      '<circle cx="0" cy="-41.5" r="5.4" fill="#f0c49a"/>'+
+      '<path d="M-5.5 -43.5 C-4 -48.5 4 -48.5 5.5 -43.5 C4 -46.5 -4 -46.5 -5.5 -43.5Z" fill="#3a2a20"/>'+
+    '</g>'+
+    '<g transform="translate(8,0)">'+
+      '<path d="M-11 0 C-8.5 -14 -6 -22 0 -22 C6 -22 8.5 -14 11 0Z" fill="#f7e0e7"/>'+
+      '<path d="M-6 -21 C-6 -31 -5 -36.5 0 -36.5 C5 -36.5 6 -31 6 -21Z" fill="#f7e0e7"/>'+
+      '<circle cx="0" cy="-41.5" r="5.2" fill="#f3c9a4"/>'+
+      '<path d="M-5.8 -40 C-7 -48.5 7 -48.5 5.8 -40 C6.8 -34 5 -32 4.6 -38 C2 -35 -2 -35 -4.6 -38 '+
+        'C-5 -32 -6.8 -34 -5.8 -40Z" fill="#7a4526"/>'+
+    '</g>'+
+    '<path d="M-3 -21 C-1 -18 1 -18 3 -21" fill="none" stroke="#f0c49a" stroke-width="2.4" stroke-linecap="round"/>'+
+    '</g>';
+}
+/* Un corazoncito por casilla pisada, del color de quien ganó esa ronda. */
+const tintaSello={J:'#ff6a9c',F:'#b06cff',D:'#e7c163'};
+function selloLab(x,y,r,quien){
+  const c=tintaSello[quien]||'#e7c163';
+  return '<path class="selloLab" fill="'+c+'" d="M'+n1(x)+' '+n1(y+r*.55)+' C'+n1(x-r*1.3)+' '+n1(y-r*.45)+
+    ' '+n1(x-r*.62)+' '+n1(y-r*1.25)+' '+n1(x)+' '+n1(y-r*.42)+' C'+n1(x+r*.62)+' '+n1(y-r*1.25)+
+    ' '+n1(x+r*1.3)+' '+n1(y-r*.45)+' '+n1(x)+' '+n1(y+r*.55)+'Z"/>';
+}
+
+function escenaLabSVG(c,desde){
+  const R=azarLab(1402), flores=['#d3474f','#e58aa8','#fdf3f0','#9b6fc0','#f2b559'];
+  let s='<svg viewBox="0 0 400 640" preserveAspectRatio="xMidYMax slice" aria-hidden="true">'+
+   '<defs>'+
+    '<linearGradient id="labCielo" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0" stop-color="#e6b6c8"/><stop offset=".36" stop-color="#f3c7a6"/>'+
+      '<stop offset=".72" stop-color="#ffdfa4"/><stop offset="1" stop-color="#fff2cc"/></linearGradient>'+
+    '<radialGradient id="labSol"><stop offset="0" stop-color="#fffbe8"/>'+
+      '<stop offset=".5" stop-color="#ffe9a8" stop-opacity=".9"/>'+
+      '<stop offset="1" stop-color="#ffd98a" stop-opacity="0"/></radialGradient>'+
+    '<linearGradient id="labPrado" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0" stop-color="#8fb861"/><stop offset="1" stop-color="#6a944a"/></linearGradient>'+
+    '<linearGradient id="labPiedra" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0" stop-color="#fbf3e0"/><stop offset="1" stop-color="#d5c3a0"/></linearGradient>'+
+    '<linearGradient id="labPiedraOn" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0" stop-color="#fff8d8"/><stop offset="1" stop-color="#e9c884"/></linearGradient>'+
+    '<radialGradient id="labVelo"><stop offset=".52" stop-color="#000" stop-opacity="0"/>'+
+      '<stop offset="1" stop-color="#0d2610" stop-opacity=".55"/></radialGradient>'+
+   '</defs>';
+
+  /* cielo de atardecer */
+  s+='<rect width="400" height="300" fill="url(#labCielo)"/>'+
+     '<circle cx="196" cy="186" r="98" fill="url(#labSol)"/>'+
+     '<circle cx="196" cy="186" r="33" fill="#fffbe6" opacity=".95"/>'+
+     '<g fill="#ffd3c0" opacity=".5">'+nubeLab(74,106,48)+nubeLab(300,94,58)+nubeLab(348,142,38)+'</g>';
+  /* cerros */
+  s+='<path d="M0 230 C58 174 108 166 168 204 C214 234 246 188 300 194 C348 200 372 224 400 212 L400 300 L0 300Z" fill="#83a26c"/>';
+  s+=castilloLab();
+  s+='<path d="M0 256 C54 212 116 208 176 238 C238 268 296 230 400 248 L400 300 L0 300Z" fill="#6b8f5c"/>';
+  /* pradera */
+  s+='<rect y="252" width="400" height="388" fill="url(#labPrado)"/>';
+  /* arboleda del fondo */
+  for(let i=0;i<26;i++){
+    const x=6+i*15.5+R()*9, h=26+R()*20;
+    s+=pinoLab(x,276+R()*10,h,i%2?'#2f5c35':'#3a6c3c');
+  }
+  /* corazones de seto, como en la entrada del laberinto */
+  s+=corazonSeto(116,312,31,'#3f7a3f')+corazonSeto(284,312,31,'#3f7a3f');
+  /* anillos del laberinto */
+  const anillos=[[186,86],[152,69],[118,53],[86,39]];
+  anillos.forEach(([rx,ry],k)=>{
+    s+='<ellipse cx="200" cy="402" rx="'+rx+'" ry="'+ry+'" fill="none" stroke="#2f6234" stroke-width="14" '+
+       'stroke-dasharray="'+n1(rx*1.15)+' '+n1(rx*.2)+'" stroke-linecap="round"/>'+
+       '<ellipse cx="200" cy="'+(402-4)+'" rx="'+rx+'" ry="'+ry+'" fill="none" stroke="#57a054" stroke-width="6" '+
+       'stroke-dasharray="'+n1(rx*1.15)+' '+n1(rx*.2)+'" stroke-linecap="round" opacity=".85"/>';
+    for(let a=0;a<24;a++){
+      const th=R()*Math.PI*2, x=200+Math.cos(th)*rx, y=402+Math.sin(th)*ry;
+      s+='<circle cx="'+n1(x)+'" cy="'+n1(y)+'" r="'+n1(1.5+R()*1.7)+'" fill="'+flores[(a+k)%5]+'" opacity=".92"/>';
+    }
+  });
+  /* pinos del marco: crecen conforme se acercan */
+  for(let i=0;i<13;i++){
+    const t=i/12, y=292+t*t*352, h=30+t*t*118;
+    s+=pinoLab(-2+R()*30+(1-t)*24, y, h, i%2?'#2b5531':'#356237');
+    s+=pinoLab(402-R()*30-(1-t)*24, y+8, h*1.04, i%2?'#356237':'#2b5531');
+  }
+  s+=kioscoLab();
+  /* el sendero: una losa por casilla */
+  for(let i=0;i<LAB_PASOS;i++){
+    const a=losaPunto(i-.44), b=losaPunto(i+.44), on=i<=desde;
+    s+='<path id="losa-'+i+'" class="losaLab'+(on?' on':'')+'" d="M'+n1(200-a.w/2)+' '+n1(a.y)+
+       ' L'+n1(200+a.w/2)+' '+n1(a.y)+' L'+n1(200+b.w/2)+' '+n1(b.y)+' L'+n1(200-b.w/2)+' '+n1(b.y)+'Z"/>';
+    const q=c.sellos[i-1];
+    s+=i>0&&q ? selloLab(200,(a.y+b.y)/2+a.w*.02,Math.max(2.6,a.w*.085),q)
+              : '<path class="selloLab" d="M0 0"/>';
+  }
+  s+=parejaLab();
+  s+='<rect width="400" height="640" fill="url(#labVelo)"/>';
+  return s+'</svg>';
+}
+
+function moverPareja(p){
+  const g=document.getElementById('labPareja'); if(!g)return;
+  const pt=losaPunto(p);
+  g.style.transform='translate(200px,'+n1(pt.y)+'px) scale('+(pt.w/86*1.05).toFixed(3)+')';
+  for(let i=0;i<=Math.min(p,LAB_PASOS-1);i++){
+    const l=document.getElementById('losa-'+i); if(l) l.classList.add('on');
+  }
+}
+function pintarPieLab(c){
+  $('labVuelta').textContent='VUELTA '+(c.vuelta||1);
+  $('labPasoTxt').textContent=c.paso>=LAB_PASOS
+    ? 'Llegaron al kiosco'
+    : 'Casilla '+c.paso+' de '+LAB_PASOS;
+  $('labCuento').textContent=c.paso>=LAB_PASOS
+    ? 'Están en el centro del laberinto. La siguiente ronda empieza la vuelta '+((c.vuelta||1)+1)+'.'
+    : 'Faltan '+(LAB_PASOS-c.paso)+' casillas para el kiosco. Cada ronda que terminan vale una.';
+  $('labSellos').innerHTML=c.sellos.slice(-LAB_PASOS).map((q,i)=>
+    '<b class="'+(q==='F'?'f':q==='D'?'d':'')+'">'+(i+1)+' · '+
+    (q==='D'?'LOS DOS':NAMES[q]?NAMES[q].toUpperCase():'—')+'</b>').join('');
+}
+function abrirLaberinto(){
+  const c=camino(), total=totalPasos(c), previo=Math.min(pasoVisto(),total);
+  const desde=Math.max(0,c.paso-(total-previo));    /* de dónde arranca la caminata */
+  $('escenaLab').innerHTML=escenaLabSVG(c,desde);
+  moverPareja(desde);
+  pintarPieLab(c);
+  $('telonLab').classList.add('on');
+  if(desde!==c.paso){
+    setTimeout(()=>{
+      moverPareja(c.paso);sOk();
+      burst(innerWidth/2,innerHeight*.52,[...COLORS.J,...COLORS.F],54);
+      if(c.paso>=LAB_PASOS) setTimeout(()=>fuegos(6000),1200);
+    },620);
+  }
+  marcarVisto(total);
+  $('verLab').classList.remove('pulso');
+  actualizarSendero();
+}
+function actualizarSendero(){
+  const c=camino(), caja=$('senderoLosas');
+  if(caja.childElementCount!==LAB_PASOS){
+    caja.innerHTML=new Array(LAB_PASOS).fill('<i></i>').join('');
+  }
+  [...caja.children].forEach((el,i)=>{
+    el.className=(i<c.paso?'on':'')+(i===c.paso-1?' aqui':'');
+  });
+  $('senderoTxt').textContent=c.paso+'/'+LAB_PASOS+((c.vuelta||1)>1?' · V'+c.vuelta:'');
+}
+$('senderoBtn').onclick=abrirLaberinto;
+$('accLab').onclick=abrirLaberinto;
+$('verLab').onclick=abrirLaberinto;
+$('cerrarLab').onclick=()=>{$('telonLab').classList.remove('on');};
+$('telonLab').onclick=e=>{if(e.target===$('telonLab'))$('telonLab').classList.remove('on');};
+
+/* ============================================================
+   EL LIBRO: todas las respuestas verdaderas, ronda tras ronda
+   ============================================================ */
+function leerLibro(){
+  try{
+    const l=JSON.parse(localStorage.getItem(LLAVE_LIB)||'null');
+    if(l&&typeof l==='object') return {J:l.J||{},F:l.F||{}};
+  }catch(e){}
+  return {J:{},F:{}};
+}
+function anotarLibro(l,quien,qi,texto){
+  const t=String(texto==null?'':texto).trim();
+  if(!t||!BANK[qi])return 0;
+  const antes=l[quien][qi];
+  if(antes&&antes.r===t)return 0;
+  l[quien][qi]={r:t,t:Date.now()};
+  return 1;
+}
+/* Lo que sí le atinó el otro y lo que corregiste cuando falló: eso es la verdad. */
+function archivarRespuestas(){
+  if(DEMO)return 0;
+  const l=leerLibro();let n=0;
+  (room.q[ME]||[]).forEach((qi,i)=>{            /* preguntas sobre mí, las califiqué yo */
+    const v=(mine.calif||[])[i];
+    if(v===true) n+=anotarLibro(l,ME,qi,(opp.ans||[])[i]);
+    else if(v===false) n+=anotarLibro(l,ME,qi,(mine.corr||[])[i]);
+  });
+  (room.q[OTRO]||[]).forEach((qi,i)=>{          /* preguntas sobre mi pareja, las calificó él/ella */
+    const v=(opp.calif||[])[i];
+    if(v===true) n+=anotarLibro(l,OTRO,qi,(mine.ans||[])[i]);
+    else if(v===false) n+=anotarLibro(l,OTRO,qi,(opp.corr||[])[i]);
+  });
+  if(n){try{localStorage.setItem(LLAVE_LIB,JSON.stringify(l));}catch(e){return 0;}}
+  return n;
+}
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre',
+  'octubre','noviembre','diciembre'];
+function fechaLibro(t){
+  if(!t)return'';
+  const d=new Date(t);
+  return 'ANOTADO EL '+d.getDate()+' DE '+MESES[d.getMonth()]+' DE '+d.getFullYear();
+}
+const clavesLibro=datos=>Object.keys(datos||{}).map(Number)
+  .filter(n=>BANK[n]&&datos[n]&&datos[n].r).sort((a,b)=>a-b);
+let libroTab='J';
+function pintarLibro(){
+  const l=leerLibro();
+  ['J','F'].forEach(q=>{
+    const b=$('tab'+q);
+    b.classList.toggle('on',libroTab===q);
+    b.textContent=NAMES[q].toUpperCase()+' · '+clavesLibro(l[q]).length;
+  });
+  const datos=l[libroTab]||{},claves=clavesLibro(datos),cont=$('libroLista');
+  $('libroSub').textContent=claves.length+' DE '+BANK.length+' RESPUESTAS DE '+NAMES[libroTab].toUpperCase();
+  cont.innerHTML='';
+  if(!claves.length){
+    cont.innerHTML='<p class="nota" style="color:#7a2247">Todavía no hay nada escrito de '+
+      esc(NAMES[libroTab])+'. Cada ronda que terminen se guarda aquí solita.</p>';
+    return;
+  }
+  claves.forEach(qi=>{
+    const d=datos[qi],div=document.createElement('div');div.className='item';
+    div.innerHTML='<div class="p">'+esc(BANK[qi].b.replace('{X}',NAMES[libroTab]))+'</div>'+
+      '<div class="v">'+esc(d.r)+'</div>'+
+      '<div class="cuando">'+esc(fechaLibro(d.t))+'</div>';
+    cont.appendChild(div);
+  });
+}
+function textoLibro(){
+  const l=leerLibro();
+  return ['J','F'].map(q=>{
+    const datos=l[q]||{},claves=clavesLibro(datos);
+    if(!claves.length)return NAMES[q].toUpperCase()+'\n(todavía nada)';
+    return NAMES[q].toUpperCase()+'\n'+claves.map(qi=>
+      '· '+BANK[qi].b.replace('{X}',NAMES[q])+'\n  '+datos[qi].r).join('\n');
+  }).join('\n\n');
+}
+function abrirLibro(){pintarLibro();$('telonLibro').classList.add('on');}
+$('accLibro').onclick=abrirLibro;
+$('tabJ').onclick=()=>{libroTab='J';pintarLibro();};
+$('tabF').onclick=()=>{libroTab='F';pintarLibro();};
+$('copiarLibro').onclick=async()=>{
+  const b=$('copiarLibro');
+  try{await navigator.clipboard.writeText('NUESTRAS RESPUESTAS\n\n'+textoLibro());
+    b.innerHTML=ico('#i-si')+' ¡Copiado!';}
+  catch(e){b.innerHTML=ico('#i-no')+' No se pudo copiar';}
+  setTimeout(()=>{b.innerHTML=ico('#i-copiar')+' Copiar todo';},2200);
+};
+$('cerrarLibro').onclick=()=>{$('telonLibro').classList.remove('on');};
+$('telonLibro').onclick=e=>{if(e.target===$('telonLibro'))$('telonLibro').classList.remove('on');};
 
 /* ============================================================
    NUESTRAS RESPUESTAS (repaso de la ronda)
@@ -1834,6 +2336,8 @@ $('cerrarResumen').onclick=()=>{$('telonResumen').classList.remove('on');};
 $('telonResumen').onclick=e=>{if(e.target===$('telonResumen'))$('telonResumen').classList.remove('on');};
 
 pintarAfecto();
+room.camino=leerCamino();      /* el laberinto retoma donde quedó en este celular */
+actualizarSendero();
 setNet('ok','LISTO');
 </script>
 </body>
