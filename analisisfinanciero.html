@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="512x512" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>Análisis financiero de retiro · BrickBit Financial</title>
+<meta name="description" content="Calcula a qué edad puedes retirarte y cuánto necesitas ahorrar. Diagnóstico gratuito de BrickBit Financial, agente profesional en alianza con GNP.">
+<meta name="robots" content="index,follow">
+<meta property="og:title" content="¿A qué edad podrás retirarte? · BrickBit Financial">
+<meta property="og:description" content="Cuatro preguntas y obtienes una proyección de tu retiro: el capital que necesitas, la brecha que deja tu pensión y cuánto tendrías que ahorrar al mes.">
+<meta property="og:image" content="https://brickbit.co/og-image.png">
+<meta property="og:url" content="https://brickbit.co/financial/analisisfinanciero">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- Chart.js 4.5.0 servido desde el propio dominio: una gráfica no debe
+     depender de que un CDN ajeno esté de pie. Es el archivo oficial, sin tocar
+     (sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi). -->
+<script src="/assets/chart.umd.js" defer></script>
+<style>
+:root{
+  color-scheme: light;
+  /* Identidad BrickBit Financial · el naranja sale del propio logotipo (#FF751F) */
+  --ink:#231a13; --ink-2:#3d3128; --muted:#5a4d40; --faint:#8a7a6b;
+  --line:rgba(16,12,10,.11); --line-2:rgba(16,12,10,.06); --bg:#FFFFFF; --soft:#faf5ee;
+  --paper:#f5ede3;
+  --accent:#FF751F; --accent-dk:#B8480F; --accent-soft:#FDEEE3;
+  --slate:#a89482; --good:#1a7d50; --good-soft:#e6f2ea;
+  --warn:#9a6212; --warn-soft:#fbf1de; --danger:#a8341f; --danger-soft:#fbeae6;
+  /* Ámbar: en BrickBit marca siempre un dato estimado, nunca un hecho */
+  --est:#F5C277; --est-ink:#7a5410; --est-soft:#fdf3e0;
+  --serif:"Fraunces",Georgia,"Times New Roman",serif;
+  --sans:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"Space Mono",ui-monospace,"SFMono-Regular",monospace;
+  --r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+html,body{background:var(--paper)}
+body{
+  font-family:var(--sans);
+  color:var(--ink);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:900px;margin:0 auto;padding:0 24px 96px;background:var(--bg);
+  box-shadow:0 1px 2px rgba(36,28,23,.04),0 12px 40px rgba(36,28,23,.07)}
+@media(min-width:960px){.wrap{margin-top:26px;margin-bottom:40px;border-radius:18px;padding-top:2px}}
+
+.top{border-bottom:1px solid var(--line);padding:26px 0 22px;margin-bottom:44px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit}
+.brand .logo{height:38px;width:auto;display:block;flex:0 0 auto}
+.brand-txt{line-height:1.3;border-left:1px solid var(--line);padding-left:14px}
+.brand-txt b{display:block;font-family:var(--serif);font-size:15px;font-weight:500;letter-spacing:-.01em}
+.brand-txt span{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.top-note{font-size:12px;color:var(--faint);text-align:right;line-height:1.5}
+.badge-gnp{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent-dk);background:var(--accent-soft);border:1px solid rgba(255,117,31,.22);padding:6px 11px;border-radius:999px;white-space:nowrap;display:inline-block}
+
+h1{font-family:var(--serif);font-size:clamp(27px,5.2vw,36px);line-height:1.12;font-weight:500;letter-spacing:-.02em;margin-bottom:12px}
+h2{font-family:var(--serif);font-size:21px;font-weight:500;letter-spacing:-.012em;margin-bottom:6px}
+h3{font-size:14px;font-weight:700}
+.lead{font-size:16px;color:var(--muted);max-width:60ch}
+.eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--accent-dk);margin-bottom:10px}
+
+/* Marca de dato estimado. Regla de la casa: toda proyección va en ámbar. */
+.est{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--est-ink);background:var(--est-soft);
+  border:1px solid var(--est);border-radius:999px;padding:2px 7px;vertical-align:middle;white-space:nowrap}
+.est-nota{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--est);background:var(--est-soft);
+  border-radius:12px;padding:13px 16px;margin-top:26px;font-size:12.5px;color:#6b4a12;line-height:1.55}
+.est-nota b{color:var(--est-ink)}
+.sec{margin-top:56px}
+.sec-head{margin-bottom:20px}
+.sec-head p{color:var(--muted);font-size:14px;max-width:62ch}
+.hide{display:none !important}
+
+.intro-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:32px}
+.intro-strip div{background:var(--bg);padding:18px 20px}
+.intro-strip b{display:block;font-family:var(--serif);font-size:23px;font-weight:500;letter-spacing:-.015em;margin-bottom:3px}
+.intro-strip span{font-size:12.5px;color:var(--muted);line-height:1.4;display:block}
+
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--bg)}
+.steps{display:flex;gap:6px;margin-bottom:26px}
+.step-pip{flex:1;height:3px;border-radius:2px;background:var(--line);transition:background .3s}
+.step-pip.on{background:var(--accent)}
+.step-label{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+.panel{padding:30px 32px}
+.panel-sub{color:var(--muted);font-size:13.5px;margin-bottom:24px;max-width:60ch}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px 22px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:13px;font-weight:600;color:var(--ink-2)}
+.field .hint{font-size:11.5px;color:var(--faint);line-height:1.4}
+.inp{border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:15px;font-family:inherit;color:var(--ink);background:var(--bg);width:100%;transition:border-color .15s,box-shadow .15s}
+.inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.inp.err{border-color:var(--danger);box-shadow:0 0 0 3px var(--danger-soft)}
+.inp-lg{font-size:22px;font-weight:600;letter-spacing:-.02em;padding:14px 14px 14px 32px}
+.pre{position:relative}
+.pre .sym{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:15px;pointer-events:none}
+.pre .inp{padding-left:26px}
+.pre .inp-lg+.sym,.pre .sym.lg{font-size:20px;left:14px;color:var(--slate)}
+.suf{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:13px;pointer-events:none}
+
+.seg{display:flex;gap:8px}
+.seg button{flex:1;border:1px solid var(--line);background:var(--bg);border-radius:9px;padding:9px 10px;font-family:inherit;font-size:13.5px;color:var(--ink-2);cursor:pointer;transition:all .15s}
+.seg button:hover{border-color:var(--slate)}
+.seg button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dk);font-weight:600}
+
+.slider-row{display:flex;align-items:center;gap:14px}
+input[type=range]{flex:1;accent-color:var(--accent);height:4px}
+.slider-val{font-family:var(--mono);font-size:14px;font-weight:700;min-width:56px;text-align:right}
+
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:20px;padding:5px 13px;font-family:inherit;font-size:12.5px;color:var(--muted);cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--accent);color:var(--accent-dk)}
+
+.actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:28px;padding-top:22px;border-top:1px solid var(--line-2)}
+.btn{border:none;border-radius:9px;padding:11px 22px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:-.005em}
+.btn-p{background:var(--ink);color:#fff}.btn-p:hover{background:var(--ink-2)}
+.btn-a{background:var(--accent);color:#fff}.btn-a:hover{background:var(--accent-dk)}
+.btn-lg{padding:13px 26px;font-size:15px}
+.btn-g{background:none;color:var(--muted);padding-left:0}.btn-g:hover{color:var(--ink)}
+
+/* supuestos fijos */
+.assump{border:1px solid var(--line);border-radius:12px;background:var(--soft);padding:16px 18px;margin-top:26px}
+.assump .ah{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.assump .ah .lk{color:var(--slate);font-size:11px}
+.assump .ag{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.assump .ai b{display:block;font-size:16px;font-weight:700;letter-spacing:-.015em;color:var(--ink);font-variant-numeric:tabular-nums}
+.assump .ai span{display:block;font-size:11.5px;color:var(--muted);line-height:1.35;margin-top:1px}
+
+/* paso 4 · gate */
+.gate{border-color:rgba(255,117,31,.28);background:linear-gradient(180deg,#FEF6EF 0%,#FFF 55%)}
+.gate .ready{display:inline-flex;align-items:center;gap:8px;background:var(--good-soft);color:var(--good);border:1px solid rgba(26,125,80,.22);border-radius:20px;padding:5px 12px;font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:14px}
+.gate .ready .d{width:7px;height:7px;border-radius:50%;background:var(--good)}
+.perks{display:flex;gap:22px;flex-wrap:wrap;margin:20px 0 24px;padding-bottom:22px;border-bottom:1px solid var(--line-2)}
+.perk{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--ink-2);max-width:200px}
+.perk .ck{color:var(--accent);font-weight:700;flex:0 0 auto;line-height:1.5}
+.consent{display:flex;gap:10px;align-items:flex-start;margin-top:18px;font-size:12px;color:var(--muted);line-height:1.5}
+.consent input{margin-top:3px;accent-color:var(--accent);flex:0 0 auto;width:15px;height:15px}
+.err-msg{color:var(--danger);font-size:12px;margin-top:8px;display:none}
+.err-msg.show{display:block}
+.privacy{font-size:11.5px;color:var(--faint);margin-top:14px;display:flex;gap:7px;align-items:flex-start}
+
+/* resultados */
+.res-bar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:14px 18px;border:1px solid rgba(26,125,80,.22);background:var(--good-soft);border-radius:12px;margin-bottom:40px}
+.res-bar p{font-size:13px;color:#14503a}
+.res-bar b{font-weight:700}
+.btn-s{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 13px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink-2)}
+.btn-s:hover{border-color:var(--accent);color:var(--accent-dk)}
+
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.kpi{background:var(--bg);padding:20px}
+.kpi .k-lab{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:8px;line-height:1.4;min-height:28px}
+.kpi .k-val{font-size:25px;font-weight:700;letter-spacing:-.025em;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi .k-sub{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.35}
+.kpi.hl .k-val{color:var(--accent)}
+
+.verdict{border-radius:var(--r);padding:22px 24px;margin-top:24px;display:flex;gap:16px;align-items:flex-start;border:1px solid transparent}
+.verdict .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;margin-top:7px}
+.verdict h3{margin-bottom:4px;font-family:var(--serif);font-weight:600;font-size:17px}
+.verdict p{font-size:13.5px;line-height:1.55}
+.v-good{background:var(--good-soft);border-color:rgba(26,125,80,.22)}.v-good .dot{background:var(--good)}.v-good h3{color:var(--good)}.v-good p{color:#14503a}
+.v-warn{background:var(--warn-soft);border-color:rgba(154,98,18,.25)}.v-warn .dot{background:var(--warn)}.v-warn h3{color:var(--warn)}.v-warn p{color:#6d4510}
+.v-bad{background:var(--danger-soft);border-color:rgba(168,52,31,.22)}.v-bad .dot{background:var(--danger)}.v-bad h3{color:var(--danger)}.v-bad p{color:#722418}
+
+.scen{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.scen-card{border:1px solid var(--line);border-radius:var(--r);padding:22px 24px}
+.scen-card.gnp{border-color:rgba(255,117,31,.3);background:linear-gradient(180deg,#FEF7F1 0%,#FFF 55%)}
+.scen-tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:20px;margin-bottom:14px}
+.tag-m{background:var(--soft);color:var(--muted);border:1px solid var(--line)}
+.tag-g{background:var(--accent);color:#fff}
+.scen-card h3{font-family:var(--serif);font-weight:500;font-size:17px;margin-bottom:14px}
+.scen-big{font-size:31px;font-weight:700;letter-spacing:-.03em;line-height:1;margin-bottom:3px;font-variant-numeric:tabular-nums}
+.scen-card.gnp .scen-big{color:var(--accent-dk)}
+.scen-cap{font-size:12px;color:var(--muted);margin-bottom:18px}
+.scen-list{border-top:1px solid var(--line-2);padding-top:14px;display:flex;flex-direction:column;gap:9px}
+.scen-row{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;gap:12px}
+.scen-row span{color:var(--muted)}
+.scen-row b{font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+
+.chart-box{border:1px solid var(--line);border-radius:var(--r);padding:24px}
+.chart-h{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+.chart-h h3{font-family:var(--serif);font-weight:500;font-size:17px;margin-bottom:3px}
+.chart-h p{font-size:12.5px;color:var(--muted)}
+.legend{display:flex;gap:16px;flex-wrap:wrap}
+.lg{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);white-space:nowrap}
+.lg i{width:11px;height:11px;border-radius:3px;display:block}
+.cv{position:relative;height:300px}
+.cv-sm{position:relative;height:190px}
+
+.callout{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;padding:18px 22px;background:var(--soft)}
+.callout b{color:var(--accent-dk)}
+.callout p{font-size:13.5px;color:var(--ink-2);line-height:1.6}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);padding:0 12px 10px;border-bottom:1px solid var(--line)}
+th.r,td.r{text-align:right}
+td{padding:12px;border-bottom:1px solid var(--line-2);color:var(--ink-2)}
+td.r{font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:none}
+td.lab{font-weight:600;color:var(--ink)}
+tbody tr.on td{background:var(--accent-soft)}
+tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
+
+.tax{display:grid;grid-template-columns:1.15fr 1fr;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.tax-l{padding:24px}
+.tax-r{padding:24px;background:var(--soft);border-left:1px solid var(--line);display:flex;flex-direction:column;justify-content:center}
+.tax-r .k-lab{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.tax-r .big{font-size:28px;font-weight:700;letter-spacing:-.025em;color:var(--good);font-variant-numeric:tabular-nums}
+.tax-r .sub{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.45}
+
+.next-card{border:1px solid rgba(255,117,31,.28);border-radius:var(--r);padding:30px 32px;margin-top:56px;background:linear-gradient(180deg,#FEF6EF 0%,#FFF 60%)}
+.next-card h2{font-size:23px;letter-spacing:-.015em;margin-bottom:8px}
+.next-card p{color:var(--muted);font-size:14px;max-width:58ch}
+.next-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:24px}
+.ns{border:1px solid var(--line);background:var(--bg);border-radius:11px;padding:16px 18px}
+.ns b{display:block;font-size:13.5px;font-weight:700;margin-bottom:4px}
+.ns span{font-size:12px;color:var(--muted);line-height:1.45;display:block}
+.ns .n{display:inline-flex;width:21px;height:21px;border-radius:50%;background:var(--accent);color:#fff;font-family:var(--mono);font-size:11px;font-weight:700;align-items:center;justify-content:center;margin-bottom:10px}
+
+.notes{margin-top:56px;padding-top:24px;border-top:1px solid var(--line)}
+.notes h4{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:12px}
+.notes ol{padding-left:18px;display:flex;flex-direction:column;gap:7px}
+.notes li{font-size:11.5px;color:var(--faint);line-height:1.55}
+.foot{margin-top:28px;display:flex;justify-content:space-between;align-items:center;gap:16px;font-size:11.5px;color:var(--faint)}
+.link{background:none;border:none;font-family:inherit;font-size:11.5px;color:var(--faint);cursor:pointer;text-decoration:underline;text-underline-offset:2px;padding:0}
+.link:hover{color:var(--accent)}
+
+/* ============================================================
+   AGENDA · CALENDLY
+   Iframe directo en vez del widget.js de Calendly: mismo calendario,
+   sin cargar código de terceros en la página.
+   ============================================================ */
+.res-acc{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.res-acc .btn{padding:9px 18px;font-size:13.5px}
+.cal-box{position:relative;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+  background:var(--soft);min-height:680px}
+.cal-box iframe{position:relative;z-index:2;display:block;width:100%;height:680px;border:0;
+  background:#fff;opacity:0;transition:opacity .35s}
+.cal-box iframe.cargado{opacity:1}
+.cal-fallback{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;text-align:center;padding:24px}
+.cal-fallback p{font-size:13px;color:var(--muted);max-width:34ch}
+.cal-fallback .btn{width:auto}
+@media (max-width:760px){ .cal-box,.cal-box iframe{min-height:760px;height:760px} }
+
+/* ============================================================
+   IMPRESIÓN · el PDF que se lleva el cliente
+   ============================================================ */
+@media print{
+  @page{margin:14mm 12mm}
+  html,body{background:#fff !important}
+  body{font-size:11.5px}
+  *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+  .wrap{max-width:none;margin:0;padding:0;border-radius:0;box-shadow:none}
+  /* fuera lo que no es el análisis */
+  #intro,#wizard,#agenda,#admin,.res-acc,.foot .link,.top-note{display:none !important}
+  .res-bar{border-color:var(--line);background:#fff;margin-bottom:22px;padding:0 0 12px;border-width:0 0 1px}
+  .top{margin-bottom:26px;padding-top:0}
+  .print-firma{display:block !important}
+  /* nada se parte a la mitad */
+  .kpi,.verdict,.scen-card,.chart-box,.callout,.tax,.ns,.next-card,.est-nota,.assump,
+  .intro-strip,tr,li{break-inside:avoid;page-break-inside:avoid}
+  .sec{break-before:auto;margin-top:26px}
+  .sec-head{break-after:avoid;page-break-after:avoid}
+  h1,h2,h3{break-after:avoid;page-break-after:avoid}
+  .next-card{margin-top:26px}
+  .notes{margin-top:26px}
+  .cv{height:250px}
+  .cv-sm{height:165px}
+  a{text-decoration:none;color:inherit}
+}
+/* Más específico que .brand-txt span, que si no lo pinta en pantalla. */
+.brand-txt .print-firma{display:none;font-family:var(--mono);font-size:9px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--faint);margin-top:6px}
+
+#admin{display:none;margin-top:20px;border:1px solid var(--line);border-radius:var(--r);padding:22px 24px;background:var(--soft)}
+#adminLogin{margin-bottom:6px}
+#adminLogin .err-msg{margin-top:10px}
+#admin.show{display:block}
+#admin .ah2{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;flex-wrap:wrap}
+#admin table{font-size:12.5px;background:var(--bg);border-radius:9px;overflow:hidden}
+#admin td,#admin th{padding:9px 11px}
+
+@media (max-width:760px){
+  .wrap{padding:0 18px 72px}
+  h1{font-size:26px}
+  .top{align-items:flex-start;padding:20px 0 18px;margin-bottom:34px}
+  .top-note{text-align:left;font-size:11.5px}
+  .brand .logo{height:32px}
+  .brand-txt b{font-size:14px}
+  .grid2,.scen,.split,.intro-strip,.tax,.next-steps{grid-template-columns:1fr}
+  .assump .ag{grid-template-columns:1fr 1fr}
+  .kpis{grid-template-columns:1fr 1fr}
+  .panel{padding:24px 20px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <a class="brand" href="/financial" aria-label="BrickBit Financial">
+      <img class="logo" src="/assets/brickbit-financial.png" alt="BrickBit · Finance &amp; Strategy" width="207" height="80">
+      <span class="brand-txt"><b>Análisis financiero de retiro</b><span>Diagnóstico personal</span>
+        <span class="print-firma" id="printFirma"></span></span>
+    </a>
+    <div class="top-note">
+      <span class="badge-gnp">Agente GNP</span><br>
+      Cifras en pesos mexicanos · toma menos de 2 minutos
+    </div>
+  </header>
+
+  <section id="intro">
+    <div class="eyebrow">Planeación patrimonial</div>
+    <h1>¿A qué edad podrás retirarte<br>y cuánto necesitas ahorrar?</h1>
+    <p class="lead">Cuatro preguntas rápidas y obtienes una proyección de tu retiro: el capital que necesitarás, la brecha que deja tu pensión, y cuánto tendrías que ahorrar cada mes por tu cuenta frente a un plan de retiro estructurado.</p>
+    <div class="intro-strip">
+      <div><b>7 de cada 10</b><span>trabajadores no alcanzará una tasa de reemplazo suficiente solo con su Afore</span></div>
+      <div><b>65 años</b><span>edad legal de retiro bajo la Ley del Seguro Social de 1997</span></div>
+      <div><b>~25 años</b><span>de vida esperada después del retiro que hay que financiar</span></div>
+    </div>
+    <div class="est-nota">
+      <span aria-hidden="true">⚠️</span>
+      <span>Todo lo que verás son <b>proyecciones</b>, no cifras garantizadas. En BrickBit marcamos cada
+      número estimado con la etiqueta ámbar <span class="est">est.</span> para que nunca lo confundas con
+      un hecho. Los supuestos que usamos están abajo, a la vista, y la metodología completa al final.</span>
+    </div>
+  </section>
+
+  <!-- ============ WIZARD ============ -->
+  <section class="sec" id="wizard">
+    <div class="steps">
+      <div class="step-pip on" data-pip="1"></div>
+      <div class="step-pip" data-pip="2"></div>
+      <div class="step-pip" data-pip="3"></div>
+      <div class="step-pip" data-pip="4"></div>
+    </div>
+    <div class="card" id="wizCard">
+
+      <!-- STEP 1 -->
+      <div class="panel" data-panel="1">
+        <div class="step-label">Paso 1 de 4 · Tu situación actual</div>
+        <h2>Empecemos por lo básico</h2>
+        <p class="panel-sub">Ninguno de estos datos sale de tu navegador hasta que tú decidas compartirlos.</p>
+        <div class="grid2">
+          <div class="field">
+            <label for="edad">Edad actual</label>
+            <div class="pre"><input class="inp" id="edad" type="number" min="18" max="75" step="1" placeholder="35"><span class="suf">años</span></div>
+          </div>
+          <div class="field">
+            <label for="edadRet">Edad a la que quieres retirarte</label>
+            <div class="pre"><input class="inp" id="edadRet" type="number" min="45" max="80" step="1" placeholder="65"><span class="suf">años</span></div>
+          </div>
+          <div class="field">
+            <label for="ingreso">Ingreso mensual neto</label>
+            <div class="pre"><span class="sym">$</span><input class="inp" id="ingreso" type="number" min="0" step="1000" placeholder="45,000"></div>
+            <span class="hint">Lo que efectivamente recibes al mes, después de impuestos.</span>
+          </div>
+          <div class="field">
+            <label for="ahorro">Ahorro ya acumulado para tu retiro</label>
+            <div class="pre"><span class="sym">$</span><input class="inp" id="ahorro" type="number" min="0" step="10000" placeholder="0"></div>
+            <span class="hint">Afore voluntario, inversiones, fondos. Si aún no tienes, deja 0.</span>
+          </div>
+        </div>
+        <div class="actions">
+          <span style="font-size:12px;color:var(--faint)">Paso 1 de 4</span>
+          <button class="btn btn-p" data-next="2">Continuar</button>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="panel hide" data-panel="2">
+        <div class="step-label">Paso 2 de 4 · Tu pensión y tu meta</div>
+        <h2>¿Con qué cuentas ya?</h2>
+        <p class="panel-sub">Esto define la brecha real que tendrás que cubrir con ahorro propio.</p>
+        <div class="grid2">
+          <div class="field">
+            <label>¿Cotizas al IMSS o ISSSTE?</label>
+            <div class="seg" id="segImss">
+              <button type="button" data-v="1">Sí, cotizo</button>
+              <button type="button" data-v="0" class="on">No cotizo</button>
+            </div>
+            <span class="hint">Si eres independiente o empresario sin cotización, elige “No cotizo”.</span>
+          </div>
+          <div class="field" id="wrapAnios" style="opacity:.4;pointer-events:none">
+            <label for="anios">Años que llevas cotizando</label>
+            <div class="pre"><input class="inp" id="anios" type="number" min="0" max="50" step="1" placeholder="10"><span class="suf">años</span></div>
+            <span class="hint">Aproximado. Lo verás en tu estado de cuenta Afore.</span>
+          </div>
+        </div>
+        <div class="field" style="margin-top:20px">
+          <label for="reemplazo">¿Qué porcentaje de tu ingreso actual quieres conservar al retirarte?</label>
+          <div class="slider-row">
+            <input type="range" id="reemplazo" min="50" max="100" step="5" value="80">
+            <span class="slider-val" id="reemplazoV">80%</span>
+          </div>
+          <span class="hint">El estándar internacional de planeación está entre 70% y 80%, calculado sobre el poder adquisitivo de hoy.</span>
+        </div>
+        <div class="field" style="margin-top:20px">
+          <label for="edadFin">¿Hasta qué edad quieres tener ingreso garantizado?</label>
+          <div class="slider-row">
+            <input type="range" id="edadFin" min="80" max="100" step="1" value="90">
+            <span class="slider-val" id="edadFinV">90</span>
+          </div>
+          <span class="hint">La esperanza de vida a los 65 años en México supera los 82; planear a 90 evita quedarte corto.</span>
+        </div>
+        <div class="actions">
+          <button class="btn btn-g" data-next="1">← Atrás</button>
+          <button class="btn btn-p" data-next="3">Continuar</button>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="panel hide" data-panel="3">
+        <div class="step-label">Paso 3 de 4 · Tu ahorro de hoy</div>
+        <h2>¿Cuánto ahorras al mes actualmente?</h2>
+        <p class="panel-sub">Es el dato que nos dice qué tan lejos estás de tu meta. Si aún no ahorras de forma constante, deja 0 — no hay respuesta incorrecta.</p>
+        <div style="max-width:340px">
+          <div class="pre">
+            <span class="sym lg">$</span>
+            <input class="inp inp-lg" id="ahorroMes" type="number" min="0" step="500" placeholder="0">
+          </div>
+          <div class="chips" id="chips">
+            <button type="button" class="chip" data-v="0">Aún no ahorro</button>
+            <button type="button" class="chip" data-v="2000">$2,000</button>
+            <button type="button" class="chip" data-v="5000">$5,000</button>
+            <button type="button" class="chip" data-v="10000">$10,000</button>
+          </div>
+        </div>
+
+        <div class="assump">
+          <div class="ah"><span class="lk">🔒</span> Supuestos del análisis · criterios conservadores</div>
+          <div class="ag">
+            <div class="ai"><b>4.5%</b><span>Inflación anual de largo plazo</span></div>
+            <div class="ai"><b>4.0%</b><span>Rendimiento ahorrando por tu cuenta</span></div>
+            <div class="ai"><b>8.5%</b><span>Rendimiento del plan de retiro</span></div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-g" data-next="2">← Atrás</button>
+          <button class="btn btn-p" data-next="4">Continuar</button>
+        </div>
+      </div>
+
+      <!-- STEP 4 · GATE -->
+      <div class="panel hide" data-panel="4">
+        <div class="step-label">Paso 4 de 4 · Recibe tu diagnóstico</div>
+        <div class="ready"><span class="d"></span> Tu análisis está listo</div>
+        <h2>¿A dónde te enviamos tu diagnóstico?</h2>
+        <p class="panel-sub">Déjanos tus datos para ver tu análisis completo y para que un asesor de BrickBit Financial pueda acompañarte a convertirlo en un plan real, sin costo ni compromiso.</p>
+
+        <div class="perks">
+          <div class="perk"><span class="ck">✓</span><span>Tu diagnóstico completo enviado por WhatsApp</span></div>
+          <div class="perk"><span class="ck">✓</span><span>Revisión de tu Afore y tu pensión proyectada real</span></div>
+          <div class="perk"><span class="ck">✓</span><span>Escenarios a tu medida, totalmente gratis</span></div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label for="lNombre">Nombre completo</label>
+            <input class="inp" id="lNombre" type="text" placeholder="Tu nombre" autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="lTel">Número de teléfono</label>
+            <input class="inp" id="lTel" type="tel" placeholder="10 dígitos" autocomplete="tel" inputmode="numeric">
+          </div>
+        </div>
+
+        <label class="consent">
+          <input type="checkbox" id="lOk">
+          <span>Autorizo que José Delgado, asesor de BrickBit Financial, me contacte por teléfono o WhatsApp para agendar mi asesoría gratuita. Mis datos se tratan conforme al <a href="/aviso-de-privacidad" target="_blank" rel="noopener" style="color:var(--accent-dk);font-weight:600">Aviso de Privacidad</a> y no se comparten con terceros.</span>
+        </label>
+        <div class="err-msg" id="lErr"></div>
+        <div class="privacy"><span>🔒</span><span>Tus cálculos se ejecutan en tu propio navegador. Solo compartimos contigo el resultado.</span></div>
+
+        <div class="actions">
+          <button class="btn btn-g" data-next="3">← Atrás</button>
+          <button class="btn btn-a btn-lg" id="calcBtn">Ver mi diagnóstico →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS ============ -->
+  <div id="results" class="hide">
+
+    <div class="res-bar">
+      <p id="resBarTxt"></p>
+      <div class="res-acc">
+        <button class="btn btn-a" id="pdfBtn"><span aria-hidden="true">↓</span> Descargar en PDF</button>
+        <button class="btn-s" id="editBtn">Editar mis datos</button>
+      </div>
+    </div>
+
+    <section>
+      <div class="sec-head">
+        <div class="eyebrow">Resultados · proyección</div>
+        <h2 id="resTitle">Tu diagnóstico de retiro</h2>
+        <p id="resSub"></p>
+      </div>
+      <div class="kpis">
+        <div class="kpi">
+          <div class="k-lab">Años para tu retiro</div>
+          <div class="k-val" id="kAnios">—</div>
+          <div class="k-sub" id="kAniosSub"></div>
+        </div>
+        <div class="kpi">
+          <div class="k-lab">Ingreso mensual objetivo</div>
+          <div class="k-val" id="kIngreso">—</div>
+          <div class="k-sub" id="kIngresoSub"></div>
+        </div>
+        <div class="kpi">
+          <div class="k-lab">Brecha mensual a cubrir <span class="est">est.</span></div>
+          <div class="k-val" id="kBrecha">—</div>
+          <div class="k-sub" id="kBrechaSub"></div>
+        </div>
+        <div class="kpi hl">
+          <div class="k-lab">Capital que necesitas acumular <span class="est">est.</span></div>
+          <div class="k-val" id="kCapital">—</div>
+          <div class="k-sub" id="kCapitalSub"></div>
+        </div>
+      </div>
+      <div class="verdict" id="verdict"><div class="dot"></div><div><h3 id="vTitle"></h3><p id="vText"></p></div></div>
+    </section>
+
+    <!-- punto de partida -->
+    <section class="sec" id="startSec">
+      <div class="sec-head">
+        <div class="eyebrow">Tu punto de partida</div>
+        <h2 id="startTitle">Con lo que ya ahorras hoy</h2>
+        <p id="startSub"></p>
+      </div>
+      <div class="chart-box">
+        <div class="cv-sm"><canvas id="chart0"></canvas></div>
+      </div>
+      <div class="callout" style="margin-top:16px"><p id="startTxt"></p></div>
+    </section>
+
+    <!-- comparación -->
+    <section class="sec">
+      <div class="sec-head">
+        <div class="eyebrow">La comparación</div>
+        <h2>Ahorro por tu cuenta vs. plan de retiro estructurado</h2>
+        <p>Ambos escenarios llegan exactamente al mismo capital y en el mismo plazo. La única diferencia es cuánto tiene que salir de tu bolsillo cada mes.</p>
+      </div>
+      <div class="scen">
+        <div class="scen-card">
+          <span class="scen-tag tag-m">Escenario A</span>
+          <h3>Ahorrando por tu cuenta</h3>
+          <div class="scen-big" id="aMensual">—</div>
+          <div class="scen-cap">de aportación mensual requerida <span class="est">est.</span></div>
+          <div class="scen-list">
+            <div class="scen-row"><span>Rendimiento anual supuesto</span><b id="aTasa">—</b></div>
+            <div class="scen-row"><span>Total que aportarías de tu bolsillo</span><b id="aAportado">—</b></div>
+            <div class="scen-row"><span>Rendimientos generados</span><b id="aInteres">—</b></div>
+            <div class="scen-row"><span>Aportación como % de tu ingreso</span><b id="aPct">—</b></div>
+          </div>
+        </div>
+        <div class="scen-card gnp">
+          <span class="scen-tag tag-g">Escenario B · Plan de retiro GNP</span>
+          <h3>Con un plan de retiro estructurado</h3>
+          <div class="scen-big" id="bMensual">—</div>
+          <div class="scen-cap">de aportación mensual requerida <span class="est">est.</span></div>
+          <div class="scen-list">
+            <div class="scen-row"><span>Rendimiento anual supuesto</span><b id="bTasa">—</b></div>
+            <div class="scen-row"><span>Total que aportarías de tu bolsillo</span><b id="bAportado">—</b></div>
+            <div class="scen-row"><span>Rendimientos generados</span><b id="bInteres">—</b></div>
+            <div class="scen-row"><span>Aportación como % de tu ingreso</span><b id="bPct">—</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="callout" style="margin-top:16px"><p id="ahorroTxt"></p></div>
+    </section>
+
+    <section class="sec">
+      <div class="chart-box">
+        <div class="chart-h">
+          <div>
+            <h3>Cómo crece tu capital en cada escenario</h3>
+            <p>Aportando la misma cantidad mensual en ambos casos: <b id="chartAport">—</b></p>
+          </div>
+          <div class="legend">
+            <div class="lg"><i style="background:var(--slate)"></i>Ahorro por tu cuenta</div>
+            <div class="lg"><i style="background:var(--accent)"></i>Plan de retiro GNP</div>
+            <div class="lg"><i style="background:#231a13;height:3px;border-radius:1px"></i>Meta de capital</div>
+          </div>
+        </div>
+        <div class="cv"><canvas id="chart1"></canvas></div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <div class="eyebrow">El factor tiempo</div>
+        <h2>Cuánto tardarías en llegar a la misma meta</h2>
+        <p>Con la misma aportación mensual, el tiempo necesario para acumular tu capital objetivo cambia drásticamente según dónde esté trabajando tu dinero.</p>
+      </div>
+      <div class="chart-box"><div class="cv-sm"><canvas id="chart2"></canvas></div></div>
+      <div class="callout" style="margin-top:16px"><p id="tiempoTxt"></p></div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <div class="eyebrow">El costo de esperar</div>
+        <h2>Cada año que pasa encarece tu retiro</h2>
+        <p>Misma meta, mismo plan, misma edad de retiro. Lo único que cambia es cuándo empiezas.</p>
+      </div>
+      <div class="split">
+        <div class="chart-box"><div class="cv-sm"><canvas id="chart3"></canvas></div></div>
+        <div class="chart-box" style="display:flex;flex-direction:column;justify-content:center">
+          <table>
+            <thead><tr><th>Si empiezas…</th><th class="r">Aportación mensual</th><th class="r">Sobrecosto</th></tr></thead>
+            <tbody id="waitBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head">
+        <div class="eyebrow">Ventaja fiscal</div>
+        <h2>Lo que el SAT te devuelve por planear tu retiro</h2>
+        <p>Los planes personales de retiro son deducibles de tu ISR anual conforme a los artículos 151 y 185 de la Ley del Impuesto sobre la Renta.</p>
+      </div>
+      <div class="tax">
+        <div class="tax-l">
+          <table><tbody>
+            <tr><td class="lab">Aportación anual al plan</td><td class="r" id="txAport">—</td></tr>
+            <tr><td class="lab">Tope deducible aplicable</td><td class="r" id="txTope">—</td></tr>
+            <tr><td class="lab">Monto efectivamente deducible</td><td class="r" id="txDed">—</td></tr>
+            <tr><td class="lab">Tasa marginal de ISR <span class="est">est.</span></td><td class="r" id="txTasa">—</td></tr>
+          </tbody></table>
+        </div>
+        <div class="tax-r">
+          <div class="k-lab">Devolución anual <span class="est">est.</span></div>
+          <div class="big" id="txAhorro">—</div>
+          <div class="sub" id="txSub"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head"><div class="eyebrow">Detalle</div><h2>Resumen del análisis</h2></div>
+      <div class="chart-box"><table><tbody id="detBody"></tbody></table></div>
+    </section>
+
+    <!-- siguiente paso -->
+    <div class="next-card">
+      <div class="eyebrow">Siguiente paso</div>
+      <h2 id="nextTitle">Ya está en camino</h2>
+      <p>Este diagnóstico es una proyección general. Para convertirlo en un plan real —con productos, montos y coberturas concretas— José Delgado, agente profesional en alianza con GNP, te contactará al número que nos compartiste.</p>
+      <div class="next-steps">
+        <div class="ns"><span class="n">1</span><b>Te contactamos</b><span>Te escribimos por WhatsApp para agendar la sesión en el horario que te acomode.</span></div>
+        <div class="ns"><span class="n">2</span><b>Revisamos tu caso real</b><span>Tu Afore, tu pensión proyectada y tu capacidad real de ahorro, con números tuyos.</span></div>
+        <div class="ns"><span class="n">3</span><b>Recibes tu plan</b><span>Escenarios concretos y comparados. Sin costo y sin compromiso de contratación.</span></div>
+      </div>
+    </div>
+
+    <!-- ============ AGENDA ============ -->
+    <section class="sec" id="agenda">
+      <div class="sec-head">
+        <div class="eyebrow">Agenda</div>
+        <h2>O elige tú mismo el día y la hora</h2>
+        <p>Si prefieres no esperar la llamada, aparta aquí tu sesión de 30 minutos. Es la misma
+          asesoría gratuita: revisamos tu Afore, tu pensión real y tu capacidad de ahorro, y sales
+          con un plan claro, contrates o no.</p>
+      </div>
+      <div class="cal-box">
+        <div class="cal-fallback" id="calFallback">
+          <p>Si el calendario no carga, puedes abrirlo en una pestaña nueva.</p>
+          <a class="btn btn-a" id="calLink" href="#" target="_blank" rel="noopener">Abrir el calendario</a>
+        </div>
+        <iframe id="calFrame" title="Calendario para agendar tu asesoría gratuita"
+          loading="lazy" src="about:blank"></iframe>
+      </div>
+    </section>
+
+    <div class="est-nota" style="margin-top:48px">
+      <span aria-hidden="true">⚠️</span>
+      <span>Ninguna cifra de este documento está garantizada. Las que llevan la etiqueta
+      <span class="est">est.</span> dependen de supuestos de inflación, rendimiento y pensión que
+      explicamos abajo; si esos supuestos cambian, el resultado cambia. Este análisis
+      <b>no es una cotización ni una oferta</b>: es el punto de partida de una conversación.</span>
+    </div>
+
+    <div class="notes">
+      <h4>Metodología y notas importantes</h4>
+      <ol>
+        <li><b>Naturaleza del ejercicio.</b> Este diagnóstico es una herramienta educativa e ilustrativa. No constituye una cotización, una oferta contractual, asesoría fiscal ni recomendación de inversión. Los rendimientos son supuestos, no garantías: los rendimientos pasados no aseguran resultados futuros.</li>
+        <li><b>Supuestos fijos.</b> El análisis usa inflación de 4.5% anual, rendimiento de 4.0% para el ahorro por cuenta propia (cuenta de ahorro, pagarés o CETES ya descontado el ISR sobre intereses), 8.5% para el plan de retiro estructurado y 6.0% durante la fase de retiro, cuando el portafolio se vuelve más conservador. Son criterios prudentes de planeación, no cifras de un producto específico.</li>
+        <li><b>Capital objetivo.</b> Se calcula como el valor presente de una anualidad mensual equivalente a la brecha de ingreso, durante los años de retiro proyectados, descontada a la tasa real de la fase de desacumulación. Se expresa tanto en pesos de hoy como en pesos nominales a la fecha de retiro.</li>
+        <li><b>Pensión estimada.</b> La estimación bajo el régimen de cuentas individuales (Ley 1997, con la reforma de 2020) usa una tasa de reemplazo aproximada según el nivel de salario en UMA, la densidad de cotización proyectada y la edad de retiro. Es una aproximación gruesa y <b>no sustituye</b> la proyección oficial del IMSS o de tu Afore, que depende de tu historial real de cotización, comisiones y rendimientos de tu Siefore.</li>
+        <li><b>Aportaciones.</b> Se asume aportación mensual constante en términos nominales y capitalización mensual. No se descuentan comisiones, costos de administración, primas de cobertura ni cargos por retiro anticipado, que en un producto real sí aplican y reducen el resultado.</li>
+        <li><b>Estimación fiscal.</b> Aplica los topes del artículo 151 fracción V y del artículo 185 de la LISR con valores de UMA e ISR estimados. El beneficio real depende de tu régimen fiscal, tus demás deducciones personales y del ISR efectivamente causado. Consulta a tu contador.</li>
+      </ol>
+    </div>
+
+    <div class="foot">
+      <span><b>BrickBit Financial</b> · José Delgado, Asesor Profesional en Seguros en alianza con GNP ·
+        Herramienta ilustrativa, cifras en pesos mexicanos ·
+        <a href="/aviso-de-privacidad" style="color:var(--faint)">Aviso de Privacidad</a></span>
+      <a class="link" href="/financial">Ver el buscador de seguros &rarr;</a>
+    </div>
+    <!-- Panel privado. No se enlaza desde ningún lado: se abre con
+         /financial/analisisfinanciero#registros y exige la llave del servidor. -->
+    <div id="admin">
+      <div class="ah2">
+        <div><b style="font-size:14px">Registros capturados</b> <span id="adminCount" style="color:var(--faint);font-size:12.5px"></span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-s" id="recargarBtn">Recargar</button>
+          <button class="btn-s" id="expBtn">Descargar CSV</button>
+          <button class="btn-s" id="salirBtn">Cerrar sesión</button>
+        </div>
+      </div>
+      <div id="adminLogin">
+        <p style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Escribe la llave de administrador para ver los registros guardados en el servidor.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;max-width:420px">
+          <input class="inp" id="adminTok" type="password" placeholder="Llave de administrador" autocomplete="off" style="flex:1;min-width:200px">
+          <button class="btn btn-a" id="entrarBtn">Entrar</button>
+        </div>
+        <div class="err-msg" id="adminErr"></div>
+      </div>
+      <div id="adminTable"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===== SUPUESTOS FIJOS ===== */
+var LOCK = { rMan:0.040, rGnp:0.085, infl:0.045, rRet:0.060 };
+
+var UMA_DIARIA = 117.70, UMA_MENSUAL = UMA_DIARIA*30.4, TOPE_IMSS = 25*UMA_MENSUAL;
+var ISR = [[8952.49,.0192],[75984.55,.0640],[133536.07,.1088],[155229.80,.1600],[185852.57,.1792],
+           [374837.88,.2136],[590795.99,.2352],[1127926.84,.3000],[1503902.46,.3200],[4511707.37,.3400],[Infinity,.3500]];
+
+var fmt0 = new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
+function money(v){ return isFinite(v) ? fmt0.format(Math.round(v)) : '—'; }
+function moneyK(v){
+  if(!isFinite(v)) return '—';
+  if(Math.abs(v)>=1e6) return '$'+(v/1e6).toFixed(Math.abs(v)/1e6>=10?1:2)+' M';
+  if(Math.abs(v)>=1e3) return '$'+Math.round(v/1e3)+' k';
+  return money(v);
+}
+function pct(v,d){ return (v*100).toFixed(d===undefined?1:d).replace('.0','')+'%'; }
+function $(id){ return document.getElementById(id); }
+function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+/* ===== MOTOR FINANCIERO ===== */
+function fv(pv,a,rAnual,anios){
+  var i=rAnual/12, n=Math.round(anios*12);
+  if(n<=0) return pv;
+  var s = (i===0) ? a*n : a*((Math.pow(1+i,n)-1)/i);
+  return pv*Math.pow(1+i,n)+s;
+}
+function pmt(meta,pv,rAnual,anios){
+  var i=rAnual/12, n=Math.round(anios*12);
+  if(n<=0) return Infinity;
+  var falta = meta - pv*Math.pow(1+i,n);
+  if(falta<=0) return 0;
+  return i===0 ? falta/n : falta*i/(Math.pow(1+i,n)-1);
+}
+function aniosPara(meta,pv,rAnual,a){
+  var i=rAnual/12, bal=pv, max=80*12;
+  if(bal>=meta) return 0;
+  if(a<=0 && i<=0) return null;
+  for(var m=1;m<=max;m++){ bal=bal*(1+i)+a; if(bal>=meta) return m/12; }
+  return null;
+}
+function vaAnualidad(pago,rRealAnual,anios){
+  var meses=Math.round(anios*12), im=Math.pow(1+rRealAnual,1/12)-1;
+  if(meses<=0) return 0;
+  if(Math.abs(im)<1e-9) return pago*meses;
+  return pago*(1-Math.pow(1+im,-meses))/im*(1+im);
+}
+function pensionEstimada(ing,edad,edadRet,cot){
+  var tot = cot + Math.max(0, edadRet-edad);
+  if(tot<15) return 0;
+  var base=Math.min(ing,TOPE_IMSS), u=base/UMA_MENSUAL, tr;
+  if(u<=1) tr=.60; else if(u<=2) tr=.50; else if(u<=4) tr=.40; else if(u<=8) tr=.33; else tr=.28;
+  return base * tr * Math.min(1,tot/40) * Math.max(.55, Math.min(1, 1-(65-edadRet)*.06));
+}
+function tasaISR(a){ for(var k=0;k<ISR.length;k++){ if(a<=ISR[k][0]) return ISR[k][1]; } return .35; }
+
+/* ===== ESTADO ===== */
+var S={imss:0}, R=null, charts={};
+function num(id,def){ var v=parseFloat($(id).value); return isFinite(v)?v:(def===undefined?NaN:def); }
+
+function valida1(){
+  var ok=true;
+  function set(id,bad){ $(id).classList.toggle('err',bad); if(bad) ok=false; }
+  var e=num('edad'), er=num('edadRet'), ing=num('ingreso'), ah=num('ahorro',0);
+  set('edad', !isFinite(e)||e<18||e>75);
+  set('edadRet', !isFinite(er)||er<45||er>80||er<=e);
+  set('ingreso', !isFinite(ing)||ing<=0);
+  set('ahorro', !isFinite(ah)||ah<0);
+  return ok;
+}
+function recopilar(){
+  return {
+    edad:num('edad'), edadRet:num('edadRet'), ingreso:num('ingreso'), ahorro:num('ahorro',0),
+    ahorroMes:Math.max(0,num('ahorroMes',0)),
+    imss:S.imss, aniosCot:S.imss?num('anios',0):0,
+    reemplazo:num('reemplazo',80)/100, edadFin:num('edadFin',90),
+    rMan:LOCK.rMan, rGnp:LOCK.rGnp, infl:LOCK.infl, rRet:LOCK.rRet
+  };
+}
+
+/* ===== CÁLCULO ===== */
+function calcular(d){
+  var n=Math.max(0,d.edadRet-d.edad), m=Math.max(1,d.edadFin-d.edadRet);
+  var objetivoHoy=d.ingreso*d.reemplazo;
+  var pension=d.imss?pensionEstimada(d.ingreso,d.edad,d.edadRet,d.aniosCot):0;
+  var brechaHoy=Math.max(0,objetivoHoy-pension);
+  var tasaReal=(1+d.rRet)/(1+d.infl)-1;
+  var capitalHoy=vaAnualidad(brechaHoy,tasaReal,m);
+  var capitalNom=capitalHoy*Math.pow(1+d.infl,n);
+
+  var pmtMan=pmt(capitalNom,d.ahorro,d.rMan,n), pmtGnp=pmt(capitalNom,d.ahorro,d.rGnp,n);
+
+  // punto de partida: qué logra su ahorro mensual actual
+  var proyActual = fv(d.ahorro, d.ahorroMes, d.rMan, n);
+  var proyPlan   = fv(d.ahorro, d.ahorroMes, d.rGnp, n);
+  var cobertura  = capitalNom>0 ? proyActual/capitalNom : 0;
+  var faltante   = Math.max(0, capitalNom - proyActual);
+
+  var aportRef=pmtGnp;
+  var tGnp=aniosPara(capitalNom,d.ahorro,d.rGnp,aportRef);
+  var tMan=aniosPara(capitalNom,d.ahorro,d.rMan,aportRef);
+
+  var espera=[];
+  [0,3,5,10].forEach(function(w){
+    var nn=n-w;
+    if(nn>=1) espera.push({w:w,edad:d.edad+w,anios:nn,pmt:pmt(capitalNom,d.ahorro,d.rGnp,nn)});
+  });
+  var basePmt = espera.length?espera[0].pmt:pmtGnp;
+  espera.forEach(function(x){ x.extra=x.pmt-basePmt; });
+
+  var ingAnual=d.ingreso*12, aportAnual=pmtGnp*12;
+  var tope=Math.min(ingAnual*0.10, 5*UMA_DIARIA*365);
+  var deducible=Math.min(aportAnual,tope), tISR=tasaISR(ingAnual);
+
+  return {d:d,n:n,m:m,objetivoHoy:objetivoHoy,pension:pension,brechaHoy:brechaHoy,
+    tasaReal:tasaReal,capitalHoy:capitalHoy,capitalNom:capitalNom,
+    pmtMan:pmtMan,pmtGnp:pmtGnp,totMan:pmtMan*12*n,totGnp:pmtGnp*12*n,
+    intMan:capitalNom-pmtMan*12*n-d.ahorro, intGnp:capitalNom-pmtGnp*12*n-d.ahorro,
+    proyActual:proyActual,proyPlan:proyPlan,cobertura:cobertura,faltante:faltante,
+    aportRef:aportRef,tGnp:tGnp,tMan:tMan,espera:espera,
+    tope:tope,deducible:deducible,tasaISR:tISR,aportAnual:aportAnual,ahorroFiscal:deducible*tISR};
+}
+
+/* ===== RENDER ===== */
+function render(r,nombre){
+  var d=r.d;
+  $('resBarTxt').innerHTML = '<b>'+esc(nombre.split(' ')[0])+'</b>, tu diagnóstico está listo. Te contactaremos al '+
+    esc($('lTel').value.replace(/\D/g,'').replace(/(\d{2})(\d{4})(\d{4})/,'$1 $2 $3'))+' para tu asesoría gratuita.';
+  $('nextTitle').textContent = nombre.split(' ')[0]+', tu asesoría ya está en camino';
+
+  $('resTitle').textContent='Tu retiro a los '+d.edadRet+' años';
+  $('resSub').textContent='Proyección a '+r.n+' años de acumulación y '+r.m+
+    ' años de retiro, con una inflación supuesta de '+pct(d.infl)+' anual.';
+
+  $('kAnios').textContent=r.n;
+  $('kAniosSub').textContent='Te retirarías en el año '+(new Date().getFullYear()+r.n)+'.';
+  $('kIngreso').textContent=moneyK(r.objetivoHoy);
+  $('kIngresoSub').textContent=pct(d.reemplazo,0)+' de tu ingreso actual, en pesos de hoy.';
+  $('kBrecha').textContent=moneyK(r.brechaHoy);
+  $('kBrechaSub').textContent = r.pension>0
+    ? 'Tu pensión cubriría ~'+moneyK(r.pension)+'/mes. El resto es tuyo.'
+    : 'Sin pensión pública proyectada: el 100% depende de ti.';
+  $('kCapital').textContent=moneyK(r.capitalNom);
+  $('kCapitalSub').textContent='Equivale a '+moneyK(r.capitalHoy)+' en poder adquisitivo de hoy.';
+
+  // veredicto
+  var carga=r.pmtGnp/d.ingreso, v=$('verdict');
+  v.className='verdict';
+  if(r.n<10){
+    v.classList.add('v-bad');
+    $('vTitle').textContent='Ventana corta: cada mes cuenta';
+    $('vText').textContent='Te quedan solo '+r.n+' años de acumulación, así que el interés compuesto tiene poco tiempo para trabajar a tu favor y casi todo el capital tendrá que salir de tu aportación directa. Vale la pena revisar si conviene extender la edad de retiro, ajustar la meta de ingreso, o combinar ambas cosas.';
+  } else if(carga<=.15){
+    v.classList.add('v-good');
+    $('vTitle').textContent='Tu meta es perfectamente alcanzable';
+    $('vText').textContent='Necesitas destinar '+pct(carga)+' de tu ingreso mensual a un plan estructurado para llegar a tu objetivo. Está dentro del rango recomendado de 10% a 15%, lo que significa que empezar ahora te da un margen cómodo sin comprometer tu nivel de vida actual.';
+  } else if(carga<=.30){
+    v.classList.add('v-warn');
+    $('vTitle').textContent='Alcanzable, pero requiere disciplina';
+    $('vText').textContent='Tu meta exige destinar '+pct(carga)+' de tu ingreso mensual, por encima del 10–15% recomendado. Es viable, aunque implica un ajuste real en tu presupuesto. Un asesor puede ayudarte a escalonar aportaciones, aprovechar la deducibilidad fiscal y revisar si conviene mover la edad de retiro.';
+  } else {
+    v.classList.add('v-bad');
+    $('vTitle').textContent='Hay una brecha importante que atender';
+    $('vText').textContent='Para tu meta actual harían falta '+pct(carga)+' de tu ingreso mensual, una carga difícil de sostener. La buena noticia es que hay varias palancas: retrasar el retiro, moderar la tasa de reemplazo objetivo, o construir el capital por etapas. Esto es exactamente lo que se resuelve en una asesoría.';
+  }
+
+  // punto de partida
+  if(d.ahorroMes>0){
+    $('startSec').classList.remove('hide');
+    $('startTitle').textContent='Con los '+money(d.ahorroMes)+' que ya ahorras al mes';
+    $('startSub').textContent='Proyectados a '+r.n+' años, sin aportar un peso adicional. La diferencia entre las dos primeras barras es únicamente dónde está trabajando ese mismo dinero.';
+    var gan=r.proyPlan-r.proyActual;
+    $('startTxt').innerHTML='Ahorrando por tu cuenta acumularías <b>'+moneyK(r.proyActual)+'</b>, es decir <b>'+
+      pct(r.cobertura,0)+' de tu meta</b>'+(r.faltante>0?', con un faltante de <b>'+moneyK(r.faltante)+'</b>':'')+
+      '. Ese mismo monto mensual dentro de un plan estructurado se convertiría en <b>'+moneyK(r.proyPlan)+
+      '</b> — son <b>'+moneyK(gan)+' adicionales</b> sin sacar un peso más de tu bolsillo.'+
+      (r.proyPlan>=r.capitalNom ? ' De hecho, con eso ya cubrirías tu meta completa.'
+        : ' Para cerrar el resto de la brecha necesitarías llevar tu aportación a '+money(r.pmtGnp)+' al mes.');
+  } else {
+    $('startSec').classList.add('hide');
+  }
+
+  $('aMensual').textContent=money(r.pmtMan);
+  $('aTasa').textContent=pct(d.rMan);
+  $('aAportado').textContent=moneyK(r.totMan);
+  $('aInteres').textContent=moneyK(Math.max(0,r.intMan));
+  $('aPct').textContent=pct(r.pmtMan/d.ingreso);
+  $('bMensual').textContent=money(r.pmtGnp);
+  $('bTasa').textContent=pct(d.rGnp);
+  $('bAportado').textContent=moneyK(r.totGnp);
+  $('bInteres').textContent=moneyK(Math.max(0,r.intGnp));
+  $('bPct').textContent=pct(r.pmtGnp/d.ingreso);
+
+  var dif=r.pmtMan-r.pmtGnp, difTot=r.totMan-r.totGnp;
+  $('ahorroTxt').innerHTML = dif>0
+    ? 'Llegar a la misma meta te cuesta <b>'+money(dif)+' menos cada mes</b> dentro de un plan estructurado — '+
+      pct(dif/r.pmtMan,0)+' menos de esfuerzo. A lo largo de los '+r.n+' años eso son <b>'+moneyK(difTot)+
+      '</b> que no tienes que sacar de tu bolsillo, porque los pone el rendimiento en lugar de tú.'
+    : 'Con tus datos actuales ambos escenarios requieren un esfuerzo similar.';
+  $('chartAport').textContent=money(r.aportRef)+' al mes';
+
+  var txtMan = r.tMan===null ? 'más de 80 años' : r.tMan.toFixed(1)+' años';
+  $('tiempoTxt').innerHTML = r.tMan===null
+    ? 'Aportando <b>'+money(r.aportRef)+'</b> al mes en un instrumento al '+pct(d.rMan)+
+      ', <b>no alcanzarías tu meta dentro de un horizonte de vida razonable</b>. El plan estructurado la alcanza en '+
+      (r.tGnp?r.tGnp.toFixed(1):r.n)+' años. Esa es la diferencia que hace el rendimiento compuesto.'
+    : 'Con la misma aportación de <b>'+money(r.aportRef)+'</b> al mes, el plan estructurado llega a tu meta en <b>'+
+      (r.tGnp?r.tGnp.toFixed(1):r.n)+' años</b>, mientras que ahorrando por tu cuenta tardarías <b>'+txtMan+
+      '</b>. Son <b>'+(r.tMan-(r.tGnp||r.n)).toFixed(1)+' años más</b> de trabajo para el mismo resultado.';
+
+  var tb=$('waitBody'); tb.innerHTML='';
+  r.espera.forEach(function(x,i){
+    var tr=document.createElement('tr');
+    if(i===0) tr.className='on';
+    tr.innerHTML='<td class="lab">'+(x.w===0?'Hoy · '+x.edad+' años':'En '+x.w+' años · '+x.edad+' años')+
+      '</td><td class="r">'+money(x.pmt)+'</td><td class="r">'+
+      (x.w===0?'<span style="color:var(--good);font-weight:600">—</span>'
+              :'<span style="color:var(--danger);font-weight:600">+'+money(x.extra)+'</span>')+'</td>';
+    tb.appendChild(tr);
+  });
+
+  $('txAport').textContent=money(r.aportAnual);
+  $('txTope').textContent=money(r.tope);
+  $('txDed').textContent=money(r.deducible);
+  $('txTasa').textContent=pct(r.tasaISR);
+  $('txAhorro').textContent=money(r.ahorroFiscal);
+  $('txSub').textContent='Equivale a recuperar '+pct(r.ahorroFiscal/Math.max(1,r.aportAnual),0)+
+    ' de lo que aportas, o cerca de '+money(r.ahorroFiscal/12)+' al mes de vuelta en tu bolsillo.';
+
+  var det=[
+    ['Edad actual / edad de retiro', d.edad+' → '+d.edadRet+' años'],
+    ['Horizonte de acumulación', r.n+' años ('+r.n*12+' aportaciones mensuales)'],
+    ['Años de retiro a financiar', r.m+' años, hasta los '+d.edadFin],
+    ['Ingreso mensual objetivo (pesos de hoy)', money(r.objetivoHoy)+'  ·  '+pct(d.reemplazo,0)+' de reemplazo'],
+    ['Pensión pública mensual estimada', d.imss?money(r.pension)+' (aprox.)':'No aplica — sin cotización'],
+    ['Brecha mensual a financiar con capital propio', money(r.brechaHoy)],
+    ['Tasa real de la fase de retiro', pct(r.tasaReal)+'  ('+pct(d.rRet)+' nominal − '+pct(d.infl)+' inflación)'],
+    ['Capital objetivo en pesos de hoy', money(r.capitalHoy)],
+    ['Capital objetivo en pesos nominales al retiro', money(r.capitalNom)],
+    ['Ahorro ya acumulado', money(d.ahorro)],
+    ['Ahorro mensual actual', money(d.ahorroMes)+(d.ahorroMes>0?'  ·  '+pct(d.ahorroMes/d.ingreso)+' de tu ingreso':'')],
+    ['Proyección con tu ritmo actual', money(r.proyActual)+'  ·  '+pct(r.cobertura,0)+' de la meta'],
+    ['Aportación mensual — ahorro por tu cuenta', money(r.pmtMan)+'  al '+pct(d.rMan)],
+    ['Aportación mensual — plan estructurado', money(r.pmtGnp)+'  al '+pct(d.rGnp)],
+    ['Ahorro fiscal anual estimado', money(r.ahorroFiscal)]
+  ];
+  var db=$('detBody'); db.innerHTML='';
+  det.forEach(function(row){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td class="lab">'+row[0]+'</td><td class="r">'+row[1]+'</td>';
+    db.appendChild(tr);
+  });
+}
+
+/* ===== GRÁFICAS ===== */
+function base(cb){
+  return {responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:false},tooltip:{backgroundColor:'#231a13',padding:11,cornerRadius:8,borderWidth:0,
+      titleFont:{size:12,weight:'600'},bodyFont:{size:12},displayColors:true,boxPadding:4,callbacks:cb||{}}}};
+}
+var af={size:11}, gc='rgba(16,12,10,.07)';
+
+function drawCharts(r){
+  if(typeof Chart==='undefined'){
+    /* Sin la librería no hay gráficas. Se ocultan solo las cajas que llevan
+       un canvas —las que llevan tabla se quedan— y después las secciones que
+       hayan quedado sin nada que mostrar, para no dejar títulos huérfanos. */
+    document.querySelectorAll('.chart-box,.cv,.cv-sm').forEach(function(b){
+      if(b.querySelector('canvas')) b.style.display='none';
+    });
+    document.querySelectorAll('#results section.sec').forEach(function(s){
+      var vivo=[].slice.call(s.children).some(function(el){
+        return !el.classList.contains('sec-head') && el.style.display!=='none' &&
+               !(el.classList.contains('split') && !el.querySelector('.chart-box:not([style*="none"])'));
+      });
+      if(!vivo) s.style.display='none';
+    });
+    return;
+  }
+  var d=r.d;
+  Chart.defaults.font.family='"Hanken Grotesk",system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+  Chart.defaults.color='#8a7a6b';
+  Object.keys(charts).forEach(function(k){ if(charts[k]) charts[k].destroy(); });
+  charts={};
+
+  /* 0 · punto de partida */
+  if(d.ahorroMes>0){
+    charts.c0=new Chart($('chart0'),{
+      type:'bar',
+      data:{labels:['Tu ritmo actual','Mismo monto en el plan','Tu meta'],
+        datasets:[{data:[Math.round(r.proyActual),Math.round(r.proyPlan),Math.round(r.capitalNom)],
+          backgroundColor:['#a89482','#FF751F','#231a13'],borderRadius:6,barThickness:34}]},
+      options:Object.assign(base({label:function(c){return money(c.parsed.x);}}),{
+        indexAxis:'y',
+        scales:{x:{grid:{color:gc},border:{display:false},ticks:{font:af,callback:function(v){return moneyK(v);}}},
+                y:{grid:{display:false},border:{display:false},ticks:{font:{size:12.5},color:'#3d3128'}}}})
+    });
+  }
+
+  /* 1 · curvas */
+  var labels=[],man=[],gnp=[],meta=[];
+  for(var y=0;y<=r.n;y++){
+    labels.push(d.edad+y);
+    man.push(Math.round(fv(d.ahorro,r.aportRef,d.rMan,y)));
+    gnp.push(Math.round(fv(d.ahorro,r.aportRef,d.rGnp,y)));
+    meta.push(Math.round(r.capitalNom));
+  }
+  charts.c1=new Chart($('chart1'),{
+    type:'line',
+    data:{labels:labels,datasets:[
+      {label:'Plan de retiro GNP',data:gnp,borderColor:'#FF751F',backgroundColor:'rgba(255,117,31,.12)',borderWidth:2.5,fill:true,tension:.32,pointRadius:0,pointHoverRadius:4,order:1},
+      {label:'Ahorro por tu cuenta',data:man,borderColor:'#a89482',backgroundColor:'rgba(168,148,130,.12)',borderWidth:2,fill:true,tension:.32,pointRadius:0,pointHoverRadius:4,order:2},
+      {label:'Meta de capital',data:meta,borderColor:'#231a13',borderWidth:1.5,borderDash:[5,5],fill:false,pointRadius:0,pointHoverRadius:0,order:0}
+    ]},
+    options:Object.assign(base({
+      title:function(c){return c[0].label+' años de edad';},
+      label:function(c){return c.dataset.label+':  '+money(c.parsed.y);}
+    }),{scales:{
+      x:{grid:{display:false},border:{color:'rgba(16,12,10,.14)'},ticks:{font:af,maxTicksLimit:12}},
+      y:{grid:{color:gc},border:{display:false},ticks:{font:af,callback:function(v){return moneyK(v);}}}}})
+  });
+
+  /* 2 · tiempo */
+  var tMan = r.tMan===null?80:r.tMan;
+  charts.c2=new Chart($('chart2'),{
+    type:'bar',
+    data:{labels:['Plan de retiro GNP','Ahorro por tu cuenta'],
+      datasets:[{data:[+(r.tGnp||r.n).toFixed(1),+tMan.toFixed(1)],
+        backgroundColor:['#FF751F','#a89482'],borderRadius:6,barThickness:38}]},
+    options:Object.assign(base({
+      label:function(c){return (r.tMan===null&&c.dataIndex===1)?'Más de 80 años':c.parsed.x+' años';}
+    }),{indexAxis:'y',scales:{
+      x:{grid:{color:gc},border:{display:false},ticks:{font:af,callback:function(v){return v+' años';}}},
+      y:{grid:{display:false},border:{display:false},ticks:{font:{size:12.5},color:'#3d3128'}}}})
+  });
+
+  /* 3 · costo de esperar */
+  charts.c3=new Chart($('chart3'),{
+    type:'bar',
+    data:{labels:r.espera.map(function(x){return x.w===0?'Hoy':'+'+x.w+' años';}),
+      datasets:[{data:r.espera.map(function(x){return Math.round(x.pmt);}),
+        backgroundColor:r.espera.map(function(x,i){return i===0?'#FF751F':'#F7C9A6';}),
+        borderRadius:6,maxBarThickness:56}]},
+    options:Object.assign(base({
+      title:function(c){return c[0].label==='Hoy'?'Si empiezas hoy':'Si esperas '+c[0].label.replace('+','');},
+      label:function(c){return money(c.parsed.y)+' al mes';}
+    }),{scales:{
+      x:{grid:{display:false},border:{color:'rgba(16,12,10,.14)'},ticks:{font:af,color:'#3d3128'}},
+      y:{grid:{color:gc},border:{display:false},ticks:{font:af,callback:function(v){return moneyK(v);}}}}})
+  });
+}
+
+/* ===== WIZARD ===== */
+function irA(p){
+  document.querySelectorAll('[data-panel]').forEach(function(el){
+    el.classList.toggle('hide', el.getAttribute('data-panel')!==String(p));
+  });
+  document.querySelectorAll('[data-pip]').forEach(function(el){
+    el.classList.toggle('on', +el.getAttribute('data-pip')<=p);
+  });
+  $('wizard').scrollIntoView({behavior:'smooth',block:'start'});
+}
+document.querySelectorAll('[data-next]').forEach(function(b){
+  b.addEventListener('click',function(){
+    var t=+b.getAttribute('data-next');
+    if(t>1 && !valida1()){ irA(1); return; }
+    irA(t);
+  });
+});
+document.querySelectorAll('#segImss button').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('#segImss button').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on'); S.imss=+b.getAttribute('data-v');
+    var w=$('wrapAnios');
+    w.style.opacity=S.imss?'1':'.4';
+    w.style.pointerEvents=S.imss?'auto':'none';
+  });
+});
+document.querySelectorAll('#chips .chip').forEach(function(c){
+  c.addEventListener('click',function(){ $('ahorroMes').value=c.getAttribute('data-v'); });
+});
+$('reemplazo').addEventListener('input',function(){ $('reemplazoV').textContent=this.value+'%'; });
+$('edadFin').addEventListener('input',function(){ $('edadFinV').textContent=this.value; });
+
+/* ===== REGISTROS =====
+   El diagnóstico se guarda en el servidor (/api/diagnostico → Upstash).
+   Si el envío falla, el registro NO se pierde en silencio: queda en una
+   cola local y se reintenta en la siguiente visita, igual que en /financial. */
+var API='/api/diagnostico';
+var ultimoRegistro=null;
+var COLA='bb_diag_pendientes';
+
+function leerCola(){ try{ return JSON.parse(localStorage.getItem(COLA)||'[]'); }catch(e){ return []; } }
+function encolar(reg){
+  try{ var q=leerCola(); q.push(reg); localStorage.setItem(COLA,JSON.stringify(q.slice(-50))); }catch(e){}
+}
+function enviar(reg){
+  return fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(reg),keepalive:true})
+    .then(function(r){ if(!r.ok) throw new Error('http_'+r.status); return true; });
+}
+function guardarRegistro(reg){
+  return enviar(reg).catch(function(e){ encolar(reg); throw e; });
+}
+function reintentarPendientes(){
+  var q=leerCola();
+  if(!q.length) return;
+  try{ localStorage.removeItem(COLA); }catch(e){}
+  q.forEach(function(reg){ enviar(reg).catch(function(){ encolar(reg); }); });
+}
+reintentarPendientes();
+
+/* ===== GATE: capturar y revelar ===== */
+$('calcBtn').addEventListener('click',function(){
+  var nom=$('lNombre').value.trim();
+  var tel=$('lTel').value.replace(/\D/g,'');
+  var err=$('lErr');
+  $('lNombre').classList.remove('err'); $('lTel').classList.remove('err'); err.classList.remove('show');
+
+  if(!valida1()){ irA(1); return; }
+  if(nom.length<3){ $('lNombre').classList.add('err'); err.textContent='Escribe tu nombre completo.'; err.classList.add('show'); return; }
+  if(tel.length<10){ $('lTel').classList.add('err'); err.textContent='El teléfono debe tener 10 dígitos.'; err.classList.add('show'); return; }
+  if(!$('lOk').checked){ err.textContent='Necesitamos tu autorización para poder contactarte.'; err.classList.add('show'); return; }
+
+  var d=recopilar();
+  R=calcular(d);
+
+  var registro={
+    fecha:new Date().toISOString(), nombre:nom, telefono:tel,
+    edad:d.edad, edadRetiro:d.edadRet, ingresoMensual:d.ingreso,
+    ahorroAcumulado:d.ahorro, ahorroMensual:d.ahorroMes,
+    cotizaImss:d.imss?'Sí':'No', aniosCotizados:d.aniosCot,
+    tasaReemplazo:Math.round(d.reemplazo*100)+'%', edadFin:d.edadFin,
+    pensionEstimada:Math.round(R.pension), brechaMensual:Math.round(R.brechaHoy),
+    capitalObjetivo:Math.round(R.capitalNom), proyeccionActual:Math.round(R.proyActual),
+    coberturaMeta:Math.round(R.cobertura*100)+'%',
+    aportacionPlan:Math.round(R.pmtGnp), aportacionManual:Math.round(R.pmtMan),
+    cargaIngreso:Math.round(R.pmtGnp/d.ingreso*100)+'%',
+    ahorroFiscal:Math.round(R.ahorroFiscal), origen:'analisisfinanciero',
+    ref:(document.referrer||'').slice(0,180)
+  };
+  ultimoRegistro=registro;
+  guardarRegistro(registro).catch(function(){
+    /* El análisis se muestra igual: lo que falló fue el envío, no el cálculo.
+       Se dice con todas sus letras en vez de prometer un contacto que no llegará. */
+    var b=$('resBarTxt');
+    if(b) b.innerHTML='<b>'+esc(nom.split(' ')[0])+'</b>, aquí está tu diagnóstico. '+
+      'No pudimos registrar tus datos en este momento — lo reintentaremos solo, '+
+      'pero si quieres tu asesoría de una vez, escríbenos por WhatsApp.';
+  });
+
+  render(R,nom);
+  $('printFirma').textContent='Preparado para '+nom+' · '+
+    new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
+  montarCalendario(nom);
+  $('intro').classList.add('hide');
+  $('wizard').classList.add('hide');
+  $('results').classList.remove('hide');
+  requestAnimationFrame(function(){ drawCharts(R); });
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+$('editBtn').addEventListener('click',function(){
+  $('intro').classList.remove('hide');
+  $('wizard').classList.remove('hide');
+  $('results').classList.add('hide');
+  irA(1);
+});
+
+/* ===== AGENDA (Calendly) =====
+   El mismo calendario que ya usa /financial, pero embebido: se agenda sin
+   salir del análisis. Se carga hasta que hay resultados, para no pedirle a
+   Calendly nada mientras la persona apenas está contestando. */
+var CALENDLY='https://calendly.com/jose-delgado-enp/asesoria-financiera-personalizada';
+var calListo=false;
+
+function montarCalendario(nombre){
+  if(calListo) return;
+  calListo=true;
+  $('calLink').href=CALENDLY;
+  var q='?embed_domain='+encodeURIComponent(location.hostname)+
+        '&embed_type=Inline&hide_gdpr_banner=1'+
+        '&background_color=ffffff&text_color=231a13&primary_color=FF751F'+
+        (nombre?'&name='+encodeURIComponent(nombre):'');
+  var marco=$('calFrame');
+  /* El respaldo se ve mientras Calendly carga; el iframe aparece encima
+     solo cuando de verdad trajo algo. */
+  marco.addEventListener('load',function(){
+    if(String(marco.src).indexOf('calendly.com')>=0) marco.classList.add('cargado');
+  });
+  marco.src=CALENDLY+q;
+}
+/* Calendly avisa por postMessage cuando alguien agenda de verdad.
+   Ese registro vale más que el del formulario: es una cita en firme. */
+window.addEventListener('message',function(e){
+  if(String(e.origin).indexOf('calendly.com')<0) return;
+  var d=e.data;
+  if(!d||typeof d!=='object'||d.event!=='calendly.event_scheduled') return;
+  if(!ultimoRegistro) return;
+  var copia={}; for(var k in ultimoRegistro) copia[k]=ultimoRegistro[k];
+  copia.fecha=new Date().toISOString();
+  copia.origen='analisisfinanciero-calendly';
+  guardarRegistro(copia).catch(function(){});
+});
+
+/* ===== DESCARGAR EN PDF =====
+   Se usa la impresión del navegador: sale un PDF con texto seleccionable,
+   con las gráficas incluidas, y funciona igual en celular (Compartir →
+   Imprimir → Guardar como PDF). Sin librerías ni capturas borrosas. */
+function nombreArchivo(){
+  var quien=(ultimoRegistro&&ultimoRegistro.nombre?ultimoRegistro.nombre:'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z ]/g,'').trim();
+  var f=new Date().toISOString().slice(0,10);
+  return 'Analisis de retiro'+(quien?' - '+quien:'')+' - '+f;
+}
+function antesDeImprimir(){
+  /* Chart.js redimensiona con la ventana; al imprimir hay que fijarle un
+     tamaño o los lienzos salen aplastados. */
+  Object.keys(charts).forEach(function(k){ if(charts[k]) charts[k].resize(680,charts[k].height); });
+}
+function despuesDeImprimir(){
+  Object.keys(charts).forEach(function(k){ if(charts[k]) charts[k].resize(); });
+}
+window.addEventListener('beforeprint',antesDeImprimir);
+window.addEventListener('afterprint',despuesDeImprimir);
+
+$('pdfBtn').addEventListener('click',function(){
+  var titulo=document.title;
+  document.title=nombreArchivo();   /* el navegador nombra el PDF con el título */
+  window.print();
+  setTimeout(function(){ document.title=titulo; },800);
+});
+
+/* ===== PANEL PRIVADO =====
+   Vive en el mismo archivo pero no se enlaza desde ningún lado: se abre con
+   #registros y pide la llave que valida el servidor. La llave nunca viaja en
+   el código; solo queda en la sesión de este navegador. */
+var LLAVE='bb_diag_token', REGISTROS=[];
+
+function abrirPanel(){
+  $('admin').classList.add('show');
+  var t=sessionStorage.getItem(LLAVE);
+  if(t) cargarRegistros(t); else mostrarLogin();
+}
+function mostrarLogin(){
+  $('adminLogin').style.display='block';
+  $('adminTable').innerHTML='';
+  $('adminCount').textContent='';
+}
+function cargarRegistros(token){
+  $('adminErr').classList.remove('show');
+  $('adminTable').innerHTML='<p style="font-size:13px;color:var(--faint)">Cargando…</p>';
+  fetch(API+'?token='+encodeURIComponent(token))
+    .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
+    .then(function(res){
+      if(!res.ok||!res.j.ok){
+        sessionStorage.removeItem(LLAVE);
+        mostrarLogin();
+        var e=$('adminErr');
+        e.textContent = res.j.error==='panel_sin_configurar'
+          ? 'Falta configurar DIAG_ADMIN_TOKEN en Netlify.'
+          : 'Llave incorrecta.';
+        e.classList.add('show');
+        return;
+      }
+      sessionStorage.setItem(LLAVE,token);
+      REGISTROS=res.j.leads||[];
+      $('adminLogin').style.display='none';
+      pintarAdmin(res.j.total);
+    })
+    .catch(function(){
+      $('adminTable').innerHTML='';
+      var e=$('adminErr'); e.textContent='No se pudo contactar al servidor.'; e.classList.add('show');
+    });
+}
+function pintarAdmin(total){
+  var L=REGISTROS, T=total||L.length;
+  $('adminCount').textContent='· '+T+(T===1?' registro':' registros')+
+    (L.length<T?' (mostrando '+L.length+')':'');
+  if(!L.length){ $('adminTable').innerHTML='<p style="font-size:13px;color:var(--faint)">Todavía no hay registros.</p>'; return; }
+  var h='<table><thead><tr><th>Fecha</th><th>Nombre</th><th>Teléfono</th><th class="r">Edad</th><th class="r">Ingreso</th><th class="r">Ahorra hoy</th><th class="r">Requiere</th></tr></thead><tbody>';
+  L.forEach(function(l){
+    h+='<tr><td>'+esc(new Date(l.fecha).toLocaleDateString('es-MX'))+'</td><td class="lab">'+esc(l.nombre)+
+       '</td><td>'+esc(l.telefono)+'</td><td class="r">'+esc(l.edad||'')+'</td><td class="r">'+
+       (l.ingresoMensual?money(+l.ingresoMensual):'')+'</td><td class="r">'+
+       (l.ahorroMensual!=null&&l.ahorroMensual!==''?money(+l.ahorroMensual):'')+'</td><td class="r">'+
+       (l.aportacionPlan?money(+l.aportacionPlan):'')+'</td></tr>';
+  });
+  $('adminTable').innerHTML=h+'</tbody></table>';
+}
+$('entrarBtn').addEventListener('click',function(){
+  var t=$('adminTok').value.trim();
+  if(!t) return;
+  $('adminTok').value='';
+  cargarRegistros(t);
+});
+$('adminTok').addEventListener('keydown',function(e){ if(e.key==='Enter') $('entrarBtn').click(); });
+$('recargarBtn').addEventListener('click',function(){
+  var t=sessionStorage.getItem(LLAVE); if(t) cargarRegistros(t);
+});
+$('salirBtn').addEventListener('click',function(){
+  sessionStorage.removeItem(LLAVE); REGISTROS=[]; mostrarLogin();
+});
+$('expBtn').addEventListener('click',function(){
+  if(!REGISTROS.length){ alert('No hay registros para exportar.'); return; }
+  var cols=[];
+  REGISTROS.forEach(function(l){ Object.keys(l).forEach(function(c){ if(cols.indexOf(c)<0) cols.push(c); }); });
+  var csv='\ufeff'+cols.join(',')+'\n'+REGISTROS.map(function(l){
+    return cols.map(function(c){ return '"'+String(l[c]===undefined?'':l[c]).replace(/"/g,'""')+'"'; }).join(',');
+  }).join('\n');
+  var url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  var a=document.createElement('a');
+  a.href=url; a.download='diagnosticos-retiro-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); },1000);
+});
+if(location.hash==='#registros') abrirPanel();
+window.addEventListener('hashchange',function(){ if(location.hash==='#registros') abrirPanel(); });
+
+})();
+</script>
+</body>
+</html>
