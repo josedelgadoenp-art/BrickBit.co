@@ -49,6 +49,19 @@
   to = "/financial.html"
   status = 200
 
+# Análisis financiero de retiro (BrickBit Financial). El archivo vive en la
+# raíz y aquí se le da la ruta bonita; así /financial sigue resolviendo a
+# financial.html sin que exista una carpeta que compita con esa regla.
+[[redirects]]
+  from = "/financial/analisisfinanciero"
+  to = "/analisisfinanciero.html"
+  status = 200
+
+[[redirects]]
+  from = "/financial/analisisfinanciero/"
+  to = "/analisisfinanciero.html"
+  status = 200
+
 [[redirects]]
   from = "/aviso-de-privacidad"
   to = "/aviso-de-privacidad.html"
