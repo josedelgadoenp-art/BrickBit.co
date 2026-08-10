@@ -203,10 +203,11 @@ a.back:hover{color:var(--tx)}
     <div class="fld"><label>Horizonte de tenencia</label><div class="hz" id="hz"></div></div>
     <div class="cgrid">
       <div class="fld"><label>Enganche (%)</label><input id="eng" type="number" step="1" value="100" oninput="calc()"></div>
-      <div class="fld"><label>Tasa crédito (% anual)</label><input id="tasa" type="number" step="0.1" value="11.5" oninput="calc()"></div>
+      <div class="fld"><label>Tasa crédito (% anual) <span class="tag ex">est.</span></label><input id="tasa" type="number" step="0.1" value="11.5" oninput="calc()"></div>
       <div class="fld"><label>Plazo crédito (años)</label><input id="plazo" type="number" step="1" value="20" oninput="calc()"></div>
-      <div class="fld"><label>Crec. renta (% anual)</label><input id="infl" type="number" step="0.5" value="4" oninput="calc()"></div>
+      <div class="fld"><label>Crec. renta (% anual) <span class="tag ex">est.</span></label><input id="infl" type="number" step="0.5" value="4" oninput="calc()"></div>
     </div>
+    <div class="note" id="macro-src" style="font-size:11px;margin-top:8px">La tasa de crédito y el crecimiento de renta son <span class="amber">supuestos</span>. Ajústalos a tu operación.</div>
     <details>
       <summary>Supuestos de costos (México) — editables</summary>
       <div class="sec-t">Adquisición (una vez, % del precio)</div>
@@ -467,6 +468,34 @@ function exportPDF(){
   const ph=$('print-head'); if(ph) ph.innerHTML='<div style="font-size:12px;color:var(--mut);margin-top:8px">Zona analizada: <b style="color:var(--tx)">'+z+'</b> · Horizonte '+H+' año'+(H>1?'s':'')+' · Generado el '+d+'</div>';
   setTimeout(()=>window.print(),60);
 }
+/* ===== Supuestos macro (Banxico) =====
+   Una sola fuente para las tasas de toda la página: antes el analizador usaba
+   11.5% y el módulo "¿Cuánto puedo comprar?" 10.5%, sin razón que lo explicara.
+   Si existe data/macro.json (lo genera tools/macro_local.py contra la API del
+   SIE de Banxico) mandan esos valores; si no, quedan estos supuestos estáticos.
+   En ambos casos la tasa va marcada como estimación: la hipotecaria se deriva
+   de la tasa objetivo + un spread, no es un dato observado. */
+const MACRO_FALLBACK={hipotecaria:11.5, inflacion:4.0};
+function aplicarMacro(m){
+  const hip=(m&&m.hipotecaria_est!=null)?m.hipotecaria_est:MACRO_FALLBACK.hipotecaria;
+  const inf=(m&&m.inflacion_anual!=null)?m.inflacion_anual:MACRO_FALLBACK.inflacion;
+  // No pisamos lo que el usuario ya haya escrito (el fetch llega tarde).
+  [['tasa',hip],['af-tasa',hip],['infl',inf]].forEach(([id,v])=>{
+    const el=$(id); if(el && !el.dataset.tocado) el.value=v;
+  });
+  const src=$('macro-src');
+  if(src && m){
+    const bits=[];
+    if(m.objetivo!=null)        bits.push(`tasa objetivo <b>${m.objetivo}%</b>`);
+    if(m.tiie28!=null)          bits.push(`TIIE 28d <b>${m.tiie28}%</b>`);
+    if(m.inflacion_anual!=null) bits.push(`INPC anual <b>${m.inflacion_anual}%</b>`);
+    src.innerHTML=(bits.length?bits.join(' · ')+' — ':'')+escA(m.fuente||'Banxico')
+      +(m.generado?', al '+escA(m.generado):'')+'. La tasa de crédito es <span class="amber">estimada</span>: '
+      +escA(m.hipotecaria_metodo||'derivada de la tasa objetivo')+'.';
+  }
+  if(typeof calc==='function') calc();
+  if(typeof afCalc==='function') afCalc();
+}
 function init(){
   const sel=$('zona');
   ZONAS.slice().sort((a,b)=>a.n.localeCompare(b.n)).forEach(z=>{const o=document.createElement('option');o.value=z.n;o.textContent=z.n;sel.appendChild(o);});
@@ -475,6 +504,11 @@ function init(){
   const st=params.get('a')?decodeState(params.get('a')):null;
   if(st){ sel.value=st.zona||'Querétaro'; onZona(); applyState(st); }
   else { const qz=params.get('zona'); const m=qz?ZONAS.find(z=>z.n.toLowerCase()===qz.trim().toLowerCase()):null; sel.value=m?m.n:'Querétaro'; onZona(); }
+  // Supuestos macro: marcamos los campos que el usuario toque para no pisarlos.
+  ['tasa','af-tasa','infl'].forEach(id=>{const el=$(id);
+    if(el) el.addEventListener('input',()=>{el.dataset.tocado='1';});});
+  fetch('data/macro.json',{cache:'no-store'}).then(r=>r.ok?r.json():null)
+    .then(aplicarMacro).catch(()=>aplicarMacro(null));
   planFeasibLoad();   // ?desde=plano → precarga el proyecto del Creador de planos
   devDeepLink();      // ?dev=1&lote=N → Modo Desarrollador con ese terreno (desde el mapa)
   // Sincroniza los multiplicadores embebidos con data/forecast.json (modelo v2):
