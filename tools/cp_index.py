@@ -6,69 +6,76 @@ cp_index.py — Índice de códigos postales → coordenada, para /financial/gmm
 El buscador "hospitales GNP a X km de mi código postal" necesita convertir un
 CP de cinco dígitos en un punto. Este script construye ese índice.
 
-Formato de salida (data/cp_centroides.txt): una sola línea, registros fijos de
-16 caracteres, ordenados por CP ascendente. Cada registro es
+FORMATO DE SALIDA (data/cp_centroides.txt)
+Una sola línea, registros fijos de 17 caracteres, ordenados por CP ascendente:
 
-    CCCCC LLLLL GGGGGG
-    │     │     └─ |longitud| × 1000, 6 dígitos con ceros a la izquierda
-    │     └─────── latitud   × 1000, 5 dígitos con ceros a la izquierda
-    └───────────── código postal, 5 dígitos
+    CCCCC LLLLL GGGGGG P
+    │     │     │      └─ precisión: 0 = punto del propio CP, 1 = centro del municipio
+    │     │     └──────── |longitud| × 1000, 6 dígitos con ceros a la izquierda
+    │     └────────────── latitud   × 1000, 5 dígitos con ceros a la izquierda
+    └──────────────────── código postal, 5 dígitos
 
-La longitud siempre es oeste (negativa) en México, así que se guarda el valor
-absoluto y el navegador le antepone el signo. Ancho fijo = la página no tiene
-que parsear separadores: corta de 16 en 16 y arma un Map. Un JSON con 30 mil
-llaves pesaría cuatro veces más y tardaría en parsearse.
+La longitud siempre es oeste en México, así que se guarda el valor absoluto y
+el navegador le antepone el signo. Ancho fijo = la página corta de 17 en 17 y
+arma un Map, sin parsear separadores. Un JSON con 30 mil llaves pesaría cuatro
+veces más y tardaría en parsearse.
 
-FUENTES, EN ORDEN DE PREFERENCIA
-  1) Un CSV de SEPOMEX con coordenadas (cobertura nacional). SEPOMEX no publica
-     lat/lng en su catálogo oficial; los CSV que sí las traen son derivados
-     comunitarios. Pásalo con --sepomex ruta.csv y detectamos las columnas.
-     Igual que riesgos_local.py y macro_local.py, esto se corre EN LOCAL: las
-     dependencias de gobierno bloquean IPs de nube.
-  2) data/cdmx_codigos_postales.json — 1,182 polígonos de CP de la CDMX que ya
-     viven en este repo. Se usa su centroide. Es exacto y auditable, pero sólo
-     cubre la Ciudad de México.
+FUENTES (se combinan; la más precisa gana)
+  1) data/cdmx_codigos_postales.json — 1,182 polígonos de CP de la CDMX que ya
+     viven en el repo. Centroide exacto del propio CP.            → precisión 0
+  2) data/gnp_hospitales.json — los hospitales traen su CP en el domicilio y
+     su coordenada ya derivada de él.                             → precisión 0
+  3) Catálogo Nacional de SEPOMEX (--sepomex CPdescarga.xls o un CSV).
+     Da CP → municipio para todo el país. OJO: el catálogo oficial NO trae
+     coordenadas, así que el punto sale del centro del municipio usando los
+     polígonos de data/mexico_municipios.json.                    → precisión 1
 
-Se pueden combinar: el CSV nacional manda, los polígonos rellenan lo que falte.
+  python3 tools/cp_index.py                              # sólo lo que hay en el repo
+  python3 tools/cp_index.py --sepomex ~/CPdescarga.xls   # cobertura nacional
 
-  python3 tools/cp_index.py                          # sólo CDMX (lo que hay en repo)
-  python3 tools/cp_index.py --sepomex ~/cp_mx.csv    # cobertura nacional
+El .xls de SEPOMEX pesa 70 MB y NO se guarda en el repo: se descarga de
+https://www.correosdemexico.gob.mx/SSLServicios/ConsultaCP/Descarga.aspx
+y se corre en local, igual que riesgos_local.py o macro_local.py.
 
 HONESTIDAD DE DATOS
-El centroide de un CP NO es una dirección: es el centro de una zona que puede
-medir varios kilómetros. La página lo dice y marca en ámbar toda distancia
-calculada a partir de él. Este índice sirve para "¿qué hospitales me quedan
+Un centroide municipal NO es una dirección, y en municipios grandes puede
+quedar a varios kilómetros del CP real. Por eso cada registro guarda su
+precisión y la página lo dice en pantalla: los CP con precisión municipal se
+anuncian como aproximados. Este índice sirve para "¿qué hospitales me quedan
 cerca?", nunca para "¿a cuántos metros estoy?".
 """
-import argparse, csv, json, math, sys
+import argparse, csv, json, sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 SALIDA = RAIZ / "data" / "cp_centroides.txt"
 POLIGONOS_CDMX = RAIZ / "data" / "cdmx_codigos_postales.json"
 HOSPITALES = RAIZ / "data" / "gnp_hospitales.json"
+MUNICIPIOS = RAIZ / "data" / "mexico_municipios.json"
 
-# Caja de México con holgura. Todo lo que caiga fuera se descarta: más vale un
-# CP ausente (la página lo dice) que un CP que manda al usuario al mar.
+# Caja de México con holgura. Lo que caiga fuera se descarta: más vale un CP
+# ausente (la página lo dice) que un CP que mande al usuario al mar.
 LAT_MIN, LAT_MAX = 14.0, 33.0
 LNG_MIN, LNG_MAX = -119.0, -86.0
+
+EXACTO, MUNICIPAL = 0, 1
 
 
 def dentro_de_mexico(lat, lng):
     return LAT_MIN <= lat <= LAT_MAX and LNG_MIN <= lng <= LNG_MAX
 
 
-def centroides_cdmx():
-    """Centroide de cada polígono de CP de la CDMX que ya está en el repo."""
-    if not POLIGONOS_CDMX.exists():
-        print(f"  · {POLIGONOS_CDMX.name} no está; me lo salto")
-        return {}
-    try:
-        from shapely.geometry import shape
-    except ImportError:
-        print("  · falta shapely (pip install shapely); me salto los polígonos")
-        return {}
+def _punto_interior(geom):
+    """Punto garantizado DENTRO del polígono (el centroide de una herradura no lo está)."""
+    from shapely.geometry import shape
+    p = shape(geom).representative_point()
+    return (p.y, p.x)
 
+
+# ---------------------------------------------------------------- fuentes ---
+def centroides_cdmx():
+    if not POLIGONOS_CDMX.exists():
+        return {}
     gj = json.loads(POLIGONOS_CDMX.read_text(encoding="utf-8"))
     puntos = {}
     for f in gj.get("features", []):
@@ -76,33 +83,22 @@ def centroides_cdmx():
         if not (cp.isdigit() and len(cp) == 5):
             continue
         try:
-            g = shape(f["geometry"])
-            # representative_point() siempre cae DENTRO del polígono; el
-            # centroide de una forma de herradura puede caer fuera de ella.
-            p = g.representative_point()
+            lat, lng = _punto_interior(f["geometry"])
         except Exception:
             continue
-        if dentro_de_mexico(p.y, p.x):
-            puntos[cp] = (p.y, p.x)
-    print(f"  · {len(puntos):,} CP de la CDMX desde polígonos del repo")
+        if dentro_de_mexico(lat, lng):
+            puntos[cp] = (lat, lng)
+    print(f"  · {len(puntos):,} CP de la CDMX (polígono del propio CP)")
     return puntos
 
 
 def centroides_hospitales():
-    """
-    Los propios hospitales de la red traen su CP en el domicilio y su
-    coordenada ya derivada de ese CP (o de su colonia, que cae dentro del CP).
-    Son pocos, pero dan cobertura NACIONAL justo donde importa: si alguien
-    teclea el CP de la zona de su hospital, resuelve aunque no haya CSV.
-    Se prefiere el registro con precisión de CP sobre el de colonia.
-    """
     if not HOSPITALES.exists():
         return {}
     import re
     d = json.loads(HOSPITALES.read_text(encoding="utf-8"))
     puntos, calidad = {}, {}
     for h in d.get("hospitales", []):
-        # El CP es el penúltimo campo del domicilio: "…, CALLE 1, COLONIA, 20020, CIUDAD"
         m = re.findall(r"\b(\d{5})\b", h.get("d", ""))
         if not m:
             continue
@@ -110,129 +106,169 @@ def centroides_hospitales():
         lat, lng = h.get("lat"), h.get("lng")
         if lat is None or lng is None or not dentro_de_mexico(lat, lng):
             continue
-        rango = 2 if h.get("pr") == "cp" else 1
+        rango = 2 if h.get("pr") == "cp" else 1   # el pin de CP manda sobre el de colonia
         if rango >= calidad.get(cp, 0):
             puntos[cp], calidad[cp] = (lat, lng), rango
     print(f"  · {len(puntos):,} CP desde los domicilios de la red hospitalaria")
     return puntos
 
 
-def _col(campos, *candidatos):
-    """Encuentra una columna por nombre aproximado, sin importar acentos ni caso."""
-    norm = {c.strip().lower().replace("ó", "o").replace("í", "i").replace("á", "a"): c
-            for c in campos}
-    for cand in candidatos:
-        for k, original in norm.items():
-            if k == cand or k.startswith(cand):
-                return original
-    return None
+def _centros_municipales():
+    """(clave_estado, clave_municipio) → punto interior del municipio."""
+    if not MUNICIPIOS.exists():
+        sys.exit(f"Falta {MUNICIPIOS}, que es de donde salen los centros municipales.")
+    gj = json.loads(MUNICIPIOS.read_text(encoding="utf-8"))
+    centros = {}
+    for f in gj.get("features", []):
+        p = f.get("properties", {})
+        try:
+            clave = (int(p["state_code"]), int(p["mun_code"]))
+            lat, lng = _punto_interior(f["geometry"])
+        except Exception:
+            continue
+        if dentro_de_mexico(lat, lng):
+            centros[clave] = (lat, lng)
+    print(f"  · {len(centros):,} municipios con centro calculado")
+    return centros
 
 
-def centroides_csv(ruta):
-    """Promedia lat/lng por CP a partir de un CSV comunitario de SEPOMEX."""
+def _filas_sepomex(ruta):
+    """Devuelve (cp, clave_estado, clave_municipio) del catálogo, sea .xls o CSV."""
     p = Path(ruta)
     if not p.exists():
         sys.exit(f"No encuentro {p}")
 
-    acum = {}
-    with p.open(encoding="utf-8-sig", newline="") as fh:
-        muestra = fh.read(8192)
-        fh.seek(0)
+    if p.suffix.lower() in (".xls", ".xlsx"):
         try:
-            dialecto = csv.Sniffer().sniff(muestra, delimiters=",;|\t")
-        except csv.Error:
-            dialecto = csv.excel
-        r = csv.DictReader(fh, dialect=dialecto)
-        if not r.fieldnames:
-            sys.exit("El CSV no trae encabezados.")
-        c_cp = _col(r.fieldnames, "d_codigo", "codigo_postal", "codigopostal", "cp", "zip")
-        c_la = _col(r.fieldnames, "lat", "latitud", "y")
-        c_ln = _col(r.fieldnames, "lon", "lng", "longitud", "x")
-        if not (c_cp and c_la and c_ln):
-            sys.exit(f"El CSV necesita columnas de CP, latitud y longitud. "
-                     f"Encontré: {r.fieldnames}")
-        print(f"  · columnas: CP={c_cp}  lat={c_la}  lng={c_ln}")
-
-        for fila in r:
-            cp = str(fila.get(c_cp, "")).strip().zfill(5)
-            if not (cp.isdigit() and len(cp) == 5):
+            import xlrd
+        except ImportError:
+            sys.exit("Para leer el .xls de SEPOMEX hace falta xlrd:  pip install xlrd")
+        wb = xlrd.open_workbook(str(p), on_demand=True)
+        for nombre in wb.sheet_names():
+            if nombre.lower().startswith("nota"):
                 continue
+            s = wb.sheet_by_name(nombre)
+            if s.nrows < 2:
+                continue
+            enc = [str(c.value).strip().lower() for c in s.row(0)]
             try:
-                lat = float(str(fila[c_la]).replace(",", "."))
-                lng = float(str(fila[c_ln]).replace(",", "."))
-            except (TypeError, ValueError):
+                i_cp, i_e, i_m = enc.index("d_codigo"), enc.index("c_estado"), enc.index("c_mnpio")
+            except ValueError:
+                print(f"    ⚠ hoja «{nombre}» sin las columnas esperadas; me la salto")
                 continue
-            if lng > 0:          # algunos CSV guardan la longitud sin signo
-                lng = -lng
-            if not dentro_de_mexico(lat, lng):
-                continue
-            s = acum.setdefault(cp, [0.0, 0.0, 0])
-            s[0] += lat
-            s[1] += lng
-            s[2] += 1
+            for r in range(1, s.nrows):
+                fila = s.row(r)
+                yield (str(fila[i_cp].value).strip(), fila[i_e].value, fila[i_m].value)
+            wb.unload_sheet(nombre)          # 70 MB: no cabe todo en memoria a la vez
+        return
 
-    puntos = {cp: (sla / n, sln / n) for cp, (sla, sln, n) in acum.items()}
-    print(f"  · {len(puntos):,} CP desde {p.name}")
+    with p.open(encoding="utf-8-sig", newline="") as fh:
+        muestra = fh.read(8192); fh.seek(0)
+        try:
+            dial = csv.Sniffer().sniff(muestra, delimiters=",;|\t")
+        except csv.Error:
+            dial = csv.excel
+        r = csv.DictReader(fh, dialect=dial)
+        cols = {c.strip().lower(): c for c in (r.fieldnames or [])}
+        need = ("d_codigo", "c_estado", "c_mnpio")
+        if not all(n in cols for n in need):
+            sys.exit(f"El CSV necesita las columnas {need}. Trae: {r.fieldnames}")
+        for fila in r:
+            yield (fila[cols["d_codigo"]], fila[cols["c_estado"]], fila[cols["c_mnpio"]])
+
+
+def centroides_sepomex(ruta):
+    centros = _centros_municipales()
+    puntos, sin_municipio, vistos = {}, set(), set()
+    for cp_raw, ce, cm in _filas_sepomex(ruta):
+        cp = str(cp_raw).split(".")[0].strip().zfill(5)
+        if not (cp.isdigit() and len(cp) == 5):
+            continue
+        vistos.add(cp)
+        if cp in puntos:
+            continue
+        try:
+            clave = (int(float(ce)), int(float(cm)))
+        except (TypeError, ValueError):
+            continue
+        pt = centros.get(clave)
+        if pt:
+            puntos[cp] = pt
+        else:
+            sin_municipio.add(clave)
+    print(f"  · {len(vistos):,} CP en el catálogo SEPOMEX; "
+          f"{len(puntos):,} ubicados al centro de su municipio")
+    if sin_municipio:
+        print(f"    ⚠ {len(sin_municipio)} municipios del catálogo no están en "
+              f"mexico_municipios.json ({len(vistos)-len(puntos):,} CP sin ubicar)")
     return puntos
 
 
-def escribir(puntos):
+# ---------------------------------------------------------------- salida ---
+def escribir(exactos, municipales):
+    puntos = {cp: (p, MUNICIPAL) for cp, p in municipales.items()}
+    puntos.update({cp: (p, EXACTO) for cp, p in exactos.items()})   # lo exacto manda
     if not puntos:
         sys.exit("No se generó ningún punto: no escribo un índice vacío.")
 
     trozos = []
     for cp in sorted(puntos):
-        lat, lng = puntos[cp]
-        la = int(round(lat * 1000))
-        ln = int(round(abs(lng) * 1000))
+        (lat, lng), prec = puntos[cp]
+        la, ln = int(round(lat * 1000)), int(round(abs(lng) * 1000))
         if not (0 <= la <= 99999 and 0 <= ln <= 999999):
             continue
-        trozos.append(f"{cp}{la:05d}{ln:06d}")
+        trozos.append(f"{cp}{la:05d}{ln:06d}{prec}")
 
     blob = "".join(trozos)
-    assert len(blob) % 16 == 0, "el blob debe ser múltiplo de 16"
+    assert len(blob) % 17 == 0, "el blob debe ser múltiplo de 17"
     SALIDA.write_text(blob, encoding="ascii")
 
-    kb = len(blob) / 1024
-    print(f"\n✓ {SALIDA.relative_to(RAIZ)} — {len(trozos):,} códigos postales, {kb:,.0f} KB")
+    n_ex = sum(1 for t in trozos if t[16] == "0")
+    print(f"\n✓ {SALIDA.relative_to(RAIZ)} — {len(trozos):,} códigos postales, "
+          f"{len(blob)/1024:,.0f} KB")
+    print(f"  {n_ex:,} con punto del propio CP · {len(trozos)-n_ex:,} al centro de su municipio")
     print(f"  rango: {trozos[0][:5]} … {trozos[-1][:5]}")
     return trozos
 
 
-def verificar(trozos):
+def verificar():
     """Relee el archivo como lo hará el navegador y revisa que todo cuadre."""
     blob = SALIDA.read_text(encoding="ascii")
-    assert len(blob) % 16 == 0
+    assert len(blob) % 17 == 0, "longitud no múltiplo de 17"
     previo = ""
-    for i in range(0, len(blob), 16):
-        reg = blob[i:i + 16]
+    for i in range(0, len(blob), 17):
+        reg = blob[i:i + 17]
         assert reg.isdigit(), f"registro no numérico en {i}: {reg!r}"
-        cp = reg[:5]
-        lat = int(reg[5:10]) / 1000
-        lng = -int(reg[10:16]) / 1000
-        assert cp > previo, f"CP fuera de orden en {i}: {cp} después de {previo}"
+        cp, lat, lng, prec = reg[:5], int(reg[5:10]) / 1000, -int(reg[10:16]) / 1000, reg[16]
+        assert cp > previo, f"CP fuera de orden en {i}: {cp} tras {previo}"
         assert dentro_de_mexico(lat, lng), f"{cp} cae fuera de México: {lat},{lng}"
+        assert prec in "01", f"precisión inválida en {cp}: {prec}"
         previo = cp
-    print(f"✓ verificado: {len(blob)//16:,} registros, orden ascendente, todos dentro de México")
+    print(f"✓ verificado: {len(blob)//17:,} registros, orden ascendente, "
+          f"precisión válida y todo dentro de México")
 
 
 def main():
     ap = argparse.ArgumentParser(description="Construye el índice de CP para /financial/gmm")
-    ap.add_argument("--sepomex", metavar="CSV",
-                    help="CSV de SEPOMEX con coordenadas (cobertura nacional)")
+    ap.add_argument("--sepomex", metavar="ARCHIVO",
+                    help="Catálogo Nacional de SEPOMEX (.xls) o un CSV equivalente")
     args = ap.parse_args()
 
-    print("Construyendo índice de códigos postales…")
-    puntos = centroides_hospitales()
-    # Los polígonos de la CDMX son más precisos que el pin de un hospital.
-    puntos.update(centroides_cdmx())
-    if args.sepomex:
-        # El CSV nacional tiene prioridad sobre el polígono cuando hay ambos.
-        puntos.update(centroides_csv(args.sepomex))
-    else:
-        print("  · sin --sepomex: el índice sólo cubrirá la CDMX")
+    try:
+        import shapely  # noqa: F401
+    except ImportError:
+        sys.exit("Hace falta shapely:  pip install shapely")
 
-    verificar(escribir(puntos))
+    print("Construyendo índice de códigos postales…")
+    municipales = centroides_sepomex(args.sepomex) if args.sepomex else {}
+    if not args.sepomex:
+        print("  · sin --sepomex: sólo se indexa lo que ya está en el repo")
+
+    exactos = centroides_hospitales()
+    exactos.update(centroides_cdmx())     # el polígono del CP gana sobre el pin del hospital
+
+    escribir(exactos, municipales)
+    verificar()
 
 
 if __name__ == "__main__":

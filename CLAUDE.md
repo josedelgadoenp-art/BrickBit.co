@@ -45,8 +45,10 @@ municipios_shf.json, mercado.json, etc.
 gnp_hospitales.json   Red hospitalaria GNP para /financial/gmm (corte 2026-07-31). Campo `pr` =
                       precisión del pin ('colonia' o 'cp'): el pin ubica la ZONA, no el número.
 gnp_medicos_sin_pago_directo.txt  NOMBRE|especialidad|entidad. Las claves se resuelven en gmm.html.
-cp_centroides.txt     Índice CP → coordenada, registros fijos de 16 chars, ordenado por CP.
-                      Lo genera tools/cp_index.py. Ancho fijo para no parsear separadores.
+cp_centroides.txt     Índice CP → coordenada: 31,778 CP de SEPOMEX. Registros fijos de 17 chars
+                      (CP + lat×1000 + |lng|×1000 + precisión: 0 propio CP, 1 centro del municipio),
+                      ordenados por CP. Ancho fijo para no parsear separadores. Lo genera
+                      tools/cp_index.py. La página lo baja sólo al primer uso del buscador por CP.
 
 # Auth compartido
 auth.js               Módulo de sesión Supabase (mountAuth, bbUser, bbClient...). Cache-bust con ?v=NNN al cambiar.
@@ -84,14 +86,15 @@ que un CDN ajeno esté de pie. Las tipografías de Google sí van por CDN (falla
 - **CRM de Financial**: crear el Google Sheet + Apps Script y setear en Netlify las vars `SHEETS_WEBHOOK_URL`, `LEAD_SECRET`, `ALLOWED_ORIGIN`.
 - **IA de Arquitectos**: desplegar `backend/` en Cloudflare (`wrangler secret put ANTHROPIC_API_KEY` + `wrangler deploy`) y pegar la URL del worker en la config de cada herramienta.
 - **Memoria del mercado**: `c21-subir.mjs` ya genera seguimiento (`_seg-<slug>`: altas/recortes/bajas/días), `_metricas` (medianas + yield real) y `_hist` (serie mensual → Índice BrickBit en pulso). Se activa corriendo el flujo normal `c21-scraper` → `c21-subir`; la historia crece con cada corrida (ideal: mensual, `tools/actualizar-inventario.bat`). Sin cambios de worker.
-- **Índice nacional de CP para `/financial/gmm`**: `data/cp_centroides.txt` hoy cubre **1,530 CP**
-  — toda la CDMX (centroides exactos de los 1,182 polígonos de `data/cdmx_codigos_postales.json`)
-  y las zonas donde hay hospitales de la red, sacadas de sus propios domicilios. Fuera de ahí el
-  buscador por CP avisa y ofrece geolocalización o búsqueda por ciudad, que sí funcionan en todo
-  el país. Para cobertura nacional completa: consigue un CSV de SEPOMEX con lat/lng y corre
-  `python3 tools/cp_index.py --sepomex ruta.csv` (detecta las columnas solo y verifica el
-  resultado: múltiplo de 16, orden ascendente y todo dentro de México). SEPOMEX no publica
-  coordenadas en su catálogo oficial, por eso el CSV se consigue aparte y se corre en local.
+- ~~**Índice nacional de CP para `/financial/gmm`**~~ **hecho**: `data/cp_centroides.txt` trae los
+  **31,778 CP** del Catálogo Nacional de SEPOMEX. Como ese catálogo **no publica coordenadas**, la
+  precisión es mixta y cada registro la guarda: 1,530 CP tienen el punto de su propio código postal
+  (los 1,182 polígonos de `data/cdmx_codigos_postales.json` + los CP de los domicilios de la red) y
+  30,248 se ubican en el centro de su municipio vía `data/mexico_municipios.json`. La página avisa
+  en pantalla cuando toca uno aproximado. Se regenera con
+  `python3 tools/cp_index.py --sepomex CPdescarga.xls` (necesita `xlrd` y `shapely`; el .xls pesa
+  70 MB y **no** se guarda en el repo, se baja de Correos de México y se corre en local).
+  Para mejorar la precisión haría falta una fuente con lat/lng por CP, que SEPOMEX no da.
 - **Capa de seguridad (SESNSP)**: descargar el CSV "Incidencia Delictiva Estatal" (nueva metodología) y correr `python tools/riesgos_local.py <csv>` → `data/riesgos.json` (el gobierno bloquea IPs de nube). El mapa la muestra sola cuando el archivo existe.
 
 ## Despliegue rápido

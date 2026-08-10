@@ -388,7 +388,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
         <li><b>Categoría de costo.</b> A, B o C indica el rango tarifario del hospital dentro de la red. Influye en la prima y, en algunos planes, en el coaseguro aplicable. No es una calificación de calidad médica.</li>
         <li><b>Los nombres de plan son de GNP.</b> Premium, Platino, Flexible Índigo, Flexible Ámbar y Flexible Cuarzo son denominaciones comerciales de la aseguradora. Ojo con una coincidencia que confunde: el plan <b>«Flexible Ámbar»</b> no tiene relación con el ámbar que BrickBit usa para marcar estimaciones. Lo estimado en este sitio siempre lleva la píldora <span class="est">est.</span></li>
         <li><b>Ubicación de los pines <span class="est">est.</span></b> Las coordenadas se derivan del catálogo SEPOMEX a nivel colonia o código postal: <b>el pin ubica la zona, no el número exacto</b>. Cada ficha indica si su precisión es de colonia (más fina) o de código postal (más gruesa). Las distancias que ves se calculan en línea recta desde el centro de un código postal, así que sirven para ordenar «qué me queda cerca», nunca para medir un trayecto. Para llegar, usa el enlace a Google Maps.</li>
-        <li><b>Cobertura del buscador por CP.</b> El índice de códigos postales cubre con precisión toda la Ciudad de México y las zonas donde hay hospitales de la red en el resto del país. Si tu CP no aparece, usa «mi ubicación actual», que funciona en todo México, o busca por ciudad. El índice se regenera con <span class="mono">python3 tools/cp_index.py</span>.</li>
+        <li><b>Cobertura del buscador por CP <span class="est">est.</span></b> El índice trae los <b>31,778 códigos postales</b> del Catálogo Nacional de SEPOMEX. Ahora bien, ese catálogo <b>no publica coordenadas</b>, así que la precisión no es pareja: 1,530 CP —toda la Ciudad de México y las zonas con hospitales de la red— tienen el punto de su propio código postal, y el resto se ubica en el <b>centro de su municipio</b>, que puede quedar a varios kilómetros. Cuando toca uno de esos, la herramienta lo dice en pantalla y marca la búsqueda como aproximada. Para precisión real, «mi ubicación actual». El índice se regenera con <span class="mono">python3 tools/cp_index.py --sepomex CPdescarga.xls</span>.</li>
         <li><b>Vigencia.</b> Red compilada del directorio publicado por aseguratemexico.com, agente autorizado GNP, con corte del 31 de julio de 2026. <b>La red cambia sin previo aviso</b>: un hospital puede entrar o salir del convenio entre un corte y otro. Confirma siempre la red vigente y el nivel aplicable con GNP antes de programar un evento médico.</li>
         <li><b>Qué no es esto.</b> Una herramienta informativa. No es una cotización, no constituye oferta contractual ni asesoría médica, y no sustituye las condiciones generales de tu póliza.</li>
       </ol>
@@ -480,7 +480,7 @@ const CITIES=[["Ciudad de México",19.43,-99.13],["Guadalajara",20.67,-103.35],[
 /* ============================================================
    ESTADO
 ============================================================ */
-let DATA=[], MED=[], CPI=new Map();
+let DATA=[], MED=[], CPI=null, cargandoCPI=null;
 const state={tier:'',q:'',edo:'',niveles:new Set(),cats:new Set(),cascade:false,
              center:null,centerLabel:'',radio:10};
 const dstate={q:'',s:'',e:''};
@@ -551,9 +551,8 @@ const PREC={colonia:'Ubicación a nivel colonia', cp:'Ubicación a nivel código
 ============================================================ */
 Promise.all([
   fetch('/data/gnp_hospitales.json').then(r=>{if(!r.ok)throw 0; return r.json()}),
-  fetch('/data/gnp_medicos_sin_pago_directo.txt').then(r=>r.ok?r.text():'').catch(()=>''),
-  fetch('/data/cp_centroides.txt').then(r=>r.ok?r.text():'').catch(()=>'')
-]).then(([hosp,med,cps])=>{
+  fetch('/data/gnp_medicos_sin_pago_directo.txt').then(r=>r.ok?r.text():'').catch(()=>'')
+]).then(([hosp,med])=>{
   DATA=hosp.hospitales;
   DATA.forEach((d,i)=>{
     d._i=i;
@@ -564,13 +563,6 @@ Promise.all([
   MED = med.split('\n').filter(l=>l && l[0]!=='#').map(l=>{
     const p=l.split('|'); return {n:p[0],s:p[1],e:p[2]};
   });
-
-  /* Índice de CP: registros fijos de 16 caracteres (CP + lat×1000 + |lng|×1000).
-     Ver tools/cp_index.py — ancho fijo para no parsear separadores. */
-  for(let i=0;i+16<=cps.length;i+=16){
-    CPI.set(cps.substr(i,5),
-            [+cps.substr(i+5,5)/1000, -(+cps.substr(i+10,6))/1000]);
-  }
 
   montarControles();
   render();
@@ -796,6 +788,28 @@ function clearCenter(){
   render();
   map.setView([23.4,-102.0],5);
 }
+/* El índice nacional pesa medio mega (87 KB comprimido) y la mayoría de las
+   visitas no lo usan: se baja la primera vez que alguien busca por CP, no en
+   cada carga de la página. La promesa se guarda para no bajarlo dos veces. */
+function cargarCPI(){
+  if(CPI) return Promise.resolve(CPI);
+  if(cargandoCPI) return cargandoCPI;
+  cargandoCPI = fetch('/data/cp_centroides.txt')
+    .then(r=>{ if(!r.ok) throw 0; return r.text(); })
+    .then(txt=>{
+      /* Registros fijos de 17 caracteres: CP + lat×1000 + |lng|×1000 + precisión
+         (0 = punto del propio CP, 1 = centro del municipio). Ver tools/cp_index.py. */
+      const m=new Map();
+      for(let i=0;i+17<=txt.length;i+=17){
+        m.set(txt.substr(i,5),
+              [+txt.substr(i+5,5)/1000, -(+txt.substr(i+10,6))/1000, txt[i+16]==='1']);
+      }
+      CPI=m; return m;
+    })
+    .catch(()=>{ cargandoCPI=null; return null; });
+  return cargandoCPI;
+}
+
 function buscarCP(){
   const crudo=$('cp').value.replace(/\D/g,'');
   const hint=$('cpHint');
@@ -805,15 +819,29 @@ function buscarCP(){
     return;
   }
   const v=crudo.padStart(5,'0');
-  const hit=CPI.get(v);
-  if(!hit){
-    state.center=null; render();
-    hint.innerHTML='<b>El CP '+esc(v)+' no está en el índice.</b> Cubre toda la CDMX y las zonas '+
-      'con hospitales de la red; fuera de ahí puede faltar. Usa «mi ubicación actual», que funciona '+
-      'en todo México, o busca por ciudad en el campo de abajo.';
-    return;
-  }
-  setCenter(hit,'CP '+v,true);
+  if(!CPI) hint.innerHTML='Cargando el índice de códigos postales…';
+
+  cargarCPI().then(idx=>{
+    if(!idx){
+      hint.innerHTML='<b>No pude cargar el índice de códigos postales.</b> '+
+        'Usa «mi ubicación actual» o busca por ciudad en el campo de abajo.';
+      return;
+    }
+    const hit=idx.get(v);
+    if(!hit){
+      state.center=null; render();
+      hint.innerHTML='<b>El CP '+esc(v)+' no aparece en el catálogo de SEPOMEX.</b> '+
+        'Revisa los cinco dígitos, o usa «mi ubicación actual» o la búsqueda por ciudad.';
+      return;
+    }
+    const aprox=hit[2];
+    setCenter([hit[0],hit[1]], 'CP '+v+(aprox?' (aprox.)':''), true);
+    if(aprox){
+      hint.innerHTML='<span class="est">est.</span> De este CP sólo se conoce el municipio, '+
+        'así que el centro de búsqueda es el <b>centro del municipio</b> y puede quedar a '+
+        'algunos kilómetros de tu domicilio. Para afinar, usa «mi ubicación actual».';
+    }
+  });
 }
 $('cpGo').onclick=buscarCP;
 $('cp').addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();buscarCP()} });
