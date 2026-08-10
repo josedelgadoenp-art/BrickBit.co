@@ -62,6 +62,19 @@
   to = "/analisisfinanciero.html"
   status = 200
 
+# Mapa de la red hospitalaria GNP (BrickBit Financial). Mismo patrón que
+# analisisfinanciero: el archivo vive en la raíz y aquí toma su ruta bonita,
+# para no crear una carpeta /financial que compita con la regla de arriba.
+[[redirects]]
+  from = "/financial/gmm"
+  to = "/gmm.html"
+  status = 200
+
+[[redirects]]
+  from = "/financial/gmm/"
+  to = "/gmm.html"
+  status = 200
+
 [[redirects]]
   from = "/aviso-de-privacidad"
   to = "/aviso-de-privacidad.html"
