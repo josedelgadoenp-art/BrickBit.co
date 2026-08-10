@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="512x512" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>Red hospitalaria GNP · BrickBit Financial</title>
+<meta name="description" content="Busca los hospitales en convenio con GNP por código postal, estado o nombre, y consulta qué plan te da acceso a cada uno. Mapa nacional de BrickBit Financial, agente profesional en alianza con GNP.">
+<meta name="robots" content="index,follow">
+<meta property="og:title" content="¿Tu hospital de confianza está en la red de GNP?">
+<meta property="og:description" content="Mapa nacional de la red hospitalaria GNP: filtra por código postal, nivel y plan, y mira a qué distancia te queda cada hospital.">
+<meta property="og:image" content="https://brickbit.co/og-image.png">
+<meta property="og:url" content="https://brickbit.co/financial/gmm">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- Leaflet 1.9.4 y MarkerCluster 1.5.3 servidos desde el propio dominio, por
+     la misma razón que Chart.js en analisisfinanciero.html: un mapa no debe
+     depender de que un CDN ajeno esté de pie. Archivos oficiales sin tocar. -->
+<link rel="stylesheet" href="/assets/leaflet.css">
+<link rel="stylesheet" href="/assets/MarkerCluster.css">
+<style>
+:root{
+  color-scheme: light;
+  /* Identidad BrickBit Financial · el naranja sale del propio logotipo (#FF751F) */
+  --ink:#231a13; --ink-2:#3d3128; --muted:#5a4d40; --faint:#8a7a6b;
+  --line:rgba(16,12,10,.11); --line-2:rgba(16,12,10,.06); --bg:#FFFFFF; --soft:#faf5ee;
+  --paper:#f5ede3;
+  --accent:#FF751F; --accent-dk:#B8480F; --accent-soft:#FDEEE3;
+  --good:#1a7d50; --good-soft:#e6f2ea;
+  --warn:#9a6212; --warn-soft:#fbf1de; --danger:#a8341f; --danger-soft:#fbeae6;
+  /* Ámbar: en BrickBit marca siempre un dato estimado, nunca un hecho. */
+  --est:#F5C277; --est-ink:#7a5410; --est-soft:#fdf3e0;
+  --serif:"Fraunces",Georgia,"Times New Roman",serif;
+  --sans:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"Space Mono",ui-monospace,"SFMono-Regular",monospace;
+  --r:14px;
+
+  /* Colores de plan GNP. Son IDENTIDAD DE PRODUCTO, no una escala de valor:
+     un plan que se llama "Índigo" no puede pintarse de verde. Cada uno lleva
+     un tono de marca (--c, para puntos y barras) y un tono legible sobre
+     blanco (--ct, para texto chico) porque el de marca no alcanza AA.
+     Ojo con "Flexible Ámbar": comparte NOMBRE con el ámbar de datos estimados
+     pero no significa lo mismo. Lo estimado siempre lleva la píldora "est.". */
+  --t-premium:#1B2A4A;  --t-premium-tx:#1B2A4A;
+  --t-platino:#3C6E9E;  --t-platino-tx:#2F5A82;
+  --t-indigo:#5B54A6;   --t-indigo-tx:#4A4490;
+  --t-ambar:#C68A2E;    --t-ambar-tx:#8A5D12;
+  --t-cuarzo:#8E8C86;   --t-cuarzo-tx:#5F5D58;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+html,body{background:var(--paper)}
+body{font-family:var(--sans);color:var(--ink);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 96px;background:var(--bg);
+  box-shadow:0 1px 2px rgba(36,28,23,.04),0 12px 40px rgba(36,28,23,.07)}
+@media(min-width:960px){.wrap{margin-top:26px;margin-bottom:40px;border-radius:18px;padding-top:2px}}
+
+/* ---------- encabezado de marca ---------- */
+.top{border-bottom:1px solid var(--line);padding:26px 0 22px;margin-bottom:40px;display:flex;
+  align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit}
+.brand .logo{height:38px;width:auto;display:block;flex:0 0 auto}
+.brand-txt{line-height:1.3;border-left:1px solid var(--line);padding-left:14px}
+.brand-txt b{display:block;font-family:var(--serif);font-size:15px;font-weight:500;letter-spacing:-.01em}
+.brand-txt span{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.top-note{font-size:12px;color:var(--faint);text-align:right;line-height:1.5}
+.badge-gnp{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--accent-dk);background:var(--accent-soft);border:1px solid rgba(255,117,31,.22);
+  padding:6px 11px;border-radius:999px;white-space:nowrap;display:inline-block}
+
+h1{font-family:var(--serif);font-size:clamp(27px,5.2vw,36px);line-height:1.12;font-weight:500;letter-spacing:-.02em;margin-bottom:12px}
+h2{font-family:var(--serif);font-size:21px;font-weight:500;letter-spacing:-.012em;margin-bottom:6px}
+.lead{font-size:16px;color:var(--muted);max-width:62ch}
+.eyebrow{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--accent-dk);margin-bottom:10px}
+.sec{margin-top:52px}
+.sec-head{margin-bottom:18px}
+.sec-head p{color:var(--muted);font-size:14px;max-width:64ch}
+.hide{display:none !important}
+
+.intro-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:30px}
+.intro-strip div{background:var(--bg);padding:18px 20px}
+.intro-strip b{display:block;font-family:var(--serif);font-size:23px;font-weight:500;letter-spacing:-.015em;margin-bottom:3px}
+.intro-strip span{font-size:12.5px;color:var(--muted);line-height:1.4;display:block}
+@media(max-width:620px){.intro-strip{grid-template-columns:1fr}}
+
+/* Marca de dato estimado. Regla de la casa: toda estimación va en ámbar. */
+.est{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--est-ink);background:var(--est-soft);
+  border:1px solid var(--est);border-radius:999px;padding:2px 7px;vertical-align:middle;white-space:nowrap}
+.est-nota{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--est);background:var(--est-soft);
+  border-radius:12px;padding:13px 16px;margin-top:22px;font-size:12.5px;color:#6b4a12;line-height:1.55}
+.est-nota b{color:var(--est-ink)}
+
+/* ---------- conmutador de vista ---------- */
+.switch{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--soft)}
+.switch button{padding:9px 18px;background:none;border:0;cursor:pointer;font-size:13.5px;font-weight:600;
+  color:var(--muted);transition:.15s;white-space:nowrap}
+.switch button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.switch button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.viewbar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.tally{margin-left:auto;font-size:12.5px;color:var(--faint)}
+.tally b{color:var(--ink);font-weight:600}
+
+/* ---------- la herramienta ---------- */
+.app{display:grid;grid-template-columns:380px 1fr;border:1px solid var(--line);border-radius:var(--r);
+  overflow:hidden;height:clamp(560px,74vh,780px)}
+.rail{border-right:1px solid var(--line);background:var(--bg);display:flex;flex-direction:column;min-height:0}
+
+.ladder{display:flex;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;flex:none;background:var(--soft)}
+.ladder::-webkit-scrollbar{display:none}
+.rung{flex:1 0 auto;min-width:78px;padding:11px 10px 9px;background:none;border:0;cursor:pointer;
+  border-bottom:3px solid transparent;text-align:left;transition:background .14s}
+.rung:hover{background:var(--line-2)}
+.rung .lab{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);font-weight:700}
+.rung .num{display:block;font-family:var(--mono);font-size:15px;font-weight:700;margin-top:3px;color:var(--faint)}
+.rung[aria-selected="true"] .lab,.rung[aria-selected="true"] .num{color:var(--ink)}
+.rung[aria-selected="true"]{border-bottom-color:var(--c,var(--ink));background:var(--bg)}
+.rung:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+.controls{padding:16px 18px;border-bottom:1px solid var(--line);display:grid;gap:13px;flex:none;
+  overflow-y:auto;max-height:56%}
+.field{display:grid;gap:6px}
+.field>label,.flabel{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700}
+input[type=search],input[type=text],select{width:100%;padding:9px 11px;background:var(--bg);
+  border:1.5px solid var(--line);border-radius:9px;font-size:14px}
+input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{padding:6px 11px;border:1.5px solid var(--line);background:var(--bg);border-radius:999px;cursor:pointer;
+  font-family:var(--mono);font-size:11.5px;font-weight:700;color:var(--muted);transition:.14s}
+.chip:hover{border-color:var(--faint);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cascade{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--muted);cursor:pointer;line-height:1.4}
+.cascade input{margin:2px 0 0;accent-color:var(--accent);flex:none}
+
+/* Bloque de radio por CP: el control estrella de la herramienta. */
+.radar{border:1.5px solid var(--line);border-radius:12px;padding:13px;background:var(--soft)}
+.radar .row{display:flex;gap:8px;margin-top:7px}
+.radar .row input{flex:1;font-family:var(--mono);letter-spacing:.1em;background:var(--bg)}
+.radar .go{padding:9px 16px;background:var(--accent);color:#fff;border:0;border-radius:9px;cursor:pointer;
+  font-size:13.5px;font-weight:600;white-space:nowrap}
+.radar .go:hover{background:var(--accent-dk)}
+.radar .go:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.radar .rr{margin-top:10px}
+.geoloc{margin-top:9px;background:none;border:0;padding:0;font-size:12.5px;color:var(--accent-dk);
+  text-decoration:underline;cursor:pointer;font-weight:600}
+.pin-active{margin-top:10px;padding:9px 11px;background:var(--ink);color:#fff;border-radius:9px;
+  display:flex;align-items:center;gap:10px;font-size:12.5px;flex-wrap:wrap}
+.pin-active .mono{font-size:13px;font-weight:700}
+.pin-active button{margin-left:auto;background:none;border:0;color:#fff;opacity:.75;cursor:pointer;
+  font-size:12px;text-decoration:underline}
+.hint{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.45}
+.hint b{color:var(--ink)}
+
+.results{overflow-y:auto;flex:1;min-height:0}
+.item{display:grid;grid-template-columns:3px 1fr;gap:12px;padding:12px 18px 12px 15px;
+  border:0;border-bottom:1px solid var(--line-2);cursor:pointer;background:none;width:100%;text-align:left;transition:background .12s}
+.item:hover{background:var(--soft)}
+.item:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.item .bar{background:var(--c);border-radius:2px}
+.item h3{margin:0;font-size:13.5px;font-weight:600;letter-spacing:-.005em;line-height:1.3}
+.item .meta{margin-top:3px;font-size:11.5px;color:var(--faint);line-height:1.4}
+.item .tags{margin-top:7px;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.tag{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.04em;padding:2px 7px;
+  border:1px solid var(--line);border-radius:999px;color:var(--faint);white-space:nowrap}
+.tag.plan{border-color:var(--ct);color:var(--ct)}
+.tag.dist{background:var(--est-soft);color:var(--est-ink);border-color:var(--est)}
+.empty{padding:34px 22px;text-align:center;color:var(--muted);font-size:13px;line-height:1.55}
+.empty b{display:block;color:var(--ink);font-weight:600;margin-bottom:5px;font-size:14px}
+
+.mapwrap{position:relative;min-height:0;background:#e8eef0}
+#map{position:absolute;inset:0;background:#DFE7EA}
+.city{pointer-events:none}
+.city i{position:absolute;left:-2px;top:-2px;width:4px;height:4px;border-radius:50%;background:#9AA0A7}
+.city span{position:absolute;left:6px;top:-7px;white-space:nowrap;font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.05em;text-transform:uppercase;color:#7C838B;
+  text-shadow:0 0 3px #F5F4F0,0 0 3px #F5F4F0,0 0 3px #F5F4F0}
+.scalehint{position:absolute;right:12px;bottom:20px;z-index:600;font-size:10.5px;color:var(--muted);
+  background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:8px;padding:5px 9px}
+.legend{position:absolute;left:12px;bottom:20px;z-index:600;background:rgba(255,255,255,.95);
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.legend h4{margin:0 0 7px;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700}
+.legend div{display:flex;align-items:center;gap:7px;font-size:11.5px;padding:1.5px 0;color:var(--muted)}
+.legend i{width:9px;height:9px;border-radius:50%;flex:none}
+
+.leaflet-container{font-family:var(--sans)}
+.leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 6px 24px rgba(36,28,23,.16)}
+.leaflet-popup-content{margin:14px 16px;width:262px!important;font-family:var(--sans)}
+.pop-name{font-size:14px;font-weight:600;line-height:1.3;margin:0 0 3px;letter-spacing:-.01em}
+.pop-plan{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.pop-addr{font-size:12px;color:var(--muted);line-height:1.45}
+.pop-grid{display:flex;gap:5px;margin:9px 0 10px;flex-wrap:wrap}
+.pop-grid span{font-family:var(--mono);font-size:9.5px;font-weight:700;padding:2px 7px;border:1px solid var(--line);border-radius:999px;color:var(--faint)}
+.pop-grid span.est-tag{background:var(--est-soft);color:var(--est-ink);border-color:var(--est)}
+.pop-link{display:inline-block;font-size:12.5px;font-weight:600;color:var(--accent-dk);text-decoration:none;
+  border-bottom:1.5px solid var(--accent);padding-bottom:1px}
+.marker-cluster{background:rgba(36,28,23,.16);border-radius:50%;display:flex;align-items:center;justify-content:center}
+.marker-cluster div{background:var(--ink);color:#fff;font-family:var(--mono);font-size:12px;font-weight:700;
+  width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+
+/* ---------- médicos sin pago directo ---------- */
+.docs{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;
+  height:clamp(560px,74vh,780px);background:var(--bg)}
+.docs .warn{padding:15px 20px;background:var(--danger-soft);border-bottom:1px solid rgba(168,52,31,.16);
+  font-size:12.5px;line-height:1.6;color:#5A2A1D;flex:none}
+.docs .warn b{color:var(--danger)}
+.docs .bar2{display:flex;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:flex-end;flex:none}
+.docs .bar2 .field{min-width:190px;flex:1}
+.doclist{overflow-y:auto;flex:1;min-height:0}
+.doc{display:grid;grid-template-columns:1fr 250px 150px;gap:16px;padding:10px 20px;
+  border-bottom:1px solid var(--line-2);align-items:baseline}
+.doc:nth-child(odd){background:var(--soft)}
+.doc .nm{font-size:13.5px;font-weight:600}
+.doc .sp,.doc .ed{font-size:12px;color:var(--muted)}
+.dochead{display:grid;grid-template-columns:1fr 250px 150px;gap:16px;padding:8px 20px;flex:none;
+  border-bottom:1px solid var(--line);font-family:var(--mono);font-size:10px;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--faint);font-weight:700}
+
+/* Reja de sesión del listado de médicos */
+.gate{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:32px 22px;background:var(--soft)}
+.gate-box{max-width:44ch;text-align:center}
+.gate-box h3{font-family:var(--serif);font-size:20px;font-weight:500;letter-spacing:-.01em;margin-bottom:9px}
+.gate-box p{font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.6}
+.btn-gate{background:var(--ink);color:#fff}
+.btn-gate:hover{background:var(--accent-dk)}
+.gate-note{font-size:12.5px;color:var(--faint);margin:16px 0 0}
+.gate-note a{color:var(--accent-dk);font-weight:600}
+
+/* ---------- metodología, CTA, pie ---------- */
+.notas{border:1px solid var(--line);border-radius:var(--r);padding:22px 26px;background:var(--soft)}
+.notas h2{margin-bottom:12px}
+.notas ol{margin:0;padding-left:20px;display:grid;gap:11px}
+.notas li{font-size:13px;color:var(--muted);line-height:1.6}
+.notas li b{color:var(--ink-2)}
+.notas a{color:var(--accent-dk);font-weight:600}
+
+.cta{border:1px solid var(--line);border-radius:var(--r);padding:26px 28px;background:var(--accent-soft);
+  border-color:rgba(255,117,31,.24)}
+.cta h2{margin-bottom:8px}
+.cta p{font-size:14.5px;color:var(--muted);max-width:56ch;margin-bottom:18px}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;border:none;cursor:pointer;
+  font-family:var(--sans);font-weight:600;font-size:14.5px;padding:12px 22px;border-radius:999px;
+  transition:.16s;text-decoration:none}
+.btn-wa{background:#1FA855;color:#fff}
+.btn-wa:hover{background:#178a45}
+.btn-ghost{background:var(--bg);color:var(--ink);border:1.5px solid var(--line)}
+.btn-ghost:hover{border-color:var(--accent)}
+.cta .firma{font-size:12.5px;color:var(--faint);margin-top:14px}
+.cta .firma b{color:var(--muted)}
+
+.foot{margin-top:34px;padding-top:18px;border-top:1px solid var(--line);display:flex;
+  justify-content:space-between;align-items:center;gap:16px;font-size:11.5px;color:var(--faint);flex-wrap:wrap}
+.foot a{color:var(--faint)}
+.foot .link{color:var(--accent-dk);font-weight:600;text-decoration:none}
+
+/* ---------- responsivo ---------- */
+@media(max-width:900px){
+  .wrap{padding:0 16px 70px}
+  .app{grid-template-columns:1fr;grid-template-rows:46vh auto;height:auto}
+  .mapwrap{order:1;min-height:46vh}
+  .rail{order:2;border-right:0;border-top:1px solid var(--line)}
+  .controls{max-height:none;overflow:visible}
+  .results{overflow:visible;max-height:none}
+  .docs{height:auto}
+  .doclist{overflow:visible}
+  .doc,.dochead{grid-template-columns:1fr;gap:2px}
+  .dochead{display:none}
+  .tally{margin-left:0;width:100%}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <a class="brand" href="/financial" aria-label="BrickBit Financial">
+      <img class="logo" src="/assets/brickbit-financial.png" alt="BrickBit · Finance &amp; Strategy" width="207" height="80">
+      <span class="brand-txt"><b>Red hospitalaria GNP</b><span>Mapa nacional de cobertura</span></span>
+    </a>
+    <div class="top-note">
+      <span class="badge-gnp">Agente GNP</span>
+      <span id="auth-slot" style="margin-left:10px"></span><br>
+      Red en convenio · corte del 31 de julio de 2026
+    </div>
+  </header>
+
+  <section id="intro">
+    <div class="eyebrow">Gastos médicos mayores</div>
+    <h1>¿Tu hospital de confianza<br>está en la red de GNP?</h1>
+    <p class="lead">Antes de contratar una póliza conviene revisar lo contrario de lo que se suele mirar: no qué cubre el plan en abstracto, sino <b>a qué hospitales concretos te deja entrar</b>. Escribe tu código postal y te digo cuáles te quedan cerca, de qué nivel son y qué plan los abre.</p>
+    <div class="intro-strip" id="introStrip">
+      <div><b class="mono">—</b><span>unidades hospitalarias en convenio</span></div>
+      <div><b class="mono">—</b><span>entidades federativas con cobertura</span></div>
+      <div><b class="mono">—</b><span>niveles de red, del más amplio al más acotado</span></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="viewbar">
+      <div class="switch" role="group" aria-label="Vista">
+        <button id="tabH" aria-pressed="true" aria-controls="viewH">Red hospitalaria</button>
+        <button id="tabM" aria-pressed="false" aria-controls="viewM">Médicos sin pago directo</button>
+      </div>
+      <span class="tally" id="tally">Cargando la red…</span>
+    </div>
+
+    <!-- ============ vista 1 · mapa de hospitales ============ -->
+    <div class="app" id="viewH">
+      <aside class="rail">
+        <div class="ladder" role="tablist" aria-label="Plan de acceso"></div>
+
+        <div class="controls">
+          <div class="radar">
+            <span class="flabel">Buscar por código postal</span>
+            <div class="row">
+              <input id="cp" type="text" inputmode="numeric" maxlength="5" placeholder="Ej. 03100" autocomplete="postal-code" aria-label="Código postal">
+              <button class="go" id="cpGo">Buscar</button>
+            </div>
+            <div class="rr">
+              <span class="flabel">Radio</span>
+              <div class="chips" id="radios" style="margin-top:5px"></div>
+            </div>
+            <button class="geoloc" id="geo">Usar mi ubicación actual</button>
+            <div id="pinBox"></div>
+            <p class="hint" id="cpHint">Escribe un CP y verás sólo los hospitales dentro del radio, ordenados del más cercano al más lejano.</p>
+          </div>
+
+          <div class="field">
+            <label for="q">Buscar hospital, ciudad o colonia</label>
+            <input id="q" type="search" placeholder="Ej. Ángeles, Santa Fe, Mérida" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="edo">Estado</label>
+            <select id="edo"><option value="">Todos los estados</option></select>
+          </div>
+          <div class="field">
+            <label>Nivel hospitalario</label>
+            <div class="chips" id="niveles"></div>
+            <label class="cascade">
+              <input type="checkbox" id="cascade">
+              <span>Incluir niveles inferiores: un plan de Nivel 200 también accede a 300 y 400</span>
+            </label>
+          </div>
+          <div class="field">
+            <label>Categoría de costo</label>
+            <div class="chips" id="cats"></div>
+          </div>
+        </div>
+
+        <div class="results" id="results"><div class="empty"><b>Cargando la red…</b>Un momento.</div></div>
+      </aside>
+
+      <div class="mapwrap">
+        <div id="map"></div>
+        <div class="legend" id="legend"><h4>Plan de acceso</h4></div>
+        <div class="scalehint" id="scaleHint">Vista esquemática · usa Google Maps para la calle exacta</div>
+      </div>
+    </div>
+
+    <!-- ============ vista 2 · médicos sin pago directo ============ -->
+    <section class="docs hide" id="viewM">
+      <div class="warn">
+        <b>Qué significa esta lista.</b> Son médicos <b>sin convenio de pago directo</b> con GNP: una programación o apertura de
+        reclamación con ellos no se aprueba para pago directo. El asegurado paga y después solicita reembolso, que se evalúa
+        conforme a condiciones, límites, exclusiones, tabuladores y coaseguros de su póliza. <b>No es una descalificación
+        profesional</b> y no limita el derecho del asegurado a elegir médico. Fuente: GNP Seguros, corte del 31 de julio de 2026.
+        Si un nombre no aparece aquí, verifícalo con GNP antes de asumir que sí tiene pago directo.
+      </div>
+      <!-- Reja. El listado nombra a personas identificables, así que no se
+           sirve al público: sólo se descarga cuando hay sesión iniciada. -->
+      <div class="gate" id="docGate">
+        <div class="gate-box">
+          <h3>Este listado es para clientes</h3>
+          <p>Son nombres de médicos reales y la información cambia con cada corte de GNP,
+             así que no la publicamos abierta. Inicia sesión y la consultas completa,
+             con filtros por especialidad y estado.</p>
+          <button class="btn btn-gate" id="docLogin">Entrar / Crear cuenta</button>
+          <p class="gate-note">Crear cuenta es gratis. Si prefieres, <a id="gateWa" href="#" target="_blank" rel="noopener">pregúntame por un médico en concreto por WhatsApp</a>.</p>
+        </div>
+      </div>
+
+      <div id="docApp" class="hide" style="display:flex;flex-direction:column;flex:1;min-height:0">
+        <div class="bar2">
+          <div class="field"><label for="dq">Buscar por nombre</label><input id="dq" type="search" placeholder="Apellido o nombre" autocomplete="off"></div>
+          <div class="field"><label for="dsp">Especialidad</label><select id="dsp"><option value="">Todas</option></select></div>
+          <div class="field"><label for="ded">Estado</label><select id="ded"><option value="">Todos</option></select></div>
+        </div>
+        <div class="dochead"><span>Médico</span><span>Especialidad</span><span>Estado</span></div>
+        <div class="doclist" id="doclist"></div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ============ metodología ============ -->
+  <section class="sec">
+    <div class="sec-head">
+      <h2>Cómo leer este mapa</h2>
+      <p>De dónde sale cada dato y qué no puede decirte esta herramienta.</p>
+    </div>
+    <div class="notas">
+      <ol>
+        <li><b>Qué es la red.</b> Los hospitales en convenio son aquellos donde GNP puede autorizar <b>pago directo</b>: la aseguradora liquida con el hospital y tú cubres deducible y coaseguro. Fuera de convenio sigues cubierto conforme a tu póliza, pero por reembolso, pagando primero.</li>
+        <li><b>Nivel hospitalario.</b> El nivel (100, 200, 300, 400) describe qué tan amplia es la red a la que entra un plan: 100 es la más abierta e incluye los hospitales más caros; 400 es la más acotada. Con la casilla de niveles inferiores activada, un plan de Nivel 200 también muestra 300 y 400, que es como opera la cobertura en cascada.</li>
+        <li><b>Categoría de costo.</b> A, B o C indica el rango tarifario del hospital dentro de la red. Influye en la prima y, en algunos planes, en el coaseguro aplicable. No es una calificación de calidad médica.</li>
+        <li><b>Los nombres de plan son de GNP.</b> Premium, Platino, Flexible Índigo, Flexible Ámbar y Flexible Cuarzo son denominaciones comerciales de la aseguradora. Ojo con una coincidencia que confunde: el plan <b>«Flexible Ámbar»</b> no tiene relación con el ámbar que BrickBit usa para marcar estimaciones. Lo estimado en este sitio siempre lleva la píldora <span class="est">est.</span></li>
+        <li><b>Ubicación de los pines <span class="est">est.</span></b> Las coordenadas se derivan del catálogo SEPOMEX a nivel colonia o código postal: <b>el pin ubica la zona, no el número exacto</b>. Cada ficha indica si su precisión es de colonia (más fina) o de código postal (más gruesa). Las distancias que ves se calculan en línea recta desde el centro de un código postal, así que sirven para ordenar «qué me queda cerca», nunca para medir un trayecto. Para llegar, usa el enlace a Google Maps.</li>
+        <li><b>Cobertura del buscador por CP <span class="est">est.</span></b> El índice trae los <b>31,778 códigos postales</b> del Catálogo Nacional de SEPOMEX. Ahora bien, ese catálogo <b>no publica coordenadas</b>, así que la precisión no es pareja: 1,530 CP —toda la Ciudad de México y las zonas con hospitales de la red— tienen el punto de su propio código postal, y el resto se ubica en el <b>centro de su municipio</b>, que puede quedar a varios kilómetros. Cuando toca uno de esos, la herramienta lo dice en pantalla y marca la búsqueda como aproximada. Para precisión real, «mi ubicación actual». El índice se regenera con <span class="mono">python3 tools/cp_index.py --sepomex CPdescarga.xls</span>.</li>
+        <li><b>Vigencia.</b> Red compilada del directorio publicado por aseguratemexico.com, agente autorizado GNP, con corte del 31 de julio de 2026. <b>La red cambia sin previo aviso</b>: un hospital puede entrar o salir del convenio entre un corte y otro. Confirma siempre la red vigente y el nivel aplicable con GNP antes de programar un evento médico.</li>
+        <li><b>Qué no es esto.</b> Una herramienta informativa. No es una cotización, no constituye oferta contractual ni asesoría médica, y no sustituye las condiciones generales de tu póliza.</li>
+      </ol>
+      <div class="est-nota">
+        <span aria-hidden="true">⚠️</span>
+        <span><b>Regla de la casa.</b> Todo lo que va en ámbar es una estimación, no un hecho. Aquí lo son la posición de los pines y las distancias calculadas a partir de ellos. Lo demás —nombre, domicilio, nivel, categoría y plan— viene tal cual del directorio de la red.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CTA ============ -->
+  <section class="sec">
+    <div class="cta">
+      <h2>¿Encontraste tu hospital? Falta la mitad de la respuesta.</h2>
+      <p>Saber que un hospital está en la red no basta: lo que decide tu bolsillo es el nivel que contratas, la suma asegurada, el deducible y el coaseguro. Cuéntame qué hospital te importa y armamos el plan que lo cubre sin pagar de más por los que no vas a usar.</p>
+      <div class="btnrow">
+        <a class="btn btn-wa" id="waBtn" href="#" target="_blank" rel="noopener">Escribir por WhatsApp</a>
+        <a class="btn btn-ghost" href="https://calendly.com/jose-delgado-enp/asesoria-financiera-personalizada" target="_blank" rel="noopener">Agendar asesoría gratuita</a>
+      </div>
+      <p class="firma"><b>José Delgado</b> · Asesor Profesional en Seguros en alianza con GNP · La asesoría no tiene costo ni compromiso.</p>
+    </div>
+  </section>
+
+  <div class="foot">
+    <span><b>BrickBit Financial</b> · José Delgado, Asesor Profesional en Seguros en alianza con GNP ·
+      Herramienta informativa ·
+      <a href="/aviso-de-privacidad">Aviso de Privacidad</a></span>
+    <span>
+      <a class="link" href="/financial">Buscador de seguros &rarr;</a>&nbsp;&nbsp;
+      <a class="link" href="/financial/analisisfinanciero">Análisis de retiro &rarr;</a>
+    </span>
+  </div>
+</div>
+
+<script src="/assets/leaflet.js"></script>
+<script src="/assets/leaflet.markercluster.js"></script>
+<!-- Sesión Supabase: sólo la usa la reja del listado de médicos. El mapa de
+     hospitales funciona sin cuenta y sin estos scripts. -->
+<script src="/supabase.js?v=152"></script>
+<script src="/auth.js?v=153"></script>
+<script>
+(function(){
+'use strict';
+
+/* ============================================================
+   CONFIGURACIÓN
+============================================================ */
+const AGENTE = { nombre:"José Delgado", whatsapp:"5215584681927" };
+document.getElementById('waBtn').href =
+  'https://wa.me/'+AGENTE.whatsapp+'?text='+encodeURIComponent(
+    'Hola '+AGENTE.nombre+', vi el mapa de la red hospitalaria GNP en BrickBit y quiero saber qué plan cubre el hospital que me interesa.');
+
+/* Planes GNP. El orden es el de la escalera: del más abierto al más acotado. */
+const TIERS=[
+  {k:'Premium',        label:'Premium', c:'var(--t-premium)', ct:'var(--t-premium-tx)'},
+  {k:'Platino',        label:'Platino', c:'var(--t-platino)', ct:'var(--t-platino-tx)'},
+  {k:'Flexible Indigo',label:'Índigo',  c:'var(--t-indigo)',  ct:'var(--t-indigo-tx)'},
+  {k:'Flexible Ambar', label:'Ámbar',   c:'var(--t-ambar)',   ct:'var(--t-ambar-tx)'},
+  {k:'Flexible Cuarzo',label:'Cuarzo',  c:'var(--t-cuarzo)',  ct:'var(--t-cuarzo-tx)'}
+];
+const COLOR = Object.fromEntries(TIERS.map(t=>[t.k,t.c]));
+const COLTX = Object.fromEntries(TIERS.map(t=>[t.k,t.ct]));
+const LABEL = Object.fromEntries(TIERS.map(t=>[t.k,t.label]));
+const NIVELES=[100,200,300,400], CATS=['A','B','C'], RADIOS=[5,10,20,50];
+
+/* Claves del listado de médicos. Viven aquí y no en el .txt para que el
+   archivo de datos sea sólo datos. */
+const SPEC={AN:"Anestesiología",AV:"Angiología y cirugía vascular",CA:"Cardiología",CT:"Cirugía cardiotorácica",
+CG:"Cirugía general",CM:"Cirugía maxilofacial",CN:"Cirugía neurológica",CO:"Cirugía oncológica",CP:"Cirugía pediátrica",
+CR:"Cirugía plástica y reconstructiva",CL:"Coloproctología",EN:"Endocrinología",EF:"Enfermería general",FI:"Fisioterapia",
+GA:"Gastroenterología",GP:"Gastropediatría",GE:"Geriatría y gerontología",GO:"Ginecología y obstetricia",HE:"Hematología",
+MC:"Medicina crítica",MR:"Medicina de rehabilitación",MU:"Medicina de urgencias",MG:"Medicina general",MI:"Medicina interna",
+MN:"Medicina nuclear",NE:"Nefrología",NN:"Neonatología",NU:"Neumología",NP:"Neumología pediátrica",NC:"Neurocirugía",
+NR:"Neurología",NM:"No es médico",OF:"Oftalmología",ON:"Oncología",OR:"Ortopedia y traumatología",
+OL:"Otorrinolaringología y cirugía de cabeza y cuello",PE:"Pediatría",RE:"Reumatología",UR:"Urología"};
+const EDOS={CX:"CDMX",EM:"Estado de México",JA:"Jalisco",NL:"Nuevo León",PU:"Puebla",CO:"Coahuila",VE:"Veracruz",
+QT:"Querétaro",QR:"Quintana Roo",SL:"San Luis Potosí",GT:"Guanajuato",MI:"Michoacán",TM:"Tamaulipas",SI:"Sinaloa",
+SO:"Sonora",BC:"Baja California",YU:"Yucatán",TB:"Tabasco",MO:"Morelos",HI:"Hidalgo",CH:"Chihuahua",CS:"Chiapas",
+OA:"Oaxaca",GR:"Guerrero",DU:"Durango",AG:"Aguascalientes",CL:"Colima",ZA:"Zacatecas",CM:"Campeche",SD:"Sin dato"};
+
+/* Etiquetas de ciudad del mapa base propio (sólo se ven si fallan las teselas). */
+const CITIES=[["Ciudad de México",19.43,-99.13],["Guadalajara",20.67,-103.35],["Monterrey",25.69,-100.31],
+["Puebla",19.04,-98.20],["Tijuana",32.51,-117.02],["León",21.12,-101.68],["Querétaro",20.59,-100.39],
+["Mérida",20.97,-89.62],["Cancún",21.16,-86.85],["Toluca",19.29,-99.65],["Chihuahua",28.63,-106.08],
+["Culiacán",24.81,-107.39],["Hermosillo",29.07,-110.96],["Veracruz",19.19,-96.15],["Villahermosa",17.99,-92.93],
+["Acapulco",16.85,-99.88],["Morelia",19.71,-101.19],["Aguascalientes",21.88,-102.30],["San Luis Potosí",22.15,-100.98],
+["Saltillo",25.42,-101.00],["Torreón",25.54,-103.41],["Tuxtla Gutiérrez",16.75,-93.12],["Oaxaca",17.06,-96.72],
+["Cd. Juárez",31.69,-106.42],["La Paz",24.14,-110.31],["Tampico",22.25,-97.87],["Pachuca",20.12,-98.73],
+["Cuernavaca",18.92,-99.23],["Tepic",21.51,-104.89],["Colima",19.24,-103.72],["Durango",24.02,-104.65],
+["Zacatecas",22.77,-102.58],["Campeche",19.84,-90.53],["Chetumal",18.50,-88.30],["Puerto Vallarta",20.62,-105.23],
+["Los Cabos",22.89,-109.92],["Mexicali",32.65,-115.47],["Mazatlán",23.25,-106.41],["Xalapa",19.53,-96.92]];
+
+/* ============================================================
+   ESTADO
+============================================================ */
+let DATA=[], MED=[], CPI=null, cargandoCPI=null;
+const state={tier:'',q:'',edo:'',niveles:new Set(),cats:new Set(),cascade:false,
+             center:null,centerLabel:'',radio:10};
+const dstate={q:'',s:'',e:''};
+const $=id=>document.getElementById(id);
+
+/* ============================================================
+   MAPA
+============================================================ */
+/* maxZoom va declarado en el mapa a propósito, no heredado de la capa de
+   teselas. markercluster exige que el mapa tenga maxZoom, y si sólo lo pusiera
+   la capa de teselas, el mapa se quedaría sin él justo cuando el CDN falla y
+   esa capa se retira — es decir, el escenario que el respaldo debe cubrir. */
+const map=L.map('map',{minZoom:4,maxZoom:19,maxBounds:[[12.5,-120],[34.5,-84]],maxBoundsViscosity:.55})
+  .setView([23.4,-102.0],5);
+
+map.createPane('base');   map.getPane('base').style.zIndex=250;
+map.createPane('labels'); map.getPane('labels').style.zIndex=270;
+map.getPane('labels').style.pointerEvents='none';
+
+const cityLayer=L.layerGroup().addTo(map);
+CITIES.forEach(([n,la,lo])=>cityLayer.addLayer(
+  L.marker([la,lo],{pane:'labels',interactive:false,keyboard:false,
+    icon:L.divIcon({className:'city',iconSize:[0,0],html:'<i></i><span>'+n+'</span>'})})));
+
+/* Mapa base propio: los 32 estados desde data/mexico_estados.json, el mismo
+   archivo que ya usa el resto del sitio. Se dibuja de inmediato para que el
+   mapa nunca aparezca en blanco; si las teselas de calles cargan, se apaga. */
+let land=null, tilesOK=false;
+fetch('/data/mexico_estados.json').then(r=>r.json()).then(gj=>{
+  land=L.geoJSON(gj,{pane:'base',interactive:false,
+    style:{color:'#CFCEC8',weight:.8,fillColor:'#F5F4F0',fillOpacity:1}}).addTo(map);
+  if(tilesOK) apagarBase();
+}).catch(()=>{});
+
+function apagarBase(){
+  if(land) land.setStyle({fillOpacity:0,color:'#B9B8B2',weight:.6});
+  if(map.hasLayer(cityLayer)) map.removeLayer(cityLayer);
+  $('scaleHint').classList.add('hide');
+}
+
+/* Teselas de calles encima. Si el CDN no responde, el mapa vectorial se queda:
+   la página funciona igual, sólo con menos detalle. */
+const tiles=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  {attribution:'&copy; OpenStreetMap · CARTO',subdomains:'abcd',maxZoom:19,opacity:0});
+let tileErr=0;
+tiles.on('load',()=>{ if(tilesOK) return; tilesOK=true; tiles.setOpacity(1); apagarBase(); });
+tiles.on('tileerror',()=>{ if(!tilesOK && ++tileErr>3) map.removeLayer(tiles); });
+tiles.addTo(map);
+
+const cluster=L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:46,
+  iconCreateFunction:c=>L.divIcon({html:'<div>'+c.getChildCount()+'</div>',className:'marker-cluster',iconSize:[38,38]})});
+map.addLayer(cluster);
+
+let ring=null, hub=null;
+const markers=new Map();
+
+/* ============================================================
+   UTILIDADES
+============================================================ */
+function haversine(a,b,c,d){
+  const R=6371,r=Math.PI/180;
+  const dla=(c-a)*r, dlo=(d-b)*r;
+  const x=Math.sin(dla/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dlo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(x));
+}
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const gmaps=d=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(d.n+', '+d.d);
+const PREC={colonia:'Ubicación a nivel colonia', cp:'Ubicación a nivel código postal'};
+
+/* ============================================================
+   CARGA DE DATOS
+============================================================ */
+fetch('/data/gnp_hospitales.json')
+  .then(r=>{if(!r.ok)throw 0; return r.json()})
+  .then(hosp=>{
+  DATA=hosp.hospitales;
+  DATA.forEach((d,i)=>{
+    d._i=i;
+    markers.set(i,L.circleMarker([d.lat,d.lng],
+      {radius:6,color:'#fff',weight:1.5,fillColor:COLOR[d.p]||'#8E8C86',fillOpacity:.92}));
+  });
+
+  montarControles();
+  render();
+}).catch(()=>{
+  $('results').innerHTML='<div class="empty"><b>No pude cargar la red</b>'+
+    'Recarga la página. Si el problema sigue, escríbeme por WhatsApp y te paso la información a mano.</div>';
+  $('tally').textContent='Datos no disponibles';
+});
+
+/* ============================================================
+   CONTROLES
+============================================================ */
+function montarControles(){
+  /* Escalera de planes */
+  const ladder=document.querySelector('.ladder');
+  const rung=(key,label,color)=>{
+    const b=document.createElement('button');
+    b.className='rung'; b.setAttribute('role','tab'); b.dataset.k=key;
+    b.style.setProperty('--c',color);
+    const n=key?DATA.filter(d=>d.p===key).length:DATA.length;
+    b.innerHTML='<span class="lab">'+label+'</span><span class="num">'+n+'</span>';
+    b.onclick=()=>{state.tier=key;render()};
+    ladder.appendChild(b);
+  };
+  rung('','Toda la red','var(--ink)');
+  TIERS.forEach(t=>rung(t.k,t.label,t.c));
+
+  /* Estados */
+  const edoSel=$('edo');
+  [...new Set(DATA.map(d=>d.e))].sort().forEach(e=>{
+    const o=document.createElement('option'); o.value=e; o.textContent=e; edoSel.appendChild(o);
+  });
+
+  const chipRow=(el,vals,set,fmt)=>vals.forEach(v=>{
+    const b=document.createElement('button');
+    b.className='chip'; b.type='button'; b.textContent=fmt(v); b.dataset.v=v;
+    b.setAttribute('aria-pressed','false');
+    b.onclick=()=>{set.has(v)?set.delete(v):set.add(v);render()};
+    el.appendChild(b);
+  });
+  chipRow($('niveles'),NIVELES,state.niveles,v=>v);
+  chipRow($('cats'),CATS,state.cats,v=>'Nivel '+v);
+
+  RADIOS.forEach(r=>{
+    const b=document.createElement('button');
+    b.className='chip'; b.type='button'; b.textContent=r+' km'; b.dataset.r=r;
+    b.setAttribute('aria-pressed',String(r===state.radio));
+    b.onclick=()=>{state.radio=r;render()};
+    $('radios').appendChild(b);
+  });
+
+  /* Leyenda */
+  const legend=$('legend');
+  TIERS.forEach(t=>{
+    const d=document.createElement('div');
+    d.innerHTML='<i style="background:'+t.c+'"></i>'+t.label;
+    legend.appendChild(d);
+  });
+
+  /* Cifras de portada: se calculan de los datos, no se escriben a mano, para
+     que no se queden viejas cuando la red cambie. */
+  const strip=$('introStrip').children;
+  strip[0].querySelector('b').textContent=DATA.length;
+  strip[1].querySelector('b').textContent=new Set(DATA.map(d=>d.e)).size;
+  strip[2].querySelector('b').textContent=new Set(DATA.map(d=>d.red)).size;
+
+}
+
+/* Los selectores de médicos se llenan cuando llega el listado, no al arrancar:
+   el listado sólo se descarga con sesión iniciada. */
+function montarSelectoresMedicos(){
+  [...new Set(MED.map(m=>m.s))].map(k=>[k,SPEC[k]||k]).sort((a,b)=>a[1].localeCompare(b[1],'es'))
+    .forEach(([k,v])=>{const o=document.createElement('option');o.value=k;o.textContent=v;$('dsp').appendChild(o)});
+  [...new Set(MED.map(m=>m.e))].map(k=>[k,EDOS[k]||k]).sort((a,b)=>a[1].localeCompare(b[1],'es'))
+    .forEach(([k,v])=>{const o=document.createElement('option');o.value=k;o.textContent=v;$('ded').appendChild(o)});
+}
+
+/* ============================================================
+   FILTRADO Y PINTADO · HOSPITALES
+============================================================ */
+function matches(d){
+  if(state.tier && d.p!==state.tier) return false;
+  if(state.edo && d.e!==state.edo) return false;
+  if(state.cats.size && !state.cats.has(d.c)) return false;
+  if(state.niveles.size){
+    const ok = state.cascade ? [...state.niveles].some(n=>d.red>=n) : state.niveles.has(d.red);
+    if(!ok) return false;
+  }
+  if(state.q){
+    const hay=(d.n+' '+d.e+' '+d.d).toLowerCase();
+    if(!state.q.split(/\s+/).every(t=>hay.includes(t))) return false;
+  }
+  if(state.center && d._d>state.radio) return false;
+  return true;
+}
+
+function popup(d){
+  const dist = d._d!=null ? '<span class="est-tag">≈ '+d._d.toFixed(1)+' KM · EST.</span>' : '';
+  return '<p class="pop-name">'+esc(d.n)+'</p>'+
+    '<p class="pop-plan" style="color:'+COLTX[d.p]+'">'+esc(LABEL[d.p]||d.p)+'</p>'+
+    '<div class="pop-grid"><span>NIVEL '+d.red+'</span>'+(d.c?'<span>CATEGORÍA '+esc(d.c)+'</span>':'')+dist+'</div>'+
+    '<p class="pop-addr">'+esc(d.d)+'<br><em>'+(PREC[d.pr]||'')+'</em></p>'+
+    '<div class="pop-grid" style="margin-bottom:0"><a class="pop-link" href="'+gmaps(d)+'" target="_blank" rel="noopener">Abrir en Google Maps →</a></div>';
+}
+
+/* El anillo, el punto central y la etiqueta se ACTUALIZAN en sitio, no se
+   destruyen y recrean. render() corre en cada tecla del buscador: recrear un
+   L.circle, su tooltip y un bloque de HTML cada vez es churn puro, y cambiar
+   de radio obligaba a Leaflet a rehacer un SVG grande sin necesidad. */
+function pintarPin(){
+  const box=$('pinBox');
+
+  if(!state.center){
+    if(ring){map.removeLayer(ring);ring=null}
+    if(hub){map.removeLayer(hub);hub=null}
+    if(box.firstChild) box.innerHTML='';
+    return;
+  }
+
+  const radioM=state.radio*1000;
+  if(ring){
+    ring.setLatLng(state.center);
+    if(ring.getRadius()!==radioM) ring.setRadius(radioM);
+  }else{
+    ring=L.circle(state.center,{radius:radioM,color:'#231a13',weight:1,
+      fillColor:'#231a13',fillOpacity:.045,dashArray:'4 4'}).addTo(map);
+  }
+
+  if(hub){
+    hub.setLatLng(state.center);
+    hub.setTooltipContent(state.centerLabel);
+  }else{
+    hub=L.circleMarker(state.center,{radius:5,color:'#231a13',weight:2,fillColor:'#FFFFFF',fillOpacity:1})
+      .addTo(map).bindTooltip(state.centerLabel);
+  }
+
+  /* La etiqueta del radio debe seguir al radio: si sólo se escribiera al fijar
+     el centro, al cambiar de 10 a 50 km seguiría anunciando 10. */
+  if(!box.firstChild){
+    box.innerHTML='<div class="pin-active"><span class="mono" id="pinLbl"></span>'+
+      '<span id="pinRad" style="opacity:.75"></span>'+
+      '<button id="clr">Quitar</button></div>';
+    $('clr').onclick=clearCenter;
+  }
+  $('pinLbl').textContent=state.centerLabel;
+  $('pinRad').textContent='radio '+state.radio+' km';
+}
+
+function render(){
+  if(!DATA.length) return;
+
+  DATA.forEach(d=>{ d._d = state.center ? haversine(state.center[0],state.center[1],d.lat,d.lng) : null; });
+
+  let list=DATA.filter(matches);
+  if(state.center) list.sort((a,b)=>a._d-b._d);
+
+  document.querySelectorAll('.rung').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.k===state.tier)));
+  document.querySelectorAll('#niveles .chip').forEach(b=>b.setAttribute('aria-pressed',String(state.niveles.has(+b.dataset.v))));
+  document.querySelectorAll('#cats .chip').forEach(b=>b.setAttribute('aria-pressed',String(state.cats.has(b.dataset.v))));
+  document.querySelectorAll('#radios .chip').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.r===state.radio)));
+
+  const nEdo=new Set(list.map(d=>d.e)).size;
+  $('tally').innerHTML='<b>'+list.length+'</b> de <span class="mono">'+DATA.length+
+    '</span> '+(list.length===1?'unidad':'unidades')+' · '+nEdo+(nEdo===1?' estado':' estados');
+
+  pintarPin();
+
+  cluster.clearLayers();
+  list.forEach(d=>markers.get(d._i).bindPopup(popup(d)));
+  cluster.addLayers(list.map(d=>markers.get(d._i)));
+
+  const res=$('results');
+  res.innerHTML='';
+  if(!list.length){
+    res.innerHTML = state.center
+      ? '<div class="empty"><b>Sin hospitales en '+state.radio+' km</b>Amplía el radio o quita otros filtros. La red GNP es amplia, pero no cubre todas las zonas con la misma densidad.</div>'
+      : '<div class="empty"><b>Ningún hospital coincide</b>Quita un filtro o borra la búsqueda.</div>';
+    return;
+  }
+
+  const frag=document.createDocumentFragment();
+  list.slice(0,400).forEach(d=>{
+    const b=document.createElement('button');
+    b.className='item';
+    b.style.setProperty('--c',COLOR[d.p]||'#8E8C86');
+    b.style.setProperty('--ct',COLTX[d.p]||'#5F5D58');
+    const dist = d._d!=null ? '<span class="tag dist">≈ '+d._d.toFixed(1)+' km · est.</span>' : '';
+    b.innerHTML='<span class="bar"></span><span>'+
+      '<h3>'+esc(d.n)+'</h3><div class="meta">'+esc(d.d)+'</div>'+
+      '<div class="tags">'+dist+
+        '<span class="tag plan">'+esc(LABEL[d.p]||d.p)+'</span>'+
+        '<span class="tag">NIVEL '+d.red+'</span>'+
+        (d.c?'<span class="tag">CAT '+esc(d.c)+'</span>':'')+
+      '</div></span>';
+    b.onclick=()=>{
+      const m=markers.get(d._i);
+      map.flyTo([d.lat,d.lng],14,{duration:.7});
+      cluster.zoomToShowLayer(m,()=>m.openPopup());
+    };
+    frag.appendChild(b);
+  });
+  res.appendChild(frag);
+
+  if(list.length>400){
+    const p=document.createElement('div');
+    p.className='empty';
+    p.innerHTML='<b>Mostrando 400 de '+list.length+'</b>Todos siguen en el mapa. Filtra por estado o usa un CP para acotar la lista.';
+    res.appendChild(p);
+  }
+}
+
+/* ============================================================
+   BÚSQUEDA POR CÓDIGO POSTAL
+============================================================ */
+const HINT_BASE='Escribe un CP y verás sólo los hospitales dentro del radio, ordenados del más cercano al más lejano.';
+
+function setCenter(latlng,label,encuadrar){
+  state.center=latlng; state.centerLabel=label;
+  $('cpHint').innerHTML=HINT_BASE;
+  render();
+  if(encuadrar && ring) map.fitBounds(ring.getBounds(),{padding:[30,30]});
+}
+function clearCenter(){
+  state.center=null; state.centerLabel='';
+  $('cp').value='';
+  $('cpHint').innerHTML=HINT_BASE;
+  render();
+  map.setView([23.4,-102.0],5);
+}
+/* El índice nacional pesa medio mega (87 KB comprimido) y la mayoría de las
+   visitas no lo usan: se baja la primera vez que alguien busca por CP, no en
+   cada carga de la página. La promesa se guarda para no bajarlo dos veces. */
+function cargarCPI(){
+  if(CPI) return Promise.resolve(CPI);
+  if(cargandoCPI) return cargandoCPI;
+  cargandoCPI = fetch('/data/cp_centroides.txt')
+    .then(r=>{ if(!r.ok) throw 0; return r.text(); })
+    .then(txt=>{
+      /* Registros fijos de 17 caracteres: CP + lat×1000 + |lng|×1000 + precisión
+         (0 = punto del propio CP, 1 = centro del municipio). Ver tools/cp_index.py. */
+      const m=new Map();
+      for(let i=0;i+17<=txt.length;i+=17){
+        m.set(txt.substr(i,5),
+              [+txt.substr(i+5,5)/1000, -(+txt.substr(i+10,6))/1000, txt[i+16]==='1']);
+      }
+      CPI=m; return m;
+    })
+    .catch(()=>{ cargandoCPI=null; return null; });
+  return cargandoCPI;
+}
+
+function buscarCP(){
+  const crudo=$('cp').value.replace(/\D/g,'');
+  const hint=$('cpHint');
+  if(!crudo){ hint.innerHTML=HINT_BASE; return; }
+  if(crudo.length>5){
+    hint.innerHTML='<b>Un código postal mexicano tiene cinco dígitos.</b> Revisa lo que escribiste.';
+    return;
+  }
+  const v=crudo.padStart(5,'0');
+  if(!CPI) hint.innerHTML='Cargando el índice de códigos postales…';
+
+  cargarCPI().then(idx=>{
+    if(!idx){
+      hint.innerHTML='<b>No pude cargar el índice de códigos postales.</b> '+
+        'Usa «mi ubicación actual» o busca por ciudad en el campo de abajo.';
+      return;
+    }
+    const hit=idx.get(v);
+    if(!hit){
+      state.center=null; render();
+      hint.innerHTML='<b>El CP '+esc(v)+' no aparece en el catálogo de SEPOMEX.</b> '+
+        'Revisa los cinco dígitos, o usa «mi ubicación actual» o la búsqueda por ciudad.';
+      return;
+    }
+    const aprox=hit[2];
+    setCenter([hit[0],hit[1]], 'CP '+v+(aprox?' (aprox.)':''), true);
+    if(aprox){
+      hint.innerHTML='<span class="est">est.</span> De este CP sólo se conoce el municipio, '+
+        'así que el centro de búsqueda es el <b>centro del municipio</b> y puede quedar a '+
+        'algunos kilómetros de tu domicilio. Para afinar, usa «mi ubicación actual».';
+    }
+  });
+}
+$('cpGo').onclick=buscarCP;
+$('cp').addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();buscarCP()} });
+$('geo').onclick=()=>{
+  const hint=$('cpHint');
+  if(!navigator.geolocation){ hint.innerHTML='<b>Este navegador no comparte ubicación.</b> Usa el código postal.'; return; }
+  hint.innerHTML='Buscando tu ubicación…';
+  navigator.geolocation.getCurrentPosition(
+    p=>setCenter([p.coords.latitude,p.coords.longitude],'Mi ubicación',true),
+    ()=>{ hint.innerHTML='<b>No se pudo obtener la ubicación.</b> Revisa el permiso del navegador o usa el código postal.'; }
+  );
+};
+
+/* ============================================================
+   RESTO DE FILTROS
+============================================================ */
+let t1;
+$('q').addEventListener('input',e=>{
+  clearTimeout(t1);
+  t1=setTimeout(()=>{state.q=e.target.value.trim().toLowerCase();render()},140);
+});
+$('edo').addEventListener('change',e=>{
+  state.edo=e.target.value;
+  render();
+  if(!state.center){
+    if(state.edo){ const b=cluster.getBounds(); if(b.isValid()) map.fitBounds(b,{padding:[40,40]}); }
+    else map.setView([23.4,-102.0],5);
+  }
+});
+$('cascade').addEventListener('change',e=>{state.cascade=e.target.checked;render()});
+
+/* ============================================================
+   MÉDICOS SIN PAGO DIRECTO
+============================================================ */
+function renderDocs(){
+  const list=MED.filter(m=>{
+    if(dstate.s && m.s!==dstate.s) return false;
+    if(dstate.e && m.e!==dstate.e) return false;
+    if(dstate.q && !m.n.toLowerCase().includes(dstate.q)) return false;
+    return true;
+  });
+  if($('tabM').getAttribute('aria-pressed')==='true'){
+    $('tally').innerHTML='<b>'+list.length+'</b> de <span class="mono">'+MED.length+'</span> médicos sin pago directo';
+  }
+  const box=$('doclist');
+  if(!list.length){
+    box.innerHTML='<div class="empty"><b>Sin coincidencias</b>Ese médico no aparece en el listado publicado por GNP. '+
+      'Verifica la escritura del apellido antes de concluir que sí tiene pago directo.</div>';
+    return;
+  }
+  box.innerHTML=list.map(m=>
+    '<div class="doc"><span class="nm">'+esc(m.n)+'</span>'+
+    '<span class="sp">'+esc(SPEC[m.s]||m.s)+'</span>'+
+    '<span class="ed">'+esc(EDOS[m.e]||m.e)+'</span></div>').join('');
+}
+let t2;
+$('dq').addEventListener('input',e=>{
+  clearTimeout(t2);
+  t2=setTimeout(()=>{dstate.q=e.target.value.trim().toLowerCase();renderDocs()},140);
+});
+$('dsp').onchange=e=>{dstate.s=e.target.value;renderDocs()};
+$('ded').onchange=e=>{dstate.e=e.target.value;renderDocs()};
+
+/* ============================================================
+   REJA DE SESIÓN DEL LISTADO DE MÉDICOS
+   El listado nombra a personas identificables y cambia con cada corte de GNP.
+   No se sirve al público: el archivo se descarga sólo cuando hay sesión.
+============================================================ */
+$('gateWa').href='https://wa.me/'+AGENTE.whatsapp+'?text='+encodeURIComponent(
+  'Hola '+AGENTE.nombre+', ¿me confirmas si un médico tiene pago directo con GNP?');
+$('docLogin').onclick=()=>{
+  if(typeof openAuthModal==='function') openAuthModal('in');
+};
+
+let cargandoMed=null;
+function cargarMedicos(){
+  if(MED.length) return Promise.resolve(MED);
+  if(cargandoMed) return cargandoMed;
+  cargandoMed = fetch('/data/gnp_medicos_sin_pago_directo.txt')
+    .then(r=>{ if(!r.ok) throw 0; return r.text(); })
+    .then(txt=>{
+      MED = txt.split('\n').filter(l=>l && l[0]!=='#').map(l=>{
+        const p=l.split('|'); return {n:p[0],s:p[1],e:p[2]};
+      });
+      montarSelectoresMedicos();
+      return MED;
+    })
+    .catch(()=>{ cargandoMed=null; return null; });
+  return cargandoMed;
+}
+
+async function revisarSesionMedicos(){
+  const gate=$('docGate'), app=$('docApp');
+  const abrir=()=>{ gate.classList.add('hide'); app.classList.remove('hide'); };
+  const cerrar=(msg)=>{
+    gate.classList.remove('hide'); app.classList.add('hide');
+    if(msg) gate.querySelector('p').textContent=msg;
+    if($('tabM').getAttribute('aria-pressed')==='true') $('tally').textContent='Listado para clientes';
+  };
+
+  if(!window.bbConfigured){
+    cerrar('El acceso con cuenta no está configurado en este sitio. Escríbeme por WhatsApp y reviso el médico que necesites.');
+    $('docLogin').classList.add('hide');
+    return;
+  }
+  const u = (typeof bbUser==='function') ? await bbUser() : null;
+  if(!u){ cerrar(); return; }
+
+  abrir();
+  const ok=await cargarMedicos();
+  if(!ok){ cerrar('No pude cargar el listado. Recarga la página o escríbeme por WhatsApp.'); return; }
+  renderDocs();
+}
+
+if(typeof mountAuth==='function') mountAuth('auth-slot');
+if(typeof bbOnAuth==='function') bbOnAuth(()=>revisarSesionMedicos());
+
+/* ============================================================
+   CAMBIO DE VISTA
+============================================================ */
+$('tabH').onclick=()=>{
+  $('tabH').setAttribute('aria-pressed','true'); $('tabM').setAttribute('aria-pressed','false');
+  $('viewH').classList.remove('hide'); $('viewM').classList.add('hide');
+  render();
+  setTimeout(()=>map.invalidateSize(),50);
+};
+$('tabM').onclick=()=>{
+  $('tabM').setAttribute('aria-pressed','true'); $('tabH').setAttribute('aria-pressed','false');
+  $('viewM').classList.remove('hide'); $('viewH').classList.add('hide');
+  revisarSesionMedicos();
+};
+
+})();
+</script>
+</body>
+</html>
