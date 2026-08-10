@@ -489,7 +489,11 @@ const $=id=>document.getElementById(id);
 /* ============================================================
    MAPA
 ============================================================ */
-const map=L.map('map',{minZoom:4,maxBounds:[[12.5,-120],[34.5,-84]],maxBoundsViscosity:.55})
+/* maxZoom va declarado en el mapa a propósito, no heredado de la capa de
+   teselas. markercluster exige que el mapa tenga maxZoom, y si sólo lo pusiera
+   la capa de teselas, el mapa se quedaría sin él justo cuando el CDN falla y
+   esa capa se retira — es decir, el escenario que el respaldo debe cubrir. */
+const map=L.map('map',{minZoom:4,maxZoom:19,maxBounds:[[12.5,-120],[34.5,-84]],maxBoundsViscosity:.55})
   .setView([23.4,-102.0],5);
 
 map.createPane('base');   map.getPane('base').style.zIndex=250;
@@ -721,8 +725,9 @@ function render(){
   document.querySelectorAll('#cats .chip').forEach(b=>b.setAttribute('aria-pressed',String(state.cats.has(b.dataset.v))));
   document.querySelectorAll('#radios .chip').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.r===state.radio)));
 
+  const nEdo=new Set(list.map(d=>d.e)).size;
   $('tally').innerHTML='<b>'+list.length+'</b> de <span class="mono">'+DATA.length+
-    '</span> unidades · '+new Set(list.map(d=>d.e)).size+' estados';
+    '</span> '+(list.length===1?'unidad':'unidades')+' · '+nEdo+(nEdo===1?' estado':' estados');
 
   pintarPin();
 
