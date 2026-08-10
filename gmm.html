@@ -225,6 +225,16 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
   border-bottom:1px solid var(--line);font-family:var(--mono);font-size:10px;letter-spacing:.07em;
   text-transform:uppercase;color:var(--faint);font-weight:700}
 
+/* Reja de sesión del listado de médicos */
+.gate{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:32px 22px;background:var(--soft)}
+.gate-box{max-width:44ch;text-align:center}
+.gate-box h3{font-family:var(--serif);font-size:20px;font-weight:500;letter-spacing:-.01em;margin-bottom:9px}
+.gate-box p{font-size:14px;color:var(--muted);margin-bottom:18px;line-height:1.6}
+.btn-gate{background:var(--ink);color:#fff}
+.btn-gate:hover{background:var(--accent-dk)}
+.gate-note{font-size:12.5px;color:var(--faint);margin:16px 0 0}
+.gate-note a{color:var(--accent-dk);font-weight:600}
+
 /* ---------- metodología, CTA, pie ---------- */
 .notas{border:1px solid var(--line);border-radius:var(--r);padding:22px 26px;background:var(--soft)}
 .notas h2{margin-bottom:12px}
@@ -278,7 +288,8 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
       <span class="brand-txt"><b>Red hospitalaria GNP</b><span>Mapa nacional de cobertura</span></span>
     </a>
     <div class="top-note">
-      <span class="badge-gnp">Agente GNP</span><br>
+      <span class="badge-gnp">Agente GNP</span>
+      <span id="auth-slot" style="margin-left:10px"></span><br>
       Red en convenio · corte del 31 de julio de 2026
     </div>
   </header>
@@ -365,13 +376,28 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
         profesional</b> y no limita el derecho del asegurado a elegir médico. Fuente: GNP Seguros, corte del 31 de julio de 2026.
         Si un nombre no aparece aquí, verifícalo con GNP antes de asumir que sí tiene pago directo.
       </div>
-      <div class="bar2">
-        <div class="field"><label for="dq">Buscar por nombre</label><input id="dq" type="search" placeholder="Apellido o nombre" autocomplete="off"></div>
-        <div class="field"><label for="dsp">Especialidad</label><select id="dsp"><option value="">Todas</option></select></div>
-        <div class="field"><label for="ded">Estado</label><select id="ded"><option value="">Todos</option></select></div>
+      <!-- Reja. El listado nombra a personas identificables, así que no se
+           sirve al público: sólo se descarga cuando hay sesión iniciada. -->
+      <div class="gate" id="docGate">
+        <div class="gate-box">
+          <h3>Este listado es para clientes</h3>
+          <p>Son nombres de médicos reales y la información cambia con cada corte de GNP,
+             así que no la publicamos abierta. Inicia sesión y la consultas completa,
+             con filtros por especialidad y estado.</p>
+          <button class="btn btn-gate" id="docLogin">Entrar / Crear cuenta</button>
+          <p class="gate-note">Crear cuenta es gratis. Si prefieres, <a id="gateWa" href="#" target="_blank" rel="noopener">pregúntame por un médico en concreto por WhatsApp</a>.</p>
+        </div>
       </div>
-      <div class="dochead"><span>Médico</span><span>Especialidad</span><span>Estado</span></div>
-      <div class="doclist" id="doclist"></div>
+
+      <div id="docApp" class="hide" style="display:flex;flex-direction:column;flex:1;min-height:0">
+        <div class="bar2">
+          <div class="field"><label for="dq">Buscar por nombre</label><input id="dq" type="search" placeholder="Apellido o nombre" autocomplete="off"></div>
+          <div class="field"><label for="dsp">Especialidad</label><select id="dsp"><option value="">Todas</option></select></div>
+          <div class="field"><label for="ded">Estado</label><select id="ded"><option value="">Todos</option></select></div>
+        </div>
+        <div class="dochead"><span>Médico</span><span>Especialidad</span><span>Estado</span></div>
+        <div class="doclist" id="doclist"></div>
+      </div>
     </section>
   </section>
 
@@ -425,6 +451,10 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
 
 <script src="/assets/leaflet.js"></script>
 <script src="/assets/leaflet.markercluster.js"></script>
+<!-- Sesión Supabase: sólo la usa la reja del listado de médicos. El mapa de
+     hospitales funciona sin cuenta y sin estos scripts. -->
+<script src="/supabase.js?v=152"></script>
+<script src="/auth.js?v=153"></script>
 <script>
 (function(){
 'use strict';
@@ -553,10 +583,9 @@ const PREC={colonia:'Ubicación a nivel colonia', cp:'Ubicación a nivel código
 /* ============================================================
    CARGA DE DATOS
 ============================================================ */
-Promise.all([
-  fetch('/data/gnp_hospitales.json').then(r=>{if(!r.ok)throw 0; return r.json()}),
-  fetch('/data/gnp_medicos_sin_pago_directo.txt').then(r=>r.ok?r.text():'').catch(()=>'')
-]).then(([hosp,med])=>{
+fetch('/data/gnp_hospitales.json')
+  .then(r=>{if(!r.ok)throw 0; return r.json()})
+  .then(hosp=>{
   DATA=hosp.hospitales;
   DATA.forEach((d,i)=>{
     d._i=i;
@@ -564,13 +593,8 @@ Promise.all([
       {radius:6,color:'#fff',weight:1.5,fillColor:COLOR[d.p]||'#8E8C86',fillOpacity:.92}));
   });
 
-  MED = med.split('\n').filter(l=>l && l[0]!=='#').map(l=>{
-    const p=l.split('|'); return {n:p[0],s:p[1],e:p[2]};
-  });
-
   montarControles();
   render();
-  renderDocs();
 }).catch(()=>{
   $('results').innerHTML='<div class="empty"><b>No pude cargar la red</b>'+
     'Recarga la página. Si el problema sigue, escríbeme por WhatsApp y te paso la información a mano.</div>';
@@ -634,7 +658,11 @@ function montarControles(){
   strip[1].querySelector('b').textContent=new Set(DATA.map(d=>d.e)).size;
   strip[2].querySelector('b').textContent=new Set(DATA.map(d=>d.red)).size;
 
-  /* Selectores de médicos */
+}
+
+/* Los selectores de médicos se llenan cuando llega el listado, no al arrancar:
+   el listado sólo se descarga con sesión iniciada. */
+function montarSelectoresMedicos(){
   [...new Set(MED.map(m=>m.s))].map(k=>[k,SPEC[k]||k]).sort((a,b)=>a[1].localeCompare(b[1],'es'))
     .forEach(([k,v])=>{const o=document.createElement('option');o.value=k;o.textContent=v;$('dsp').appendChild(o)});
   [...new Set(MED.map(m=>m.e))].map(k=>[k,EDOS[k]||k]).sort((a,b)=>a[1].localeCompare(b[1],'es'))
@@ -911,6 +939,60 @@ $('dsp').onchange=e=>{dstate.s=e.target.value;renderDocs()};
 $('ded').onchange=e=>{dstate.e=e.target.value;renderDocs()};
 
 /* ============================================================
+   REJA DE SESIÓN DEL LISTADO DE MÉDICOS
+   El listado nombra a personas identificables y cambia con cada corte de GNP.
+   No se sirve al público: el archivo se descarga sólo cuando hay sesión.
+============================================================ */
+$('gateWa').href='https://wa.me/'+AGENTE.whatsapp+'?text='+encodeURIComponent(
+  'Hola '+AGENTE.nombre+', ¿me confirmas si un médico tiene pago directo con GNP?');
+$('docLogin').onclick=()=>{
+  if(typeof openAuthModal==='function') openAuthModal('in');
+};
+
+let cargandoMed=null;
+function cargarMedicos(){
+  if(MED.length) return Promise.resolve(MED);
+  if(cargandoMed) return cargandoMed;
+  cargandoMed = fetch('/data/gnp_medicos_sin_pago_directo.txt')
+    .then(r=>{ if(!r.ok) throw 0; return r.text(); })
+    .then(txt=>{
+      MED = txt.split('\n').filter(l=>l && l[0]!=='#').map(l=>{
+        const p=l.split('|'); return {n:p[0],s:p[1],e:p[2]};
+      });
+      montarSelectoresMedicos();
+      return MED;
+    })
+    .catch(()=>{ cargandoMed=null; return null; });
+  return cargandoMed;
+}
+
+async function revisarSesionMedicos(){
+  const gate=$('docGate'), app=$('docApp');
+  const abrir=()=>{ gate.classList.add('hide'); app.classList.remove('hide'); };
+  const cerrar=(msg)=>{
+    gate.classList.remove('hide'); app.classList.add('hide');
+    if(msg) gate.querySelector('p').textContent=msg;
+    if($('tabM').getAttribute('aria-pressed')==='true') $('tally').textContent='Listado para clientes';
+  };
+
+  if(!window.bbConfigured){
+    cerrar('El acceso con cuenta no está configurado en este sitio. Escríbeme por WhatsApp y reviso el médico que necesites.');
+    $('docLogin').classList.add('hide');
+    return;
+  }
+  const u = (typeof bbUser==='function') ? await bbUser() : null;
+  if(!u){ cerrar(); return; }
+
+  abrir();
+  const ok=await cargarMedicos();
+  if(!ok){ cerrar('No pude cargar el listado. Recarga la página o escríbeme por WhatsApp.'); return; }
+  renderDocs();
+}
+
+if(typeof mountAuth==='function') mountAuth('auth-slot');
+if(typeof bbOnAuth==='function') bbOnAuth(()=>revisarSesionMedicos());
+
+/* ============================================================
    CAMBIO DE VISTA
 ============================================================ */
 $('tabH').onclick=()=>{
@@ -922,7 +1004,7 @@ $('tabH').onclick=()=>{
 $('tabM').onclick=()=>{
   $('tabM').setAttribute('aria-pressed','true'); $('tabH').setAttribute('aria-pressed','false');
   $('viewM').classList.remove('hide'); $('viewH').classList.add('hide');
-  renderDocs();
+  revisarSesionMedicos();
 };
 
 })();

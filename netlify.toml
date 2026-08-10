@@ -36,6 +36,15 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
 
+# El listado de médicos sin pago directo de /financial/gmm nombra a personas
+# identificables y sólo se muestra con sesión iniciada. Esta cabecera evita
+# además que el archivo acabe indexado en buscadores. A propósito NO se pone en
+# robots.txt: ahí la ruta quedaría publicada (mismo criterio que /mycouple).
+[[headers]]
+  for = "/data/gnp_medicos_sin_pago_directo.txt"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
 # Cabeceras básicas de seguridad para todo el sitio
 [[headers]]
   for = "/*"
