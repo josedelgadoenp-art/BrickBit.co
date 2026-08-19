@@ -45,6 +45,16 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
 
+# /api/diagnostico guarda datos personales y financieros (ingreso, ahorro,
+# situación de pensión) de quien completa el análisis de retiro. La función ya
+# manda esta cabecera por su cuenta; aquí queda también a nivel de sitio por si
+# alguna respuesta de error se sirve sin pasar por ella.
+[[headers]]
+  for = "/api/diagnostico"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
 # Cabeceras básicas de seguridad para todo el sitio
 [[headers]]
   for = "/*"

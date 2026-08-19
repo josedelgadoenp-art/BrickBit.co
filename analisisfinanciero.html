@@ -150,6 +150,11 @@ input[type=range]{flex:1;accent-color:var(--accent);height:4px}
 .res-bar p{font-size:13px;color:#14503a}
 .res-bar b{font-weight:700}
 .btn-s{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 13px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink-2)}
+/* Borrar datos de una persona: discreto hasta que lo apuntas, para que nadie
+   lo pulse de pasada — es irreversible. */
+.btn-borrar{border:1px solid transparent;background:none;border-radius:7px;padding:3px 9px;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--faint)}
+.btn-borrar:hover:not(:disabled){border-color:#d9534f;color:#c9302c}
+.btn-borrar:disabled{opacity:.5;cursor:default}
 .btn-s:hover{border-color:var(--accent);color:var(--accent-dk)}
 
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
@@ -280,6 +285,13 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
   text-transform:uppercase;color:var(--faint);margin-top:6px}
 
 #admin{display:none;margin-top:20px;border:1px solid var(--line);border-radius:var(--r);padding:22px 24px;background:var(--soft)}
+/* Modo panel: #admin vive dentro de #results, que está oculto hasta terminar
+   el cuestionario. Sin esto, abrir #registros en una visita nueva no mostraba
+   nada de nada. Aquí se descubre #results pero se apaga todo lo que no sea el
+   panel, para que aparezca solo. Gana a .hide por especificidad. */
+body.modo-panel #intro, body.modo-panel #wizard,
+body.modo-panel #results > *:not(#admin){display:none !important}
+body.modo-panel #results{display:block !important}
 #adminLogin{margin-bottom:6px}
 #adminLogin .err-msg{margin-top:10px}
 #admin.show{display:block}
@@ -718,6 +730,7 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
           <button class="btn-s" id="recargarBtn">Recargar</button>
           <button class="btn-s" id="expBtn">Descargar CSV</button>
           <button class="btn-s" id="salirBtn">Cerrar sesión</button>
+          <button class="btn-s" id="volverBtn">Volver al análisis</button>
         </div>
       </div>
       <div id="adminLogin">
@@ -1277,6 +1290,7 @@ $('pdfBtn').addEventListener('click',function(){
 var LLAVE='bb_diag_token', REGISTROS=[];
 
 function abrirPanel(){
+  document.body.classList.add('modo-panel');   // descubre #results, deja solo el panel
   $('admin').classList.add('show');
   var t=sessionStorage.getItem(LLAVE);
   if(t) cargarRegistros(t); else mostrarLogin();
@@ -1286,10 +1300,17 @@ function mostrarLogin(){
   $('adminTable').innerHTML='';
   $('adminCount').textContent='';
 }
+/* La llave viaja SIEMPRE en el header, nunca en la URL: un ?token= quedaría
+   en el historial del navegador y en los logs de Netlify. */
+function conLlave(token,extra){
+  var o=extra||{};
+  o.headers=Object.assign({'x-admin-token':token}, o.headers||{});
+  return o;
+}
 function cargarRegistros(token){
   $('adminErr').classList.remove('show');
   $('adminTable').innerHTML='<p style="font-size:13px;color:var(--faint)">Cargando…</p>';
-  fetch(API+'?token='+encodeURIComponent(token))
+  fetch(API,conLlave(token))
     .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
     .then(function(res){
       if(!res.ok||!res.j.ok){
@@ -1317,16 +1338,40 @@ function pintarAdmin(total){
   $('adminCount').textContent='· '+T+(T===1?' registro':' registros')+
     (L.length<T?' (mostrando '+L.length+')':'');
   if(!L.length){ $('adminTable').innerHTML='<p style="font-size:13px;color:var(--faint)">Todavía no hay registros.</p>'; return; }
-  var h='<table><thead><tr><th>Fecha</th><th>Nombre</th><th>Teléfono</th><th class="r">Edad</th><th class="r">Ingreso</th><th class="r">Ahorra hoy</th><th class="r">Requiere</th></tr></thead><tbody>';
+  var h='<table><thead><tr><th>Fecha</th><th>Nombre</th><th>Teléfono</th><th class="r">Edad</th><th class="r">Ingreso</th><th class="r">Ahorra hoy</th><th class="r">Requiere</th><th></th></tr></thead><tbody>';
   L.forEach(function(l){
     h+='<tr><td>'+esc(new Date(l.fecha).toLocaleDateString('es-MX'))+'</td><td class="lab">'+esc(l.nombre)+
        '</td><td>'+esc(l.telefono)+'</td><td class="r">'+esc(l.edad||'')+'</td><td class="r">'+
        (l.ingresoMensual?money(+l.ingresoMensual):'')+'</td><td class="r">'+
        (l.ahorroMensual!=null&&l.ahorroMensual!==''?money(+l.ahorroMensual):'')+'</td><td class="r">'+
-       (l.aportacionPlan?money(+l.aportacionPlan):'')+'</td></tr>';
+       (l.aportacionPlan?money(+l.aportacionPlan):'')+
+       '</td><td class="r"><button class="btn-borrar" data-tel="'+esc(l.telefono)+
+       '" data-nom="'+esc(l.nombre)+'" title="Borrar los datos de esta persona">Borrar</button></td></tr>';
   });
   $('adminTable').innerHTML=h+'</tbody></table>';
 }
+
+/* Derecho de cancelación: si alguien pide que borres sus datos, este botón lo
+   hace de verdad — quita del servidor TODOS los registros de ese teléfono. */
+$('adminTable').addEventListener('click',function(ev){
+  var b=ev.target.closest('.btn-borrar');
+  if(!b) return;
+  var tel=b.getAttribute('data-tel'), nom=b.getAttribute('data-nom');
+  if(!confirm('¿Borrar del servidor todos los registros de '+nom+' ('+tel+')?\n\nEsto no se puede deshacer.')) return;
+  var token=sessionStorage.getItem(LLAVE);
+  if(!token){ mostrarLogin(); return; }
+  b.disabled=true; b.textContent='Borrando…';
+  fetch(API+'?telefono='+encodeURIComponent(tel),conLlave(token,{method:'DELETE'}))
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(!j.ok) throw new Error(j.error||'error');
+      cargarRegistros(token);
+    })
+    .catch(function(){
+      b.disabled=false; b.textContent='Borrar';
+      var e=$('adminErr'); e.textContent='No se pudo borrar. Intenta de nuevo.'; e.classList.add('show');
+    });
+});
 $('entrarBtn').addEventListener('click',function(){
   var t=$('adminTok').value.trim();
   if(!t) return;
@@ -1339,6 +1384,11 @@ $('recargarBtn').addEventListener('click',function(){
 });
 $('salirBtn').addEventListener('click',function(){
   sessionStorage.removeItem(LLAVE); REGISTROS=[]; mostrarLogin();
+});
+/* Recargar sin el hash es la vuelta más limpia: no hay que deshacer a mano
+   el modo panel ni el estado del cuestionario. */
+$('volverBtn').addEventListener('click',function(){
+  location.replace(location.pathname);
 });
 $('expBtn').addEventListener('click',function(){
   if(!REGISTROS.length){ alert('No hay registros para exportar.'); return; }

@@ -16,8 +16,19 @@
  *   LEAD_SECRET
  *
  * Rutas:
- *   POST /api/diagnostico                  -> guarda un registro
- *   GET  /api/diagnostico?token=LLAVE      -> devuelve los registros (privado)
+ *   POST   /api/diagnostico                -> guarda un registro
+ *   GET    /api/diagnostico                -> devuelve los registros (privado)
+ *   DELETE /api/diagnostico?telefono=NNN   -> borra los registros de esa persona
+ *
+ * LA LLAVE VA EN EL HEADER, NUNCA EN LA URL:
+ *   x-admin-token: LLAVE      (o  Authorization: Bearer LLAVE)
+ * Un ?token= en la query acabaría en los logs de Netlify, en el historial del
+ * navegador y en cualquier proxy intermedio; los headers no se registran.
+ *
+ * El DELETE existe por la LFPDPPP: aquí se guardan ingreso, ahorro y situación
+ * de pensión de personas identificables, así que tiene que haber forma de
+ * ejercer el derecho de cancelación. Se borra por teléfono porque es el único
+ * campo obligatorio y único por persona.
  */
 
 const LISTA = 'diag:leads';
@@ -34,6 +45,8 @@ const CAMPOS = [
   'capitalObjetivo', 'proyeccionActual', 'coberturaMeta', 'aportacionPlan',
   'aportacionManual', 'cargaIngreso', 'ahorroFiscal', 'origen', 'ref',
 ];
+
+const soloDigitos = (v) => String(v || '').replace(/\D/g, '');
 
 const golpes = new Map();
 function limitar(ip) {
@@ -66,10 +79,24 @@ const json = (obj, status = 200) =>
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-store',
       'access-control-allow-origin': process.env.ALLOWED_ORIGIN || '*',
-      'access-control-allow-headers': 'content-type',
-      'access-control-allow-methods': 'GET,POST,OPTIONS',
+      'access-control-allow-headers': 'content-type, x-admin-token, authorization',
+      'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
+      // que ni buscadores ni cachés intermedias guarden datos personales
+      'x-robots-tag': 'noindex, nofollow',
     },
   });
+
+/* La llave del panel, tomada SOLO de headers. Devuelve:
+     'ok'          la llave coincide
+     'sin-config'  no hay DIAG_ADMIN_TOKEN en el entorno
+     'no'          no coincide o no vino */
+function autorizado(req) {
+  const esperada = process.env.DIAG_ADMIN_TOKEN;
+  if (!esperada) return 'sin-config';
+  const dada = req.headers.get('x-admin-token')
+    || (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
+  return mismaLlave(dada, esperada) ? 'ok' : 'no';
+}
 
 async function redis(comandos) {
   const url = process.env.UPSTASH_REDIS_REST_URL;
@@ -126,12 +153,10 @@ export default async (req) => {
   try {
     /* ---------- lectura privada ---------- */
     if (req.method === 'GET') {
-      const llave = process.env.DIAG_ADMIN_TOKEN;
-      if (!llave) return json({ ok: false, error: 'panel_sin_configurar' }, 503);
+      const permiso = autorizado(req);
+      if (permiso === 'sin-config') return json({ ok: false, error: 'panel_sin_configurar' }, 503);
+      if (permiso !== 'ok') return json({ ok: false, error: 'no_autorizado' }, 401);
       const url = new URL(req.url);
-      if (!mismaLlave(url.searchParams.get('token'), llave)) {
-        return json({ ok: false, error: 'no_autorizado' }, 401);
-      }
       const limite = Math.min(1000, Math.max(1, +url.searchParams.get('limite') || 500));
       const out = await redis([
         ['LRANGE', LISTA, '0', String(limite - 1)],
@@ -160,7 +185,7 @@ export default async (req) => {
         if (data[k] !== undefined && data[k] !== null) reg[k] = String(data[k]).slice(0, 200);
       }
       // sin teléfono el registro no le sirve a nadie
-      if (!/^\d{10}$/.test(String(reg.telefono || '').replace(/\D/g, ''))) {
+      if (soloDigitos(reg.telefono).length !== 10) {
         return json({ ok: false, error: 'telefono_invalido' }, 400);
       }
       if (!reg.nombre || reg.nombre.trim().length < 3) {
@@ -180,6 +205,45 @@ export default async (req) => {
       try { await aLaHoja(reg); } catch { /* la hoja puede esperar */ }
 
       return json({ ok: true });
+    }
+
+    /* ---------- derecho de cancelación (LFPDPPP) ---------- */
+    if (req.method === 'DELETE') {
+      const permiso = autorizado(req);
+      if (permiso === 'sin-config') return json({ ok: false, error: 'panel_sin_configurar' }, 503);
+      if (permiso !== 'ok') return json({ ok: false, error: 'no_autorizado' }, 401);
+
+      const pedido = soloDigitos(new URL(req.url).searchParams.get('telefono'));
+      if (pedido.length !== 10) return json({ ok: false, error: 'telefono_invalido' }, 400);
+
+      /* Redis no sabe borrar "por campo": hay que leer la lista, quitar los
+         registros de esa persona y reescribirla. Se hace en un solo pipeline
+         (DEL + RPUSH) para que la lista nunca quede vacía a medias si algo
+         falla entre un comando y otro. */
+      const actual = await redis([['LRANGE', LISTA, '0', '-1']]);
+      const crudos = actual[0]?.result || [];
+      const conservados = crudos.filter((v) => {
+        try {
+          const r = typeof v === 'string' ? JSON.parse(v) : v;
+          return soloDigitos(r?.telefono) !== pedido;
+        } catch {
+          return true;   // lo ilegible se conserva: borrar de más es peor
+        }
+      });
+      const borrados = crudos.length - conservados.length;
+      if (!borrados) return json({ ok: true, borrados: 0 });
+
+      const comandos = [['DEL', LISTA]];
+      /* RPUSH respeta el orden en que se pasan los valores, así que reescribir
+         la lista conservada con un solo RPUSH mantiene el orden original
+         (más reciente primero, como lo dejó LPUSH). */
+      for (let i = 0; i < conservados.length; i += 500) {
+        const lote = conservados.slice(i, i + 500)
+          .map((v) => (typeof v === 'string' ? v : JSON.stringify(v)));
+        comandos.push(['RPUSH', LISTA, ...lote]);
+      }
+      await redis(comandos);
+      return json({ ok: true, borrados });
     }
 
     return json({ ok: false, error: 'metodo_no_permitido' }, 405);
