@@ -55,6 +55,14 @@
     X-Robots-Tag = "noindex, nofollow"
     Cache-Control = "no-store"
 
+# /api/lead guarda los prospectos de /financial (nombre, teléfono, edad,
+# ingreso y el producto recomendado). Mismo criterio que /api/diagnostico.
+[[headers]]
+  for = "/api/lead"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
 # Cabeceras básicas de seguridad para todo el sitio
 [[headers]]
   for = "/*"

@@ -20,6 +20,38 @@
     --serif:"Fraunces",Georgia,serif; --sans:"Hanken Grotesk",system-ui,-apple-system,sans-serif;
     --mono:"Space Mono",ui-monospace,monospace;
   }
+
+  /* ---- Panel privado de prospectos (#registros) ---- */
+  #admin{display:none;margin:22px 0 8px;border:1px solid var(--line);border-radius:14px;padding:22px 24px;background:var(--card);box-shadow:var(--shadow)}
+  /* Modo panel: apaga el cuestionario y deja el panel solo en la pantalla.
+     El .shell mide 640px porque el diagnóstico es una columna de lectura; una
+     tabla de prospectos no cabe ahí, así que en modo panel se ensancha. */
+  body.modo-panel #app,body.modo-panel #prog,body.modo-panel #scrollhint{display:none !important}
+  body.modo-panel #admin{display:block}
+  body.modo-panel .shell{max-width:1100px}
+  .ah2{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .ah2 b{font-family:var(--serif);font-size:17px;color:var(--ink)}
+  .ah2-btns{display:flex;gap:8px;flex-wrap:wrap}
+  #adminCount{color:var(--muted);font-size:13px;font-family:var(--mono)}
+  .admin-hint{font-size:13px;color:var(--ink-soft);margin-bottom:10px}
+  .admin-row{display:flex;gap:8px;flex-wrap:wrap;max-width:430px}
+  #adminTok{flex:1;min-width:200px;border:1px solid var(--line);border-radius:10px;padding:10px 13px;font-family:inherit;font-size:14px;color:var(--ink);background:var(--paper)}
+  .btn-s{border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:7px 13px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink-soft)}
+  .btn-a{border:none;background:var(--naranja);color:#fff;border-radius:10px;padding:10px 20px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+  .admin-err{display:none;margin-top:10px;font-size:13px;color:#c0392b}
+  .admin-err.show{display:block}
+  #adminTable{overflow-x:auto}
+  #adminTable table{width:100%;border-collapse:collapse;font-size:13px}
+  #adminTable th{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  #adminTable td{padding:9px 10px;border-bottom:1px solid var(--line-2);vertical-align:top}
+  #adminTable td.lab{font-weight:700;color:var(--ink)}
+  #adminTable td.r,#adminTable th.r{text-align:right}
+  #adminTable .via{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
+  .admin-vacio{font-size:13px;color:var(--muted)}
+  /* Borrar es irreversible: discreto hasta que lo apuntas, para no pulsarlo de paso. */
+  .btn-borrar{border:1px solid transparent;background:none;border-radius:7px;padding:3px 9px;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--muted)}
+  .btn-borrar:hover:not(:disabled){border-color:#d9534f;color:#c0392b}
+  .btn-borrar:disabled{opacity:.5;cursor:default}
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
@@ -192,6 +224,29 @@
   </header>
   <div class="prog hide" id="prog"></div>
   <main id="app"></main>
+  <!-- Panel privado de prospectos. No se enlaza desde ningún lado: se abre con
+       #registros y la llave la valida el servidor. Mismo patrón y misma llave
+       que /financial/analisisfinanciero. -->
+  <section id="admin">
+    <div class="ah2">
+      <div><b>Prospectos capturados</b> <span id="adminCount"></span></div>
+      <div class="ah2-btns">
+        <button class="btn-s" id="recargarBtn">Recargar</button>
+        <button class="btn-s" id="expBtn">Descargar CSV</button>
+        <button class="btn-s" id="salirBtn">Cerrar sesión</button>
+        <button class="btn-s" id="volverBtn">Volver al diagnóstico</button>
+      </div>
+    </div>
+    <div id="adminLogin">
+      <p class="admin-hint">Escribe la llave de administrador para ver los prospectos guardados en el servidor.</p>
+      <div class="admin-row">
+        <input id="adminTok" type="password" placeholder="Llave de administrador" autocomplete="off">
+        <button class="btn-a" id="entrarBtn">Entrar</button>
+      </div>
+      <div class="admin-err" id="adminErr"></div>
+    </div>
+    <div id="adminTable"></div>
+  </section>
   <footer id="foot"></footer>
 </div>
 <div id="tip" role="tooltip"></div>
@@ -773,6 +828,105 @@ document.getElementById('foot').innerHTML=
   +`<a href="/financial/gmm" style="color:var(--naranja-d);font-weight:600">Ver la red hospitalaria GNP en el mapa &rarr;</a> &nbsp;·&nbsp; `
   +`<a href="/financial/analisisfinanciero" style="color:var(--naranja-d);font-weight:600">Análisis financiero de retiro &rarr;</a>`;
 renderHero();
+
+/* ============================================================
+   PANEL PRIVADO  ·  /financial#registros
+   La llave nunca viaja en la URL —quedaría en los logs de Netlify y en el
+   historial del navegador— sino en el header x-admin-token. Sólo se guarda
+   en sessionStorage. Es la misma llave que /financial/analisisfinanciero.
+============================================================ */
+(function(){
+  const LLAVE="bb_lead_token"; let REGISTROS=[];
+  const $$=id=>document.getElementById(id);
+  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const pesos=v=>{const n=Number(String(v).replace(/[^\d.-]/g,""));return isFinite(n)&&n?"$"+n.toLocaleString("es-MX"):esc(v||"");};
+  const conLlave=(t,extra)=>{const o=extra||{};o.headers=Object.assign({"x-admin-token":t},o.headers||{});return o;};
+
+  function abrir(){
+    document.body.classList.add("modo-panel");
+    const t=sessionStorage.getItem(LLAVE);
+    if(t) cargar(t); else login();
+  }
+  function login(){ $$("adminLogin").style.display="block"; $$("adminTable").innerHTML=""; $$("adminCount").textContent=""; }
+  function fallo(msg){ const e=$$("adminErr"); e.textContent=msg; e.classList.add("show"); }
+
+  function cargar(token){
+    $$("adminErr").classList.remove("show");
+    $$("adminTable").innerHTML='<p class="admin-vacio">Cargando…</p>';
+    fetch(LEAD_ENDPOINT,conLlave(token))
+      .then(r=>r.json().then(j=>({ok:r.ok,j})))
+      .then(res=>{
+        if(!res.ok||!res.j.ok){
+          sessionStorage.removeItem(LLAVE); login();
+          fallo(res.j.error==="panel_sin_configurar" ? "Falta configurar DIAG_ADMIN_TOKEN en Netlify."
+              : res.j.error==="sin_almacen" ? "Faltan las variables de Upstash en Netlify."
+              : "Llave incorrecta.");
+          return;
+        }
+        sessionStorage.setItem(LLAVE,token);
+        REGISTROS=res.j.leads||[];
+        $$("adminLogin").style.display="none";
+        pintar(res.j.total);
+      })
+      .catch(()=>{ $$("adminTable").innerHTML=""; fallo("No se pudo contactar al servidor."); });
+  }
+
+  function pintar(total){
+    const L=REGISTROS, T=total||L.length;
+    $$("adminCount").textContent="· "+T+(T===1?" prospecto":" prospectos")+(L.length<T?" (mostrando "+L.length+")":"");
+    if(!L.length){ $$("adminTable").innerHTML='<p class="admin-vacio">Todavía no hay prospectos.</p>'; return; }
+    let h='<table><thead><tr><th>Fecha</th><th>Nombre</th><th>Teléfono</th><th class="r">Edad</th><th class="r">Ingreso</th><th>Producto</th><th>Origen</th><th></th></tr></thead><tbody>';
+    L.forEach(l=>{
+      const f=l.fecha?new Date(l.fecha):null;
+      h+="<tr><td>"+(f&&!isNaN(f)?esc(f.toLocaleDateString("es-MX")):"")+
+         '</td><td class="lab">'+esc([l.nombre,l.apellido].filter(Boolean).join(" "))+
+         "</td><td>"+esc(l.telefono||"")+'</td><td class="r">'+esc(l.edad||"")+
+         '</td><td class="r">'+pesos(l.ingreso)+"</td><td>"+esc(l.producto||"")+
+         '</td><td class="via">'+esc(l.origen||"")+
+         '</td><td class="r"><button class="btn-borrar" data-tel="'+esc(l.telefono||"")+
+         '" data-nom="'+esc(l.nombre||"esta persona")+'">Borrar</button></td></tr>';
+    });
+    $$("adminTable").innerHTML=h+"</tbody></table>";
+  }
+
+  /* Derecho de cancelación: borra del servidor TODOS los registros del teléfono. */
+  $$("adminTable").addEventListener("click",ev=>{
+    const b=ev.target.closest(".btn-borrar"); if(!b) return;
+    const tel=b.getAttribute("data-tel"), nom=b.getAttribute("data-nom");
+    if(!tel){ fallo("Ese registro no trae teléfono; no se puede borrar por este medio."); return; }
+    if(!confirm("¿Borrar del servidor todos los prospectos de "+nom+" ("+tel+")?\n\nEsto no se puede deshacer."))return;
+    const token=sessionStorage.getItem(LLAVE); if(!token){ login(); return; }
+    b.disabled=true; b.textContent="Borrando…";
+    fetch(LEAD_ENDPOINT+"?telefono="+encodeURIComponent(tel),conLlave(token,{method:"DELETE"}))
+      .then(r=>r.json())
+      .then(j=>{ if(!j.ok) throw new Error(j.error||"error"); cargar(token); })
+      .catch(()=>{ b.disabled=false; b.textContent="Borrar"; fallo("No se pudo borrar. Intenta de nuevo."); });
+  });
+
+  $$("entrarBtn").addEventListener("click",()=>{
+    const t=$$("adminTok").value.trim(); if(!t) return;
+    $$("adminTok").value=""; cargar(t);
+  });
+  $$("adminTok").addEventListener("keydown",e=>{ if(e.key==="Enter") $$("entrarBtn").click(); });
+  $$("recargarBtn").addEventListener("click",()=>{ const t=sessionStorage.getItem(LLAVE); if(t) cargar(t); });
+  $$("salirBtn").addEventListener("click",()=>{ sessionStorage.removeItem(LLAVE); REGISTROS=[]; login(); });
+  /* Recargar sin el hash es la vuelta más limpia: no hay estado que deshacer. */
+  $$("volverBtn").addEventListener("click",()=>location.replace(location.pathname));
+  $$("expBtn").addEventListener("click",()=>{
+    if(!REGISTROS.length){ alert("No hay prospectos para exportar."); return; }
+    const cols=[]; REGISTROS.forEach(l=>Object.keys(l).forEach(c=>{ if(cols.indexOf(c)<0) cols.push(c); }));
+    const csv="﻿"+cols.join(",")+"\n"+REGISTROS.map(l=>
+      cols.map(c=>'"'+String(l[c]===undefined?"":l[c]).replace(/"/g,'""')+'"').join(",")).join("\n");
+    const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+    const a=document.createElement("a");
+    a.href=url; a.download="prospectos-financial-"+new Date().toISOString().slice(0,10)+".csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
+
+  if(location.hash==="#registros") abrir();
+  window.addEventListener("hashchange",()=>{ if(location.hash==="#registros") abrir(); });
+})();
 </script>
 </body>
 </html>
