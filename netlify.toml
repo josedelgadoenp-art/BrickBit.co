@@ -39,14 +39,21 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
 
-# El listado de médicos sin pago directo de /financial/gmm nombra a personas
-# identificables y sólo se muestra con sesión iniciada. Esta cabecera evita
-# además que el archivo acabe indexado en buscadores. A propósito NO se pone en
-# robots.txt: ahí la ruta quedaría publicada (mismo criterio que /mycouple).
+# El listado de médicos ahora se sirve por /api/medicos (la ruta estática está
+# cerrada más abajo). Esta cabecera se queda como segunda barrera por si alguna
+# vez se reabre la ruta. A propósito NO va en robots.txt: ahí quedaría publicada
+# (mismo criterio que /mycouple).
 [[headers]]
   for = "/data/gnp_medicos_sin_pago_directo.txt"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
+
+# /api/medicos entrega nombres de 713 personas identificables contra un pase.
+[[headers]]
+  for = "/api/medicos"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
 
 # /api/diagnostico guarda datos personales y financieros (ingreso, ahorro,
 # situación de pensión) de quien completa el análisis de retiro. La función ya
@@ -106,8 +113,34 @@
   status = 404
   force = true
 
+# OJO: "/*.md" NO funciona — Netlify no admite un sufijo después del splat, y
+# en el deploy preview /CLAUDE.md seguía devolviendo 200. Van explícitas.
 [[redirects]]
-  from = "/*.md"
+  from = "/CLAUDE.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/DESPLIEGUE.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/docs/*.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/app.py"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/requirements.txt"
   to = "/404.html"
   status = 404
   force = true
