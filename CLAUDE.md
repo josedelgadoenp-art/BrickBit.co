@@ -39,6 +39,9 @@ gmm.html              Red hospitalaria GNP (ruta bonita /financial/gmm): mapa Le
                       466 unidades en convenio, filtros por plan/nivel/categoría/estado,
                       búsqueda por CP con radio y geolocalización, más el listado de médicos
                       sin pago directo. Paleta clara de Financial, no la v2 oscura.
+                      Puerta única de nombre + WhatsApp (#acceso) para las dos vistas; el
+                      prospecto va a /api/lead con origen "gmm-red-hospitalaria" y se
+                      recuerda en localStorage (bb_gmm_acceso). NO usa Supabase.
 
 # Datos (data/*.json) — estáticos, leídos por fetch
 estados.json          Las 32 zonas: precio_m2, plusvalia, yield, ciclo, oportunidad, lat/lng...
@@ -88,6 +91,13 @@ backend/              Cloudflare Worker para la IA de Arquitectos (NO va a Netli
   solo pipeline, conservando el orden).
 - **Métricas de Meta**: "clics en el anuncio" cuenta reacciones, comentarios y expansiones de texto.
   Para medir el embudo hay que mirar **"visitas a la página de destino"**, que es bastante menor.
+- **Listas largas: tope y scroll propio en móvil.** `gmm.html` quitaba el scroll interno de la lista
+  en `max-width:900px`, y las 401 tarjetas estiraban la página a 41,928 px (49.7 pantallas de
+  móvil). Con `max-height:62vh; overflow-y:auto` vuelve a 6.2. Si se toca un `overflow` dentro de
+  una media query, hay que medir el alto del `body` después.
+- **`/data/gnp_medicos_sin_pago_directo.txt` es públicamente descargable.** Netlify sirve estático:
+  una reja en la página no protege el archivo. Sólo lleva `X-Robots-Tag: noindex`. Si alguna vez
+  hace falta protegerlo de verdad, tiene que pasar por una función que valide antes de servirlo.
 
 ## URLs limpias (netlify.toml)
 `/financial` → financial.html, `/financial/analisisfinanciero`, `/financial/gmm` (rewrite 200).
