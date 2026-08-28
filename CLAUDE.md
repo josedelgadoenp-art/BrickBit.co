@@ -95,9 +95,16 @@ backend/              Cloudflare Worker para la IA de Arquitectos (NO va a Netli
   en `max-width:900px`, y las 401 tarjetas estiraban la página a 41,928 px (49.7 pantallas de
   móvil). Con `max-height:62vh; overflow-y:auto` vuelve a 6.2. Si se toca un `overflow` dentro de
   una media query, hay que medir el alto del `body` después.
-- **`/data/gnp_medicos_sin_pago_directo.txt` es públicamente descargable.** Netlify sirve estático:
-  una reja en la página no protege el archivo. Sólo lleva `X-Robots-Tag: noindex`. Si alguna vez
-  hace falta protegerlo de verdad, tiene que pasar por una función que valide antes de servirlo.
+- ~~**El .txt de médicos es descargable**~~ **resuelto**: la ruta estática está cerrada con un
+  redirect `force` a 404 y el contenido sale sólo por `/api/medicos` (`medicos.mjs`), contra un
+  **pase** HMAC que emite `/api/lead` cuando registra un prospecto con origen `gmm*`. El pase dura
+  30 días, va en el header `x-pase` y el .txt viaja dentro del paquete de la función vía
+  `included_files`. Firma con `MEDICOS_SECRET`, o `DIAG_ADMIN_TOKEN` si aquélla no está.
+- **`publish = "."` publica el repositorio ENTERO.** Se comprobó en producción que
+  `/netlify/functions/lead.mjs`, `/CLAUDE.md` y `/scripts/*.py` devolvían 200. No había secretos
+  expuestos (las funciones los leen del entorno), pero el código y las notas internas estaban a la
+  vista. `netlify.toml` ahora cierra `/netlify/*`, `/scripts/*`, `/tools/*`, `/backend/*` y `/*.md`
+  con redirects `force = true` a 404 — sin `force`, el archivo estático gana a la regla.
 
 ## URLs limpias (netlify.toml)
 `/financial` → financial.html, `/financial/analisisfinanciero`, `/financial/gmm` (rewrite 200).

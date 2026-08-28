@@ -9,6 +9,9 @@
 
 [functions]
   directory = "netlify/functions"
+  # El listado de médicos ya no se publica como archivo estático: viaja dentro
+  # del paquete de la función, que es la única que lo sirve (ver medicos.mjs).
+  included_files = ["data/gnp_medicos_sin_pago_directo.txt"]
 
 # HTML siempre se revalida (evita servir páginas viejas cacheadas)
 [[headers]]
@@ -69,6 +72,55 @@
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+# ---------------------------------------------------------------------------
+# NADA DE CÓDIGO FUENTE NI DATOS PRIVADOS POR HTTP
+# `publish = "."` publica el repositorio ENTERO. Se comprobó en producción que
+# /netlify/functions/lead.mjs, /CLAUDE.md y /scripts/*.py devolvían 200: el
+# código de las funciones, las notas internas del proyecto y los scripts del
+# modelo estaban a la vista de cualquiera. No había secretos ahí dentro (las
+# funciones los leen de las variables de entorno), pero no tienen por qué
+# servirse. `force = true` es lo que hace que la regla gane al archivo estático.
+# ---------------------------------------------------------------------------
+[[redirects]]
+  from = "/netlify/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/scripts/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/tools/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/backend/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/*.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+# El listado de médicos nombra a 713 personas identificables. La reja de la
+# página nunca lo protegió —Netlify servía el .txt directo— así que la ruta
+# estática se cierra y el contenido sale sólo por /api/medicos, contra un pase
+# que emite /api/lead al pasar por la puerta de /financial/gmm.
+[[redirects]]
+  from = "/data/gnp_medicos_sin_pago_directo.txt"
+  to = "/404.html"
+  status = 404
+  force = true
 
 # URLs bonitas
 [[redirects]]

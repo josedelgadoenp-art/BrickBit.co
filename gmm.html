@@ -499,6 +499,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
    CONFIGURACIÓN
 ============================================================ */
 const AGENTE = { nombre:"José Delgado", whatsapp:"5215584681927" };
+const ACC_KEY='bb_gmm_acceso';
 document.getElementById('waBtn').href =
   'https://wa.me/'+AGENTE.whatsapp+'?text='+encodeURIComponent(
     'Hola '+AGENTE.nombre+', vi el mapa de la red hospitalaria GNP en BrickBit y quiero saber qué plan cubre el hospital que me interesa.');
@@ -981,8 +982,11 @@ let cargandoMed=null;
 function cargarMedicos(){
   if(MED.length) return Promise.resolve(MED);
   if(cargandoMed) return cargandoMed;
-  cargandoMed = fetch('/data/gnp_medicos_sin_pago_directo.txt')
-    .then(r=>{ if(!r.ok) throw 0; return r.text(); })
+  /* El listado ya no es un archivo estático: lo sirve /api/medicos contra el
+     pase que /api/lead entrega al pasar la puerta. Sin pase, 401. */
+  let pase=''; try{ pase=(JSON.parse(localStorage.getItem(ACC_KEY)||'{}')||{}).p||''; }catch(e){}
+  cargandoMed = fetch('/api/medicos',{headers:{'x-pase':pase}})
+    .then(r=>{ if(!r.ok) throw new Error('http_'+r.status); return r.text(); })
     .then(txt=>{
       MED = txt.split('\n').filter(l=>l && l[0]!=='#').map(l=>{
         const p=l.split('|'); return {n:p[0],s:p[1],e:p[2]};
@@ -997,8 +1001,13 @@ function cargarMedicos(){
 async function abrirMedicos(){
   const ok=await cargarMedicos();
   if(!ok){
-    $('docApp').innerHTML='<div class="empty"><b>No pude cargar el listado.</b>'+
-      'Recarga la página o escríbeme por WhatsApp y reviso el médico que necesites.</div>';
+    /* El pase caduca a los 30 días. Si ya no vale, la salida es volver a pasar
+       por la puerta, no un mensaje de error sin camino. */
+    $('docApp').innerHTML='<div class="empty"><b>Tu acceso caducó.</b>'+
+      'Vuelve a dejar tu nombre y WhatsApp para consultar el listado. '+
+      '<button class="btn btn-gate" id="reAcc" style="margin-top:12px">Volver a entrar</button></div>';
+    const r=$('reAcc');
+    if(r) r.onclick=()=>{ try{ localStorage.removeItem(ACC_KEY); }catch(e){} location.reload(); };
     return;
   }
   renderDocs();
@@ -1025,7 +1034,6 @@ $('tabM').onclick=()=>{
    Una sola vez por navegador. El prospecto va a /api/lead, el mismo endpoint
    que /financial, así que aparece en el panel de #registros con su origen.
 ============================================================ */
-const ACC_KEY='bb_gmm_acceso';
 const telOk = t => /^\d{10}$/.test(String(t||'').replace(/\D/g,''));
 
 function abrirHerramienta(){
@@ -1037,13 +1045,18 @@ function abrirHerramienta(){
 }
 
 function guardarAcceso(nom,tel){
-  try{ localStorage.setItem(ACC_KEY,JSON.stringify({n:nom,t:tel,f:Date.now()})); }catch(e){}
-  fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
+  const guarda=(pase)=>{ try{
+    localStorage.setItem(ACC_KEY,JSON.stringify({n:nom,t:tel,f:Date.now(),p:pase||''}));
+  }catch(e){} };
+  guarda('');                                   // por si la red falla, el acceso no se pierde
+  return fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
     body:JSON.stringify({ fecha:new Date().toISOString(), nombre:nom, telefono:tel,
       producto:'Red hospitalaria GNP', linea:'Gastos médicos mayores',
       origen:'gmm-red-hospitalaria', accion:'Abrió el mapa de la red',
       ref:(document.referrer||'').slice(0,180) })
-  }).catch(()=>{ /* que un fallo de red no le cierre la herramienta a nadie */ });
+  }).then(r=>r.json())
+    .then(j=>{ if(j && j.pase) guarda(j.pase); })
+    .catch(()=>{ /* que un fallo de red no le cierre el mapa a nadie */ });
 }
 
 $('accAg').textContent=AGENTE.nombre;
@@ -1054,7 +1067,7 @@ $('aGo').onclick=()=>{
   if(!telOk(tel)){ $('aTel').classList.add('mal'); err.textContent='El WhatsApp debe tener 10 dígitos.'; err.classList.add('show'); $('aTel').focus(); return; }
   if(!$('aOk').checked){ err.textContent='Necesito tu autorización para poder escribirte.'; err.classList.add('show'); return; }
   guardarAcceso(nom,tel.replace(/\D/g,''));
-  abrirHerramienta();
+  abrirHerramienta();   // el mapa no espera al pase; sólo lo necesita la pestaña de médicos
 };
 ['aNom','aTel'].forEach(id=>$(id).addEventListener('keydown',e=>{ if(e.key==='Enter') $('aGo').click(); }));
 

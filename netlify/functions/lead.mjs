@@ -36,6 +36,8 @@
  * sin depender de que el empaquetador resuelva un import compartido.
  */
 
+import { emitirPase } from './medicos.mjs';
+
 const LISTA = 'lead:leads';
 const TOPE_LISTA = 5000;        // prospectos que se conservan
 const MAX_BYTES = 8 * 1024;     // tope por registro
@@ -250,7 +252,11 @@ export default async (req) => {
       // ningún destino disponible: que el cliente lo encole y reintente
       return json({ ok: false, error: 'endpoint_no_configurado' }, 500, req);
     }
-    return json({ ok: true, guardado, enHoja }, 200, req);
+    /* Los prospectos de la red hospitalaria se llevan un pase para /api/medicos:
+       el listado dejó de ser un archivo estático descargable y ahora exige
+       haber pasado por la puerta. */
+    const pase = (!esEvento && String(limpio.origen || '').startsWith('gmm')) ? emitirPase() : null;
+    return json(pase ? { ok: true, guardado, enHoja, pase } : { ok: true, guardado, enHoja }, 200, req);
   } catch (e) {
     return json({ ok: false, error: e.message || 'error_interno' }, 500, req);
   }
