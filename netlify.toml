@@ -128,7 +128,19 @@
   force = true
 
 [[redirects]]
-  from = "/docs/*.md"
+  from = "/docs/alertas-whatsapp.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/docs/api-brickbit-score.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/docs/plan-feed-listados.md"
   to = "/404.html"
   status = 404
   force = true
