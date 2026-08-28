@@ -9,6 +9,9 @@
 
 [functions]
   directory = "netlify/functions"
+  # El listado de médicos ya no se publica como archivo estático: viaja dentro
+  # del paquete de la función, que es la única que lo sirve (ver medicos.mjs).
+  included_files = ["data/gnp_medicos_sin_pago_directo.txt"]
 
 # HTML siempre se revalida (evita servir páginas viejas cacheadas)
 [[headers]]
@@ -36,14 +39,39 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
 
-# El listado de médicos sin pago directo de /financial/gmm nombra a personas
-# identificables y sólo se muestra con sesión iniciada. Esta cabecera evita
-# además que el archivo acabe indexado en buscadores. A propósito NO se pone en
-# robots.txt: ahí la ruta quedaría publicada (mismo criterio que /mycouple).
+# El listado de médicos ahora se sirve por /api/medicos (la ruta estática está
+# cerrada más abajo). Esta cabecera se queda como segunda barrera por si alguna
+# vez se reabre la ruta. A propósito NO va en robots.txt: ahí quedaría publicada
+# (mismo criterio que /mycouple).
 [[headers]]
   for = "/data/gnp_medicos_sin_pago_directo.txt"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
+
+# /api/medicos entrega nombres de 713 personas identificables contra un pase.
+[[headers]]
+  for = "/api/medicos"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
+# /api/diagnostico guarda datos personales y financieros (ingreso, ahorro,
+# situación de pensión) de quien completa el análisis de retiro. La función ya
+# manda esta cabecera por su cuenta; aquí queda también a nivel de sitio por si
+# alguna respuesta de error se sirve sin pasar por ella.
+[[headers]]
+  for = "/api/diagnostico"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+
+# /api/lead guarda los prospectos de /financial (nombre, teléfono, edad,
+# ingreso y el producto recomendado). Mismo criterio que /api/diagnostico.
+[[headers]]
+  for = "/api/lead"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
 
 # Cabeceras básicas de seguridad para todo el sitio
 [[headers]]
@@ -51,6 +79,93 @@
   [headers.values]
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+# ---------------------------------------------------------------------------
+# NADA DE CÓDIGO FUENTE NI DATOS PRIVADOS POR HTTP
+# `publish = "."` publica el repositorio ENTERO. Se comprobó en producción que
+# /netlify/functions/lead.mjs, /CLAUDE.md y /scripts/*.py devolvían 200: el
+# código de las funciones, las notas internas del proyecto y los scripts del
+# modelo estaban a la vista de cualquiera. No había secretos ahí dentro (las
+# funciones los leen de las variables de entorno), pero no tienen por qué
+# servirse. `force = true` es lo que hace que la regla gane al archivo estático.
+# ---------------------------------------------------------------------------
+[[redirects]]
+  from = "/netlify/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/scripts/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/tools/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/backend/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+# OJO: "/*.md" NO funciona — Netlify no admite un sufijo después del splat, y
+# en el deploy preview /CLAUDE.md seguía devolviendo 200. Van explícitas.
+[[redirects]]
+  from = "/CLAUDE.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/DESPLIEGUE.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/docs/alertas-whatsapp.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/docs/api-brickbit-score.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/docs/plan-feed-listados.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/app.py"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/requirements.txt"
+  to = "/404.html"
+  status = 404
+  force = true
+
+# El listado de médicos nombra a 713 personas identificables. La reja de la
+# página nunca lo protegió —Netlify servía el .txt directo— así que la ruta
+# estática se cierra y el contenido sale sólo por /api/medicos, contra un pase
+# que emite /api/lead al pasar por la puerta de /financial/gmm.
+[[redirects]]
+  from = "/data/gnp_medicos_sin_pago_directo.txt"
+  to = "/404.html"
+  status = 404
+  force = true
 
 # URLs bonitas
 [[redirects]]

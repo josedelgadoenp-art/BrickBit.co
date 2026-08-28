@@ -226,6 +226,26 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
   text-transform:uppercase;color:var(--faint);font-weight:700}
 
 /* Reja de sesión del listado de médicos */
+/* ---- Puerta de acceso (#acceso) ---- */
+.acc-box{max-width:52ch;margin:0 auto;background:var(--bg);border:1.5px solid var(--acc);border-radius:16px;padding:26px 24px}
+.acc-tag{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);border:1px solid var(--acc);border-radius:999px;padding:4px 11px;margin-bottom:12px}
+.acc-box h2{font-family:var(--serif);font-size:1.5rem;font-weight:600;margin:0 0 8px;line-height:1.2}
+.acc-lead{font-size:.95rem;color:var(--ink2);line-height:1.55;margin-bottom:18px}
+.acc-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+@media(max-width:560px){ .acc-row{grid-template-columns:1fr} }
+.acc-fld label{display:block;font-size:.76rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--ink2);margin-bottom:5px}
+.acc-fld input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:12px 13px;font-family:inherit;font-size:1rem;color:var(--ink);background:var(--soft)}
+.acc-fld input:focus{outline:none;border-color:var(--acc)}
+.acc-fld input.mal{border-color:#c0392b;background:#fdf3f2}
+.acc-consent{display:flex;gap:10px;align-items:flex-start;font-size:.83rem;color:var(--ink2);line-height:1.45;cursor:pointer;margin-bottom:14px}
+/* Casilla grande: una de 13px se falla al tocar en movil y parece que el boton
+   no responde, que es justo la friccion que se quiere evitar. */
+.acc-consent input{width:20px;height:20px;flex:0 0 20px;margin-top:1px;accent-color:var(--acc);cursor:pointer}
+.acc-consent a{color:var(--acc);font-weight:600}
+.acc-err{display:none;font-size:.86rem;color:#c0392b;margin-bottom:10px}
+.acc-err.show{display:block}
+#acceso .btn-gate{width:100%;justify-content:center}
+.acc-note{font-size:.8rem;color:var(--ink3,#8a7a6b);line-height:1.45;margin-top:12px}
 .gate{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:32px 22px;background:var(--soft)}
 .gate-box{max-width:44ch;text-align:center}
 .gate-box h3{font-family:var(--serif);font-size:20px;font-weight:500;letter-spacing:-.01em;margin-bottom:9px}
@@ -270,9 +290,12 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
   .mapwrap{order:1;min-height:46vh}
   .rail{order:2;border-right:0;border-top:1px solid var(--line)}
   .controls{max-height:none;overflow:visible}
-  .results{overflow:visible;max-height:none}
+  /* Sin tope, las 401 tarjetas estiraban la pagina a ~42,000px: 50 pantallas
+     de scroll para llegar al pie. Con tope, la lista scrollea dentro de si
+     misma como en escritorio y la pagina vuelve a medir lo razonable. */
+  .results{overflow-y:auto;max-height:62vh;-webkit-overflow-scrolling:touch}
   .docs{height:auto}
-  .doclist{overflow:visible}
+  .doclist{overflow-y:auto;max-height:62vh;-webkit-overflow-scrolling:touch}
   .doc,.dochead{grid-template-columns:1fr;gap:2px}
   .dochead{display:none}
   .tally{margin-left:0;width:100%}
@@ -289,7 +312,6 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
     </a>
     <div class="top-note">
       <span class="badge-gnp">Agente GNP</span>
-      <span id="auth-slot" style="margin-left:10px"></span><br>
       Red en convenio · corte del 31 de julio de 2026
     </div>
   </header>
@@ -297,15 +319,41 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
   <section id="intro">
     <div class="eyebrow">Gastos médicos mayores</div>
     <h1>¿Tu hospital de confianza<br>está en la red de GNP?</h1>
-    <p class="lead">Antes de contratar una póliza conviene revisar lo contrario de lo que se suele mirar: no qué cubre el plan en abstracto, sino <b>a qué hospitales concretos te deja entrar</b>. Escribe tu código postal y te digo cuáles te quedan cerca, de qué nivel son y qué plan los abre.</p>
-    <div class="intro-strip" id="introStrip">
-      <div><b class="mono">—</b><span>unidades hospitalarias en convenio</span></div>
-      <div><b class="mono">—</b><span>entidades federativas con cobertura</span></div>
-      <div><b class="mono">—</b><span>niveles de red, del más amplio al más acotado</span></div>
+    <p class="lead">No qué cubre el plan en abstracto, sino <b>a qué hospitales concretos te deja entrar</b>. Escribe tu código postal y te digo cuáles te quedan cerca, de qué nivel son y qué plan los abre.</p>
+  </section>
+
+  <!-- ============================================================
+       ACCESO · una sola puerta para las dos vistas.
+       Antes el listado de médicos exigía crear cuenta con Supabase, que para
+       consultar un directorio es demasiado. Se sustituye por nombre y WhatsApp:
+       captura el prospecto y abre la herramienta completa de una vez.
+  ============================================================ -->
+  <section class="sec" id="acceso">
+    <div class="acc-box">
+      <span class="acc-tag">Acceso gratuito</span>
+      <h2>Dime a dónde te mando la consulta</h2>
+      <p class="acc-lead">Con tu nombre y tu WhatsApp abro el mapa completo: <b id="accN">466 unidades</b> en convenio,
+         los filtros por plan y nivel, la búsqueda por código postal y el listado de médicos sin pago directo.</p>
+      <div class="acc-row">
+        <div class="acc-fld"><label for="aNom">Nombre</label>
+          <input id="aNom" type="text" autocomplete="given-name" placeholder="Tu nombre"></div>
+        <div class="acc-fld"><label for="aTel">WhatsApp</label>
+          <input id="aTel" type="tel" inputmode="tel" autocomplete="tel" placeholder="10 dígitos"></div>
+      </div>
+      <label class="acc-consent">
+        <input type="checkbox" id="aOk">
+        <span>Autorizo a <b id="accAg">José Delgado</b>, asesor de BrickBit Financial, a contactarme por WhatsApp
+          sobre gastos médicos mayores, y el tratamiento de mis datos conforme al
+          <a href="/aviso-de-privacidad" target="_blank" rel="noopener">Aviso de Privacidad</a>. No se comparten con terceros.</span>
+      </label>
+      <div class="acc-err" id="aErr"></div>
+      <button class="btn btn-gate" id="aGo">Ver la red hospitalaria →</button>
+      <p class="acc-note">Es la misma red que consultan los asesores de GNP. No te va a llegar publicidad:
+         te escribo yo, una vez, para saber si necesitas algo.</p>
     </div>
   </section>
 
-  <section class="sec">
+  <section class="sec hide" id="herramienta">
     <div class="viewbar">
       <div class="switch" role="group" aria-label="Vista">
         <button id="tabH" aria-pressed="true" aria-controls="viewH">Red hospitalaria</button>
@@ -376,20 +424,10 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
         profesional</b> y no limita el derecho del asegurado a elegir médico. Fuente: GNP Seguros, corte del 31 de julio de 2026.
         Si un nombre no aparece aquí, verifícalo con GNP antes de asumir que sí tiene pago directo.
       </div>
-      <!-- Reja. El listado nombra a personas identificables, así que no se
-           sirve al público: sólo se descarga cuando hay sesión iniciada. -->
-      <div class="gate" id="docGate">
-        <div class="gate-box">
-          <h3>Este listado es para clientes</h3>
-          <p>Son nombres de médicos reales y la información cambia con cada corte de GNP,
-             así que no la publicamos abierta. Inicia sesión y la consultas completa,
-             con filtros por especialidad y estado.</p>
-          <button class="btn btn-gate" id="docLogin">Entrar / Crear cuenta</button>
-          <p class="gate-note">Crear cuenta es gratis. Si prefieres, <a id="gateWa" href="#" target="_blank" rel="noopener">pregúntame por un médico en concreto por WhatsApp</a>.</p>
-        </div>
-      </div>
-
-      <div id="docApp" class="hide" style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <!-- Sin reja propia: la puerta de #acceso ya cubre las dos vistas. El
+           listado sigue sin indexarse (X-Robots-Tag en netlify.toml) y sólo se
+           descarga cuando alguien abre esta pestaña. -->
+      <div id="docApp" style="display:flex;flex-direction:column;flex:1;min-height:0">
         <div class="bar2">
           <div class="field"><label for="dq">Buscar por nombre</label><input id="dq" type="search" placeholder="Apellido o nombre" autocomplete="off"></div>
           <div class="field"><label for="dsp">Especialidad</label><select id="dsp"><option value="">Todas</option></select></div>
@@ -453,8 +491,6 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
 <script src="/assets/leaflet.markercluster.js"></script>
 <!-- Sesión Supabase: sólo la usa la reja del listado de médicos. El mapa de
      hospitales funciona sin cuenta y sin estos scripts. -->
-<script src="/supabase.js?v=152"></script>
-<script src="/auth.js?v=153"></script>
 <script>
 (function(){
 'use strict';
@@ -463,6 +499,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
    CONFIGURACIÓN
 ============================================================ */
 const AGENTE = { nombre:"José Delgado", whatsapp:"5215584681927" };
+const ACC_KEY='bb_gmm_acceso';
 document.getElementById('waBtn').href =
   'https://wa.me/'+AGENTE.whatsapp+'?text='+encodeURIComponent(
     'Hola '+AGENTE.nombre+', vi el mapa de la red hospitalaria GNP en BrickBit y quiero saber qué plan cubre el hospital que me interesa.');
@@ -651,17 +688,15 @@ function montarControles(){
     legend.appendChild(d);
   });
 
-  /* Cifras de portada: se calculan de los datos, no se escriben a mano, para
-     que no se queden viejas cuando la red cambie. */
-  const strip=$('introStrip').children;
-  strip[0].querySelector('b').textContent=DATA.length;
-  strip[1].querySelector('b').textContent=new Set(DATA.map(d=>d.e)).size;
-  strip[2].querySelector('b').textContent=new Set(DATA.map(d=>d.red)).size;
+  /* La cifra de la puerta sale de los datos, no escrita a mano, para que no se
+     quede vieja cuando la red cambie en el siguiente corte de GNP. */
+  const n=$('accN');
+  if(n) n.textContent = DATA.length+' unidades en '+new Set(DATA.map(d=>d.e)).size+' estados';
 
 }
 
 /* Los selectores de médicos se llenan cuando llega el listado, no al arrancar:
-   el listado sólo se descarga con sesión iniciada. */
+   el archivo sólo se descarga al abrir esa pestaña. */
 function montarSelectoresMedicos(){
   [...new Set(MED.map(m=>m.s))].map(k=>[k,SPEC[k]||k]).sort((a,b)=>a[1].localeCompare(b[1],'es'))
     .forEach(([k,v])=>{const o=document.createElement('option');o.value=k;o.textContent=v;$('dsp').appendChild(o)});
@@ -939,22 +974,19 @@ $('dsp').onchange=e=>{dstate.s=e.target.value;renderDocs()};
 $('ded').onchange=e=>{dstate.e=e.target.value;renderDocs()};
 
 /* ============================================================
-   REJA DE SESIÓN DEL LISTADO DE MÉDICOS
-   El listado nombra a personas identificables y cambia con cada corte de GNP.
-   No se sirve al público: el archivo se descarga sólo cuando hay sesión.
+   LISTADO DE MÉDICOS
+   Ya no exige cuenta: lo abre la misma puerta de #acceso. El archivo se
+   descarga sólo al abrir esta pestaña, no en la carga de la página.
 ============================================================ */
-$('gateWa').href='https://wa.me/'+AGENTE.whatsapp+'?text='+encodeURIComponent(
-  'Hola '+AGENTE.nombre+', ¿me confirmas si un médico tiene pago directo con GNP?');
-$('docLogin').onclick=()=>{
-  if(typeof openAuthModal==='function') openAuthModal('in');
-};
-
 let cargandoMed=null;
 function cargarMedicos(){
   if(MED.length) return Promise.resolve(MED);
   if(cargandoMed) return cargandoMed;
-  cargandoMed = fetch('/data/gnp_medicos_sin_pago_directo.txt')
-    .then(r=>{ if(!r.ok) throw 0; return r.text(); })
+  /* El listado ya no es un archivo estático: lo sirve /api/medicos contra el
+     pase que /api/lead entrega al pasar la puerta. Sin pase, 401. */
+  let pase=''; try{ pase=(JSON.parse(localStorage.getItem(ACC_KEY)||'{}')||{}).p||''; }catch(e){}
+  cargandoMed = fetch('/api/medicos',{headers:{'x-pase':pase}})
+    .then(r=>{ if(!r.ok) throw new Error('http_'+r.status); return r.text(); })
     .then(txt=>{
       MED = txt.split('\n').filter(l=>l && l[0]!=='#').map(l=>{
         const p=l.split('|'); return {n:p[0],s:p[1],e:p[2]};
@@ -966,31 +998,21 @@ function cargarMedicos(){
   return cargandoMed;
 }
 
-async function revisarSesionMedicos(){
-  const gate=$('docGate'), app=$('docApp');
-  const abrir=()=>{ gate.classList.add('hide'); app.classList.remove('hide'); };
-  const cerrar=(msg)=>{
-    gate.classList.remove('hide'); app.classList.add('hide');
-    if(msg) gate.querySelector('p').textContent=msg;
-    if($('tabM').getAttribute('aria-pressed')==='true') $('tally').textContent='Listado para clientes';
-  };
-
-  if(!window.bbConfigured){
-    cerrar('El acceso con cuenta no está configurado en este sitio. Escríbeme por WhatsApp y reviso el médico que necesites.');
-    $('docLogin').classList.add('hide');
+async function abrirMedicos(){
+  const ok=await cargarMedicos();
+  if(!ok){
+    /* El pase caduca a los 30 días. Si ya no vale, la salida es volver a pasar
+       por la puerta, no un mensaje de error sin camino. */
+    $('docApp').innerHTML='<div class="empty"><b>Tu acceso caducó.</b>'+
+      'Vuelve a dejar tu nombre y WhatsApp para consultar el listado. '+
+      '<button class="btn btn-gate" id="reAcc" style="margin-top:12px">Volver a entrar</button></div>';
+    const r=$('reAcc');
+    if(r) r.onclick=()=>{ try{ localStorage.removeItem(ACC_KEY); }catch(e){} location.reload(); };
     return;
   }
-  const u = (typeof bbUser==='function') ? await bbUser() : null;
-  if(!u){ cerrar(); return; }
-
-  abrir();
-  const ok=await cargarMedicos();
-  if(!ok){ cerrar('No pude cargar el listado. Recarga la página o escríbeme por WhatsApp.'); return; }
   renderDocs();
 }
 
-if(typeof mountAuth==='function') mountAuth('auth-slot');
-if(typeof bbOnAuth==='function') bbOnAuth(()=>revisarSesionMedicos());
 
 /* ============================================================
    CAMBIO DE VISTA
@@ -1004,8 +1026,55 @@ $('tabH').onclick=()=>{
 $('tabM').onclick=()=>{
   $('tabM').setAttribute('aria-pressed','true'); $('tabH').setAttribute('aria-pressed','false');
   $('viewM').classList.remove('hide'); $('viewH').classList.add('hide');
-  revisarSesionMedicos();
+  abrirMedicos();
 };
+
+/* ============================================================
+   PUERTA DE ACCESO · nombre y WhatsApp
+   Una sola vez por navegador. El prospecto va a /api/lead, el mismo endpoint
+   que /financial, así que aparece en el panel de #registros con su origen.
+============================================================ */
+const telOk = t => /^\d{10}$/.test(String(t||'').replace(/\D/g,''));
+
+function abrirHerramienta(){
+  $('acceso').classList.add('hide');
+  $('herramienta').classList.remove('hide');
+  /* Leaflet mide el contenedor al crearlo; si nació oculto queda con 0 de alto
+     y el mapa sale en blanco. invalidateSize() lo obliga a remedirse. */
+  setTimeout(()=>{ if(typeof map!=='undefined' && map) map.invalidateSize(); },60);
+}
+
+function guardarAcceso(nom,tel){
+  const guarda=(pase)=>{ try{
+    localStorage.setItem(ACC_KEY,JSON.stringify({n:nom,t:tel,f:Date.now(),p:pase||''}));
+  }catch(e){} };
+  guarda('');                                   // por si la red falla, el acceso no se pierde
+  return fetch('/api/lead',{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,
+    body:JSON.stringify({ fecha:new Date().toISOString(), nombre:nom, telefono:tel,
+      producto:'Red hospitalaria GNP', linea:'Gastos médicos mayores',
+      origen:'gmm-red-hospitalaria', accion:'Abrió el mapa de la red',
+      ref:(document.referrer||'').slice(0,180) })
+  }).then(r=>r.json())
+    .then(j=>{ if(j && j.pase) guarda(j.pase); })
+    .catch(()=>{ /* que un fallo de red no le cierre el mapa a nadie */ });
+}
+
+$('accAg').textContent=AGENTE.nombre;
+$('aGo').onclick=()=>{
+  const nom=$('aNom').value.trim(), tel=$('aTel').value.trim(), err=$('aErr');
+  $('aNom').classList.remove('mal'); $('aTel').classList.remove('mal'); err.classList.remove('show');
+  if(nom.length<2){ $('aNom').classList.add('mal'); err.textContent='Escribe tu nombre.'; err.classList.add('show'); $('aNom').focus(); return; }
+  if(!telOk(tel)){ $('aTel').classList.add('mal'); err.textContent='El WhatsApp debe tener 10 dígitos.'; err.classList.add('show'); $('aTel').focus(); return; }
+  if(!$('aOk').checked){ err.textContent='Necesito tu autorización para poder escribirte.'; err.classList.add('show'); return; }
+  guardarAcceso(nom,tel.replace(/\D/g,''));
+  abrirHerramienta();   // el mapa no espera al pase; sólo lo necesita la pestaña de médicos
+};
+['aNom','aTel'].forEach(id=>$(id).addEventListener('keydown',e=>{ if(e.key==='Enter') $('aGo').click(); }));
+
+/* Quien ya pasó no vuelve a pasar: la puerta cobra una vez, no en cada visita. */
+try{
+  if(JSON.parse(localStorage.getItem(ACC_KEY)||'null')) abrirHerramienta();
+}catch(e){}
 
 })();
 </script>

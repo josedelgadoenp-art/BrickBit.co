@@ -97,6 +97,18 @@ h3{font-size:14px;font-weight:700}
 .inp{border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:15px;font-family:inherit;color:var(--ink);background:var(--bg);width:100%;transition:border-color .15s,box-shadow .15s}
 .inp:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .inp.err{border-color:var(--danger);box-shadow:0 0 0 3px var(--danger-soft)}
+/* ---- Entrada de dos campos, ajustes en vivo y muro ---- */
+.sin-peaje{font-size:12px;color:var(--faint)}
+#intro-pie{margin-top:26px}
+#intro-pie .est-nota{margin-top:18px}
+.aj-card{padding:26px 28px}
+/* La tarjeta del muro se distingue del resto: es lo único que pide algo. */
+.gate-card{border:1px solid var(--accent);background:linear-gradient(180deg,#fff9f4 0%,var(--card) 60%)}
+/* El valor del deslizador cambia mientras se arrastra; el resaltado breve hace
+   evidente que la cifra de arriba se está moviendo con él. */
+.k-val{transition:color .18s ease}
+.k-val.pulso{color:var(--accent-dk)}
+@media (prefers-reduced-motion:reduce){ .k-val{transition:none} }
 .inp-lg{font-size:22px;font-weight:600;letter-spacing:-.02em;padding:14px 14px 14px 32px}
 .pre{position:relative}
 .pre .sym{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:15px;pointer-events:none}
@@ -150,6 +162,11 @@ input[type=range]{flex:1;accent-color:var(--accent);height:4px}
 .res-bar p{font-size:13px;color:#14503a}
 .res-bar b{font-weight:700}
 .btn-s{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 13px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink-2)}
+/* Borrar datos de una persona: discreto hasta que lo apuntas, para que nadie
+   lo pulse de pasada — es irreversible. */
+.btn-borrar{border:1px solid transparent;background:none;border-radius:7px;padding:3px 9px;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--faint)}
+.btn-borrar:hover:not(:disabled){border-color:#d9534f;color:#c9302c}
+.btn-borrar:disabled{opacity:.5;cursor:default}
 .btn-s:hover{border-color:var(--accent);color:var(--accent-dk)}
 
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
@@ -259,7 +276,9 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
   *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
   .wrap{max-width:none;margin:0;padding:0;border-radius:0;box-shadow:none}
   /* fuera lo que no es el análisis */
-  #intro,#wizard,#agenda,#admin,.res-acc,.foot .link,.top-note{display:none !important}
+  /* #ajustes y #muro son controles, no resultado: en el PDF que se lleva el
+     cliente sobran. Los supuestos que eligió sí quedan, en el resumen. */
+  #intro,#wizard,#ajustes,#muro,#agenda,#admin,.res-acc,.foot .link,.top-note{display:none !important}
   .res-bar{border-color:var(--line);background:#fff;margin-bottom:22px;padding:0 0 12px;border-width:0 0 1px}
   .top{margin-bottom:26px;padding-top:0}
   .print-firma{display:block !important}
@@ -280,6 +299,13 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
   text-transform:uppercase;color:var(--faint);margin-top:6px}
 
 #admin{display:none;margin-top:20px;border:1px solid var(--line);border-radius:var(--r);padding:22px 24px;background:var(--soft)}
+/* Modo panel: #admin vive dentro de #results, que está oculto hasta terminar
+   el cuestionario. Sin esto, abrir #registros en una visita nueva no mostraba
+   nada de nada. Aquí se descubre #results pero se apaga todo lo que no sea el
+   panel, para que aparezca solo. Gana a .hide por especificidad. */
+body.modo-panel #intro, body.modo-panel #wizard,
+body.modo-panel #results > *:not(#admin){display:none !important}
+body.modo-panel #results{display:block !important}
 #adminLogin{margin-bottom:6px}
 #adminLogin .err-msg{margin-top:10px}
 #admin.show{display:block}
@@ -319,171 +345,52 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
   <section id="intro">
     <div class="eyebrow">Planeación patrimonial</div>
     <h1>¿A qué edad podrás retirarte<br>y cuánto necesitas ahorrar?</h1>
-    <p class="lead">Cuatro preguntas rápidas y obtienes una proyección de tu retiro: el capital que necesitarás, la brecha que deja tu pensión, y cuánto tendrías que ahorrar cada mes por tu cuenta frente a un plan de retiro estructurado.</p>
-    <div class="intro-strip">
-      <div><b>7 de cada 10</b><span>trabajadores no alcanzará una tasa de reemplazo suficiente solo con su Afore</span></div>
-      <div><b>65 años</b><span>edad legal de retiro bajo la Ley del Seguro Social de 1997</span></div>
-      <div><b>~25 años</b><span>de vida esperada después del retiro que hay que financiar</span></div>
-    </div>
-    <div class="est-nota">
-      <span aria-hidden="true">⚠️</span>
-      <span>Todo lo que verás son <b>proyecciones</b>, no cifras garantizadas. En BrickBit marcamos cada
-      número estimado con la etiqueta ámbar <span class="est">est.</span> para que nunca lo confundas con
-      un hecho. Los supuestos que usamos están abajo, a la vista, y la metodología completa al final.</span>
-    </div>
+    <p class="lead">Dos datos y ves tu proyección: el capital que necesitarás, la brecha que deja tu pensión y cuánto tendrías que ahorrar cada mes.</p>
   </section>
 
   <!-- ============ WIZARD ============ -->
+  <!-- ============================================================
+       ENTRADA · dos campos y ya hay resultado.
+       Antes eran cuatro pasos y ocho campos obligatorios antes de ver un solo
+       número. Todo lo demás tiene un supuesto defendible, así que pasó a ser
+       un control sobre el resultado (#ajustes) en vez de un peaje previo.
+  ============================================================ -->
   <section class="sec" id="wizard">
-    <div class="steps">
-      <div class="step-pip on" data-pip="1"></div>
-      <div class="step-pip" data-pip="2"></div>
-      <div class="step-pip" data-pip="3"></div>
-      <div class="step-pip" data-pip="4"></div>
-    </div>
     <div class="card" id="wizCard">
-
-      <!-- STEP 1 -->
       <div class="panel" data-panel="1">
-        <div class="step-label">Paso 1 de 4 · Tu situación actual</div>
-        <h2>Empecemos por lo básico</h2>
-        <p class="panel-sub">Ninguno de estos datos sale de tu navegador hasta que tú decidas compartirlos.</p>
+        <div class="step-label">Empieza aquí · toma 15 segundos</div>
+        <h2>Dos datos y ves tu proyección</h2>
+        <p class="panel-sub">Lo demás lo suponemos por ti con criterios conservadores, y podrás ajustarlo todo sobre el resultado. Nada sale de tu navegador hasta que tú decidas.</p>
         <div class="grid2">
           <div class="field">
             <label for="edad">Edad actual</label>
-            <div class="pre"><input class="inp" id="edad" type="number" min="18" max="75" step="1" placeholder="35"><span class="suf">años</span></div>
-          </div>
-          <div class="field">
-            <label for="edadRet">Edad a la que quieres retirarte</label>
-            <div class="pre"><input class="inp" id="edadRet" type="number" min="45" max="80" step="1" placeholder="65"><span class="suf">años</span></div>
+            <div class="pre"><input class="inp inp-lg" id="edad" type="number" min="18" max="75" step="1" inputmode="numeric" placeholder="ej. 35"><span class="suf">años</span></div>
           </div>
           <div class="field">
             <label for="ingreso">Ingreso mensual neto</label>
-            <div class="pre"><span class="sym">$</span><input class="inp" id="ingreso" type="number" min="0" step="1000" placeholder="45,000"></div>
+            <div class="pre"><span class="sym lg">$</span><input class="inp inp-lg" id="ingreso" type="number" min="0" step="1000" inputmode="numeric" placeholder="ej. 45,000"></div>
             <span class="hint">Lo que efectivamente recibes al mes, después de impuestos.</span>
           </div>
-          <div class="field">
-            <label for="ahorro">Ahorro ya acumulado para tu retiro</label>
-            <div class="pre"><span class="sym">$</span><input class="inp" id="ahorro" type="number" min="0" step="10000" placeholder="0"></div>
-            <span class="hint">Afore voluntario, inversiones, fondos. Si aún no tienes, deja 0.</span>
-          </div>
         </div>
+        <div class="err-msg" id="entradaErr"></div>
         <div class="actions">
-          <span style="font-size:12px;color:var(--faint)">Paso 1 de 4</span>
-          <button class="btn btn-p" data-next="2">Continuar</button>
+          <span class="sin-peaje">Sin registro · sin correo</span>
+          <button class="btn btn-a btn-lg" id="verBtn">Ver mi proyección →</button>
         </div>
       </div>
+    </div>
 
-      <!-- STEP 2 -->
-      <div class="panel hide" data-panel="2">
-        <div class="step-label">Paso 2 de 4 · Tu pensión y tu meta</div>
-        <h2>¿Con qué cuentas ya?</h2>
-        <p class="panel-sub">Esto define la brecha real que tendrás que cubrir con ahorro propio.</p>
-        <div class="grid2">
-          <div class="field">
-            <label>¿Cotizas al IMSS o ISSSTE?</label>
-            <div class="seg" id="segImss">
-              <button type="button" data-v="1">Sí, cotizo</button>
-              <button type="button" data-v="0" class="on">No cotizo</button>
-            </div>
-            <span class="hint">Si eres independiente o empresario sin cotización, elige “No cotizo”.</span>
-          </div>
-          <div class="field" id="wrapAnios" style="opacity:.4;pointer-events:none">
-            <label for="anios">Años que llevas cotizando</label>
-            <div class="pre"><input class="inp" id="anios" type="number" min="0" max="50" step="1" placeholder="10"><span class="suf">años</span></div>
-            <span class="hint">Aproximado. Lo verás en tu estado de cuenta Afore.</span>
-          </div>
-        </div>
-        <div class="field" style="margin-top:20px">
-          <label for="reemplazo">¿Qué porcentaje de tu ingreso actual quieres conservar al retirarte?</label>
-          <div class="slider-row">
-            <input type="range" id="reemplazo" min="50" max="100" step="5" value="80">
-            <span class="slider-val" id="reemplazoV">80%</span>
-          </div>
-          <span class="hint">El estándar internacional de planeación está entre 70% y 80%, calculado sobre el poder adquisitivo de hoy.</span>
-        </div>
-        <div class="field" style="margin-top:20px">
-          <label for="edadFin">¿Hasta qué edad quieres tener ingreso garantizado?</label>
-          <div class="slider-row">
-            <input type="range" id="edadFin" min="80" max="100" step="1" value="90">
-            <span class="slider-val" id="edadFinV">90</span>
-          </div>
-          <span class="hint">La esperanza de vida a los 65 años en México supera los 82; planear a 90 evita quedarte corto.</span>
-        </div>
-        <div class="actions">
-          <button class="btn btn-g" data-next="1">← Atrás</button>
-          <button class="btn btn-p" data-next="3">Continuar</button>
-        </div>
+    <div id="intro-pie">
+      <div class="intro-strip">
+        <div><b>7 de cada 10</b><span>trabajadores no alcanzará una tasa de reemplazo suficiente solo con su Afore</span></div>
+        <div><b>65 años</b><span>edad legal de retiro bajo la Ley del Seguro Social de 1997</span></div>
+        <div><b>~25 años</b><span>de vida esperada después del retiro que hay que financiar</span></div>
       </div>
-
-      <!-- STEP 3 -->
-      <div class="panel hide" data-panel="3">
-        <div class="step-label">Paso 3 de 4 · Tu ahorro de hoy</div>
-        <h2>¿Cuánto ahorras al mes actualmente?</h2>
-        <p class="panel-sub">Es el dato que nos dice qué tan lejos estás de tu meta. Si aún no ahorras de forma constante, deja 0 — no hay respuesta incorrecta.</p>
-        <div style="max-width:340px">
-          <div class="pre">
-            <span class="sym lg">$</span>
-            <input class="inp inp-lg" id="ahorroMes" type="number" min="0" step="500" placeholder="0">
-          </div>
-          <div class="chips" id="chips">
-            <button type="button" class="chip" data-v="0">Aún no ahorro</button>
-            <button type="button" class="chip" data-v="2000">$2,000</button>
-            <button type="button" class="chip" data-v="5000">$5,000</button>
-            <button type="button" class="chip" data-v="10000">$10,000</button>
-          </div>
-        </div>
-
-        <div class="assump">
-          <div class="ah"><span class="lk">🔒</span> Supuestos del análisis · criterios conservadores</div>
-          <div class="ag">
-            <div class="ai"><b>4.5%</b><span>Inflación anual de largo plazo</span></div>
-            <div class="ai"><b>4.0%</b><span>Rendimiento ahorrando por tu cuenta</span></div>
-            <div class="ai"><b>8.5%</b><span>Rendimiento del plan de retiro</span></div>
-          </div>
-        </div>
-
-        <div class="actions">
-          <button class="btn btn-g" data-next="2">← Atrás</button>
-          <button class="btn btn-p" data-next="4">Continuar</button>
-        </div>
-      </div>
-
-      <!-- STEP 4 · GATE -->
-      <div class="panel hide" data-panel="4">
-        <div class="step-label">Paso 4 de 4 · Recibe tu diagnóstico</div>
-        <div class="ready"><span class="d"></span> Tu análisis está listo</div>
-        <h2>¿A dónde te enviamos tu diagnóstico?</h2>
-        <p class="panel-sub">Déjanos tus datos para ver tu análisis completo y para que un asesor de BrickBit Financial pueda acompañarte a convertirlo en un plan real, sin costo ni compromiso.</p>
-
-        <div class="perks">
-          <div class="perk"><span class="ck">✓</span><span>Tu diagnóstico completo enviado por WhatsApp</span></div>
-          <div class="perk"><span class="ck">✓</span><span>Revisión de tu Afore y tu pensión proyectada real</span></div>
-          <div class="perk"><span class="ck">✓</span><span>Escenarios a tu medida, totalmente gratis</span></div>
-        </div>
-
-        <div class="grid2">
-          <div class="field">
-            <label for="lNombre">Nombre completo</label>
-            <input class="inp" id="lNombre" type="text" placeholder="Tu nombre" autocomplete="name">
-          </div>
-          <div class="field">
-            <label for="lTel">Número de teléfono</label>
-            <input class="inp" id="lTel" type="tel" placeholder="10 dígitos" autocomplete="tel" inputmode="numeric">
-          </div>
-        </div>
-
-        <label class="consent">
-          <input type="checkbox" id="lOk">
-          <span>Autorizo que José Delgado, asesor de BrickBit Financial, me contacte por teléfono o WhatsApp para agendar mi asesoría gratuita. Mis datos se tratan conforme al <a href="/aviso-de-privacidad" target="_blank" rel="noopener" style="color:var(--accent-dk);font-weight:600">Aviso de Privacidad</a> y no se comparten con terceros.</span>
-        </label>
-        <div class="err-msg" id="lErr"></div>
-        <div class="privacy"><span>🔒</span><span>Tus cálculos se ejecutan en tu propio navegador. Solo compartimos contigo el resultado.</span></div>
-
-        <div class="actions">
-          <button class="btn btn-g" data-next="3">← Atrás</button>
-          <button class="btn btn-a btn-lg" id="calcBtn">Ver mi diagnóstico →</button>
-        </div>
+      <div class="est-nota">
+        <span aria-hidden="true">⚠️</span>
+        <span>Todo lo que verás son <b>proyecciones</b>, no cifras garantizadas. En BrickBit marcamos cada
+        número estimado con la etiqueta ámbar <span class="est">est.</span> para que nunca lo confundas con
+        un hecho. Los supuestos que usamos están a la vista, y la metodología completa al final.</span>
       </div>
     </div>
   </section>
@@ -494,7 +401,8 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
     <div class="res-bar">
       <p id="resBarTxt"></p>
       <div class="res-acc">
-        <button class="btn btn-a" id="pdfBtn"><span aria-hidden="true">↓</span> Descargar en PDF</button>
+        <!-- El PDF es parte del entregable que abre el muro: aparece con él. -->
+        <button class="btn btn-a hide" id="pdfBtn"><span aria-hidden="true">↓</span> Descargar en PDF</button>
         <button class="btn-s" id="editBtn">Editar mis datos</button>
       </div>
     </div>
@@ -529,6 +437,134 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
       </div>
       <div class="verdict" id="verdict"><div class="dot"></div><div><h3 id="vTitle"></h3><p id="vText"></p></div></div>
     </section>
+
+    <!-- ============================================================
+         AJUSTES EN VIVO · aquí viven los datos que antes eran los pasos 2 y 3.
+         Cada cambio recalcula al instante: la persona ve moverse SU número, que
+         es lo que hace que valga la pena corregir los supuestos. Los ids son los
+         mismos de antes, así que recopilar() y calcular() no se enteran.
+    ============================================================ -->
+    <section class="sec" id="ajustes">
+      <div class="sec-head">
+        <div class="eyebrow">Ajusta tu escenario</div>
+        <h2>Mueve cualquier dato y mira cómo cambia</h2>
+        <p>Partimos de supuestos conservadores. Corrige los que conozcas y tu proyección se actualiza sola.</p>
+      </div>
+      <div class="card aj-card">
+        <div class="grid2">
+          <div class="field">
+            <label for="edadRet">Edad a la que quieres retirarte</label>
+            <div class="slider-row">
+              <input type="range" id="edadRet" min="45" max="80" step="1" value="65">
+              <span class="slider-val" id="edadRetV">65</span>
+            </div>
+            <span class="hint">65 es la edad legal bajo la Ley del Seguro Social de 1997.</span>
+          </div>
+          <div class="field">
+            <label for="ahorro">Ahorro ya acumulado para tu retiro</label>
+            <div class="pre"><span class="sym">$</span><input class="inp" id="ahorro" type="number" min="0" step="10000" inputmode="numeric" value="0"></div>
+            <span class="hint">Afore voluntario, inversiones, fondos. Si aún no tienes, deja 0.</span>
+          </div>
+          <div class="field">
+            <label>¿Cotizas al IMSS o ISSSTE?</label>
+            <div class="seg" id="segImss">
+              <button type="button" data-v="1">Sí, cotizo</button>
+              <button type="button" data-v="0" class="on">No cotizo</button>
+            </div>
+            <span class="hint">Si eres independiente o empresario sin cotización, elige “No cotizo”.</span>
+          </div>
+          <div class="field" id="wrapAnios" style="opacity:.4;pointer-events:none">
+            <label for="anios">Años que llevas cotizando</label>
+            <div class="pre"><input class="inp" id="anios" type="number" min="0" max="50" step="1" inputmode="numeric" placeholder="ej. 10"><span class="suf">años</span></div>
+            <span class="hint">Aproximado. Lo verás en tu estado de cuenta Afore.</span>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:20px">
+          <label for="ahorroMes">¿Cuánto ahorras al mes actualmente?</label>
+          <div style="max-width:340px">
+            <div class="pre"><span class="sym">$</span><input class="inp" id="ahorroMes" type="number" min="0" step="500" inputmode="numeric" value="0"></div>
+            <div class="chips" id="chips">
+              <button type="button" class="chip on" data-v="0">Aún no ahorro</button>
+              <button type="button" class="chip" data-v="2000">$2,000</button>
+              <button type="button" class="chip" data-v="5000">$5,000</button>
+              <button type="button" class="chip" data-v="10000">$10,000</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:20px">
+          <label for="reemplazo">¿Qué porcentaje de tu ingreso actual quieres conservar al retirarte?</label>
+          <div class="slider-row">
+            <input type="range" id="reemplazo" min="50" max="100" step="5" value="80">
+            <span class="slider-val" id="reemplazoV">80%</span>
+          </div>
+          <span class="hint">El estándar internacional está entre 70% y 80%, sobre el poder adquisitivo de hoy.</span>
+        </div>
+
+        <div class="field" style="margin-top:20px">
+          <label for="edadFin">¿Hasta qué edad quieres tener ingreso garantizado?</label>
+          <div class="slider-row">
+            <input type="range" id="edadFin" min="80" max="100" step="1" value="90">
+            <span class="slider-val" id="edadFinV">90</span>
+          </div>
+          <span class="hint">La esperanza de vida a los 65 en México supera los 82; planear a 90 evita quedarte corto.</span>
+        </div>
+
+        <div class="assump">
+          <div class="ah"><span class="lk">🔒</span> Supuestos del análisis · criterios conservadores</div>
+          <div class="ag">
+            <div class="ai"><b>4.5%</b><span>Inflación anual de largo plazo</span></div>
+            <div class="ai"><b>4.0%</b><span>Rendimiento ahorrando por tu cuenta</span></div>
+            <div class="ai"><b>8.5%</b><span>Rendimiento del plan de retiro</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         EL MURO · sólo para el detalle. La cifra de arriba ya se vio gratis.
+    ============================================================ -->
+    <section class="sec" id="muro">
+      <div class="card gate-card">
+        <div class="ready"><span class="d"></span> Tu análisis completo está listo</div>
+        <h2>Ve el desglose completo de tu retiro</h2>
+        <p class="panel-sub">Ya viste tu cifra. Abajo está el resto: cómo crece tu capital año por año, cuánto te cuesta cada año que esperas, lo que el SAT te devuelve y el plan mensual a tu medida.</p>
+
+        <div class="perks">
+          <div class="perk"><span class="ck">✓</span><span>Las cinco gráficas de tu proyección, y el PDF para guardarlo</span></div>
+          <div class="perk"><span class="ck">✓</span><span>Revisión de tu Afore y tu pensión proyectada real</span></div>
+          <div class="perk"><span class="ck">✓</span><span>Asesoría con un asesor cedulado, sin costo ni compromiso</span></div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label for="lNombre">Nombre completo</label>
+            <input class="inp" id="lNombre" type="text" placeholder="Tu nombre" autocomplete="name">
+          </div>
+          <div class="field">
+            <label for="lTel">Número de teléfono</label>
+            <input class="inp" id="lTel" type="tel" placeholder="10 dígitos" autocomplete="tel" inputmode="numeric">
+          </div>
+        </div>
+
+        <label class="consent">
+          <input type="checkbox" id="lOk">
+          <span>Autorizo que José Delgado, asesor de BrickBit Financial, me contacte por teléfono o WhatsApp para agendar mi asesoría gratuita. Mis datos se tratan conforme al <a href="/aviso-de-privacidad" target="_blank" rel="noopener" style="color:var(--accent-dk);font-weight:600">Aviso de Privacidad</a> y no se comparten con terceros.</span>
+        </label>
+        <div class="err-msg" id="lErr"></div>
+        <div class="privacy"><span>🔒</span><span>Tus cálculos se ejecutan en tu propio navegador. Solo compartimos contigo el resultado.</span></div>
+
+        <div class="actions">
+          <span class="sin-peaje">Tu proyección de arriba es tuya, con o sin esto.</span>
+          <button class="btn btn-a btn-lg" id="calcBtn">Ver el desglose completo →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Todo lo que sigue es el desglose que abre el muro (#muro). Se revela
+         entero al capturar el contacto; la cifra principal ya se vio gratis. -->
+    <div id="detalle" class="hide">
 
     <!-- punto de partida -->
     <section class="sec" id="startSec">
@@ -682,6 +718,8 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
       </div>
     </section>
 
+    </div><!-- /#detalle -->
+
     <div class="est-nota" style="margin-top:48px">
       <span aria-hidden="true">⚠️</span>
       <span>Ninguna cifra de este documento está garantizada. Las que llevan la etiqueta
@@ -718,6 +756,7 @@ tbody tr.on td.lab{color:var(--accent-dk);font-weight:700}
           <button class="btn-s" id="recargarBtn">Recargar</button>
           <button class="btn-s" id="expBtn">Descargar CSV</button>
           <button class="btn-s" id="salirBtn">Cerrar sesión</button>
+          <button class="btn-s" id="volverBtn">Volver al análisis</button>
         </div>
       </div>
       <div id="adminLogin">
@@ -795,17 +834,38 @@ function tasaISR(a){ for(var k=0;k<ISR.length;k++){ if(a<=ISR[k][0]) return ISR[
 
 /* ===== ESTADO ===== */
 var S={imss:0}, R=null, charts={};
+/* Nombre capturado en el muro. Vacío = todavía no lo dio, y render()
+   ajusta el texto de la barra en consecuencia. */
+var nombreCapturado='';
 function num(id,def){ var v=parseFloat($(id).value); return isFinite(v)?v:(def===undefined?NaN:def); }
 
+/* Valida SÓLO los dos campos de entrada, y ahora sí dice qué está mal: antes
+   pintaba el borde de rojo sin ningún mensaje, así que quien pulsaba con los
+   campos vacíos no veía pasar nada y asumía que la página estaba rota. */
 function valida1(){
-  var ok=true;
-  function set(id,bad){ $(id).classList.toggle('err',bad); if(bad) ok=false; }
-  var e=num('edad'), er=num('edadRet'), ing=num('ingreso'), ah=num('ahorro',0);
-  set('edad', !isFinite(e)||e<18||e>75);
-  set('edadRet', !isFinite(er)||er<45||er>80||er<=e);
-  set('ingreso', !isFinite(ing)||ing<=0);
-  set('ahorro', !isFinite(ah)||ah<0);
-  return ok;
+  var e=num('edad'), ing=num('ingreso'), msg='';
+  var malE = !isFinite(e)||e<18||e>75;
+  var malI = !isFinite(ing)||ing<=0;
+  $('edad').classList.toggle('err',malE);
+  $('ingreso').classList.toggle('err',malI);
+  if(malE && malI) msg='Escribe tu edad y tu ingreso mensual para calcular tu proyección.';
+  else if(malE)    msg = isFinite(e) ? 'La edad debe estar entre 18 y 75 años.' : 'Escribe tu edad actual.';
+  else if(malI)    msg = isFinite(ing) ? 'El ingreso debe ser mayor que cero.' : 'Escribe tu ingreso mensual neto.';
+  var el=$('entradaErr');
+  if(el){ el.textContent=msg; el.classList.toggle('show',!!msg); }
+  return !msg;
+}
+
+/* La edad de retiro es un ajuste, no una entrada: si el usuario baja la edad de
+   retiro por debajo de su edad actual el cálculo no tiene sentido, así que el
+   deslizador se re-encuadra en vez de mostrar un error. */
+function ajustaRangoRetiro(){
+  var e=num('edad'), s=$('edadRet');
+  if(!isFinite(e)) return;
+  var min=Math.max(45, e+1);
+  s.min=min;
+  if(+s.value<min){ s.value=min; }
+  $('edadRetV').textContent=s.value;
 }
 function recopilar(){
   return {
@@ -863,9 +923,17 @@ function calcular(d){
 /* ===== RENDER ===== */
 function render(r,nombre){
   var d=r.d;
-  $('resBarTxt').innerHTML = '<b>'+esc(nombre.split(' ')[0])+'</b>, tu diagnóstico está listo. Te contactaremos al '+
-    esc($('lTel').value.replace(/\D/g,'').replace(/(\d{2})(\d{4})(\d{4})/,'$1 $2 $3'))+' para tu asesoría gratuita.';
-  $('nextTitle').textContent = nombre.split(' ')[0]+', tu asesoría ya está en camino';
+  /* Antes del muro no hay nombre ni teléfono: la barra habla de la proyección,
+     no de un contacto que todavía no existe ni se ha prometido. */
+  if(nombre){
+    var pila=esc($('lTel').value.replace(/\D/g,'').replace(/(\d{2})(\d{4})(\d{4})/,'$1 $2 $3'));
+    $('resBarTxt').innerHTML='<b>'+esc(nombre.split(' ')[0])+'</b>, tu diagnóstico completo está listo. '+
+      'Te contactaremos al '+pila+' para tu asesoría gratuita.';
+    $('nextTitle').textContent=nombre.split(' ')[0]+', tu asesoría ya está en camino';
+  } else {
+    $('resBarTxt').innerHTML='Esta es tu proyección con los supuestos de abajo. '+
+      '<b>Ajusta cualquier dato</b> y la cifra se recalcula al instante.';
+  }
 
   $('resTitle').textContent='Tu retiro a los '+d.edadRet+' años';
   $('resSub').textContent='Proyección a '+r.n+' años de acumulación y '+r.m+
@@ -1089,23 +1157,70 @@ function drawCharts(r){
   });
 }
 
-/* ===== WIZARD ===== */
-function irA(p){
-  document.querySelectorAll('[data-panel]').forEach(function(el){
-    el.classList.toggle('hide', el.getAttribute('data-panel')!==String(p));
-  });
-  document.querySelectorAll('[data-pip]').forEach(function(el){
-    el.classList.toggle('on', +el.getAttribute('data-pip')<=p);
-  });
-  $('wizard').scrollIntoView({behavior:'smooth',block:'start'});
+/* ===== ENTRADA Y RECÁLCULO EN VIVO =====
+   Ya no hay pasos: dos campos revelan la proyección, y a partir de ahí cada
+   control la vuelve a calcular al instante. */
+function irA(){ $('wizard').scrollIntoView({behavior:'smooth',block:'start'}); }
+
+/* Vuelve a calcular y repinta lo que ya esté visible. Se llama en cada cambio
+   de un ajuste, así que sólo redibuja las gráficas si el detalle está abierto:
+   Chart.js es lo caro de la operación y estaría oculto. */
+function recalcular(){
+  if(!valida1()) return;
+  ajustaRangoRetiro();
+  R=calcular(recopilar());
+  render(R, nombreCapturado);
+  pulsarKPIs();
+  if(!$('detalle').classList.contains('hide')){
+    requestAnimationFrame(function(){ drawCharts(R); });
+  }
 }
-document.querySelectorAll('[data-next]').forEach(function(b){
-  b.addEventListener('click',function(){
-    var t=+b.getAttribute('data-next');
-    if(t>1 && !valida1()){ irA(1); return; }
-    irA(t);
+
+/* Resalta un instante las cifras al recalcular, para que se note que el ajuste
+   movió el resultado y no sólo el control que se tocó. */
+var tPulso=null;
+function pulsarKPIs(){
+  var ks=document.querySelectorAll('.kpi .k-val');
+  ks.forEach(function(k){ k.classList.add('pulso'); });
+  clearTimeout(tPulso);
+  tPulso=setTimeout(function(){ ks.forEach(function(k){ k.classList.remove('pulso'); }); },220);
+}
+
+/* Primer cálculo: revela los resultados sin pedir nada a cambio. */
+$('verBtn').addEventListener('click',function(){
+  if(!valida1()){ $('edad').focus(); return; }
+  ajustaRangoRetiro();
+  R=calcular(recopilar());
+  render(R, nombreCapturado);
+  $('intro').classList.add('hide');
+  $('wizard').classList.add('hide');
+  $('results').classList.remove('hide');
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+$('edad').addEventListener('keydown',function(e){ if(e.key==='Enter') $('verBtn').click(); });
+$('ingreso').addEventListener('keydown',function(e){ if(e.key==='Enter') $('verBtn').click(); });
+
+/* Cada ajuste recalcula. 'input' en los deslizadores para que la cifra se mueva
+   mientras se arrastra —que es justo lo que hace que valga la pena tocarlos. */
+['edadRet','ahorro','anios','ahorroMes','reemplazo','edadFin'].forEach(function(id){
+  $(id).addEventListener('input',function(){
+    if(id==='edadRet') $('edadRetV').textContent=this.value;
+    if(id==='reemplazo') $('reemplazoV').textContent=this.value+'%';
+    if(id==='edadFin') $('edadFinV').textContent=this.value;
+    if(id==='ahorroMes') marcarChip(this.value);
+    recalcular();
   });
 });
+/* Si cambia la edad estando ya en resultados (por "Editar mis datos"), el
+   rango de la edad de retiro tiene que seguirla. */
+$('edad').addEventListener('input',recalcular);
+$('ingreso').addEventListener('input',recalcular);
+
+function marcarChip(v){
+  document.querySelectorAll('#chips .chip').forEach(function(c){
+    c.classList.toggle('on', c.getAttribute('data-v')===String(+v||0));
+  });
+}
 document.querySelectorAll('#segImss button').forEach(function(b){
   b.addEventListener('click',function(){
     document.querySelectorAll('#segImss button').forEach(function(x){x.classList.remove('on');});
@@ -1113,13 +1228,19 @@ document.querySelectorAll('#segImss button').forEach(function(b){
     var w=$('wrapAnios');
     w.style.opacity=S.imss?'1':'.4';
     w.style.pointerEvents=S.imss?'auto':'none';
+    /* Al declarar que cotiza sin decir cuántos años, se supone que empezó a
+       los 25: es el supuesto que evita pedir un dato más y se puede corregir. */
+    if(S.imss && !num('anios')) $('anios').value=Math.max(0,num('edad',25)-25);
+    recalcular();
   });
 });
 document.querySelectorAll('#chips .chip').forEach(function(c){
-  c.addEventListener('click',function(){ $('ahorroMes').value=c.getAttribute('data-v'); });
+  c.addEventListener('click',function(){
+    $('ahorroMes').value=c.getAttribute('data-v');
+    marcarChip(c.getAttribute('data-v'));
+    recalcular();
+  });
 });
-$('reemplazo').addEventListener('input',function(){ $('reemplazoV').textContent=this.value+'%'; });
-$('edadFin').addEventListener('input',function(){ $('edadFinV').textContent=this.value; });
 
 /* ===== REGISTROS =====
    El diagnóstico se guarda en el servidor (/api/diagnostico → Upstash).
@@ -1156,11 +1277,12 @@ $('calcBtn').addEventListener('click',function(){
   var err=$('lErr');
   $('lNombre').classList.remove('err'); $('lTel').classList.remove('err'); err.classList.remove('show');
 
-  if(!valida1()){ irA(1); return; }
+  if(!valida1()){ irA(); return; }
   if(nom.length<3){ $('lNombre').classList.add('err'); err.textContent='Escribe tu nombre completo.'; err.classList.add('show'); return; }
   if(tel.length<10){ $('lTel').classList.add('err'); err.textContent='El teléfono debe tener 10 dígitos.'; err.classList.add('show'); return; }
   if(!$('lOk').checked){ err.textContent='Necesitamos tu autorización para poder contactarte.'; err.classList.add('show'); return; }
 
+  nombreCapturado=nom;
   var d=recopilar();
   R=calcular(d);
 
@@ -1192,18 +1314,20 @@ $('calcBtn').addEventListener('click',function(){
   $('printFirma').textContent='Preparado para '+nom+' · '+
     new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'});
   montarCalendario(nom);
-  $('intro').classList.add('hide');
-  $('wizard').classList.add('hide');
-  $('results').classList.remove('hide');
+  /* El muro se retira y aparece el desglose. Los resultados ya estaban a la
+     vista, así que aquí no hay que revelarlos otra vez: sólo el detalle. */
+  $('muro').classList.add('hide');
+  $('detalle').classList.remove('hide');
+  $('pdfBtn').classList.remove('hide');
   requestAnimationFrame(function(){ drawCharts(R); });
-  window.scrollTo({top:0,behavior:'smooth'});
+  $('detalle').scrollIntoView({behavior:'smooth',block:'start'});
 });
 
 $('editBtn').addEventListener('click',function(){
   $('intro').classList.remove('hide');
   $('wizard').classList.remove('hide');
   $('results').classList.add('hide');
-  irA(1);
+  irA();
 });
 
 /* ===== AGENDA (Calendly) =====
@@ -1277,6 +1401,7 @@ $('pdfBtn').addEventListener('click',function(){
 var LLAVE='bb_diag_token', REGISTROS=[];
 
 function abrirPanel(){
+  document.body.classList.add('modo-panel');   // descubre #results, deja solo el panel
   $('admin').classList.add('show');
   var t=sessionStorage.getItem(LLAVE);
   if(t) cargarRegistros(t); else mostrarLogin();
@@ -1286,10 +1411,17 @@ function mostrarLogin(){
   $('adminTable').innerHTML='';
   $('adminCount').textContent='';
 }
+/* La llave viaja SIEMPRE en el header, nunca en la URL: un ?token= quedaría
+   en el historial del navegador y en los logs de Netlify. */
+function conLlave(token,extra){
+  var o=extra||{};
+  o.headers=Object.assign({'x-admin-token':token}, o.headers||{});
+  return o;
+}
 function cargarRegistros(token){
   $('adminErr').classList.remove('show');
   $('adminTable').innerHTML='<p style="font-size:13px;color:var(--faint)">Cargando…</p>';
-  fetch(API+'?token='+encodeURIComponent(token))
+  fetch(API,conLlave(token))
     .then(function(r){ return r.json().then(function(j){ return {ok:r.ok,j:j}; }); })
     .then(function(res){
       if(!res.ok||!res.j.ok){
@@ -1317,16 +1449,40 @@ function pintarAdmin(total){
   $('adminCount').textContent='· '+T+(T===1?' registro':' registros')+
     (L.length<T?' (mostrando '+L.length+')':'');
   if(!L.length){ $('adminTable').innerHTML='<p style="font-size:13px;color:var(--faint)">Todavía no hay registros.</p>'; return; }
-  var h='<table><thead><tr><th>Fecha</th><th>Nombre</th><th>Teléfono</th><th class="r">Edad</th><th class="r">Ingreso</th><th class="r">Ahorra hoy</th><th class="r">Requiere</th></tr></thead><tbody>';
+  var h='<table><thead><tr><th>Fecha</th><th>Nombre</th><th>Teléfono</th><th class="r">Edad</th><th class="r">Ingreso</th><th class="r">Ahorra hoy</th><th class="r">Requiere</th><th></th></tr></thead><tbody>';
   L.forEach(function(l){
     h+='<tr><td>'+esc(new Date(l.fecha).toLocaleDateString('es-MX'))+'</td><td class="lab">'+esc(l.nombre)+
        '</td><td>'+esc(l.telefono)+'</td><td class="r">'+esc(l.edad||'')+'</td><td class="r">'+
        (l.ingresoMensual?money(+l.ingresoMensual):'')+'</td><td class="r">'+
        (l.ahorroMensual!=null&&l.ahorroMensual!==''?money(+l.ahorroMensual):'')+'</td><td class="r">'+
-       (l.aportacionPlan?money(+l.aportacionPlan):'')+'</td></tr>';
+       (l.aportacionPlan?money(+l.aportacionPlan):'')+
+       '</td><td class="r"><button class="btn-borrar" data-tel="'+esc(l.telefono)+
+       '" data-nom="'+esc(l.nombre)+'" title="Borrar los datos de esta persona">Borrar</button></td></tr>';
   });
   $('adminTable').innerHTML=h+'</tbody></table>';
 }
+
+/* Derecho de cancelación: si alguien pide que borres sus datos, este botón lo
+   hace de verdad — quita del servidor TODOS los registros de ese teléfono. */
+$('adminTable').addEventListener('click',function(ev){
+  var b=ev.target.closest('.btn-borrar');
+  if(!b) return;
+  var tel=b.getAttribute('data-tel'), nom=b.getAttribute('data-nom');
+  if(!confirm('¿Borrar del servidor todos los registros de '+nom+' ('+tel+')?\n\nEsto no se puede deshacer.')) return;
+  var token=sessionStorage.getItem(LLAVE);
+  if(!token){ mostrarLogin(); return; }
+  b.disabled=true; b.textContent='Borrando…';
+  fetch(API+'?telefono='+encodeURIComponent(tel),conLlave(token,{method:'DELETE'}))
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(!j.ok) throw new Error(j.error||'error');
+      cargarRegistros(token);
+    })
+    .catch(function(){
+      b.disabled=false; b.textContent='Borrar';
+      var e=$('adminErr'); e.textContent='No se pudo borrar. Intenta de nuevo.'; e.classList.add('show');
+    });
+});
 $('entrarBtn').addEventListener('click',function(){
   var t=$('adminTok').value.trim();
   if(!t) return;
@@ -1339,6 +1495,11 @@ $('recargarBtn').addEventListener('click',function(){
 });
 $('salirBtn').addEventListener('click',function(){
   sessionStorage.removeItem(LLAVE); REGISTROS=[]; mostrarLogin();
+});
+/* Recargar sin el hash es la vuelta más limpia: no hay que deshacer a mano
+   el modo panel ni el estado del cuestionario. */
+$('volverBtn').addEventListener('click',function(){
+  location.replace(location.pathname);
 });
 $('expBtn').addEventListener('click',function(){
   if(!REGISTROS.length){ alert('No hay registros para exportar.'); return; }

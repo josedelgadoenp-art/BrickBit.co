@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,follow">
+<title>Página no encontrada · BrickBit</title>
+<link rel="canonical" href="https://brickbit.co/">
+<style>
+  /* Paleta v2 de la casa. Sin dependencias: una 404 tiene que pintar aunque
+     falle todo lo demás. */
+  :root{ --tierra:#100c0a; --superficie:#1d1713; --crema:#f5ede3;
+         --bosque:#24664a; --salvia:#6fa287; --linea:rgba(245,237,227,.14); }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--tierra);color:var(--crema);min-height:100vh;
+    display:flex;align-items:center;justify-content:center;padding:28px;
+    font-family:'Helvetica Neue',Helvetica,Arial,system-ui,sans-serif;line-height:1.6}
+  .caja{max-width:52ch;text-align:center}
+  .marca{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:11px;
+    letter-spacing:.32em;text-transform:uppercase;color:var(--salvia);margin-bottom:26px}
+  h1{font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:clamp(28px,7vw,42px);
+    line-height:1.15;letter-spacing:-.02em;margin-bottom:14px}
+  p{color:rgba(245,237,227,.72);font-size:15px;margin-bottom:28px}
+  .enlaces{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+  a{display:inline-block;padding:11px 18px;border:1px solid var(--linea);border-radius:10px;
+    color:var(--crema);text-decoration:none;font-size:14px;font-weight:600;
+    transition:border-color .15s ease,background .15s ease}
+  a:hover{border-color:var(--salvia);background:var(--superficie)}
+  a.p{background:var(--bosque);border-color:var(--bosque)}
+  a.p:hover{background:#2b7757;border-color:#2b7757}
+  @media (prefers-reduced-motion:reduce){ a{transition:none} }
+</style>
+</head>
+<body>
+  <main class="caja">
+    <div class="marca">BrickBit</div>
+    <h1>Esta página no existe.</h1>
+    <p>El enlace puede estar mal escrito, o el contenido se movió. Desde aquí puedes seguir.</p>
+    <div class="enlaces">
+      <a class="p" href="/">Ir al inicio</a>
+      <a href="/mapa.html">Mapa de zonas</a>
+      <a href="/analizador.html">Analizador de inversión</a>
+      <a href="/financial">BrickBit Financial</a>
+    </div>
+  </main>
+</body>
+</html>

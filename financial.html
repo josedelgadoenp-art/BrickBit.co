@@ -20,6 +20,38 @@
     --serif:"Fraunces",Georgia,serif; --sans:"Hanken Grotesk",system-ui,-apple-system,sans-serif;
     --mono:"Space Mono",ui-monospace,monospace;
   }
+
+  /* ---- Panel privado de prospectos (#registros) ---- */
+  #admin{display:none;margin:22px 0 8px;border:1px solid var(--line);border-radius:14px;padding:22px 24px;background:var(--card);box-shadow:var(--shadow)}
+  /* Modo panel: apaga el cuestionario y deja el panel solo en la pantalla.
+     El .shell mide 640px porque el diagnóstico es una columna de lectura; una
+     tabla de prospectos no cabe ahí, así que en modo panel se ensancha. */
+  body.modo-panel #app,body.modo-panel #prog,body.modo-panel #scrollhint{display:none !important}
+  body.modo-panel #admin{display:block}
+  body.modo-panel .shell{max-width:1100px}
+  .ah2{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .ah2 b{font-family:var(--serif);font-size:17px;color:var(--ink)}
+  .ah2-btns{display:flex;gap:8px;flex-wrap:wrap}
+  #adminCount{color:var(--muted);font-size:13px;font-family:var(--mono)}
+  .admin-hint{font-size:13px;color:var(--ink-soft);margin-bottom:10px}
+  .admin-row{display:flex;gap:8px;flex-wrap:wrap;max-width:430px}
+  #adminTok{flex:1;min-width:200px;border:1px solid var(--line);border-radius:10px;padding:10px 13px;font-family:inherit;font-size:14px;color:var(--ink);background:var(--paper)}
+  .btn-s{border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:7px 13px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink-soft)}
+  .btn-a{border:none;background:var(--naranja);color:#fff;border-radius:10px;padding:10px 20px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer}
+  .admin-err{display:none;margin-top:10px;font-size:13px;color:#c0392b}
+  .admin-err.show{display:block}
+  #adminTable{overflow-x:auto}
+  #adminTable table{width:100%;border-collapse:collapse;font-size:13px}
+  #adminTable th{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  #adminTable td{padding:9px 10px;border-bottom:1px solid var(--line-2);vertical-align:top}
+  #adminTable td.lab{font-weight:700;color:var(--ink)}
+  #adminTable td.r,#adminTable th.r{text-align:right}
+  #adminTable .via{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
+  .admin-vacio{font-size:13px;color:var(--muted)}
+  /* Borrar es irreversible: discreto hasta que lo apuntas, para no pulsarlo de paso. */
+  .btn-borrar{border:1px solid transparent;background:none;border-radius:7px;padding:3px 9px;font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;color:var(--muted)}
+  .btn-borrar:hover:not(:disabled){border-color:#d9534f;color:#c0392b}
+  .btn-borrar:disabled{opacity:.5;cursor:default}
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
@@ -167,7 +199,25 @@
   #tip b{color:#cdf25a;display:block;margin-bottom:3px;font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em}
   #tip::after{content:"";position:absolute;top:-6px;left:var(--ax,20px);border:6px solid transparent;border-top:0;border-bottom-color:var(--ink)}
 
-  .advice{margin-top:26px;background:linear-gradient(135deg,#e6f2ea,#dcedd4);border:1.5px solid rgba(26,125,80,.22);border-radius:18px;padding:22px;text-align:center}
+  /* ---- Captura al final del resultado ---- */
+.captura{margin-top:26px;background:var(--card);border:1.5px solid var(--naranja);border-radius:18px;padding:22px;box-shadow:var(--shadow)}
+.captura h3{font-family:var(--serif);font-size:1.22rem;font-weight:600;margin:2px 0 6px}
+.captura>p{font-size:.93rem;color:var(--ink-soft);line-height:1.5;margin-bottom:16px}
+.captura .row2{margin-bottom:14px}
+.captura .fld label{display:block;font-size:.78rem;font-weight:700;letter-spacing:.02em;color:var(--ink-soft);margin-bottom:5px}
+.captura .fld input{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:12px 14px;font-family:inherit;font-size:1rem;color:var(--ink);background:var(--paper)}
+.captura .fld input:focus{outline:none;border-color:var(--naranja)}
+.captura .fld input.mal{border-color:#c0392b;background:#fdf3f2}
+.consent-fin{display:flex;gap:10px;align-items:flex-start;font-size:.83rem;color:var(--ink-soft);line-height:1.45;cursor:pointer}
+/* Casilla generosa: en móvil una de 13px se falla al tocar y parece que el
+   botón no responde, que es justo la fricción que queremos evitar. */
+.consent-fin input{width:20px;height:20px;flex:0 0 20px;margin-top:1px;accent-color:var(--naranja);cursor:pointer}
+.cap-err{display:none;margin-top:10px;font-size:.86rem;color:#c0392b}
+.cap-err.show{display:block}
+.cap-ok{display:none;margin-top:12px;font-size:.9rem;color:var(--naranja-d);line-height:1.5}
+.captura.enviado .row2,.captura.enviado .consent-fin,.captura.enviado .btnrow,.captura.enviado>p{display:none}
+.captura.enviado .cap-ok{display:block}
+.advice{margin-top:26px;background:linear-gradient(135deg,#e6f2ea,#dcedd4);border:1.5px solid rgba(26,125,80,.22);border-radius:18px;padding:22px;text-align:center}
   .advice h3{font-family:var(--serif);font-weight:600;font-size:21px;margin:0 0 6px}
   .advice p{font-size:14px;color:var(--ink-soft);margin:0 0 14px;line-height:1.55}
   .advice .free{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--naranja-d);background:#fff;border:1px solid rgba(26,125,80,.22);border-radius:999px;padding:5px 12px;margin-bottom:10px}
@@ -192,6 +242,29 @@
   </header>
   <div class="prog hide" id="prog"></div>
   <main id="app"></main>
+  <!-- Panel privado de prospectos. No se enlaza desde ningún lado: se abre con
+       #registros y la llave la valida el servidor. Mismo patrón y misma llave
+       que /financial/analisisfinanciero. -->
+  <section id="admin">
+    <div class="ah2">
+      <div><b>Prospectos capturados</b> <span id="adminCount"></span></div>
+      <div class="ah2-btns">
+        <button class="btn-s" id="recargarBtn">Recargar</button>
+        <button class="btn-s" id="expBtn">Descargar CSV</button>
+        <button class="btn-s" id="salirBtn">Cerrar sesión</button>
+        <button class="btn-s" id="volverBtn">Volver al diagnóstico</button>
+      </div>
+    </div>
+    <div id="adminLogin">
+      <p class="admin-hint">Escribe la llave de administrador para ver los prospectos guardados en el servidor.</p>
+      <div class="admin-row">
+        <input id="adminTok" type="password" placeholder="Llave de administrador" autocomplete="off">
+        <button class="btn-a" id="entrarBtn">Entrar</button>
+      </div>
+      <div class="admin-err" id="adminErr"></div>
+    </div>
+    <div id="adminTable"></div>
+  </section>
   <footer id="foot"></footer>
 </div>
 <div id="tip" role="tooltip"></div>
@@ -413,9 +486,9 @@ const prog=document.getElementById('prog');
 
 function helpHTML(term){if(!GLOSARIO[term])return'';return `<button class="help" data-term="${term}" aria-label="¿Qué es ${GLOSARIO[term][0]}?">?</button>`;}
 
-function setProg(n){ // n: 1 datos, 2 preguntas, 3 radar, 4 resultado
+function setProg(n){ // n: 1 preguntas, 2 radar, 3 resultado
   prog.classList.remove('hide');
-  prog.innerHTML=[1,2,3,4].map(i=>`<span class="seg ${i<=n?'on':''}"></span>`).join('');
+  prog.innerHTML=[1,2,3].map(i=>`<span class="seg ${i<=n?'on':''}"></span>`).join('');
 }
 
 /* ---------- HERO ---------- */
@@ -429,53 +502,18 @@ function renderHero(){
       <p class="firma">Te acompaña <b>${AGENTE.nombre}</b> · ${AGENTE.rol} · incluye <b>asesoría financiera gratuita</b></p>
       <button class="btn btn-primary" id="startBtn">Comenzar <span aria-hidden="true">→</span></button>
     </section>`;
-  document.getElementById('startBtn').addEventListener('click',renderPersona);
-}
-
-/* ---------- PERSONA ---------- */
-function renderPersona(){
-  phase="persona"; setProg(1);
-  app.innerHTML=`
-    <section class="step">
-      <div class="qhead">
-        <div class="count">Paso 1 de 3</div>
-        <h2>Primero, cuéntanos de ti</h2>
-        <div class="sub">Para darte un resultado personalizado y que tu asesor te contacte con la mejor opción.</div>
-      </div>
-      <div class="pform">
-        <div class="row2">
-          <div class="fld"><label for="pn">Nombre</label><input id="pn" type="text" autocomplete="given-name" value="${persona.nombre}"></div>
-          <div class="fld"><label for="pa">Apellido</label><input id="pa" type="text" autocomplete="family-name" value="${persona.apellido}"></div>
-        </div>
-        <div class="row2">
-          <div class="fld"><label for="pe">Edad</label><input id="pe" type="number" min="18" max="90" inputmode="numeric" value="${persona.edad}"></div>
-          <div class="fld"><label for="pt">Número telefónico</label><input id="pt" type="tel" autocomplete="tel" inputmode="tel" placeholder="10 dígitos" value="${persona.telefono}"></div>
-        </div>
-        <div id="pErr" style="display:none;color:#F5C277;font-size:.86rem;margin-top:6px">Escribe un teléfono válido a 10 dígitos para que tu asesor pueda contactarte.</div>
-        <div class="priv"><span aria-hidden="true">🔒</span><span>Usamos tus datos para personalizar tu resultado y para que ${AGENTE.nombre} pueda contactarte con la mejor opción de GNP. Tratamos tu información conforme a nuestro <a href="/aviso-de-privacidad" target="_blank" rel="noopener" style="color:var(--naranja-d);font-weight:600">Aviso de Privacidad</a>.</span></div>
-      </div>
-      <div class="btnrow"><button class="btn btn-primary" id="pContinue">Continuar <span aria-hidden="true">→</span></button></div>
-      <div class="backrow"><button class="back" id="backBtn">← Volver al inicio</button></div>
-    </section>`;
-  document.getElementById('pContinue').addEventListener('click',()=>{
-    persona.nombre=document.getElementById('pn').value.trim();
-    persona.apellido=document.getElementById('pa').value.trim();
-    persona.edad=document.getElementById('pe').value.trim();
-    persona.telefono=document.getElementById('pt').value.trim();
-    if(!telValido(persona.telefono)){
-      const e=document.getElementById('pErr'); if(e)e.style.display='block';
-      const pt=document.getElementById('pt'); if(pt){pt.style.borderColor='#F5C277';pt.focus();}
-      return;
-    }
+  /* Directo a las preguntas. Antes aquí se pedían nombre, apellido, edad y
+     teléfono ANTES de haber entregado nada: en tráfico frío de anuncios, ese
+     paso se llevaba a casi todo el mundo. Los datos de contacto se piden ahora
+     al final, junto al resultado, cuando la persona ya vio lo que gana. */
+  document.getElementById('startBtn').addEventListener('click',()=>{
     finderHistory=[]; chosen=[]; goFinder('start',true);
   });
-  document.getElementById('backBtn').addEventListener('click',renderHero);
-  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 /* ---------- FINDER ---------- */
 function renderFinder(){
-  phase="finder"; setProg(2);
+  phase="finder"; setProg(1);
   const node=FLOW[stepId]; if(!node)return;
   const n=finderHistory.length;
   const hello=persona.nombre?` ${persona.nombre},`:"";
@@ -510,12 +548,12 @@ function goFinder(id){ finderHistory.push(id); stepId=id; renderFinder(); }
 function finderBack(){
   finderHistory.pop(); chosen.pop();
   const prev=finderHistory[finderHistory.length-1];
-  if(!prev){ renderPersona(); } else { stepId=prev; renderFinder(); }
+  if(!prev){ renderHero(); } else { stepId=prev; renderFinder(); }
 }
 
 /* ---------- RADAR ---------- */
 function renderRadar(){
-  phase="radar"; setProg(3);
+  phase="radar"; setProg(2);
   app.innerHTML=`
     <section class="step">
       <div class="qhead">
@@ -620,7 +658,7 @@ function drawRadar(svgId){
 
 /* ---------- RESULT ---------- */
 function showResult(){
-  phase="result"; setProg(4);
+  phase="result"; setProg(3);
   const sh=document.getElementById('scrollhint'); if(sh) sh.classList.remove('show');
   const p=PRODUCTS[productKey]; if(!p){renderHero();return;}
 
@@ -650,14 +688,9 @@ function showResult(){
     respuestas:chosen.join(" | ")
   };
 
-  // Captura pasiva: todo diagnóstico completado se registra como prospecto.
-  // Los clics en agendar/WhatsApp mandan un registro extra con la acción.
-  if(!resultadoEnviado && telValido(persona.telefono)){
-    resultadoEnviado=true;
-    sendLead({...leadBase, fecha:new Date().toISOString(),
-              origen:"diagnostico-completado", accion:"Completó el diagnóstico"});
-  }
-
+  /* Ya no hay captura pasiva al llegar aquí: el resultado es gratis y todavía
+     no tenemos teléfono. El prospecto se registra cuando la persona pide su
+     cotización en la tarjeta de abajo, o al agendar / escribir por WhatsApp. */
   const greetName=persona.nombre?`Hola, ${persona.nombre}`:"Tu resultado";
 
   app.innerHTML=`
@@ -691,6 +724,26 @@ function showResult(){
         ? `¡Excelente! Tu protección se ve muy completa. Vale la pena una revisión anual para mantenerla al día.`
         : `Tu área menos protegida es <b>${gapLabel}</b>. Además del producto que buscas, podríamos revisar este punto para cerrar tu mayor hueco de protección.`}</div>
 
+      <!-- La captura, ya con el resultado a la vista. La casilla se queda: la
+           LFPDPPP pide consentimiento EXPRESO para datos patrimoniales, y aquí
+           se recoge el ingreso. Lo que se quitó fue el peaje de la entrada. -->
+      <div class="captura" id="captura">
+        <span class="free">Sin costo · Sin compromiso</span>
+        <h3>¿Te cotizamos el ${p.nombre}?</h3>
+        <p>Déjanos cómo contactarte y ${AGENTE.nombre} te manda la cotización formal de GNP con precios reales para tu edad y tu perfil. Tu resultado de arriba es tuyo, con o sin esto.</p>
+        <div class="row2">
+          <div class="fld"><label for="pn">Nombre</label><input id="pn" type="text" autocomplete="given-name" placeholder="Tu nombre" value="${persona.nombre}"></div>
+          <div class="fld"><label for="pt">Número telefónico</label><input id="pt" type="tel" autocomplete="tel" inputmode="tel" placeholder="10 dígitos" value="${persona.telefono}"></div>
+        </div>
+        <label class="consent-fin">
+          <input type="checkbox" id="pOk">
+          <span>Autorizo a ${AGENTE.nombre}, asesor de BrickBit Financial, a contactarme por teléfono o WhatsApp y a tratar mis datos —incluido el rango de ingreso que indiqué— conforme al <a href="/aviso-de-privacidad" target="_blank" rel="noopener" style="color:var(--naranja-d);font-weight:600">Aviso de Privacidad</a>. No se comparten con terceros.</span>
+        </label>
+        <div id="pErr" class="cap-err"></div>
+        <div class="btnrow"><button class="btn btn-primary" id="pSend">Quiero mi cotización <span aria-hidden="true">→</span></button></div>
+        <div id="pOkMsg" class="cap-ok"></div>
+      </div>
+
       <div class="cta" style="margin-top:22px">
         ${mail?`<a class="btn btn-ghost" href="${mail}">Escribir un correo</a>`:""}
       </div>
@@ -705,17 +758,44 @@ function showResult(){
       <div class="restart"><button class="back" id="restartBtn">↺ Empezar de nuevo</button></div>
     </section>`;
   drawRadar('radarRes');
+
+  /* Captura al final. A diferencia del paso 2 de antes, aquí decir que no
+     cuesta nada: la persona ya tiene su resultado y puede irse con él. */
+  const bSend=document.getElementById('pSend');
+  if(bSend) bSend.addEventListener('click',()=>{
+    const nm=document.getElementById('pn'), tl=document.getElementById('pt');
+    const ok=document.getElementById('pOk'), er=document.getElementById('pErr');
+    const nomV=nm.value.trim(), telV=tl.value.trim();
+    nm.classList.remove('mal'); tl.classList.remove('mal'); er.classList.remove('show');
+    if(nomV.length<2){ nm.classList.add('mal'); er.textContent='Escribe tu nombre para saber cómo dirigirnos a ti.'; er.classList.add('show'); nm.focus(); return; }
+    if(!telValido(telV)){ tl.classList.add('mal'); er.textContent='El teléfono debe tener 10 dígitos.'; er.classList.add('show'); tl.focus(); return; }
+    if(!ok.checked){ er.textContent='Necesitamos tu autorización para poder contactarte.'; er.classList.add('show'); return; }
+    persona.nombre=nomV; persona.telefono=telV;
+    if(!resultadoEnviado){
+      resultadoEnviado=true;
+      sendLead({...leadBase, nombre:nomV, telefono:telV,
+        fecha:new Date().toISOString(),
+        origen:"cotizacion-solicitada", accion:"Pidió su cotización"});
+    }
+    document.getElementById('captura').classList.add('enviado');
+    document.getElementById('pOkMsg').innerHTML=
+      `<b>Listo, ${nomV.split(' ')[0]}.</b> ${AGENTE.nombre} te contacta al ${telV.replace(/\D/g,'').replace(/(\d{2})(\d{4})(\d{4})/,'$1 $2 $3')}. Si prefieres no esperar, agenda o escribe por WhatsApp aquí abajo.`;
+  });
+
   // Al agendar por Calendly → registra el lead (acción explícita del usuario)
+  /* Estos dos leen persona en el momento del clic, no al pintar: si la persona
+     llenó la tarjeta de arriba antes de agendar, el registro va con su nombre
+     y su teléfono en vez de en blanco. */
+  const conDatos = () => ({...leadBase, nombre:persona.nombre, telefono:persona.telefono,
+                           fecha:new Date().toISOString()});
   const cal=document.getElementById('calBtn');
   if(cal) cal.addEventListener('click',()=>sendLead({
-    ...leadBase, fecha:new Date().toISOString(),
-    origen:"agendar-calendly", accion:"Agendó reunión (Calendly)"
+    ...conDatos(), origen:"agendar-calendly", accion:"Agendó reunión (Calendly)"
   }));
   // Al contactar por WhatsApp → también registra el lead
   const adv=document.getElementById('adviceBtn');
   if(adv) adv.addEventListener('click',()=>sendLead({
-    ...leadBase, fecha:new Date().toISOString(),
-    origen:"whatsapp-agente", accion:"Contactó por WhatsApp"
+    ...conDatos(), origen:"whatsapp-agente", accion:"Contactó por WhatsApp"
   }));
   document.getElementById('restartBtn').addEventListener('click',()=>{
     persona={nombre:"",apellido:"",edad:"",telefono:"",ingreso:""};
@@ -773,6 +853,105 @@ document.getElementById('foot').innerHTML=
   +`<a href="/financial/gmm" style="color:var(--naranja-d);font-weight:600">Ver la red hospitalaria GNP en el mapa &rarr;</a> &nbsp;·&nbsp; `
   +`<a href="/financial/analisisfinanciero" style="color:var(--naranja-d);font-weight:600">Análisis financiero de retiro &rarr;</a>`;
 renderHero();
+
+/* ============================================================
+   PANEL PRIVADO  ·  /financial#registros
+   La llave nunca viaja en la URL —quedaría en los logs de Netlify y en el
+   historial del navegador— sino en el header x-admin-token. Sólo se guarda
+   en sessionStorage. Es la misma llave que /financial/analisisfinanciero.
+============================================================ */
+(function(){
+  const LLAVE="bb_lead_token"; let REGISTROS=[];
+  const $$=id=>document.getElementById(id);
+  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const pesos=v=>{const n=Number(String(v).replace(/[^\d.-]/g,""));return isFinite(n)&&n?"$"+n.toLocaleString("es-MX"):esc(v||"");};
+  const conLlave=(t,extra)=>{const o=extra||{};o.headers=Object.assign({"x-admin-token":t},o.headers||{});return o;};
+
+  function abrir(){
+    document.body.classList.add("modo-panel");
+    const t=sessionStorage.getItem(LLAVE);
+    if(t) cargar(t); else login();
+  }
+  function login(){ $$("adminLogin").style.display="block"; $$("adminTable").innerHTML=""; $$("adminCount").textContent=""; }
+  function fallo(msg){ const e=$$("adminErr"); e.textContent=msg; e.classList.add("show"); }
+
+  function cargar(token){
+    $$("adminErr").classList.remove("show");
+    $$("adminTable").innerHTML='<p class="admin-vacio">Cargando…</p>';
+    fetch(LEAD_ENDPOINT,conLlave(token))
+      .then(r=>r.json().then(j=>({ok:r.ok,j})))
+      .then(res=>{
+        if(!res.ok||!res.j.ok){
+          sessionStorage.removeItem(LLAVE); login();
+          fallo(res.j.error==="panel_sin_configurar" ? "Falta configurar DIAG_ADMIN_TOKEN en Netlify."
+              : res.j.error==="sin_almacen" ? "Faltan las variables de Upstash en Netlify."
+              : "Llave incorrecta.");
+          return;
+        }
+        sessionStorage.setItem(LLAVE,token);
+        REGISTROS=res.j.leads||[];
+        $$("adminLogin").style.display="none";
+        pintar(res.j.total);
+      })
+      .catch(()=>{ $$("adminTable").innerHTML=""; fallo("No se pudo contactar al servidor."); });
+  }
+
+  function pintar(total){
+    const L=REGISTROS, T=total||L.length;
+    $$("adminCount").textContent="· "+T+(T===1?" prospecto":" prospectos")+(L.length<T?" (mostrando "+L.length+")":"");
+    if(!L.length){ $$("adminTable").innerHTML='<p class="admin-vacio">Todavía no hay prospectos.</p>'; return; }
+    let h='<table><thead><tr><th>Fecha</th><th>Nombre</th><th>Teléfono</th><th class="r">Edad</th><th class="r">Ingreso</th><th>Producto</th><th>Origen</th><th></th></tr></thead><tbody>';
+    L.forEach(l=>{
+      const f=l.fecha?new Date(l.fecha):null;
+      h+="<tr><td>"+(f&&!isNaN(f)?esc(f.toLocaleDateString("es-MX")):"")+
+         '</td><td class="lab">'+esc([l.nombre,l.apellido].filter(Boolean).join(" "))+
+         "</td><td>"+esc(l.telefono||"")+'</td><td class="r">'+esc(l.edad||"")+
+         '</td><td class="r">'+pesos(l.ingreso)+"</td><td>"+esc(l.producto||"")+
+         '</td><td class="via">'+esc(l.origen||"")+
+         '</td><td class="r"><button class="btn-borrar" data-tel="'+esc(l.telefono||"")+
+         '" data-nom="'+esc(l.nombre||"esta persona")+'">Borrar</button></td></tr>';
+    });
+    $$("adminTable").innerHTML=h+"</tbody></table>";
+  }
+
+  /* Derecho de cancelación: borra del servidor TODOS los registros del teléfono. */
+  $$("adminTable").addEventListener("click",ev=>{
+    const b=ev.target.closest(".btn-borrar"); if(!b) return;
+    const tel=b.getAttribute("data-tel"), nom=b.getAttribute("data-nom");
+    if(!tel){ fallo("Ese registro no trae teléfono; no se puede borrar por este medio."); return; }
+    if(!confirm("¿Borrar del servidor todos los prospectos de "+nom+" ("+tel+")?\n\nEsto no se puede deshacer."))return;
+    const token=sessionStorage.getItem(LLAVE); if(!token){ login(); return; }
+    b.disabled=true; b.textContent="Borrando…";
+    fetch(LEAD_ENDPOINT+"?telefono="+encodeURIComponent(tel),conLlave(token,{method:"DELETE"}))
+      .then(r=>r.json())
+      .then(j=>{ if(!j.ok) throw new Error(j.error||"error"); cargar(token); })
+      .catch(()=>{ b.disabled=false; b.textContent="Borrar"; fallo("No se pudo borrar. Intenta de nuevo."); });
+  });
+
+  $$("entrarBtn").addEventListener("click",()=>{
+    const t=$$("adminTok").value.trim(); if(!t) return;
+    $$("adminTok").value=""; cargar(t);
+  });
+  $$("adminTok").addEventListener("keydown",e=>{ if(e.key==="Enter") $$("entrarBtn").click(); });
+  $$("recargarBtn").addEventListener("click",()=>{ const t=sessionStorage.getItem(LLAVE); if(t) cargar(t); });
+  $$("salirBtn").addEventListener("click",()=>{ sessionStorage.removeItem(LLAVE); REGISTROS=[]; login(); });
+  /* Recargar sin el hash es la vuelta más limpia: no hay estado que deshacer. */
+  $$("volverBtn").addEventListener("click",()=>location.replace(location.pathname));
+  $$("expBtn").addEventListener("click",()=>{
+    if(!REGISTROS.length){ alert("No hay prospectos para exportar."); return; }
+    const cols=[]; REGISTROS.forEach(l=>Object.keys(l).forEach(c=>{ if(cols.indexOf(c)<0) cols.push(c); }));
+    const csv="﻿"+cols.join(",")+"\n"+REGISTROS.map(l=>
+      cols.map(c=>'"'+String(l[c]===undefined?"":l[c]).replace(/"/g,'""')+'"').join(",")).join("\n");
+    const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+    const a=document.createElement("a");
+    a.href=url; a.download="prospectos-financial-"+new Date().toISOString().slice(0,10)+".csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
+
+  if(location.hash==="#registros") abrir();
+  window.addEventListener("hashchange",()=>{ if(location.hash==="#registros") abrir(); });
+})();
 </script>
 </body>
 </html>

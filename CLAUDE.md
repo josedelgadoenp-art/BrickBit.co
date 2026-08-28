@@ -30,12 +30,18 @@ comparar-proyectos.html  Comparador de proyectos
 
 # Financial
 financial.html        Buscador de seguro GNP + radar de protección + asesoría financiera gratuita.
-                      Envía leads a /api/lead (Netlify function lead.mjs → Google Sheet).
+                      Envía leads a /api/lead (lead.mjs → Upstash + copia a Google Sheet).
+                      Panel privado de prospectos en /financial#registros.
 analisisfinanciero.html  Diagnóstico de retiro (ruta bonita /financial/analisisfinanciero).
+                      Envía a /api/diagnostico (diagnostico.mjs → Upstash).
+                      Panel privado en /financial/analisisfinanciero#registros.
 gmm.html              Red hospitalaria GNP (ruta bonita /financial/gmm): mapa Leaflet de las
                       466 unidades en convenio, filtros por plan/nivel/categoría/estado,
                       búsqueda por CP con radio y geolocalización, más el listado de médicos
                       sin pago directo. Paleta clara de Financial, no la v2 oscura.
+                      Puerta única de nombre + WhatsApp (#acceso) para las dos vistas; el
+                      prospecto va a /api/lead con origen "gmm-red-hospitalaria" y se
+                      recuerda en localStorage (bb_gmm_acceso). NO usa Supabase.
 
 # Datos (data/*.json) — estáticos, leídos por fetch
 estados.json          Las 32 zonas: precio_m2, plusvalia, yield, ciclo, oportunidad, lat/lng...
@@ -67,6 +73,39 @@ backend/              Cloudflare Worker para la IA de Arquitectos (NO va a Netli
 - Comentarios con `</script>` dentro de un `<script>` inline rompen la etiqueta: escapar como `<\/script>`.
 - **Google Maps key** restringida por referrer a brickbit.co. Está embebida en las páginas 3D (es pública por diseño).
 
+## Captación de datos (los dos formularios de Financial)
+- **El valor primero, el contacto después.** Los dos embudos entregan su resultado ANTES de pedir
+  nombre y teléfono. Se hizo así porque la versión anterior de `/financial` pedía el teléfono en el
+  paso 2 —antes de dar nada— y una campaña de Meta con ~11.7k de alcance no produjo un solo
+  registro. El resultado gratis es la moneda con la que se paga el dato.
+- **La casilla de consentimiento NO se quita.** La LFPDPPP (art. 8) exige consentimiento *expreso*
+  para datos patrimoniales o financieros, y ambos formularios capturan ingreso. Un "al dar clic
+  aceptas" es consentimiento *tácito* y no basta para este tipo de dato. La casilla es el signo
+  inequívoco que pide la ley.
+- **Nada se envía antes del muro.** Verificado en navegador: cero peticiones al servidor hasta que
+  la persona entrega sus datos a propósito.
+- **Los paneles usan `DIAG_ADMIN_TOKEN`**, la misma llave para los dos. Va SIEMPRE en el header
+  `x-admin-token`, nunca en la URL (ahí quedaría en los logs de Netlify y en el historial).
+- **Derecho de cancelación**: `DELETE /api/lead?telefono=NNN` y `DELETE /api/diagnostico?telefono=NNN`.
+  Redis no borra por campo, así que se reescribe la lista sin esa persona (`DEL` + `RPUSH` en un
+  solo pipeline, conservando el orden).
+- **Métricas de Meta**: "clics en el anuncio" cuenta reacciones, comentarios y expansiones de texto.
+  Para medir el embudo hay que mirar **"visitas a la página de destino"**, que es bastante menor.
+- **Listas largas: tope y scroll propio en móvil.** `gmm.html` quitaba el scroll interno de la lista
+  en `max-width:900px`, y las 401 tarjetas estiraban la página a 41,928 px (49.7 pantallas de
+  móvil). Con `max-height:62vh; overflow-y:auto` vuelve a 6.2. Si se toca un `overflow` dentro de
+  una media query, hay que medir el alto del `body` después.
+- ~~**El .txt de médicos es descargable**~~ **resuelto**: la ruta estática está cerrada con un
+  redirect `force` a 404 y el contenido sale sólo por `/api/medicos` (`medicos.mjs`), contra un
+  **pase** HMAC que emite `/api/lead` cuando registra un prospecto con origen `gmm*`. El pase dura
+  30 días, va en el header `x-pase` y el .txt viaja dentro del paquete de la función vía
+  `included_files`. Firma con `MEDICOS_SECRET`, o `DIAG_ADMIN_TOKEN` si aquélla no está.
+- **`publish = "."` publica el repositorio ENTERO.** Se comprobó en producción que
+  `/netlify/functions/lead.mjs`, `/CLAUDE.md` y `/scripts/*.py` devolvían 200. No había secretos
+  expuestos (las funciones los leen del entorno), pero el código y las notas internas estaban a la
+  vista. `netlify.toml` ahora cierra `/netlify/*`, `/scripts/*`, `/tools/*`, `/backend/*` y `/*.md`
+  con redirects `force = true` a 404 — sin `force`, el archivo estático gana a la regla.
+
 ## URLs limpias (netlify.toml)
 `/financial` → financial.html, `/financial/analisisfinanciero`, `/financial/gmm` (rewrite 200).
 Los archivos viven en la raíz: **no** crear una carpeta `/financial/` o competiría con la primera regla.
@@ -83,7 +122,10 @@ que un CDN ajeno esté de pie. Las tipografías de Google sí van por CDN (falla
 - ~~**DENUE**: tarjeta "Economía de la zona"~~ **hecha**. `analizador.html` la muestra con datos DENUE reales: por defecto el municipio-cabecera de la zona (constante `ECON` inline, sin fetch) y, al buscar una dirección, el **municipio exacto** de ese punto — resuelto en el navegador con point-in-polygon contra `data/municipios_shape.json` (2,436 polígonos del INEGI). Cada KPI trae su **percentil nacional** contra los 2,478 municipios. Todo se regenera con `python3 tools/economia_local.py` (lee `data/denue_municipal.csv` + `data/mexico_municipios.json`); tras correrlo hay que pegar `data/economia_zonas.json` en la constante `ECON` del analizador. No usa Supabase: en un sitio estático los JSON salen más baratos y rápidos.
 - **Banxico en la pro-forma**: `analizador.html` ya no trae tasas quemadas. Los supuestos macro salen de `data/macro.json`, que genera `python3 tools/macro_local.py` con la API del SIE de Banxico (token gratuito en `BANXICO_TOKEN`; Banxico bloquea IPs de nube, así que se corre en local como `riesgos_local.py`). El archivo trae tasa objetivo, TIIE 28d, INPC anual y tipo de cambio; la **tasa hipotecaria se deriva** de la tasa objetivo + un spread (constante `SPREAD_HIPOTECARIO`, hoy 3.5 pp) y por eso va marcada en ámbar. Si el JSON no existe el sitio funciona igual, con los supuestos estáticos de `MACRO_FALLBACK` — que además unificó el descuadre que había entre el analizador (11.5%) y "¿Cuánto puedo comprar?" (10.5%). **Pendiente**: sacar el token y correr el script una vez.
 - **Google Places / Location Scoring**: "Bienestar y servicios" ya integrado en `zona3d.html` (usa la key de Maps embebida). Para que funcione en vivo: habilitar **Places API (New)** + **facturación** en el proyecto de Google Cloud de esa key, y permitir Places en las restricciones del key (referrer brickbit.co). Ideas B2B pendientes (Índice de Vibrancia/gentrificación, Búsqueda inversa por estilo de vida, Desiertos de oportunidad) usan la misma API.
-- **CRM de Financial**: crear el Google Sheet + Apps Script y setear en Netlify las vars `SHEETS_WEBHOOK_URL`, `LEAD_SECRET`, `ALLOWED_ORIGIN`.
+- ~~**CRM de Financial**~~ **hecho y verificado**: `SHEETS_WEBHOOK_URL` y `LEAD_SECRET` están
+  configuradas y el Apps Script responde (un POST de prueba a `/api/lead` devolvió `{"ok":true}`).
+  Los prospectos ya no dependen solo de esa hoja: `lead.mjs` guarda primero en Upstash y después
+  copia a la hoja, así que si el Apps Script se cae el prospecto no se pierde.
 - **IA de Arquitectos**: desplegar `backend/` en Cloudflare (`wrangler secret put ANTHROPIC_API_KEY` + `wrangler deploy`) y pegar la URL del worker en la config de cada herramienta.
 - **Memoria del mercado**: `c21-subir.mjs` ya genera seguimiento (`_seg-<slug>`: altas/recortes/bajas/días), `_metricas` (medianas + yield real) y `_hist` (serie mensual → Índice BrickBit en pulso). Se activa corriendo el flujo normal `c21-scraper` → `c21-subir`; la historia crece con cada corrida (ideal: mensual, `tools/actualizar-inventario.bat`). Sin cambios de worker.
 - ~~**Índice nacional de CP para `/financial/gmm`**~~ **hecho**: `data/cp_centroides.txt` trae los
