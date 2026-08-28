@@ -179,6 +179,10 @@ input:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 
 
 .mapwrap{position:relative;min-height:0;background:#e8eef0}
 #map{position:absolute;inset:0;background:#DFE7EA}
+/* Las teselas de OSM vienen a todo color y compiten con los pines, que son lo
+   que hay que leer. Este filtro las deja casi en gris claro: el mismo papel que
+   hacía el basemap "light" de CARTO, sin depender de CARTO. */
+.leaflet-tile-pane{filter:saturate(.22) brightness(1.06) contrast(.94)}
 .city{pointer-events:none}
 .city i{position:absolute;left:-2px;top:-2px;width:4px;height:4px;border-radius:50%;background:#9AA0A7}
 .city span{position:absolute;left:6px;top:-7px;white-space:nowrap;font-family:var(--mono);font-size:9.5px;
@@ -588,10 +592,17 @@ function apagarBase(){
   $('scaleHint').classList.add('hide');
 }
 
-/* Teselas de calles encima. Si el CDN no responde, el mapa vectorial se queda:
-   la página funciona igual, sólo con menos detalle. */
-const tiles=L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-  {attribution:'&copy; OpenStreetMap · CARTO',subdomains:'abcd',maxZoom:19,opacity:0});
+/* Teselas de calles encima. Se usaba el basemap "light_all" de CARTO, que pasó
+   a exigir cuenta y empezó a pedir una API key en pantalla. Se cambia por las
+   teselas oficiales de OpenStreetMap: no piden llave, no cuestan y no dependen
+   de la política comercial de nadie. Vienen a todo color, así que un filtro CSS
+   (.leaflet-tile-pane) las aclara para dejarlas en el gris de Financial.
+   OSM no sirve @2x, por eso desaparece el {r} del final.
+   Si el CDN no responde, el mapa vectorial se queda: la página funciona igual,
+   sólo con menos detalle. */
+const tiles=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {attribution:'&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>',
+   maxZoom:19,opacity:0});
 let tileErr=0;
 tiles.on('load',()=>{ if(tilesOK) return; tilesOK=true; tiles.setOpacity(1); apagarBase(); });
 tiles.on('tileerror',()=>{ if(!tilesOK && ++tileErr>3) map.removeLayer(tiles); });

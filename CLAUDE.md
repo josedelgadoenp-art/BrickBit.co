@@ -110,6 +110,14 @@ backend/              Cloudflare Worker para la IA de Arquitectos (NO va a Netli
 `/financial` → financial.html, `/financial/analisisfinanciero`, `/financial/gmm` (rewrite 200).
 Los archivos viven en la raíz: **no** crear una carpeta `/financial/` o competiría con la primera regla.
 
+- **Las teselas de CARTO (`basemaps.cartocdn.com`) pasaron a exigir cuenta** y empezaron a pedir una
+  API key en pantalla. `gmm.html` usa ahora `tile.openstreetmap.org`, que no pide llave; como vienen
+  a todo color, un filtro CSS en `.leaflet-tile-pane` las deja en el gris claro de Financial. OSM no
+  sirve `@2x`, así que el `{r}` del patrón se quita o cada tesela da 404.
+- **Los supuestos fijos se declaran.** En `analisisfinanciero.html` la edad de retiro (65), la tasa
+  de reemplazo (80%) y el horizonte (90) dejaron de ser deslizadores: son campos ocultos y aparecen
+  escritos en el bloque de supuestos. Si se fija un número, se dice — no se esconde.
+
 ## Librerías de terceros
 Van auto-hospedadas en `assets/`, nunca desde un CDN: `chart.umd.js` (Chart.js 4.5.0),
 `leaflet.js` + `leaflet.css` (1.9.4), `leaflet.markercluster.js` + `MarkerCluster.css` (1.5.3)

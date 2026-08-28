@@ -121,7 +121,7 @@ h3{font-size:14px;font-weight:700}
 .seg button:hover{border-color:var(--slate)}
 .seg button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dk);font-weight:600}
 
-.slider-row{display:flex;align-items:center;gap:14px}
+.ah-nota{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.5}
 input[type=range]{flex:1;accent-color:var(--accent);height:4px}
 .slider-val{font-family:var(--mono);font-size:14px;font-weight:700;min-width:56px;text-align:right}
 
@@ -447,19 +447,11 @@ body.modo-panel #results{display:block !important}
     <section class="sec" id="ajustes">
       <div class="sec-head">
         <div class="eyebrow">Ajusta tu escenario</div>
-        <h2>Mueve cualquier dato y mira cómo cambia</h2>
-        <p>Partimos de supuestos conservadores. Corrige los que conozcas y tu proyección se actualiza sola.</p>
+        <h2>Ajusta lo que conozcas de tu caso</h2>
+        <p>Partimos de supuestos conservadores. Cada dato que corrijas actualiza tu proyección al instante.</p>
       </div>
       <div class="card aj-card">
         <div class="grid2">
-          <div class="field">
-            <label for="edadRet">Edad a la que quieres retirarte</label>
-            <div class="slider-row">
-              <input type="range" id="edadRet" min="45" max="80" step="1" value="65">
-              <span class="slider-val" id="edadRetV">65</span>
-            </div>
-            <span class="hint">65 es la edad legal bajo la Ley del Seguro Social de 1997.</span>
-          </div>
           <div class="field">
             <label for="ahorro">Ahorro ya acumulado para tu retiro</label>
             <div class="pre"><span class="sym">$</span><input class="inp" id="ahorro" type="number" min="0" step="10000" inputmode="numeric" value="0"></div>
@@ -493,23 +485,13 @@ body.modo-panel #results{display:block !important}
           </div>
         </div>
 
-        <div class="field" style="margin-top:20px">
-          <label for="reemplazo">¿Qué porcentaje de tu ingreso actual quieres conservar al retirarte?</label>
-          <div class="slider-row">
-            <input type="range" id="reemplazo" min="50" max="100" step="5" value="80">
-            <span class="slider-val" id="reemplazoV">80%</span>
-          </div>
-          <span class="hint">El estándar internacional está entre 70% y 80%, sobre el poder adquisitivo de hoy.</span>
-        </div>
-
-        <div class="field" style="margin-top:20px">
-          <label for="edadFin">¿Hasta qué edad quieres tener ingreso garantizado?</label>
-          <div class="slider-row">
-            <input type="range" id="edadFin" min="80" max="100" step="1" value="90">
-            <span class="slider-val" id="edadFinV">90</span>
-          </div>
-          <span class="hint">La esperanza de vida a los 65 en México supera los 82; planear a 90 evita quedarte corto.</span>
-        </div>
+        <!-- Supuestos fijos. Eran deslizadores; se retiraron porque la tasa de
+             reemplazo y el horizonte de retiro son conversaciones de asesoria,
+             no perillas que alguien deba mover a ciegas. Siguen siendo campos
+             para que recopilar() y el motor los lean igual que antes. -->
+        <input type="hidden" id="edadRet" value="65">
+        <input type="hidden" id="reemplazo" value="80">
+        <input type="hidden" id="edadFin" value="90">
 
         <div class="assump">
           <div class="ah"><span class="lk">🔒</span> Supuestos del análisis · criterios conservadores</div>
@@ -517,7 +499,12 @@ body.modo-panel #results{display:block !important}
             <div class="ai"><b>4.5%</b><span>Inflación anual de largo plazo</span></div>
             <div class="ai"><b>4.0%</b><span>Rendimiento ahorrando por tu cuenta</span></div>
             <div class="ai"><b>8.5%</b><span>Rendimiento del plan de retiro</span></div>
+            <div class="ai"><b>65 años</b><span>Edad de retiro, la legal bajo la Ley del Seguro Social de 1997</span></div>
+            <div class="ai"><b>80%</b><span>Del ingreso actual que buscas conservar, el estándar de planeación</span></div>
+            <div class="ai"><b>90 años</b><span>Hasta donde se financia el ingreso; la esperanza de vida a los 65 supera los 82</span></div>
           </div>
+          <p class="ah-nota">Estos tres últimos son los supuestos estándar. Si en tu caso cambian
+            —te retiras antes, quieres conservar más—, lo ajustamos contigo en la asesoría.</p>
         </div>
       </div>
     </section>
@@ -862,10 +849,10 @@ function valida1(){
 function ajustaRangoRetiro(){
   var e=num('edad'), s=$('edadRet');
   if(!isFinite(e)) return;
-  var min=Math.max(45, e+1);
-  s.min=min;
-  if(+s.value<min){ s.value=min; }
-  $('edadRetV').textContent=s.value;
+  /* El retiro es fijo a los 65, pero el formulario acepta hasta 75 años. A
+     quien ya pasó de 65 se le proyecta al año siguiente, porque un horizonte
+     negativo no produce ningún número con sentido. */
+  s.value = e >= 65 ? (e + 1) : 65;
 }
 function recopilar(){
   return {
@@ -1202,11 +1189,8 @@ $('ingreso').addEventListener('keydown',function(e){ if(e.key==='Enter') $('verB
 
 /* Cada ajuste recalcula. 'input' en los deslizadores para que la cifra se mueva
    mientras se arrastra —que es justo lo que hace que valga la pena tocarlos. */
-['edadRet','ahorro','anios','ahorroMes','reemplazo','edadFin'].forEach(function(id){
+['ahorro','anios','ahorroMes'].forEach(function(id){
   $(id).addEventListener('input',function(){
-    if(id==='edadRet') $('edadRetV').textContent=this.value;
-    if(id==='reemplazo') $('reemplazoV').textContent=this.value+'%';
-    if(id==='edadFin') $('edadFinV').textContent=this.value;
     if(id==='ahorroMes') marcarChip(this.value);
     recalcular();
   });
