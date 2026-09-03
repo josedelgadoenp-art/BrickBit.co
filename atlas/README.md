@@ -68,6 +68,26 @@ porque todavía no hay listados. Mide que la estructura espacial de la
 actividad económica es real, que es el supuesto del que cuelga todo el aparato
 espacial. El Moran del precio se mide en la Fase 2.
 
+### Cobertura de la CDMX: siete alcaldías con ruta rota
+
+En la corrida del scraper de 2026-09 el barrido profundo devolvió **HTTP 404 en
+la página 1** para Benito Juárez, Cuauhtémoc, Coyoacán, Álvaro Obregón, Gustavo
+A. Madero, Venustiano Carranza y La Magdalena Contreras. Un 404 no es "no hay
+inventario": es una ruta que no existe. Son casi la mitad de la ciudad y las de
+mayor valor por m², así que el AVM las tendría prácticamente ciegas.
+
+`tools/c21-scraper.mjs` ahora resuelve el filtro **por municipio** en vez de
+aplicarle a todos el segmento que funcionó con el primero, y prueba variantes
+del slug (sin artículo, sin inicial, con acentos, con el estado para desambiguar
+homónimos). Y trae un modo que sólo mide:
+
+```bash
+node tools/c21-scraper.mjs sondeo --estado ciudad-de-mexico
+```
+
+Imprime, para cada alcaldía, qué contestó cada ruta candidata. Se corre en local
+porque el portal rechaza las IP de nube, igual que INEGI y Overpass.
+
 ### Qué ingiere hoy, sin red
 
 | Capa | Filas | Fuente |

@@ -12,6 +12,9 @@
                                                     Q. Roo…): re-barre por municipio.
      node tools/c21-scraper.mjs profundo --estado ciudad-de-mexico   ← uno solo
      node tools/c21-scraper.mjs profundo --umbral 400                ← baja el corte
+     node tools/c21-scraper.mjs sondeo --estado ciudad-de-mexico  ← diagnóstico:
+                                                    qué rutas acepta el portal
+                                                    (no scrapea, sólo mide)
 
    Salidas (carpeta c21_out/):
      listados.ndjson   una propiedad por línea (se va guardando; sirve de respaldo)
@@ -322,7 +325,18 @@ async function fetchJSON(url) { return JSON.parse(await fetchText(url)); }
         cae por debajo del tope, y la suma cubre el estado completo.
    El segmento de la ruta (en-municipio_ / en-ciudad_ / en-delegacion_ /
    en-alcaldia_) cambia entre plataformas, así que lo autodetectamos validando
-   que los resultados devueltos caigan en el municipio pedido. */
+   que los resultados devueltos caigan en el municipio pedido.
+
+   Y NO BASTA CON EL SEGMENTO: también hay que probar variantes del nombre.
+   En la corrida del 2026-09 siete alcaldías de la CDMX devolvieron HTTP 404 en
+   la página 1 —Benito Juárez, Cuauhtémoc, Coyoacán, Álvaro Obregón, Gustavo A.
+   Madero, Venustiano Carranza y La Magdalena Contreras— mientras que las otras
+   nueve respondieron con el mismo segmento. Un 404 no es "no hay inventario":
+   es una ruta que no existe, o sea un slug mal construido. Casi la mitad de la
+   ciudad, y justo la de mayor valor por m², quedaba fuera por eso.
+   La causa exacta no se puede medir desde un contenedor de nube (el portal
+   rechaza esas IP), así que en vez de adivinar una sola forma se prueban varias
+   y se registra CUÁL funcionó: `modo sondeo` imprime la matriz completa. */
 const slugMun = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
   .toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 const MUN_SEG_CANDS = ['municipio', 'ciudad', 'delegacion', 'alcaldia', 'municipality', 'localidad'];
@@ -330,18 +344,61 @@ let MUN_SEG_HINT = null; // segmento que funcionó antes: pruébalo primero
 const urlEstadoMunJson = (est, seg, mun, p) =>
   `${BASE}/v/resultados/en-pais_mexico/en-estado_${est}/en-${seg}_${mun}/pagina_${p}?json=true`;
 
-async function detectMunSeg(est, munSlug) {
-  const orden = MUN_SEG_HINT ? [MUN_SEG_HINT, ...MUN_SEG_CANDS.filter((s) => s !== MUN_SEG_HINT)] : MUN_SEG_CANDS;
-  for (const seg of orden) {
-    try {
-      const d = await fetchJSON(urlEstadoMunJson(est, seg, munSlug, 1));
+/* Formas plausibles del mismo nombre en la ruta, de la más probable a la menos.
+   Cada una responde a un modo concreto en que un portal escribe los slugs:
+   con artículo o sin él, con la inicial de un nombre propio o sin ella, con
+   acentos percent-encoded, o desambiguando el homónimo con el estado. */
+function variantesSlug(nombre, base, est) {
+  const v = [];
+  const add = (s) => {
+    s = String(s || '').replace(/^-+|-+$/g, '');
+    if (s && !v.includes(s)) v.push(s);
+  };
+  add(base);
+  add(base.replace(/^(la|el|los|las)-/, ''));                    // la-magdalena-… → magdalena-…
+  add(base.split('-').filter((t) => t.length > 1).join('-'));     // gustavo-a-madero → gustavo-madero
+  // Con acentos: si el portal no los normaliza, el slug sin ellos da 404.
+  const acentuado = String(nombre || '').toLowerCase().trim()
+    .replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
+  add(encodeURIComponent(acentuado).replace(/%2F/g, '-'));
+  // Homónimos. Cinco de las siete alcaldías que fallaron comparten nombre con
+  // un municipio de otro estado (Benito Juárez con Cancún, Cuauhtémoc con
+  // Chihuahua, Álvaro Obregón con Michoacán, Venustiano Carranza con Chiapas y
+  // Puebla). Es exactamente el problema que ya mordió en el DENUE, y muchos
+  // portales lo resuelven metiendo el estado en el slug.
+  if (est) { add(`${base}-${est}`); add(`${est}-${base}`); if (est === 'ciudad-de-mexico') add(`${base}-cdmx`); }
+  return v;
+}
+
+/* Encuentra la ruta que de verdad devuelve ese municipio. Devuelve
+   {seg, slug, data} —la data de la página 1 ya viene incluida, para no pedirla
+   dos veces— o null si ninguna forma responde.
+   En el caso normal cuesta UNA petición: el segmento recordado + el slug base.
+   Sólo los municipios que fallan pagan la búsqueda de variantes. */
+async function resolverFiltro(est, nombre, munSlug) {
+  const segs = MUN_SEG_HINT
+    ? [MUN_SEG_HINT, ...MUN_SEG_CANDS.filter((s) => s !== MUN_SEG_HINT)]
+    : MUN_SEG_CANDS;
+  const slugs = variantesSlug(nombre, munSlug, est);
+  let primero = true;
+  for (const seg of segs) {
+    for (const slug of slugs) {
+      if (!primero) await pausa();
+      primero = false;
+      let d;
+      try { d = await fetchJSON(urlEstadoMunJson(est, seg, slug, 1)); }
+      catch { continue; }   // 404 = esa ruta no existe; sigue probando
       const items = (d.results || []).map(mapRep).filter((x) => x.precio && x.precio >= 1000);
-      if (items.length) {
-        const match = items.filter((x) => slugMun(x.municipio) === munSlug).length;
-        if (match >= Math.min(3, items.length)) { MUN_SEG_HINT = seg; return seg; }
+      if (!items.length) continue;
+      // Validación: los resultados tienen que caer DE VERDAD en el municipio
+      // pedido. Sin esto, un filtro que el portal ignora en silencio pasaría
+      // por bueno y nos devolvería el estado entero como si fuera un municipio.
+      const match = items.filter((x) => slugMun(x.municipio) === munSlug).length;
+      if (match >= Math.min(3, items.length)) {
+        MUN_SEG_HINT = seg;
+        return { seg, slug, data: d };
       }
-    } catch { /* siguiente candidato */ }
-    await pausa();
+    }
   }
   return null;
 }
@@ -350,17 +407,19 @@ async function detectMunSeg(est, munSlug) {
    (dedup contra `vistos`). Devuelve cuántas nuevas ganó. */
 async function pasadaMunicipios(est, munVistos, nd, vistos, claveDe) {
   if (!munVistos.size) return 0;
-  const primero = [...munVistos.keys()][0];
-  const seg = await detectMunSeg(est, primero);
-  if (!seg) { console.log(`     ⚠ ${est}: ningún filtro de municipio respondió; lo dejo con la pasada plana.`); return 0; }
-  console.log(`     🔧 filtro activo: en-${seg}_`);
   let ganadas = 0;
+  const sinRuta = [];
   for (const [ms, mn] of munVistos) {
-    let nMun = 0, totMun = null;
+    const r = await resolverFiltro(est, mn, ms);
+    if (!r) { sinRuta.push(mn); continue; }
+    if (r.slug !== ms) console.log(`       ↳ ${mn}: el portal lo llama en-${r.seg}_${r.slug}`);
+
+    let nMun = 0, totMun = null, d = r.data;
     for (let p = 1; p <= 200; p++) {
-      let d;
-      try { d = await fetchJSON(urlEstadoMunJson(est, seg, ms, p)); }
-      catch (e) { console.log(`       ✗ ${mn} pág ${p}: ${e.message}`); break; }
+      if (p > 1) {
+        try { d = await fetchJSON(urlEstadoMunJson(est, r.seg, r.slug, p)); }
+        catch (e) { console.log(`       ✗ ${mn} pág ${p}: ${e.message}`); break; }
+      }
       if (totMun == null) totMun = parseInt(String(d.totalHits || '').replace(/[^\d]/g, '')) || 0;
       const items = (d.results || []).map(mapRep).filter((x) => x.precio && x.precio >= 1000);
       const nuevas = items.filter((x) => !vistos.has(claveDe(x)));
@@ -371,6 +430,11 @@ async function pasadaMunicipios(est, munVistos, nd, vistos, claveDe) {
       if (totMun && p * 100 >= totMun) break;
     }
     if (nMun) console.log(`       · ${mn.padEnd(24)} +${nMun}${totMun ? '/' + totMun : ''}`);
+  }
+  if (sinRuta.length) {
+    console.log(`     ⚠ ${est}: ninguna ruta respondió para ${sinRuta.length} municipio(s): ${sinRuta.join(', ')}`);
+    console.log(`       Quedan con lo que trajo la pasada plana. Para ver qué URL sí acepta el portal:`);
+    console.log(`       node tools/c21-scraper.mjs sondeo --estado ${est}`);
   }
   return ganadas;
 }
@@ -552,8 +616,75 @@ async function profundo() {
   console.log(`\n🔬 PROFUNDO TERMINADO: +${ganadasTotal} propiedades nuevas · total ${vistos.size}`);
 }
 
+/* ---------- modo SONDEO ----------
+   No scrapea nada: mide. Para cada municipio de un estado prueba las rutas
+   candidatas (segmento × variante de nombre) e imprime qué contestó cada una.
+   Existe porque los 404 de las siete alcaldías de la CDMX no se pueden
+   reproducir desde una IP de nube —el portal las rechaza—, así que la medición
+   tiene que hacerse en la máquina de casa, igual que riesgos_local.py o
+   macro_local.py. Tarda ~1 petición por segundo y no escribe archivos. */
+async function sondeo() {
+  const ndPath = path.join(OUT, 'listados.ndjson');
+  if (!fs.existsSync(ndPath)) {
+    console.log('⚠ No encuentro c21_out/listados.ndjson. Corre primero: node tools/c21-scraper.mjs todo');
+    return;
+  }
+  const iEst = args.indexOf('--estado');
+  const est = iEst >= 0 ? args[iEst + 1] : 'ciudad-de-mexico';
+  const iMun = args.indexOf('--municipio');
+  const soloMun = iMun >= 0 ? slugMun(args[iMun + 1]) : null;
+
+  const muns = new Map();  // slug -> nombre
+  for (const l of fs.readFileSync(ndPath, 'utf8').split('\n')) {
+    if (!l.trim()) continue;
+    let x; try { x = JSON.parse(l); } catch { continue; }
+    if ((x._estado || slugMun(x.estado)) !== est || !x.municipio) continue;
+    const ms = slugMun(x.municipio);
+    if (!muns.has(ms)) muns.set(ms, x.municipio);
+  }
+  if (soloMun) for (const k of [...muns.keys()]) if (k !== soloMun) muns.delete(k);
+
+  console.log(`🩺 SONDEO — qué rutas acepta el portal para ${est} (${muns.size} municipios)\n`);
+  const resumen = [];
+  for (const [ms, mn] of muns) {
+    let ganadora = null;
+    const intentos = [];
+    for (const seg of MUN_SEG_CANDS) {
+      for (const slug of variantesSlug(mn, ms, est)) {
+        let nota;
+        try {
+          const d = await fetchJSON(urlEstadoMunJson(est, seg, slug, 1));
+          const items = (d.results || []).map(mapRep).filter((x) => x.precio && x.precio >= 1000);
+          const match = items.filter((x) => slugMun(x.municipio) === ms).length;
+          const tot = parseInt(String(d.totalHits || '').replace(/[^\d]/g, '')) || 0;
+          nota = `200 · ${items.length} resultados (${match} del municipio) · totalHits ${tot}`;
+          if (items.length && match >= Math.min(3, items.length) && !ganadora) ganadora = `en-${seg}_${slug}`;
+        } catch (e) {
+          nota = e.message;
+        }
+        intentos.push(`     ${(`en-${seg}_${slug}`).padEnd(46)} ${nota}`);
+        await pausa();
+        if (ganadora) break;
+      }
+      if (ganadora) break;
+    }
+    console.log(`  ▸ ${mn}  ${ganadora ? '✓ ' + ganadora : '✗ ninguna ruta sirvió'}`);
+    // Las que funcionan a la primera no necesitan detalle; las que fallan, sí.
+    if (!ganadora || intentos.length > 1) intentos.forEach((t) => console.log(t));
+    resumen.push({ municipio: mn, ruta: ganadora });
+  }
+
+  const rotas = resumen.filter((r) => !r.ruta);
+  console.log(`\n🩺 ${resumen.length - rotas.length}/${resumen.length} municipios con ruta válida.`);
+  if (rotas.length) console.log(`   Sin ruta: ${rotas.map((r) => r.municipio).join(', ')}`);
+  console.log('   Pega esta salida en el chat y ajustamos las variantes con datos, no a ojo.');
+}
+
 /* ---------- main ---------- */
-const runner = modo === 'todo' ? todo : modo === 'profundo' ? profundo : muestra;
+const runner = modo === 'todo' ? todo
+  : modo === 'profundo' ? profundo
+  : modo === 'sondeo' ? sondeo
+  : muestra;
 runner().catch((e) => {
   console.error('\n💥 Error:', e.message);
   console.error('   Puedes reanudar con el mismo comando (guarda el progreso en c21_out/).');
