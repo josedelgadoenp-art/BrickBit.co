@@ -1,0 +1,9 @@
+# El lago se reconstruye con `python -m pipelines.fase0`; no se versiona.
+data/*.parquet
+data/_manifiesto.json
+data/_denue_cdmx.json
+data/cache_osm/
+artifacts/*
+!artifacts/.gitkeep
+__pycache__/
+.pytest_cache/

@@ -1,0 +1,124 @@
+# BrickBit Atlas · configuración única del motor
+# Todo parámetro que alguien pudiera querer cambiar vive aquí, no en el código.
+# Se lee con atlas.config.cargar(); las rutas se resuelven contra la raíz del repo.
+
+proyecto:
+  nombre: "BrickBit Atlas"
+  ciudad: "Ciudad de México"
+  semilla: 20260828          # semilla fija: el pipeline es determinista
+
+# ---------------------------------------------------------------------------
+# SISTEMAS DE COORDENADAS
+# Regla dura: 4326 sólo para entrada/salida y mapas. CUALQUIER distancia, área
+# o buffer se calcula en `metrico`. Calcular distancias en grados da errores de
+# hasta 30% en la latitud de la CDMX, y son errores silenciosos.
+# EPSG:6372 es la Cónica Conforme de Lambert oficial de México (ITRF2008),
+# la que usa el INEGI para cartografía nacional.
+# ---------------------------------------------------------------------------
+crs:
+  geografico: "EPSG:4326"
+  metrico: "EPSG:6372"
+  alterno_utm: "EPSG:32614"   # UTM 14N, por si se compara con fuentes en UTM
+
+# Caja de la CDMX con holgura. Lo que caiga fuera se descarta en la ingesta:
+# más vale un registro ausente que uno mal ubicado.
+extension:
+  lat_min: 19.00
+  lat_max: 19.65
+  lng_min: -99.37
+  lng_max: -98.93
+
+# ---------------------------------------------------------------------------
+# RUTAS
+# El repo ya trae datos reales de CDMX que el Atlas reutiliza en vez de volver
+# a descargarlos. Se declaran aquí para que quede explícito de dónde sale cada
+# cosa y con qué fecha de corte.
+# ---------------------------------------------------------------------------
+rutas:
+  raiz_datos_repo: "data"           # datos que ya viven en BrickBit.co
+  lago: "atlas/data"                # data lake del Atlas (parquet + gpkg)
+  artefactos: "atlas/artifacts"
+  # fuentes reutilizadas del repo
+  cp_cdmx: "data/cdmx_codigos_postales.json"
+  municipios: "data/mexico_municipios.json"
+  shf_series: "data/shf_series.json"
+  denue_glob: "data/establecimientos_*.csv.gz"
+  calles_glob: "data/calles_*.json"
+  # salida del scraper autorizado de Century 21 (se genera en local)
+  listados_c21: "c21_out/listados.json"
+
+# ---------------------------------------------------------------------------
+# ALCALDÍAS DE LA CDMX
+# Las 16 demarcaciones. `clave` es la del INEGI (entidad 09).
+# ---------------------------------------------------------------------------
+alcaldias:
+  - {clave: "002", nombre: "Azcapotzalco",           slug: "azcapotzalco"}
+  - {clave: "003", nombre: "Coyoacán",               slug: "coyoacan"}
+  - {clave: "004", nombre: "Cuajimalpa de Morelos",  slug: "cuajimalpa"}
+  - {clave: "005", nombre: "Gustavo A. Madero",      slug: "gustavo_a_madero"}
+  - {clave: "006", nombre: "Iztacalco",              slug: "iztacalco"}
+  - {clave: "007", nombre: "Iztapalapa",             slug: "iztapalapa"}
+  - {clave: "008", nombre: "La Magdalena Contreras", slug: "magdalena_contreras"}
+  - {clave: "009", nombre: "Milpa Alta",             slug: "milpa_alta"}
+  - {clave: "010", nombre: "Álvaro Obregón",         slug: "alvaro_obregon"}
+  - {clave: "011", nombre: "Tláhuac",                slug: "tlahuac"}
+  - {clave: "012", nombre: "Tlalpan",                slug: "tlalpan"}
+  - {clave: "013", nombre: "Xochimilco",             slug: "xochimilco"}
+  - {clave: "014", nombre: "Benito Juárez",          slug: "benito_juarez"}
+  - {clave: "015", nombre: "Cuauhtémoc",             slug: "cuauhtemoc"}
+  - {clave: "016", nombre: "Miguel Hidalgo",         slug: "miguel_hidalgo"}
+  - {clave: "017", nombre: "Venustiano Carranza",    slug: "venustiano_carranza"}
+
+# ---------------------------------------------------------------------------
+# INGESTA
+# ---------------------------------------------------------------------------
+ingesta:
+  # Overpass y el portal de datos de la CDMX bloquean las IP de nube, igual que
+  # INEGI. Estos ingestores se corren en la máquina de casa (ver README).
+  overpass_url: "https://overpass-api.de/api/interpreter"
+  overpass_timeout: 180
+  overpass_reintentos: 3
+  # Radios (metros) para conteos de amenidades alrededor de cada inmueble
+  radios_conteo: [300, 500, 1000]
+  # Un listado sin superficie o sin precio no sirve como observación
+  min_superficie_m2: 20
+  max_superficie_m2: 2000
+  min_precio_m2: 3000        # MXN/m²; por debajo casi siempre es error de captura
+  max_precio_m2: 250000
+
+# Deduplicación de listados: el mismo inmueble se republica muchas veces.
+dedup:
+  precision_geohash: 8        # ~19 m de celda
+  tolerancia_superficie: 0.05 # 5%
+  tolerancia_precio: 0.02     # 2%
+
+# ---------------------------------------------------------------------------
+# MODELADO (se usa a partir de la Fase 2; se declara ya para que no haya
+# números mágicos escondidos en el código)
+# ---------------------------------------------------------------------------
+modelado:
+  objetivo: "ln_precio_m2"
+  alpha: 0.05                 # intervalos al 95%
+  pesos_espaciales:
+    tipo: "knn"               # knn | queen | kernel
+    k_candidatos: [5, 8, 10, 15]
+  validacion:
+    bloques_espaciales_h3: 6   # resolución H3 de los bloques disjuntos
+    fraccion_calibracion: 0.2
+  h3:
+    resolucion_malla: 9        # ~174 m de arista; la "tela"
+    resolucion_bloques: 6
+
+# ---------------------------------------------------------------------------
+# HONESTIDAD DE DATOS (principio rector del proyecto)
+# ---------------------------------------------------------------------------
+honestidad:
+  # El precio de listado NO es precio de cierre. Mientras no haya datos de
+  # cierre para calibrarlo, este ajuste es NULO a propósito: se declara que se
+  # desconoce en vez de inventar un descuento plausible.
+  ajuste_asking_cierre: null
+  nota_asking: >
+    Todas las cifras provienen de precios de oferta (asking). En México no hay
+    MLS abierto ni Registro Público accesible, así que el precio de cierre no
+    es observable. El descuento oferta→cierre existe y es positivo, pero no se
+    aplica ningún ajuste hasta tener transacciones reales con que calibrarlo.
