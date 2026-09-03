@@ -40,17 +40,26 @@ UMBRAL_DENTRO = 0.80
 MUESTRA = 3000          # filas que se leen para decidir; suficiente y barato
 CACHE = "_denue_cdmx.json"
 
-# Sectores DENUE agrupados por lo que significan para el valor de un inmueble.
-# Un supermercado a 300 m no pesa igual que una fábrica a 300 m.
+# Familias DENUE.
+#
+# OJO CON EL VOCABULARIO. El DENUE crudo del INEGI trae ~20 sectores SCIAN,
+# pero los CSV que `scripts/ingerir_denue.py` dejó en el repo vienen ya
+# agregados a CUATRO: Servicios, Comercio, Alimentos e Industria. Verificado
+# contando los valores distintos de la columna `sector`.
+#
+# La primera versión de este módulo definía familias de salud, educación y
+# ocio que ese vocabulario no puede producir: generaban columnas enteras de
+# NaN y una falsa sensación de cobertura. Las familias son ahora exactamente
+# las que la fuente sabe distinguir.
+#
+# Salud y educación NO se pierden: llegan de OSM (categorías `hospitales` y
+# `escuelas`), que es la fuente que sí las tiene georreferenciadas una por una.
 FAMILIAS = {
-    "abasto": ("comercio", "abarrotes", "supermercado", "tienda", "mercado"),
-    "salud": ("salud", "hospital", "clinica", "consultorio", "farmacia"),
-    "educacion": ("educacion", "escuela", "universidad", "colegio"),
-    "ocio": ("restaurante", "esparcimiento", "alojamiento", "cultural", "bar", "cafe"),
-    "servicios": ("servicios", "profesional", "financier", "banco", "oficina"),
-    "industria": ("industria", "manufactura", "construccion"),
+    "abasto": ("comercio",),        # tiendas, abarrotes, supermercados
+    "alimentos": ("alimentos",),    # restaurantes, cafés, fondas
+    "servicios": ("servicios",),    # oficinas, profesionales, financieros
+    "industria": ("industria",),    # manufactura y construcción
 }
-
 
 def _familia(sector: str) -> str:
     s = str(sector or "").lower()

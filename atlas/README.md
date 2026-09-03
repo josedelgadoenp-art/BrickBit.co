@@ -4,7 +4,7 @@ Motor de valuación y pronóstico para la Ciudad de México. Vive **al lado** de
 Motor de Morfogénesis (`app.py`), no dentro: son dos productos con datos y
 ciclos de vida distintos, y mezclarlos habría hecho a los dos más frágiles.
 
-**Estado: Fase 0 completa.** Las fases 1 a 5 están por construir.
+**Estado: Fases 0 y 1 completas.** Las fases 2 a 5 están por construir.
 
 ---
 
@@ -40,6 +40,33 @@ python -m pipelines.fase0 --osm      # además baja OSM (ver abajo)
 python -m pipelines.fase0 --informe  # sólo el estado del lago
 python -m pytest tests/ -q
 ```
+
+### Correr la Fase 1
+
+```bash
+python -m pipelines.fase1              # ~2 min sobre 12,259 celdas
+python -m pipelines.fase1 --informe
+```
+
+Construye la malla H3 de la CDMX, le cuelga las variables de amenidad y
+accesibilidad, elige la matriz **W** con criterio explícito y corre el
+diagnóstico espacial que el documento exige *antes* de modelar.
+
+| Salida | |
+|---|---|
+| `features_malla` | 12,259 celdas × 134 columnas |
+| W elegido | `banda(500 m)`, **I de Moran = 0.960** (p = 0.001) |
+| Clústeres LISA | 1,459 alto-alto · 5,714 bajo-bajo |
+
+El criterio de selección de W es **máxima I de Moran**: el W que más
+estructura espacial captura es el que menos señal espacial deja en el
+residual. No es AICc —eso exige un modelo por cada W, y en la Fase 1 todavía
+no hay modelo— y se declara como lo que es.
+
+El diagnóstico se corre sobre **densidad de empleo DENUE**, no sobre precios,
+porque todavía no hay listados. Mide que la estructura espacial de la
+actividad económica es real, que es el supuesto del que cuelga todo el aparato
+espacial. El Moran del precio se mide en la Fase 2.
 
 ### Qué ingiere hoy, sin red
 
@@ -85,6 +112,19 @@ observable. El descuento oferta→cierre existe y es positivo, pero
 `config.yaml` lo deja en `null` **a propósito**: se declara que se desconoce en
 vez de inventar un porcentaje plausible. Se calibrará cuando haya transacciones.
 
+**El vocabulario de la fuente manda.** El DENUE del repo no viene con los ~20
+sectores SCIAN sino agregado a **cuatro**: Servicios, Comercio, Alimentos e
+Industria. La primera versión declaraba familias de salud, educación y ocio que
+esa fuente no puede producir: generaban columnas enteras de NaN y una falsa
+sensación de cobertura. Salud y educación llegan de OSM, que sí las tiene una
+por una.
+
+**Rendimiento.** Las distancias, conteos y accesibilidad pasan por árboles KD
+de scipy. La primera versión recorría los pares en Python: con 12 mil celdas y
+351 mil establecimientos, el pipeline no terminaba. Ahora tarda dos minutos.
+Es la misma matemática, y hay una prueba que compara el resultado contra
+haversine.
+
 **Determinismo.** Semilla fija en `config.yaml`, orden estable en toda selección
 de archivos, y una prueba que lo verifica.
 
@@ -109,8 +149,14 @@ atlas/
 │     ├─ base_geo.py      códigos postales y red vial
 │     ├─ osm.py           Overpass — se corre en local
 │     └─ listados.py      salida del scraper C21 → properties
-├─ pipelines/fase0.py     orquestador + informe
-├─ tests/test_fase0.py    20 pruebas
+│  └─ features/
+│     ├─ malla.py         malla H3 de la CDMX (el sustrato de la tela)
+│     ├─ pesos.py         W, rezagos, I de Moran, LISA
+│     └─ amenidades.py    distancias, conteos, accesibilidad gravitacional
+├─ pipelines/
+│  ├─ fase0.py            ingesta + informe
+│  └─ fase1.py            variables geoespaciales + diagnóstico
+├─ tests/                 38 pruebas
 └─ data/                  el lago (parquet); no se versiona
 ```
 
@@ -118,9 +164,9 @@ atlas/
 
 ## Siguientes fases
 
-1. **Features geoespaciales** — matriz **W** (`libpysal`), rezagos `Wy`/`WX`,
-   I de Moran, distancias e isócronas, accesibilidad gravitacional, delta de
-   accesibilidad por obra pública.
+*(Fase 1 completa: W, rezagos, Moran, LISA, accesibilidad. Falta de la Fase 1
+el delta de accesibilidad por obra pública, que necesita la capa de obras.)*
+
 2. **AVM + incertidumbre** — hedónico semi-log, SDM (`spreg`), MGWR, boosting de
    media y cuantiles, stacking, **CQR + Mondrian**, SHAP.
 3. **Temporal + campo de crecimiento** — índice SHF/ventas repetidas, VECM,

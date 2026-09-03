@@ -9,15 +9,21 @@ Y es un error silencioso: no revienta, sólo devuelve números equivocados.
 
 Por eso `a_metrico()` es el único camino para pasar a coordenadas proyectadas,
 y las funciones de distancia exigen que el GeoDataFrame ya venga proyectado.
+
+SOBRE EL RENDIMIENTO. La primera versión de este módulo recorría los pares
+origen×destino en Python. Con 16 mil celdas de malla y 351 mil establecimientos
+DENUE eso son miles de millones de comparaciones: el pipeline no terminaba.
+Ahora todo pasa por un árbol KD de scipy, que resuelve las mismas consultas en
+C y en segundos. Es la misma matemática, no una aproximación.
 """
 from __future__ import annotations
 
-import math
 from typing import Iterable
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+from scipy.spatial import cKDTree
 from shapely.geometry import Point
 
 from .config import Config, cargar
@@ -84,6 +90,15 @@ def puntos(
     return gpd.GeoDataFrame(d, geometry=geom, crs=cfg.crs_geografico)
 
 
+def _xy(gdf: gpd.GeoDataFrame, cfg: Config) -> np.ndarray:
+    """Coordenadas proyectadas como matriz (n, 2). Usa el centroide si son polígonos."""
+    m = a_metrico(gdf, cfg)
+    g = m.geometry
+    if not (g.geom_type == "Point").all():
+        g = g.representative_point()
+    return np.column_stack([g.x.to_numpy(), g.y.to_numpy()])
+
+
 # ---------------------------------------------------------------- distancias
 def haversine_m(lat1, lng1, lat2, lng2) -> np.ndarray:
     """
@@ -104,19 +119,16 @@ def distancia_al_mas_cercano(
 ) -> np.ndarray:
     """
     Metros al elemento más cercano de `destino`, para cada fila de `origen`.
-    Ambos se proyectan primero. Si `destino` viene vacío devuelve NaN, no cero:
-    "no hay ninguno" y "hay uno pegado" son cosas distintas.
+    Si `destino` viene vacío devuelve NaN, no cero: "no hay ninguno" y "hay uno
+    pegado" son cosas distintas y confundirlas envenena cualquier modelo.
     """
     cfg = cfg or cargar()
     if len(destino) == 0 or len(origen) == 0:
         return np.full(len(origen), np.nan)
-    o = a_metrico(origen, cfg)
-    d = a_metrico(destino, cfg)
-    unido = gpd.sjoin_nearest(
-        o[["geometry"]], d[["geometry"]], how="left", distance_col="_d"
-    )
-    # sjoin_nearest puede devolver empates (varios destinos a igual distancia).
-    return unido.groupby(level=0)["_d"].min().reindex(o.index).to_numpy()
+    o = _xy(origen, cfg)
+    d = _xy(destino, cfg)
+    dist, _ = cKDTree(d).query(o, k=1, workers=-1)
+    return np.asarray(dist, dtype=float)
 
 
 def conteo_en_radios(
@@ -127,33 +139,29 @@ def conteo_en_radios(
 ) -> pd.DataFrame:
     """
     Cuántos elementos de `destino` hay dentro de cada radio, por fila de origen.
-    Se resuelve con un árbol espacial: comparar todos contra todos sería
-    O(n·m) y aquí `destino` puede traer cientos de miles de puntos.
+
+    Se resuelve con consultas por bolas sobre un árbol KD, en bloques, que es
+    lo que permite contar sobre cientos de miles de puntos sin materializar
+    todos los pares ni quedarse sin memoria.
     """
     cfg = cfg or cargar()
     radios = sorted(float(r) for r in radios_m)
     salida = pd.DataFrame(index=origen.index)
-    if len(destino) == 0:
+    if len(destino) == 0 or len(origen) == 0:
         for r in radios:
             salida[f"n_{int(r)}m"] = 0
         return salida
 
-    o = a_metrico(origen, cfg)
-    d = a_metrico(destino, cfg)
-    arbol = d.sindex
-    xs = o.geometry.x.to_numpy()
-    ys = o.geometry.y.to_numpy()
-    dx = d.geometry.x.to_numpy()
-    dy = d.geometry.y.to_numpy()
-
+    ao = cKDTree(_xy(origen, cfg))
+    ad = cKDTree(_xy(destino, cfg))
     for r in radios:
-        cuenta = np.zeros(len(o), dtype=np.int32)
-        # Primero la caja (barato), después la distancia exacta (caro).
-        cajas = arbol.query(o.geometry.buffer(r), predicate="intersects")
-        if cajas.size:
-            for i, j in zip(cajas[0], cajas[1]):
-                if (xs[i] - dx[j]) ** 2 + (ys[i] - dy[j]) ** 2 <= r * r:
-                    cuenta[i] += 1
+        # count_neighbors agrega sobre todo el árbol; para el conteo POR FILA
+        # hace falta la consulta por bolas. Va en bloques para acotar memoria.
+        cuenta = np.empty(len(origen), dtype=np.int32)
+        paso = 4000
+        for i in range(0, len(origen), paso):
+            vecinos = ad.query_ball_point(ao.data[i:i + paso], r=r, workers=-1)
+            cuenta[i:i + paso] = [len(v) for v in vecinos]
         salida[f"n_{int(r)}m"] = cuenta
     return salida
 
@@ -173,22 +181,31 @@ def accesibilidad_gravitacional(
     `piso_m` evita que un destino encima del origen mande el índice a infinito.
     `corte_m` acota la suma: más allá el término es despreciable y el coste
     computacional no lo es.
+
+    Se resuelve con `sparse_distance_matrix`, que devuelve sólo los pares
+    dentro del corte. Con 16k orígenes y 351k destinos los pares completos
+    serían 5.6 mil millones; dentro de 5 km son unos pocos millones.
     """
     cfg = cfg or cargar()
     if len(destino) == 0 or len(origen) == 0:
         return np.zeros(len(origen))
-    o = a_metrico(origen, cfg)
-    d = a_metrico(destino, cfg)
+    o = _xy(origen, cfg)
+    d = _xy(destino, cfg)
     w = np.ones(len(d)) if atractivo is None else np.asarray(atractivo, dtype=float)
+    w = np.nan_to_num(w, nan=1.0)
 
-    xs, ys = o.geometry.x.to_numpy(), o.geometry.y.to_numpy()
-    dx, dy = d.geometry.x.to_numpy(), d.geometry.y.to_numpy()
+    ao, ad = cKDTree(o), cKDTree(d)
     acc = np.zeros(len(o))
-    pares = d.sindex.query(o.geometry.buffer(corte_m), predicate="intersects")
-    if pares.size:
-        for i, j in zip(pares[0], pares[1]):
-            dist = math.hypot(xs[i] - dx[j], ys[i] - dy[j])
-            acc[i] += w[j] / max(dist, piso_m) ** beta
+    # Por bloques de origen: la matriz dispersa completa puede ser grande.
+    paso = 4000
+    for i in range(0, len(o), paso):
+        sub = cKDTree(o[i:i + paso])
+        m = sub.sparse_distance_matrix(ad, max_distance=corte_m, output_type="coo_matrix")
+        if m.nnz == 0:
+            continue
+        dist = np.maximum(m.data, piso_m)
+        aporte = w[m.col] / dist ** beta
+        acc[i:i + paso] = np.bincount(m.row, weights=aporte, minlength=min(paso, len(o) - i))
     return acc
 
 
@@ -198,8 +215,9 @@ def a_h3(gdf: gpd.GeoDataFrame, resolucion: int) -> pd.Series:
     import h3
 
     g = a_geografico(gdf)
+    pts = g.geometry.representative_point() if not (g.geometry.geom_type == "Point").all() else g.geometry
     return pd.Series(
-        [h3.latlng_to_cell(p.y, p.x, resolucion) for p in g.geometry],
+        [h3.latlng_to_cell(p.y, p.x, resolucion) for p in pts],
         index=gdf.index,
         dtype="string",
     )
