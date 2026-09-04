@@ -74,6 +74,28 @@ def banda(X: pd.DataFrame, y: pd.Series, alpha: float, semilla: int):
     )
 
 
+# La dispersión se ajusta MÁS SUAVE que la media, y no por descuido.
+#
+# σ̂ es un parámetro de estorbo: su trabajo no es acertar sino dar la FORMA del
+# ancho. Y el ruido en σ̂ sale carísimo. Medido en simulación: con la misma
+# cobertura, una σ̂ ruidosa infla la corrección conforme de 1.92 a 3.44 y casi
+# DUPLICA el ancho del intervalo. El mecanismo es que el score |y−ŷ|/σ̂ tiene
+# colas gruesas cuando σ̂ se equivoca hacia abajo, y unos pocos puntos así
+# arrastran el cuantil conforme —que luego se le aplica a todo el mundo—.
+#
+# Se vio en producción: al pasar de 56 a 137 variables el error puntual mejoró
+# (mediana 24.7% → 22.0%) y el intervalo se ENSANCHÓ (±107% → ±126%), porque
+# σ̂ con 137 variables y 953 filas se volvió más ruidosa.
+DISPERSION = dict(
+    learning_rate=0.05,
+    max_iter=200,
+    max_leaf_nodes=7,
+    min_samples_leaf=40,
+    l2_regularization=5.0,
+    early_stopping=False,
+)
+
+
 def dispersion(X: pd.DataFrame, y: pd.Series, pred_fuera: np.ndarray,
                semilla: int, piso: float = 0.02):
     """
@@ -97,19 +119,35 @@ def dispersion(X: pd.DataFrame, y: pd.Series, pred_fuera: np.ndarray,
     """
     r = np.abs(np.asarray(y, float) - np.asarray(pred_fuera, float))
     ok = np.isfinite(r)
-    m = HistGradientBoostingRegressor(random_state=int(semilla), **BASE)
+    m = HistGradientBoostingRegressor(random_state=int(semilla), **DISPERSION)
     m.fit(X[ok], np.log(r[ok] + piso))
-    return _Dispersion(m, piso)
+    return _Dispersion(m, piso, escala=float(np.median(r[ok])))
 
 
 class _Dispersion:
-    """Envuelve el modelo para deshacer el logaritmo y poner un piso."""
+    """
+    Envuelve el modelo para deshacer el logaritmo y estabilizar la predicción.
 
-    def __init__(self, modelo, piso: float):
-        self.modelo, self.piso = modelo, piso
+    `gamma` es la estabilización aditiva de Lei, G'Sell, Rinaldo, Tibshirani y
+    Wasserman (2018): el score se calcula sobre σ̂(x) + γ en vez de σ̂(x) a secas.
+    Con γ = 0 el intervalo es todo lo adaptativo que σ̂ permita, y también todo
+    lo frágil: donde σ̂ se equivoca hacia abajo, el score explota y arrastra el
+    cuantil conforme para todos. Con γ grande el intervalo tiende al de ancho
+    constante: estable y poco informativo. γ se ELIGE midiendo (ver
+    `conforme.elegir_estabilizador`), no a ojo.
+
+    `escala` es la mediana de |residual| en entrenamiento, y sirve para que γ se
+    exprese en múltiplos de ella: así el mismo valor significa lo mismo en venta
+    y en renta, cuyos residuales viven en escalas distintas.
+    """
+
+    def __init__(self, modelo, piso: float, escala: float, gamma: float = 0.0):
+        self.modelo, self.piso, self.escala = modelo, piso, max(escala, 1e-6)
+        self.gamma = float(gamma)
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
-        return np.maximum(np.exp(self.modelo.predict(X)) - self.piso, 1e-4)
+        base = np.maximum(np.exp(self.modelo.predict(X)) - self.piso, 1e-4)
+        return base + self.gamma * self.escala
 
 
 def fuera_de_muestra_por_bloque(

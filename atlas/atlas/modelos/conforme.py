@@ -241,6 +241,47 @@ def calibrar_normalizado(
     return calibrar_desde_scores(E, alpha, grupos_cal, minimo_por_grupo)
 
 
+def elegir_estabilizador(
+    y: np.ndarray,
+    pred: np.ndarray,
+    dispersion,
+    X,
+    alpha: float,
+    candidatos: tuple[float, ...] = (0.0, 0.1, 0.25, 0.5, 1.0, 2.0, 4.0),
+) -> float:
+    """
+    Elige γ, la estabilización de σ̂, por el ancho que produce.
+
+    Los dos extremos son malos y por razones opuestas: con γ=0 el intervalo es
+    todo lo adaptativo que σ̂ permita y también todo lo frágil —donde σ̂ se
+    queda corta, el score explota y arrastra el cuantil conforme para todo el
+    mundo—; con γ grande el ancho se vuelve casi constante y deja de decir dónde
+    el modelo sabe menos. En medio hay un mínimo, y se encuentra midiendo.
+
+    Todos los γ dan intervalos VÁLIDOS: la garantía conforme no depende de σ̂.
+    Así que elegir por ancho no compromete la cobertura, sólo la eficiencia, y
+    por eso se puede elegir sin miedo.
+
+    Se elige sobre datos FUERA DE MUESTRA del entrenamiento, nunca sobre el
+    conjunto de calibración ni el de prueba.
+    """
+    y = np.asarray(y, float)
+    pred = np.asarray(pred, float)
+    ok = np.isfinite(y) & np.isfinite(pred)
+    mejor, mejor_ancho = 0.0, float("inf")
+    for g in candidatos:
+        dispersion.gamma = float(g)
+        s = np.maximum(dispersion.predict(X), 1e-9)[ok]
+        q = _cuantil_conforme(np.abs(y[ok] - pred[ok]) / s, alpha)
+        if not np.isfinite(q):
+            continue
+        ancho = float(np.median(2.0 * q * s))
+        if ancho < mejor_ancho:
+            mejor, mejor_ancho = float(g), ancho
+    dispersion.gamma = mejor
+    return mejor
+
+
 def aplicar_normalizado(
     pred: np.ndarray, sigma: np.ndarray, c: Conformal, grupos: pd.Series | None = None
 ) -> tuple[np.ndarray, np.ndarray]:

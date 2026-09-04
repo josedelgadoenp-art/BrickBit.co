@@ -137,6 +137,12 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     _linea("· Modelo de dispersión (para el intervalo adaptativo)…")
     fuera_apilado = ap.predecir({"boosting": fuera_boost, "hedonico": fuera_ols})
     m_sigma = arboles.dispersion(Xtr, ytr, fuera_apilado, semilla)
+    # γ se elige sobre las predicciones FUERA DE MUESTRA del entrenamiento, que
+    # el conjunto de calibración no ha tocado. Todos los γ dan intervalos
+    # válidos —la garantía no depende de σ̂—, así que elegir por ancho no
+    # compromete la cobertura, sólo mejora la eficiencia.
+    gamma = conforme.elegir_estabilizador(ytr.to_numpy(), fuera_apilado, m_sigma, Xtr, alpha)
+    _linea(f"    estabilizador γ = {gamma:g} × la mediana de |residual|")
 
     def predecir(X: pd.DataFrame) -> np.ndarray:
         return ap.predecir({

@@ -108,6 +108,18 @@ y el intervalo se abre— y de regalo permite cambiar el nivel de confianza sin
 reentrenar nada: es otro cuantil de los mismos scores. El informe imprime la
 tabla de qué cuesta cada nivel (50 / 80 / 90 / 95%).
 
+**El ruido en σ̂ se paga en ancho, y no compra cobertura.** Medido en simulación:
+con la misma cobertura, una σ̂ ruidosa infla la corrección conforme de 1.92 a
+3.44 y casi DUPLICA el ancho. Se vio en producción cuando entró OSM: el error
+puntual mejoró (mediana 24.7% → 22.0%) y el intervalo se ENSANCHÓ (±107% →
+±126%), porque σ̂ con 137 variables y 953 filas se volvió más ruidosa. Dos
+remedios: σ̂ se ajusta con un modelo más suave que la media —es un parámetro de
+estorbo, su trabajo es la FORMA del ancho, no acertar— y el score se calcula
+sobre σ̂(x) + γ, la estabilización aditiva de Lei et al. (2018). γ se elige
+midiendo el ancho sobre datos fuera de muestra del entrenamiento. Se puede
+elegir por ancho sin miedo porque **todos los γ dan intervalos válidos**: la
+garantía no depende de que σ̂ sea correcta.
+
 Lo que NO se recupera con método es el resto: el modelo se equivoca ~25% en la
 mediana, y un intervalo honesto sobre ese error tiene que ser ancho. Eso se
 estrecha con más inventario y mejores atributos.
@@ -303,7 +315,7 @@ atlas/
 │  ├─ fase0.py            ingesta + informe
 │  ├─ fase1.py            variables geoespaciales + diagnóstico
 │  └─ fase2.py            AVM + incertidumbre calibrada
-├─ tests/                 61 pruebas
+├─ tests/                 63 pruebas
 └─ data/                  el lago (parquet); no se versiona
 ```
 

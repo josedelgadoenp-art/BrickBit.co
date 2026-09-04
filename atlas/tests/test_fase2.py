@@ -377,3 +377,59 @@ def test_la_dispersion_se_ajusta_fuera_de_muestra():
     y = pd.Series(rng.normal(size=300))
     s = arboles.dispersion(X, y, y.to_numpy() + rng.normal(0, 1, 300), semilla=0)
     assert (s.predict(X) > 0).all(), "una dispersión negativa no significa nada"
+
+
+def test_el_estabilizador_estrecha_el_intervalo_cuando_sigma_es_ruidosa():
+    """
+    El bug que congela, medido en simulación: con la MISMA cobertura, una σ̂
+    ruidosa infla la corrección conforme de 1.92 a 3.44 y casi DUPLICA el ancho.
+    El mecanismo es que el score |y−ŷ|/σ̂ tiene colas gruesas donde σ̂ se queda
+    corta, y unos pocos puntos así arrastran el cuantil, que luego se le aplica
+    a todo el mundo.
+
+    Se vio en producción: al pasar de 56 a 137 variables el error puntual mejoró
+    (mediana 24.7% → 22.0%) y el intervalo se ENSANCHÓ (±107% → ±126%).
+    """
+    rng = np.random.default_rng(41)
+    n = 2000
+    sig_real = np.exp(rng.normal(0, 0.5, n))
+    y = rng.normal(0, 1, n) * sig_real
+    pred = np.zeros(n)
+    # σ̂ ruidosa: acierta la forma pero con error multiplicativo grande.
+    sigma_ruidosa = sig_real * np.exp(rng.normal(0, 0.8, n))
+    escala = float(np.median(np.abs(y)))
+
+    def ancho_y_cobertura(gamma):
+        s = sigma_ruidosa + gamma * escala
+        cal, pru = slice(0, 1000), slice(1000, n)
+        c = conforme.calibrar_normalizado(y[cal], pred[cal], s[cal], ALPHA)
+        lo, hi = conforme.aplicar_normalizado(pred[pru], s[pru], c)
+        dentro = (y[pru] >= lo) & (y[pru] <= hi)
+        return float(np.median(hi - lo)), float(dentro.mean())
+
+    ancho0, cob0 = ancho_y_cobertura(0.0)
+    ancho1, cob1 = ancho_y_cobertura(1.0)
+    assert ancho1 < ancho0, "estabilizar debe estrechar cuando σ̂ es ruidosa"
+    # Y sin perder cobertura: la garantía no depende de σ̂, así que estabilizar
+    # compra estrechez sin pagar validez.
+    assert cob1 >= 1 - ALPHA - 0.03 and cob0 >= 1 - ALPHA - 0.03
+
+
+def test_todos_los_gammas_dan_intervalos_validos():
+    """
+    Es la razón por la que γ se puede elegir por ancho sin miedo: la garantía
+    conforme no depende de que σ̂ sea correcta. Si σ̂ fuera basura, el intervalo
+    saldría ancho pero seguiría cubriendo.
+    """
+    rng = np.random.default_rng(43)
+    n = 2000
+    y = rng.normal(0, 1, n)
+    pred = np.zeros(n)
+    basura = np.exp(rng.normal(0, 2, n))        # σ̂ sin ninguna relación con y
+    cal, pru = slice(0, 1000), slice(1000, n)
+    for gamma in (0.0, 0.5, 4.0):
+        s = basura + gamma
+        c = conforme.calibrar_normalizado(y[cal], pred[cal], s[cal], ALPHA)
+        lo, hi = conforme.aplicar_normalizado(pred[pru], s[pru], c)
+        cob = float(((y[pru] >= lo) & (y[pru] <= hi)).mean())
+        assert cob >= 1 - ALPHA - 0.03, f"γ={gamma} rompió la cobertura ({cob:.3f})"
