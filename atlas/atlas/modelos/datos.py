@@ -209,7 +209,7 @@ def ensamblar(cfg: Config | None = None, operacion: str = "venta") -> Datos:
 def particion(
     bloque: pd.Series,
     cfg: Config | None = None,
-    fracciones: tuple[float, float, float] = (0.6, 0.2, 0.2),
+    fracciones: tuple[float, float, float] | None = None,
 ) -> dict[str, np.ndarray]:
     """
     Reparte los BLOQUES —no las filas— en entrenamiento, calibración y prueba.
@@ -224,6 +224,8 @@ def particion(
     conforme sólo tiene garantía si se calibra con datos que el modelo nunca vio.
     """
     cfg = cfg or cargar()
+    if fracciones is None:
+        fracciones = tuple(cfg["modelado"]["validacion"].get("fracciones", (0.6, 0.2, 0.2)))
     rng = np.random.default_rng(int(cfg.semilla))
     tam = bloque.value_counts()
     orden = tam.index.to_numpy()

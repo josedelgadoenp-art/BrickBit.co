@@ -244,8 +244,8 @@ def calibrar_normalizado(
 def elegir_estabilizador(
     y: np.ndarray,
     pred: np.ndarray,
-    dispersion,
-    X,
+    sigma_fuera: np.ndarray,
+    escala: float,
     alpha: float,
     candidatos: tuple[float, ...] = (0.0, 0.1, 0.25, 0.5, 1.0, 2.0, 4.0),
 ) -> float:
@@ -262,23 +262,29 @@ def elegir_estabilizador(
     Así que elegir por ancho no compromete la cobertura, sólo la eficiencia, y
     por eso se puede elegir sin miedo.
 
+    `sigma_fuera` TIENE que venir de una σ̂ que no vio esas filas. Si σ̂ se
+    juzgara sobre los datos con los que se ajustó, acertaría por construcción y
+    γ=0 ganaría siempre —fue exactamente el error de la primera versión, y en
+    producción costó una cobertura del 98.4% contra un 95% pedido—.
+
     Se elige sobre datos FUERA DE MUESTRA del entrenamiento, nunca sobre el
     conjunto de calibración ni el de prueba.
     """
     y = np.asarray(y, float)
     pred = np.asarray(pred, float)
-    ok = np.isfinite(y) & np.isfinite(pred)
+    s0 = np.asarray(sigma_fuera, float)
+    ok = np.isfinite(y) & np.isfinite(pred) & np.isfinite(s0)
+    if not ok.any():
+        return 0.0
     mejor, mejor_ancho = 0.0, float("inf")
     for g in candidatos:
-        dispersion.gamma = float(g)
-        s = np.maximum(dispersion.predict(X), 1e-9)[ok]
+        s = np.maximum(s0[ok] + float(g) * escala, 1e-9)
         q = _cuantil_conforme(np.abs(y[ok] - pred[ok]) / s, alpha)
         if not np.isfinite(q):
             continue
         ancho = float(np.median(2.0 * q * s))
         if ancho < mejor_ancho:
             mejor, mejor_ancho = float(g), ancho
-    dispersion.gamma = mejor
     return mejor
 
 

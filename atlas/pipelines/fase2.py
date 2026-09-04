@@ -141,7 +141,11 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     # el conjunto de calibración no ha tocado. Todos los γ dan intervalos
     # válidos —la garantía no depende de σ̂—, así que elegir por ancho no
     # compromete la cobertura, sólo mejora la eficiencia.
-    gamma = conforme.elegir_estabilizador(ytr.to_numpy(), fuera_apilado, m_sigma, Xtr, alpha)
+    sigma_fuera = arboles.dispersion_fuera_de_muestra(
+        Xtr, ytr, fuera_apilado, d.bloque[p["entrena"]], semilla)
+    gamma = conforme.elegir_estabilizador(
+        ytr.to_numpy(), fuera_apilado, sigma_fuera, m_sigma.escala, alpha)
+    m_sigma.gamma = gamma
     _linea(f"    estabilizador γ = {gamma:g} × la mediana de |residual|")
 
     def predecir(X: pd.DataFrame) -> np.ndarray:

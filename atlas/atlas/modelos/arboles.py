@@ -150,6 +150,37 @@ class _Dispersion:
         return base + self.gamma * self.escala
 
 
+def dispersion_fuera_de_muestra(
+    X: pd.DataFrame, y: pd.Series, pred_fuera: np.ndarray, bloque: pd.Series,
+    semilla: int, n_pliegues: int = 5,
+) -> np.ndarray:
+    """
+    σ̂ evaluada sobre datos que el propio modelo de σ̂ no vio.
+
+    Existe para elegir γ sin que σ̂ SE JUZGUE A SÍ MISMA. La primera versión
+    elegía γ midiendo el ancho sobre las predicciones fuera de muestra del
+    entrenamiento —pero σ̂ se había ajustado sobre esos mismos residuales—. En
+    esos datos σ̂ acierta por construcción, así que γ=0 salía siempre ganador; y
+    después, en barrios nuevos, σ̂ se quedaba corta y la corrección conforme se
+    disparaba. Medido en producción: γ=0 elegido, corrección 4.35, cobertura
+    98.4% contra un 95% pedido. Sobrecubrir no es prudencia: es ancho tirado.
+
+    Con los bloques espaciales como grupos, además, la evaluación imita la
+    condición real: σ̂ se juzga en barrios que no vio.
+    """
+    from sklearn.model_selection import GroupKFold
+
+    g = bloque.to_numpy()
+    k = int(min(n_pliegues, pd.Series(g).nunique()))
+    if k < 2:
+        raise ValueError("Hacen falta al menos 2 bloques para evaluar σ̂ fuera de muestra.")
+    sigma = np.full(len(y), np.nan)
+    for tr, va in GroupKFold(n_splits=k).split(X, y, groups=g):
+        m = dispersion(X.iloc[tr], y.iloc[tr], np.asarray(pred_fuera)[tr], semilla)
+        sigma[va] = m.predict(X.iloc[va])
+    return sigma
+
+
 def fuera_de_muestra_por_bloque(
     X: pd.DataFrame, y: pd.Series, bloque: pd.Series, semilla: int, n_pliegues: int = 5
 ) -> np.ndarray:

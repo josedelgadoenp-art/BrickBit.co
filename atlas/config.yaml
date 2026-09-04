@@ -104,7 +104,13 @@ modelado:
     k_candidatos: [5, 8, 10, 15]
   validacion:
     bloques_espaciales_h3: 6   # resolución H3 de los bloques disjuntos
-    fraccion_calibracion: 0.2
+    # Reparto de los BLOQUES entre entrenamiento, calibración y prueba.
+    # Con pocos bloques la calibración es la que más sufre: el cuantil conforme
+    # con 7 bloques trae mucho ruido de muestreo y la cobertura se desvía del
+    # objetivo en cualquiera de las dos direcciones. Si el informe reporta
+    # sobrecobertura persistente, subir `calibra` a costa de `entrena` suele
+    # estrechar el intervalo; se paga con algo más de error puntual.
+    fracciones: [0.60, 0.20, 0.20]   # entrena · calibra · prueba
   h3:
     resolucion_malla: 9        # ~174 m de arista; la "tela"
     resolucion_bloques: 6
