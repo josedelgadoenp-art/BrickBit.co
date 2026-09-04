@@ -91,6 +91,8 @@ class Conformal:
     por_grupo: dict[str, float] = field(default_factory=dict)
     n_por_grupo: dict[str, int] = field(default_factory=dict)
     grupos_sin_calibrar: list[str] = field(default_factory=list)
+    pool: float | None = None                       # corrección del cubo de chicos
+    grupos_en_pool: list[str] = field(default_factory=list)
 
     def correccion(self, grupos: pd.Series | None) -> np.ndarray:
         """
@@ -106,9 +108,15 @@ class Conformal:
         filas = [f"    global{'':<24} {self.global_:+.4f}"]
         for g, q in sorted(self.por_grupo.items(), key=lambda kv: -self.n_por_grupo.get(kv[0], 0)):
             filas.append(f"    {g:<30} {q:+.4f}   n={self.n_por_grupo.get(g, 0):,}")
+        if self.grupos_en_pool:
+            filas.append(
+                f"    agrupados y calibrados juntos ({self.pool:+.4f}): "
+                + ", ".join(self.grupos_en_pool)
+            )
         if self.grupos_sin_calibrar:
             filas.append(
-                f"    sin calibrar (usan la global): {', '.join(self.grupos_sin_calibrar)}"
+                f"    ⚠ sin calibrar, usan la global y NO tienen garantía propia: "
+                + ", ".join(self.grupos_sin_calibrar)
             )
         return "\n".join(filas)
 
@@ -136,18 +144,38 @@ def calibrar(
     if grupos_cal is None:
         return c
     g = pd.Series(grupos_cal).astype(str).to_numpy()
+
+    chicos = []
     for nombre in pd.unique(g):
         sel = g == nombre
         n = int(sel.sum())
-        if n < minimo_por_grupo:
-            c.grupos_sin_calibrar.append(f"{nombre} (n={n})")
-            continue
+        q = _cuantil_conforme(E[sel], alpha) if n >= minimo_por_grupo else float("inf")
+        if np.isfinite(q):
+            c.por_grupo[nombre] = q
+            c.n_por_grupo[nombre] = n
+        else:
+            chicos.append(nombre)
+
+    # LOS GRUPOS CHICOS SE JUNTAN Y SE CALIBRAN COMO UNO, en vez de caer a la
+    # corrección global. Es la diferencia entre tener garantía y no tenerla: la
+    # global la dominan los grupos numerosos, así que aplicarla a un segmento
+    # atípico da un intervalo que no cubre. Medido sobre datos reales, el grupo
+    # `depto·barato` —12 inmuebles en calibración, sin calibrar— cubrió 69.6%
+    # cuando prometía 95%. Un intervalo del 95% que cubre 70% no es un intervalo
+    # del 95%. Al agrupar los chicos en un solo cubo, ese cubo sí tiene bastantes
+    # observaciones para una corrección conforme válida sobre su unión.
+    if chicos:
+        sel = np.isin(g, chicos)
+        n = int(sel.sum())
         q = _cuantil_conforme(E[sel], alpha)
-        if not np.isfinite(q):
-            c.grupos_sin_calibrar.append(f"{nombre} (n={n})")
-            continue
-        c.por_grupo[nombre] = q
-        c.n_por_grupo[nombre] = n
+        if np.isfinite(q) and n >= minimo_por_grupo:
+            for nombre in chicos:
+                c.por_grupo[nombre] = q
+                c.n_por_grupo[nombre] = int((g == nombre).sum())
+            c.pool = q
+            c.grupos_en_pool = list(chicos)
+        else:
+            c.grupos_sin_calibrar = [f"{x} (n={int((g == x).sum())})" for x in chicos]
     return c
 
 

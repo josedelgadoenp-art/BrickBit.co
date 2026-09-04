@@ -84,12 +84,33 @@ Junta los listados con la malla, parte **por bloque espacial**, ajusta hedónico
 intervalo con cobertura garantizada.
 
 **Lo que hay que mirar primero es la cobertura, no el error.** Un AVM que se
-equivoca 20% y lo dice sirve; uno que se equivoca 12% y no lo dice, no. En el
-banco de pruebas sintético la conformalización subió la cobertura de **77.8% a
-96.1%** sobre un objetivo de 95%: no estaba afinando un intervalo casi bueno,
-estaba arreglando uno que cubría mucho menos de lo que prometía.
+equivoca 20% y lo dice sirve; uno que se equivoca 12% y no lo dice, no. Sobre
+los datos reales de la CDMX la conformalización subió la cobertura de **77.7% a
+97.8%** contra un objetivo de 95%: no estaba afinando un intervalo casi bueno,
+estaba arreglando uno que cubría tres cuartas partes de lo que prometía.
 
-Cuatro decisiones que conviene conocer, todas encontradas midiendo:
+**Pero cubrir no es servir**, y el informe lo dice cuando toca. En la primera
+corrida real el ancho mediano salió de **±143%**, que es un intervalo con la
+garantía perfecta y sin utilidad para decidir. El motivo no es el método: es que
+el modelo se equivoca ~24% en la mediana, y un intervalo honesto sobre un error
+así TIENE que ser ancho. Se estrecha con más inventario y mejores atributos, no
+apretando el intervalo.
+
+Lo que sí midió bien la primera corrida real:
+
+| | |
+|---|---|
+| I de Moran del **precio** | **0.444** (p=0.001) con knn(5) |
+| SDM · ρ | **+0.377** (p = 4.8e-21), pseudo R² 0.574 |
+| Error del apilado en prueba | mediana 23.9% · dentro de ±20%: 43.7% |
+
+El ρ de 0.38 con esa significancia es el hallazgo de fondo de la fase: el precio
+de un inmueble en la CDMX depende materialmente del de sus vecinos, y un modelo
+sin componente espacial estaría mal especificado. Ya no es un supuesto heredado
+de la Fase 1 —que se midió sobre densidad de empleo—, es una medición sobre
+precios.
+
+Decisiones que conviene conocer, todas encontradas midiendo:
 
 - **El segmento de Mondrian sale de la PREDICCIÓN, no del precio real.** Al
   valuar un inmueble su precio es justamente lo que no se sabe; un grupo que
@@ -105,10 +126,28 @@ Cuatro decisiones que conviene conocer, todas encontradas midiendo:
   de rezago no converge: medido, daba ρ = −0.93 con pseudo R² de 0.002, que no
   es un hallazgo económico sino un síntoma numérico. Con KNN: ρ = +0.21
   (p = 0.007), pseudo R² = 0.36.
-- **El diseño se pasa por QR pivotante.** Aunque el núcleo del hedónico esté
-  elegido a mano, en unos datos concretos dos variables pueden salir
-  dependientes y statsmodels devuelve coeficientes indeterminados con un aviso
-  fácil de ignorar. Se detectan y se quitan.
+- **El diseño se pasa por QR pivotante y después por VIF.** El QR sólo ve
+  dependencias EXACTAS; la colinealidad real es casi-exacta y pasaba entera. En
+  los datos de la CDMX salieron `dist_servicios_m` en −0.91 y `dist_abasto_m` en
+  +0.78 —dos variables que miden casi lo mismo, con signos opuestos— y el
+  hedónico se derrumbó de R²=0.456 dentro de muestra a **R²=0.002 fuera**. No es
+  sobreajuste: unos coeficientes que se cancelan entre sí no transfieren a otro
+  barrio.
+- **Interpretar y predecir son dos trabajos, y se hacen con dos herramientas.**
+  Para LEER el modelo, OLS sobre variables podadas por VIF, con errores robustos.
+  Para PREDECIR, cresta con el α elegido por validación cruzada espacial: la
+  penalización reparte el peso entre variables colineales en vez de dárselo todo
+  a una con signo arbitrario.
+- **Los grupos chicos de Mondrian se juntan y se calibran juntos**, en vez de
+  caer a la corrección global. La global la dominan los segmentos numerosos:
+  medido, `depto·barato` —12 inmuebles en calibración— cubrió **69.6%** cuando
+  prometía 95%. Un intervalo del 95% que cubre 70% no es un intervalo del 95%.
+- **La categoría de referencia no es "otro".** La fila sin ninguna indicadora
+  encendida es la categoría que se dejó fuera del diseño. En los datos reales
+  resultó ser `casa`, y las 144 casas de la calibración salían en el informe
+  como "otro" mientras el segmento `casa` no existía. Se detectó porque la
+  salida traía depto, otro y terreno y ninguna casa, que en un inventario
+  inmobiliario es imposible.
 
 ### Cobertura de la CDMX: siete alcaldías con ruta rota
 
@@ -240,7 +279,7 @@ atlas/
 │  ├─ fase0.py            ingesta + informe
 │  ├─ fase1.py            variables geoespaciales + diagnóstico
 │  └─ fase2.py            AVM + incertidumbre calibrada
-├─ tests/                 55 pruebas
+├─ tests/                 58 pruebas
 └─ data/                  el lago (parquet); no se versiona
 ```
 

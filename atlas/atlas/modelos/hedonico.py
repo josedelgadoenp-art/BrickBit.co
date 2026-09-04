@@ -81,6 +81,75 @@ def _qr_pivotante(Z: np.ndarray):
     return qr(Z, mode="economic", pivoting=True)
 
 
+def podar_por_vif(Z: np.ndarray, nombres: list[str], umbral: float = 10.0):
+    """
+    Quita variables hasta que ninguna tenga un factor de inflación de varianza
+    por encima de `umbral`.
+
+    POR QUÉ NO BASTABA EL FILTRO DE RANGO. El QR pivotante sólo detecta
+    dependencias EXACTAS. La colinealidad real es casi-exacta y pasa entera por
+    ese filtro. Medido sobre los datos de la CDMX: `dist_servicios_m` salió con
+    −0.91 y `dist_abasto_m` con +0.78 —dos variables que miden prácticamente lo
+    mismo, con signos opuestos y magnitudes enormes—, y el hedónico pasó de
+    R²=0.456 dentro de muestra a **R²=0.002 fuera**. No es sobreajuste: es que
+    unos coeficientes que se cancelan entre sí no transfieren a otro barrio.
+
+    El VIF de la variable j es 1/(1−R²_j), donde R²_j sale de regresarla contra
+    las demás; con las columnas estandarizadas es el elemento j de la diagonal
+    de la inversa de la matriz de correlación. Un VIF de 10 significa que su
+    error estándar está inflado más de tres veces.
+    """
+    Z = np.asarray(Z, dtype=float)
+    vivos = list(range(Z.shape[1]))
+    fuera: list[str] = []
+    while len(vivos) > 1:
+        M = Z[:, vivos]
+        R = np.corrcoef(M, rowvar=False)
+        R = np.nan_to_num(R, nan=0.0)
+        try:
+            vif = np.diag(np.linalg.pinv(R))
+        except np.linalg.LinAlgError:
+            break
+        peor = int(np.argmax(vif))
+        if not np.isfinite(vif[peor]) or vif[peor] <= umbral:
+            break
+        fuera.append(nombres[vivos[peor]])
+        vivos.pop(peor)
+    return Z[:, vivos], [nombres[i] for i in vivos], fuera
+
+
+def ridge_por_bloque(X: pd.DataFrame, y: pd.Series, bloque: pd.Series,
+                     columnas: list[str] | None = None):
+    """
+    Hedónico regularizado, para PREDECIR (no para interpretar).
+
+    Interpretar y predecir son dos trabajos distintos y aquí se hacen con dos
+    herramientas distintas, a propósito:
+
+      · para LEER el modelo → OLS sobre variables podadas por VIF, con errores
+        robustos. Coeficientes pocos, estables y con un significado defendible.
+      · para PREDECIR → cresta sobre el núcleo completo. La penalización reparte
+        el peso entre variables colineales en vez de dárselo todo a una con
+        signo arbitrario, y así el ajuste sí transfiere a un barrio que el
+        modelo no vio.
+
+    El α se elige por validación cruzada POR BLOQUE ESPACIAL, no al azar: si se
+    eligiera al azar, la regularización se calibraría contra vecinos filtrados y
+    saldría demasiado floja justo donde hace falta.
+    """
+    from sklearn.linear_model import RidgeCV
+    from sklearn.model_selection import GroupKFold
+
+    cols = columnas or columnas_nucleo(X)
+    prep = preparador()
+    Z = prep.fit_transform(X[cols])
+    k = int(min(5, pd.Series(bloque).nunique()))
+    cv = GroupKFold(n_splits=k).split(Z, y, groups=bloque.to_numpy()) if k >= 2 else None
+    m = RidgeCV(alphas=np.logspace(-2, 4, 25), cv=list(cv) if cv is not None else None)
+    m.fit(Z, y)
+    return prep, m, cols
+
+
 def preparador() -> Pipeline:
     """
     Imputa por mediana y estandariza.
@@ -113,6 +182,10 @@ class ResultadoOLS:
             f"    {r.variable:<22} {r.coef:+8.4f}  p={r.p:.3g}"
             for r in c.itertuples()
         ]
+        if self.quitadas:
+            filas.append(f"    ({len(self.quitadas)} variables fuera por colinealidad: "
+                         + ", ".join(self.quitadas[:6])
+                         + ("…" if len(self.quitadas) > 6 else "") + ")")
         return "\n".join(filas)
 
 
@@ -135,6 +208,9 @@ def ols(X: pd.DataFrame, y: pd.Series, columnas: list[str] | None = None) -> Res
     # terreno—. Sin esto statsmodels avisa con SingularMatrixWarning y devuelve
     # coeficientes indeterminados que se leerían como si significaran algo.
     Z, cols, quitadas = _rango_completo(Z, list(cols))
+    # Y después la colinealidad casi-exacta, que el filtro de rango no ve.
+    Z, cols, por_vif = podar_por_vif(Z, list(cols))
+    quitadas = list(quitadas) + por_vif
     Z = sm.add_constant(Z, has_constant="add")
     m = sm.OLS(np.asarray(y, dtype=float), Z).fit(cov_type="HC1")
 

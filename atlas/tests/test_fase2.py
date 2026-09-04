@@ -232,3 +232,85 @@ def test_las_fracciones_quedan_cerca_de_lo_pedido():
     n = len(bloque)
     assert abs(p["entrena"].sum() / n - 0.6) < 0.12
     assert abs(p["prueba"].sum() / n - 0.2) < 0.12
+
+
+# ------------------------------------ los bugs que destapó la primera corrida real
+def test_los_grupos_chicos_se_agrupan_y_se_calibran_juntos():
+    """
+    El bug que congela, encontrado sobre datos reales de la CDMX: el segmento
+    `depto·barato` tenía 12 inmuebles en calibración, quedó sin calibrar, cayó a
+    la corrección global —dominada por los grupos numerosos— y cubrió **69.6%**
+    cuando prometía 95%. Ahora los chicos se juntan en un cubo que sí tiene
+    observaciones suficientes para una corrección válida sobre su unión.
+    """
+    rng = np.random.default_rng(21)
+    n = 1500
+    # Un grupo grande y tranquilo, y tres chiquitos y dispersos. Los chicos
+    # tienen que quedar POR DEBAJO del mínimo en calibración (~13 cada uno con
+    # 750 filas), que es justo el caso en el que la primera versión fallaba.
+    g = rng.choice(["grande", "chico_a", "chico_b", "chico_c"], n,
+                   p=[0.85, 0.05, 0.05, 0.05])
+    y = np.where(g == "grande", rng.normal(0, 1, n), rng.normal(0, 5, n))
+    lo, hi = np.full(n, -1.0), np.full(n, 1.0)
+    cal, pru = slice(0, 750), slice(750, n)
+    gs = pd.Series(g)
+
+    c = conforme.calibrar(y[cal], lo[cal], hi[cal], ALPHA, grupos_cal=gs[cal])
+    assert c.grupos_en_pool, "los chicos deberían haberse agrupado"
+    assert not c.grupos_sin_calibrar, "agrupados, ya no deben quedar sin calibrar"
+    # Todos los chicos comparten la MISMA corrección: la de su unión.
+    assert len({c.por_grupo[x] for x in c.grupos_en_pool}) == 1
+
+    blo, bhi = conforme.aplicar(lo[pru], hi[pru], c, gs[pru])
+    dentro = (y[pru] >= blo) & (y[pru] <= bhi)
+    chicos = gs[pru].str.startswith("chico_").to_numpy()
+    assert dentro[chicos].mean() >= 1 - ALPHA - 0.03, \
+        "el cubo de chicos debe cubrir lo prometido sobre su unión"
+
+
+def test_la_categoria_de_referencia_no_se_confunde_con_otro():
+    """
+    El bug que congela: la fila sin ninguna indicadora encendida es la categoría
+    de REFERENCIA —la que se dejó fuera del diseño—, no "otro". En los datos
+    reales la referencia resultó ser `casa`, y las 144 casas de la calibración
+    aparecían en el informe como "otro" mientras el segmento `casa` no existía.
+    Se detectó porque la salida traía depto, otro y terreno y ninguna casa, que
+    en un inventario inmobiliario es imposible.
+    """
+    from pipelines import fase2
+
+    X = pd.DataFrame({
+        "tipo_depto": [1.0, 0.0, 0.0, 0.0],
+        "tipo_terreno": [0.0, 1.0, 0.0, 0.0],
+        "otra_variable": [1.0, 2.0, 3.0, 4.0],
+    })
+    d = datos.Datos(
+        X=X, y=pd.Series([1.0] * 4), bloque=pd.Series(["b"] * 4),
+        superficie=pd.Series([50.0] * 4), coords=np.zeros((4, 2)),
+        operacion="venta", tipo_referencia="casa",
+    )
+    t = fase2._tipo_de(d, np.array([True] * 4))
+    assert list(t) == ["depto", "terreno", "casa", "casa"]
+    assert "otro" not in set(t), "la referencia era casa, no otro"
+
+
+def test_el_vif_quita_la_colinealidad_que_el_rango_deja_pasar():
+    """
+    El QR pivotante sólo ve dependencias EXACTAS. La colinealidad real es
+    casi-exacta y pasa entera: con ella el hedónico daba R²=0.456 dentro de
+    muestra y R²=0.002 fuera, con dos variables gemelas cargando coeficientes
+    enormes de signo opuesto que se cancelaban.
+    """
+    rng = np.random.default_rng(13)
+    a = rng.normal(size=400)
+    gemela = a + rng.normal(0, 0.01, 400)      # correlación ~0.9999, no exacta
+    libre = rng.normal(size=400)
+    Z = np.column_stack([a, gemela, libre])
+    nombres = ["a", "gemela", "libre"]
+
+    _, _, fuera_rango = hedonico._rango_completo(Z, nombres)
+    assert fuera_rango == [], "el filtro de rango no ve la colinealidad casi-exacta"
+
+    Zp, quedan, fuera_vif = hedonico.podar_por_vif(Z, nombres)
+    assert len(fuera_vif) == 1 and Zp.shape[1] == 2
+    assert "libre" in quedan, "la variable independiente no se toca"

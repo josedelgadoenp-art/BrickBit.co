@@ -124,7 +124,7 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     # ------------------------------------------------ apilado fuera de muestra
     _linea("· Apilado (pesos aprendidos fuera de muestra por bloque)…")
     fuera_boost = arboles.fuera_de_muestra_por_bloque(Xtr, ytr, d.bloque[p["entrena"]], semilla)
-    fuera_ols = _ols_fuera_de_muestra(Xtr, ytr, d.bloque[p["entrena"]])
+    fuera_ols = _lineal_fuera_de_muestra(Xtr, ytr, d.bloque[p["entrena"]])
     ap = apilado.ajustar({"boosting": fuera_boost, "hedonico": fuera_ols}, ytr.to_numpy())
     _linea(ap.texto())
     res["apilado"] = ap
@@ -132,7 +132,7 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     def predecir(X: pd.DataFrame) -> np.ndarray:
         return ap.predecir({
             "boosting": m_media.predict(X),
-            "hedonico": _ols_predict(Xtr, ytr, X),
+            "hedonico": _lineal_predict(Xtr, ytr, d.bloque[p["entrena"]], X),
         })
 
     # ------------------------------------------------------- conformalización
@@ -158,7 +158,7 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     res["punto"] = {
         "apilado": evaluacion.punto(yte.to_numpy(), pred_te),
         "boosting": evaluacion.punto(yte.to_numpy(), m_media.predict(Xte)),
-        "hedonico": evaluacion.punto(yte.to_numpy(), _ols_predict(Xtr, ytr, Xte)),
+        "hedonico": evaluacion.punto(yte.to_numpy(), _lineal_predict(Xtr, ytr, d.bloque[p["entrena"]], Xte)),
     }
     seg_te = conforme.segmentar(nombre_seg, _tipo_de(d, p["prueba"]), np.exp(pred_te), cortes)
     lo, hi = conforme.aplicar(m_lo.predict(Xte), m_hi.predict(Xte), c, seg_te)
@@ -206,55 +206,61 @@ def _gdf_de(d: datos.Datos, mascara: np.ndarray, cfg):
 
 
 def _tipo_de(d: datos.Datos, mascara: np.ndarray) -> pd.Series:
-    """Reconstruye el tipo desde las indicadoras, para segmentar Mondrian."""
+    """
+    Reconstruye el tipo desde las indicadoras, para segmentar Mondrian.
+
+    La fila sin ninguna indicadora encendida es la CATEGORÍA DE REFERENCIA, la
+    que se dejó fuera del diseño — no "otro". La primera versión la etiquetaba
+    como "otro" a secas, y en los datos reales la referencia resultó ser `casa`:
+    las 144 casas de la calibración aparecían en el informe como "otro" y el
+    segmento `casa` no existía. Un intervalo aplicado al grupo equivocado.
+    Se detectó porque en la salida real había depto, otro y terreno, y ninguna
+    casa: en un inventario inmobiliario eso es imposible.
+    """
     cols = [c for c in d.X.columns if c.startswith("tipo_")]
     sub = d.X.loc[mascara, cols]
+    referencia = d.tipo_referencia or "otro"
     if not cols:
-        return pd.Series(["otro"] * len(sub))
-    idx = sub.to_numpy().argmax(axis=1)
+        return pd.Series([referencia] * len(sub))
     nombres = np.array([c.replace("tipo_", "") for c in cols])
-    sin_marca = sub.to_numpy().sum(axis=1) == 0
-    t = nombres[idx]
-    t[sin_marca] = "otro"
-    return pd.Series(t)
+    t = nombres[sub.to_numpy().argmax(axis=1)].astype(object)
+    t[sub.to_numpy().sum(axis=1) == 0] = referencia
+    return pd.Series(t.astype(str))
 
 
-_CACHE_OLS: dict = {}
+_CACHE_LINEAL: dict = {}
 
 
-def _ols_predict(Xtr: pd.DataFrame, ytr: pd.Series, X: pd.DataFrame) -> np.ndarray:
+def _lineal_predict(Xtr: pd.DataFrame, ytr: pd.Series, btr: pd.Series,
+                    X: pd.DataFrame) -> np.ndarray:
     """
-    Predicción del hedónico. Se guarda el ajuste en caché porque el pipeline lo
-    pide varias veces con el mismo entrenamiento y reajustarlo sería tirar
-    segundos sin ganar nada.
+    Predicción del hedónico REGULARIZADO. Se guarda el ajuste en caché porque el
+    pipeline lo pide varias veces con el mismo entrenamiento.
+
+    Es cresta y no mínimos cuadrados por una razón medida: con OLS, el hedónico
+    pasaba de R²=0.456 dentro de muestra a R²=0.002 fuera. Dos variables casi
+    idénticas se repartían coeficientes enormes de signo opuesto que se
+    cancelaban en los datos de entrenamiento y no transferían a ningún otro
+    barrio. La penalización reparte ese peso en vez de concentrarlo.
     """
-    from sklearn.linear_model import LinearRegression
-
-    cols = hedonico.columnas_nucleo(Xtr)
-    clave = (id(Xtr), tuple(cols))
-    if clave not in _CACHE_OLS:
-        prep = hedonico.preparador()
-        Z = prep.fit_transform(Xtr[cols])
-        lr = LinearRegression().fit(Z, ytr)
-        _CACHE_OLS[clave] = (prep, lr, cols)
-    prep, lr, cols = _CACHE_OLS[clave]
-    return lr.predict(prep.transform(X[cols]))
+    clave = (id(Xtr), Xtr.shape)
+    if clave not in _CACHE_LINEAL:
+        _CACHE_LINEAL[clave] = hedonico.ridge_por_bloque(Xtr, ytr, btr)
+    prep, m, cols = _CACHE_LINEAL[clave]
+    return m.predict(prep.transform(X[cols]))
 
 
-def _ols_fuera_de_muestra(X: pd.DataFrame, y: pd.Series, bloque: pd.Series) -> np.ndarray:
+def _lineal_fuera_de_muestra(X: pd.DataFrame, y: pd.Series, bloque: pd.Series) -> np.ndarray:
     """Predicciones del hedónico fuera de muestra, con los mismos bloques."""
-    from sklearn.linear_model import LinearRegression
     from sklearn.model_selection import GroupKFold
 
-    cols = hedonico.columnas_nucleo(X)
     g = bloque.to_numpy()
     k = int(min(5, pd.Series(g).nunique()))
     fuera = np.full(len(y), np.nan)
     for tr, va in GroupKFold(n_splits=k).split(X, y, groups=g):
-        prep = hedonico.preparador()
-        Z = prep.fit_transform(X.iloc[tr][cols])
-        lr = LinearRegression().fit(Z, y.iloc[tr])
-        fuera[va] = lr.predict(prep.transform(X.iloc[va][cols]))
+        prep, m, cols = hedonico.ridge_por_bloque(
+            X.iloc[tr], y.iloc[tr], bloque.iloc[tr])
+        fuera[va] = m.predict(prep.transform(X.iloc[va][cols]))
     return fuera
 
 
@@ -323,6 +329,19 @@ def informe(cfg, res: dict | None) -> None:
     _linea(f"\n  Sin conformalizar, los mismos cuantiles cubrían {crudo.cobertura * 100:.1f}%")
     _linea(f"  con ancho ±{crudo.ancho_mediano_pct:.1f}%. Ésa es la diferencia entre un")
     _linea("  intervalo con garantía y dos números pegados a una predicción.")
+
+    # Cubrir no es lo mismo que servir. Un intervalo puede tener la garantía
+    # perfecta y ser inútil para decidir, y decir sólo lo primero sería vender
+    # una precisión que no existe.
+    ancho = res["intervalo"].ancho_mediano_pct
+    if ancho > 60:
+        _linea(f"\n  ⚠ PERO ±{ancho:.0f}% ES DEMASIADO ANCHO PARA DECIDIR.")
+        _linea("  La garantía se cumple; la utilidad, no. Un intervalo así dice")
+        _linea("  poco más que 'no sé', y el motivo no es el método sino que el")
+        _linea("  modelo se equivoca " f"{res['punto']['apilado'].mdape_pct:.0f}% en la mediana: un intervalo")
+        _linea("  honesto sobre un error así TIENE que ser ancho. Se estrecha con")
+        _linea("  más inventario y mejores atributos, no apretando el intervalo.")
+        _linea("  Para una banda más angosta con garantía menor: --alpha 0.20 (80%).")
 
     _linea(f"\nQUÉ EMPUJA EL PRECIO  (método: {res['importancia'].metodo})")
     _linea(res["importancia"].texto())
