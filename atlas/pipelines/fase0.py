@@ -71,7 +71,7 @@ def ingerir_osm(cfg) -> int:
     _linea("· OpenStreetMap (Overpass)…")
     from atlas.ingesta import osm
 
-    g = osm.descargar(cfg=cfg)
+    g = osm.descargar(cfg=cfg, aviso=_linea)
     lago.guardar("osm_poi", g, fuente="OpenStreetMap vía Overpass API",
                  nota="Parques, plazas, transporte, salud, educación, mercados.", cfg=cfg)
     for cat, n in g["categoria"].value_counts().items():

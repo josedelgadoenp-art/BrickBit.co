@@ -111,26 +111,46 @@ def descargar(
     categorias: list[str] | None = None,
     cfg: Config | None = None,
     usar_cache: bool = True,
+    aviso=None,
 ) -> gpd.GeoDataFrame:
-    """Descarga (o lee de caché) las categorías pedidas y las devuelve unidas."""
+    """
+    Descarga (o lee de caché) las categorías pedidas y las devuelve unidas.
+
+    `aviso` recibe una línea por categoría según van llegando. NO es un adorno:
+    son ocho consultas a un servidor de voluntarios que puede tardar minutos en
+    cada una, y sin señal de progreso quien la corre no puede distinguir
+    "trabajando" de "colgado". La primera versión no imprimía nada entre el
+    encabezado y el final, y con Overpass lento eso son varios minutos mirando
+    una línea de puntos suspensivos.
+
+    Cada categoría se cachea en disco por separado, así que una corrida
+    interrumpida no repite lo ya descargado.
+    """
     cfg = cfg or cargar()
     cats = categorias or list(CATEGORIAS)
     cache = cfg.lago / "cache_osm"
     cache.mkdir(parents=True, exist_ok=True)
+    decir = aviso or (lambda _: None)
 
     trozos = []
     for i, cat in enumerate(cats):
         if cat not in CATEGORIAS:
             raise KeyError(f"Categoría desconocida: {cat}. Válidas: {list(CATEGORIAS)}")
         crudo = cache / f"{cat}.json"
+        t0 = time.time()
         if usar_cache and crudo.exists():
             datos = json.loads(crudo.read_text(encoding="utf-8"))
+            origen = "caché"
         else:
+            decir(f"    [{i + 1}/{len(cats)}] {cat}… pidiendo a Overpass")
             if i:
                 time.sleep(2)   # cortesía con un servidor de voluntarios
             datos = _pedir(_consulta(CATEGORIAS[cat], cfg), cfg)
             crudo.write_text(json.dumps(datos), encoding="utf-8")
-        trozos.append(_a_puntos(datos, cat, cfg))
+            origen = f"{time.time() - t0:.0f}s"
+        g = _a_puntos(datos, cat, cfg)
+        decir(f"    [{i + 1}/{len(cats)}] {cat:<12} {len(g):>6,} puntos  ({origen})")
+        trozos.append(g)
 
     if not trozos:
         return gpd.GeoDataFrame(
