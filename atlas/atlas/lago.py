@@ -83,6 +83,20 @@ def existe(nombre: str, cfg: Config | None = None) -> bool:
     return _ruta(nombre, cfg).exists()
 
 
+def filas(nombre: str, cfg: Config | None = None) -> int:
+    """
+    Cuántas filas tiene una capa, según el manifiesto. Cero si no está.
+
+    Se lee del manifiesto y no del parquet a propósito: para decidir si una fase
+    puede arrancar basta el conteo, y cargar 351 mil establecimientos en memoria
+    sólo para medirlos sería absurdo.
+    """
+    cfg = cfg or cargar()
+    if not existe(nombre, cfg):
+        return 0
+    return int(manifiesto(cfg).get(nombre, {}).get("filas", 0))
+
+
 def manifiesto(cfg: Config | None = None) -> dict:
     cfg = cfg or cargar()
     p = cfg.lago / MANIFIESTO

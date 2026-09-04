@@ -152,17 +152,17 @@ def conteo_en_radios(
             salida[f"n_{int(r)}m"] = 0
         return salida
 
-    ao = cKDTree(_xy(origen, cfg))
+    o = _xy(origen, cfg)
     ad = cKDTree(_xy(destino, cfg))
     for r in radios:
         # count_neighbors agrega sobre todo el árbol; para el conteo POR FILA
-        # hace falta la consulta por bolas. Va en bloques para acotar memoria.
-        cuenta = np.empty(len(origen), dtype=np.int32)
-        paso = 4000
-        for i in range(0, len(origen), paso):
-            vecinos = ad.query_ball_point(ao.data[i:i + paso], r=r, workers=-1)
-            cuenta[i:i + paso] = [len(v) for v in vecinos]
-        salida[f"n_{int(r)}m"] = cuenta
+        # hace falta la consulta por bolas. `return_length=True` devuelve sólo
+        # el número de vecinos: sin él, scipy materializa la LISTA de índices de
+        # cada vecindario, que en el centro de la ciudad son decenas de miles
+        # por celda y no hacen ninguna falta cuando sólo queremos contarlos.
+        salida[f"n_{int(r)}m"] = np.asarray(
+            ad.query_ball_point(o, r=float(r), workers=-1, return_length=True), dtype=np.int32
+        )
     return salida
 
 
@@ -174,6 +174,7 @@ def accesibilidad_gravitacional(
     corte_m: float = 5000.0,
     piso_m: float = 50.0,
     cfg: Config | None = None,
+    presupuesto_pares: int = 4_000_000,
 ) -> np.ndarray:
     """
     A_i = Σ_j atractivo_j / d_ij^beta   (§6 del prompt maestro)
@@ -183,8 +184,21 @@ def accesibilidad_gravitacional(
     computacional no lo es.
 
     Se resuelve con `sparse_distance_matrix`, que devuelve sólo los pares
-    dentro del corte. Con 16k orígenes y 351k destinos los pares completos
-    serían 5.6 mil millones; dentro de 5 km son unos pocos millones.
+    dentro del corte. Con 12k orígenes y 351k destinos los pares completos
+    serían 4.3 mil millones; dentro de 5 km son unos cuantos cientos de miles
+    de millones menos, pero siguen siendo muchos.
+
+    EL TAMAÑO DEL BLOQUE SE MIDE, NO SE FIJA. La primera versión partía los
+    orígenes en bloques de 4,000 sin mirar la densidad, y en la CDMX eso revienta:
+    medido sobre el lago real, cada celda tiene **17,123 destinos DENUE de media**
+    dentro de 5 km y hasta 98,476 en el centro. Un bloque de 4,000 pide entonces
+    68 millones de pares, y entre la matriz COO y los arreglos derivados el pico
+    pasa de 4 GB — cabe en una máquina de 16 GB y truena con `std::bad_alloc` en
+    una normal. Ahora se muestrea la densidad real, se usa un percentil alto (no
+    la media: los orígenes vienen ordenados por índice H3, que es espacialmente
+    coherente, así que un bloque entero puede caer en la zona más densa) y se
+    elige el bloque que cabe en `presupuesto_pares`. Si aun así falta memoria, el
+    bloque se parte a la mitad y se reintenta en vez de abortar el pipeline.
     """
     cfg = cfg or cargar()
     if len(destino) == 0 or len(origen) == 0:
@@ -194,19 +208,61 @@ def accesibilidad_gravitacional(
     w = np.ones(len(d)) if atractivo is None else np.asarray(atractivo, dtype=float)
     w = np.nan_to_num(w, nan=1.0)
 
-    ao, ad = cKDTree(o), cKDTree(d)
+    ad = cKDTree(d)
     acc = np.zeros(len(o))
-    # Por bloques de origen: la matriz dispersa completa puede ser grande.
-    paso = 4000
-    for i in range(0, len(o), paso):
-        sub = cKDTree(o[i:i + paso])
-        m = sub.sparse_distance_matrix(ad, max_distance=corte_m, output_type="coo_matrix")
-        if m.nnz == 0:
+    paso = _paso_por_densidad(ad, o, corte_m, presupuesto_pares)
+
+    i = 0
+    while i < len(o):
+        trozo = o[i:i + paso]
+        try:
+            m = cKDTree(trozo).sparse_distance_matrix(
+                ad, max_distance=corte_m, output_type="coo_matrix"
+            )
+        except MemoryError:
+            # Un bloque más denso de lo que anticipó la muestra. Se parte y se
+            # reintenta: perder el pipeline entero por un bloque sería absurdo.
+            if paso <= 1:
+                raise
+            paso = max(1, paso // 2)
             continue
-        dist = np.maximum(m.data, piso_m)
-        aporte = w[m.col] / dist ** beta
-        acc[i:i + paso] = np.bincount(m.row, weights=aporte, minlength=min(paso, len(o) - i))
+        if m.nnz:
+            dist = np.maximum(m.data, piso_m)
+            acc[i:i + len(trozo)] = np.bincount(
+                m.row, weights=w[m.col] / dist ** beta, minlength=len(trozo)
+            )
+        i += len(trozo)
     return acc
+
+
+def _paso_por_densidad(
+    arbol_destino: cKDTree,
+    origen_xy: np.ndarray,
+    corte_m: float,
+    presupuesto_pares: int,
+    muestra: int = 256,
+) -> int:
+    """
+    Cuántos orígenes caben en un bloque sin pasarse del presupuesto de pares.
+
+    Se mide con una muestra regular de orígenes y se toma el percentil 95 de
+    vecinos, no la media: la media la dominan las celdas periféricas vacías y
+    subestimaría justo los bloques del centro, que son los que revientan.
+    """
+    n = len(origen_xy)
+    if n == 0:
+        return 1
+    idx = np.unique(np.linspace(0, n - 1, min(muestra, n)).astype(int))
+    k = np.asarray(
+        arbol_destino.query_ball_point(
+            origen_xy[idx], r=float(corte_m), workers=-1, return_length=True
+        ),
+        dtype=float,
+    )
+    denso = float(np.percentile(k, 95)) if k.size else 0.0
+    if denso <= 0:
+        return n
+    return int(np.clip(presupuesto_pares / denso, 1, 4000))
 
 
 # ------------------------------------------------------------------- H3

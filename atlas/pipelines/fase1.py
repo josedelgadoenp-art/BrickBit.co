@@ -174,10 +174,17 @@ def informe(cfg, res: dict | None = None) -> None:
 
     _linea("\nLO QUE ESTO NO ES")
     _linea("  El diagnóstico se corre sobre densidad de empleo DENUE, no sobre")
-    _linea("  precios: todavía no hay listados. Mide que la estructura espacial")
-    _linea("  de la actividad económica es real, que es el supuesto del que")
-    _linea("  cuelga todo el aparato espacial. El Moran del PRECIO se mide en")
-    _linea("  la Fase 2, con los listados en la mano.")
+    _linea("  precios. Mide que la estructura espacial de la actividad económica")
+    _linea("  es real, que es el supuesto del que cuelga todo el aparato")
+    _linea("  espacial. El Moran del PRECIO se mide en la Fase 2.")
+    # No afirmar que faltan listados sin haber mirado: en cuanto la Fase 0
+    # ingiere el scraper, el lago sí los tiene y la frase quedaría mintiendo.
+    n_props = lago.filas("properties", cfg) if lago.existe("properties", cfg) else 0
+    if n_props:
+        _linea(f"  Ya hay {n_props:,} listados en el lago: la Fase 2 puede arrancar.")
+    else:
+        _linea("  Todavía no hay listados; sin ellos la Fase 2 no puede empezar.")
+        _linea("  Solución: node tools/c21-scraper.mjs todo  →  python -m pipelines.fase0")
     _linea("=" * 66)
 
 

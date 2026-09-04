@@ -102,6 +102,48 @@ def test_accesibilidad_pondera_por_atractivo():
     assert abs(mucho - 100 * poco) / mucho < 1e-9
 
 
+def test_el_tamano_de_bloque_no_cambia_la_accesibilidad():
+    """
+    El bug que esta prueba congela: la accesibilidad partía los orígenes en
+    bloques FIJOS de 4,000 sin mirar la densidad. En la CDMX cada celda tiene
+    ~17,000 destinos DENUE dentro de 5 km (hasta 98,000 en el centro), así que
+    un bloque pedía 68 millones de pares y el pipeline moría con
+    `MemoryError: std::bad_alloc` en cualquier máquina de memoria normal.
+
+    Ahora el bloque se calcula midiendo la densidad real. Eso lo convierte en un
+    parámetro de RENDIMIENTO, y un parámetro de rendimiento no puede mover el
+    resultado: con presupuestos que van de 5 mil a 50 millones de pares, la
+    respuesta tiene que ser bit a bit la misma.
+    """
+    rng = np.random.default_rng(CFG.semilla)
+    o = _pts([(ZOCALO[0] + x, ZOCALO[1] + y)
+              for x, y in rng.normal(0, 0.02, size=(120, 2))])
+    d = _pts([(ZOCALO[0] + x, ZOCALO[1] + y)
+              for x, y in rng.normal(0, 0.02, size=(900, 2))])
+    peso = rng.uniform(1, 500, size=len(d))
+
+    ref = accesibilidad_gravitacional(o, d, atractivo=peso, cfg=CFG,
+                                      presupuesto_pares=50_000_000)
+    for presupuesto in (5_000, 50_000, 1_000_000):
+        otro = accesibilidad_gravitacional(o, d, atractivo=peso, cfg=CFG,
+                                           presupuesto_pares=presupuesto)
+        assert np.allclose(ref, otro, rtol=1e-12, atol=0), \
+            f"el presupuesto {presupuesto} cambió el resultado"
+    assert (ref > 0).all(), "con 900 destinos alrededor, nadie debe quedar en cero"
+
+
+def test_conteo_en_radios_es_monotono():
+    """Un radio mayor no puede contener menos: si eso falla, el conteo miente."""
+    rng = np.random.default_rng(CFG.semilla)
+    o = _pts([ZOCALO, (ZOCALO[0] + 0.01, ZOCALO[1] - 0.01)])
+    d = _pts([(ZOCALO[0] + x, ZOCALO[1] + y)
+              for x, y in rng.normal(0, 0.01, size=(400, 2))])
+    c = conteo_en_radios(o, d, [300, 500, 1000], CFG)
+    assert (c["n_300m"] <= c["n_500m"]).all()
+    assert (c["n_500m"] <= c["n_1000m"]).all()
+    assert c["n_1000m"].sum() > 0
+
+
 def test_sin_destinos_distancia_es_nan_y_conteo_cero():
     o = _pts([ZOCALO])
     vacio = o.iloc[0:0]

@@ -10,22 +10,24 @@ ciclos de vida distintos, y mezclarlos habría hecho a los dos más frágiles.
 
 ## Lo primero que hay que saber
 
-El Atlas **todavía no puede valuar nada**, y la razón no es el código.
+**La muestra de la CDMX es delgada: 2,144 inmuebles.**
 
-BrickBit no conserva listados individuales. `data/mercado.json` trae **0**
-registros, y sin precio + m² + atributos por inmueble no hay AVM, ni SHAP, ni
-intervalo conforme, ni campo de crecimiento anclado a precios. Todo lo demás
-—la tela, las flechas, los pesos— cuelga de ese dato.
+Durante un tiempo el bloqueo fue no tener ningún listado individual —sin precio
++ m² + atributos por inmueble no hay AVM, ni SHAP, ni intervalo conforme—. Eso
+ya se resolvió: el scraper autorizado de Century 21 corrió sobre el país entero
+y de sus **18,380 propiedades**, 2,144 caen dentro de la CDMX y sobreviven a la
+validación. La Fase 2 puede arrancar.
 
-La buena noticia: el scraper autorizado de Century 21 (`tools/c21-scraper.mjs`)
-**ya produce exactamente el vector que hace falta** (precio, m² construidos y de
-terreno, recámaras, baños, estacionamientos, lat/lng, colonia, municipio, tipo,
-operación). Sólo que su salida se sube al KV del Worker y el archivo local nunca
-se guarda. Para desbloquear el Atlas:
+Pero 2,144 para 16 alcaldías **no da para intervalos estrechos**, y menos por
+segmento. Conviene saberlo antes de leer el primer resultado del AVM: las bandas
+van a salir anchas, y eso será una propiedad honesta del dato, no un defecto del
+modelo. Dos cosas engordan la muestra, las dos documentadas más abajo: arreglar
+las siete alcaldías que el scraper no supo pedir, y volver a correrlo cada mes
+—cada corrida agrega inventario nuevo y, de paso, alimenta la serie temporal—.
 
 ```bash
 node tools/c21-scraper.mjs todo      # deja c21_out/listados.json
-python -m atlas.pipelines.fase0      # lo ingiere al lago
+python -m pipelines.fase0            # lo ingiere al lago
 ```
 
 ---
@@ -44,7 +46,7 @@ python -m pytest tests/ -q
 ### Correr la Fase 1
 
 ```bash
-python -m pipelines.fase1              # ~2 min sobre 12,259 celdas
+python -m pipelines.fase1              # ~1 min sobre 12,259 celdas
 python -m pipelines.fase1 --informe
 ```
 
@@ -63,10 +65,10 @@ estructura espacial captura es el que menos señal espacial deja en el
 residual. No es AICc —eso exige un modelo por cada W, y en la Fase 1 todavía
 no hay modelo— y se declara como lo que es.
 
-El diagnóstico se corre sobre **densidad de empleo DENUE**, no sobre precios,
-porque todavía no hay listados. Mide que la estructura espacial de la
-actividad económica es real, que es el supuesto del que cuelga todo el aparato
-espacial. El Moran del precio se mide en la Fase 2.
+El diagnóstico se corre sobre **densidad de empleo DENUE**, no sobre precios.
+Mide que la estructura espacial de la actividad económica es real, que es el
+supuesto del que cuelga todo el aparato espacial. El Moran del precio se mide
+en la Fase 2, sobre los 2,144 listados.
 
 ### Cobertura de la CDMX: siete alcaldías con ruta rota
 
@@ -95,7 +97,7 @@ porque el portal rechaza las IP de nube, igual que INEGI y Overpass.
 | `denue` | 351,631 | INEGI DENUE, 9 de 16 alcaldías |
 | `cp` | 1,182 | Polígonos de código postal de la CDMX |
 | `calles` | 9,090 | Ejes viales por alcaldía |
-| `properties` | 0 | Century 21 — **pendiente** |
+| `properties` | 2,144 | Century 21 — de 18,380 nacionales, los de la CDMX |
 
 ### Lo que se corre en tu máquina
 
@@ -141,9 +143,22 @@ por una.
 
 **Rendimiento.** Las distancias, conteos y accesibilidad pasan por árboles KD
 de scipy. La primera versión recorría los pares en Python: con 12 mil celdas y
-351 mil establecimientos, el pipeline no terminaba. Ahora tarda dos minutos.
-Es la misma matemática, y hay una prueba que compara el resultado contra
-haversine.
+351 mil establecimientos, el pipeline no terminaba. Es la misma matemática, y
+hay una prueba que compara el resultado contra haversine.
+
+**La memoria se mide, no se supone.** La accesibilidad partía los orígenes en
+bloques fijos de 4,000. Medido sobre el lago real, cada celda tiene **17,123
+destinos DENUE de media dentro de 5 km, y hasta 98,476** en el centro: un bloque
+pedía 68 millones de pares y el pico pasaba de 4 GB. Pasaba en una máquina de 16
+GB y moría con `MemoryError: std::bad_alloc` en una normal — el clásico "en mi
+máquina funciona". Ahora se muestrea la densidad, se toma el percentil 95 (no la
+media: los orígenes van ordenados por índice H3, que es espacialmente coherente,
+así que un bloque entero puede caer en la zona más densa) y el bloque se elige
+para caber en un presupuesto de pares explícito; si aun así falta memoria, se
+parte a la mitad y se reintenta. Pico: **0.96 GB**, y de paso más rápido, 0.8
+min. El tamaño de bloque es un parámetro de rendimiento y **no puede mover el
+resultado**: hay una prueba que lo verifica con presupuestos de 5 mil a 50
+millones de pares.
 
 **Determinismo.** Semilla fija en `config.yaml`, orden estable en toda selección
 de archivos, y una prueba que lo verifica.
@@ -176,7 +191,7 @@ atlas/
 ├─ pipelines/
 │  ├─ fase0.py            ingesta + informe
 │  └─ fase1.py            variables geoespaciales + diagnóstico
-├─ tests/                 38 pruebas
+├─ tests/                 40 pruebas
 └─ data/                  el lago (parquet); no se versiona
 ```
 
@@ -194,8 +209,8 @@ el delta de accesibilidad por obra pública, que necesita la capa de obras.)*
 4. **App Streamlit** — mapa-tela, campo vectorial, escenarios de obra pública.
 5. **Monitoreo** — drift de datos y de cobertura, reentrenamiento.
 
-La Fase 2 no puede empezar sin listados. Las fases 1, 4 y 5 sí pueden avanzar en
-paralelo con lo que ya hay.
+La Fase 2 ya está desbloqueada: hay 2,144 listados en el lago. Lo que sigue
+condicionando su calidad no es el código sino el tamaño de esa muestra.
 
 ---
 
