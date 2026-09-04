@@ -89,12 +89,36 @@ los datos reales de la CDMX la conformalización subió la cobertura de **77.7% 
 97.8%** contra un objetivo de 95%: no estaba afinando un intervalo casi bueno,
 estaba arreglando uno que cubría tres cuartas partes de lo que prometía.
 
-**Pero cubrir no es servir**, y el informe lo dice cuando toca. En la primera
-corrida real el ancho mediano salió de **±143%**, que es un intervalo con la
-garantía perfecta y sin utilidad para decidir. El motivo no es el método: es que
-el modelo se equivoca ~24% en la mediana, y un intervalo honesto sobre un error
-así TIENE que ser ancho. Se estrecha con más inventario y mejores atributos, no
-apretando el intervalo.
+**Pero cubrir no es servir**, y el informe lo dice cuando toca. La primera
+corrida real dio ±139% de ancho: garantía perfecta, utilidad nula.
+
+Parte de eso era ineficiencia y se puede recuperar. Con un error mediano del 25%,
+un intervalo del 95% *eficiente* mide **±69%**; el de CQR daba el doble. La causa
+es que CQR tiene que estimar los cuantiles 2.5% y 97.5% **directamente**, y esa
+cola se apoya en el 2.5% de las observaciones —unas 24 de 953—. Así que se
+calibran **dos** formas, con la misma garantía y distinto ancho:
+
+| | qué estima | con cuántas observaciones |
+|---|---|---|
+| CQR | los cuantiles 2.5% y 97.5% | las ~24 de cada cola |
+| Normalizado | \|y − ŷ\| / σ̂(x) | las 953 |
+
+El normalizado sigue siendo adaptativo —donde el modelo sabe menos, σ̂ es grande
+y el intervalo se abre— y de regalo permite cambiar el nivel de confianza sin
+reentrenar nada: es otro cuantil de los mismos scores. El informe imprime la
+tabla de qué cuesta cada nivel (50 / 80 / 90 / 95%).
+
+Lo que NO se recupera con método es el resto: el modelo se equivoca ~25% en la
+mediana, y un intervalo honesto sobre ese error tiene que ser ancho. Eso se
+estrecha con más inventario y mejores atributos.
+
+**La intercambiabilidad se rompe a propósito.** La garantía conforme exacta
+supone que calibración y despliegue son intercambiables, y la partición por
+bloque hace que sean barrios DISTINTOS. Por eso la cobertura medida puede caer
+un par de puntos bajo el objetivo. No se corrige subiendo el nivel hasta que el
+número quede bonito: es la condición real de uso —valuar donde no hubo
+comparables— y con una partición al azar el número saldría clavado y no diría
+nada sobre el barrio siguiente.
 
 Lo que sí midió bien la primera corrida real:
 
@@ -272,14 +296,14 @@ atlas/
 │     ├─ hedonico.py      OLS semi-log y Durbin espacial (SDM)
 │     ├─ arboles.py       boosting de media y de cuantiles
 │     ├─ apilado.py       combinación con pesos fuera de muestra
-│     ├─ conforme.py      CQR + Mondrian: el intervalo con garantía
+│     ├─ conforme.py      CQR y normalizado + Mondrian: intervalos con garantía
 │     ├─ evaluacion.py    error en pesos y cobertura por segmento
 │     └─ importancia.py   SHAP, con permutación de respaldo
 ├─ pipelines/
 │  ├─ fase0.py            ingesta + informe
 │  ├─ fase1.py            variables geoespaciales + diagnóstico
 │  └─ fase2.py            AVM + incertidumbre calibrada
-├─ tests/                 58 pruebas
+├─ tests/                 61 pruebas
 └─ data/                  el lago (parquet); no se versiona
 ```
 

@@ -13,6 +13,16 @@ especificado ni que los errores sean normales; sólo intercambiabilidad entre
 calibración y despliegue. Es de las pocas garantías honestas que se pueden dar
 en valuación automatizada.
 
+Y AQUÍ ESA INTERCAMBIABILIDAD SE ROMPE A PROPÓSITO. La partición del Atlas es
+por bloque espacial: los barrios de calibración y los de prueba son barrios
+DISTINTOS. Eso viola justamente el supuesto del que cuelga la garantía exacta,
+y por eso la cobertura medida puede caer un par de puntos por debajo del
+objetivo. No es un defecto que haya que tapar subiendo el nivel hasta que el
+número quede bonito: es la condición real de despliegue —valuar donde no hubo
+comparables— y medirla así es el único modo de saber qué pasa entonces. Con una
+partición al azar la cobertura saldría clavada en el objetivo, y ese número no
+diría nada sobre el barrio siguiente.
+
 QUÉ NO GARANTIZA, Y POR ESO EXISTE MONDRIAN. La cobertura marginal es un
 promedio sobre TODO el mercado, y un promedio puede esconder un desastre: un
 intervalo puede cubrir 95% en global y sólo 70% en departamentos de lujo, si
@@ -121,24 +131,22 @@ class Conformal:
         return "\n".join(filas)
 
 
-def calibrar(
-    y_cal: np.ndarray,
-    lo_cal: np.ndarray,
-    hi_cal: np.ndarray,
+def calibrar_desde_scores(
+    E: np.ndarray,
     alpha: float,
     grupos_cal: pd.Series | None = None,
     minimo_por_grupo: int = MINIMO_POR_GRUPO,
 ) -> Conformal:
     """
-    Aprende la corrección conforme sobre el conjunto de CALIBRACIÓN.
+    La maquinaria común: cuantil conforme global, por grupo, y cubo de chicos.
 
-    Ese conjunto no puede haber participado del entrenamiento ni de la selección
-    de hiperparámetros. Si participara, los residuales serían optimistas y la
-    garantía se caería sin hacer ruido —el intervalo seguiría saliendo, sólo que
-    cubriendo menos de lo que promete—.
+    Está separada porque las dos formas de intervalo que usa el Atlas —CQR y
+    normalizado— sólo difieren en CÓMO se calcula el score de disconformidad.
+    Todo lo demás —el ⌈(n+1)(1−α)⌉, Mondrian, el agrupamiento de los segmentos
+    chicos— es idéntico, y duplicarlo habría garantizado que las dos versiones
+    se separaran con el tiempo.
     """
-    y_cal = np.asarray(y_cal, dtype=float)
-    E = np.maximum(np.asarray(lo_cal, float) - y_cal, y_cal - np.asarray(hi_cal, float))
+    E = np.asarray(E, dtype=float)
     c = Conformal(alpha=float(alpha), global_=_cuantil_conforme(E, alpha))
 
     if grupos_cal is None:
@@ -177,6 +185,70 @@ def calibrar(
         else:
             c.grupos_sin_calibrar = [f"{x} (n={int((g == x).sum())})" for x in chicos]
     return c
+
+
+def calibrar(
+    y_cal: np.ndarray,
+    lo_cal: np.ndarray,
+    hi_cal: np.ndarray,
+    alpha: float,
+    grupos_cal: pd.Series | None = None,
+    minimo_por_grupo: int = MINIMO_POR_GRUPO,
+) -> Conformal:
+    """
+    CQR: calibra a partir de los cuantiles estimados por el boosting.
+
+    El conjunto de calibración no puede haber participado del entrenamiento ni
+    de la selección de hiperparámetros. Si participara, los residuales serían
+    optimistas y la garantía se caería sin hacer ruido —el intervalo seguiría
+    saliendo, sólo que cubriendo menos de lo que promete—.
+    """
+    y_cal = np.asarray(y_cal, dtype=float)
+    E = np.maximum(np.asarray(lo_cal, float) - y_cal, y_cal - np.asarray(hi_cal, float))
+    return calibrar_desde_scores(E, alpha, grupos_cal, minimo_por_grupo)
+
+
+def calibrar_normalizado(
+    y_cal: np.ndarray,
+    pred_cal: np.ndarray,
+    sigma_cal: np.ndarray,
+    alpha: float,
+    grupos_cal: pd.Series | None = None,
+    minimo_por_grupo: int = MINIMO_POR_GRUPO,
+) -> Conformal:
+    """
+    Conformal localmente adaptativo: score = |y − ŷ| / σ̂(x).
+
+    La alternativa a CQR, y con muestras chicas suele ganarle por mucho. CQR
+    tiene que estimar los cuantiles 2.5% y 97.5% directamente, y esa cola se
+    apoya en el 2.5% de las observaciones —unas 24 de 953 en la CDMX—: el
+    resultado es ruidoso y, al conformalizarlo, ancho. Aquí σ̂(x) se ajusta con
+    TODAS las observaciones y el conformal sólo tiene que encontrar un factor
+    de escala.
+
+    Sigue siendo adaptativo —donde el modelo sabe menos, σ̂ es grande y el
+    intervalo se abre— y conserva la misma garantía de cobertura, que no depende
+    de que σ̂ sea correcto: si σ̂ fuera basura, el intervalo saldría ancho pero
+    seguiría cubriendo. σ̂ compra estrechez, no validez.
+
+    Ventaja de regalo: cambiar α no exige reentrenar nada. Con CQR, pasar de un
+    intervalo del 95% a uno del 80% obliga a ajustar dos modelos de cuantil
+    nuevos; aquí es otro cuantil de los mismos scores.
+    """
+    y_cal = np.asarray(y_cal, dtype=float)
+    s = np.maximum(np.asarray(sigma_cal, float), 1e-6)
+    E = np.abs(y_cal - np.asarray(pred_cal, float)) / s
+    return calibrar_desde_scores(E, alpha, grupos_cal, minimo_por_grupo)
+
+
+def aplicar_normalizado(
+    pred: np.ndarray, sigma: np.ndarray, c: Conformal, grupos: pd.Series | None = None
+) -> tuple[np.ndarray, np.ndarray]:
+    """Intervalo ŷ ± Q·σ̂(x): ancho proporcional a lo que el modelo suele fallar ahí."""
+    d = (c.correccion(grupos) if grupos is not None else np.full(len(pred), c.global_))
+    d = d * np.maximum(np.asarray(sigma, float), 1e-6)
+    pred = np.asarray(pred, float)
+    return pred - d, pred + d
 
 
 def aplicar(

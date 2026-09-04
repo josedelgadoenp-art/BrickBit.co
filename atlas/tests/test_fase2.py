@@ -314,3 +314,66 @@ def test_el_vif_quita_la_colinealidad_que_el_rango_deja_pasar():
     Zp, quedan, fuera_vif = hedonico.podar_por_vif(Z, nombres)
     assert len(fuera_vif) == 1 and Zp.shape[1] == 2
     assert "libre" in quedan, "la variable independiente no se toca"
+
+
+def test_el_conformal_normalizado_cubre_y_adapta_el_ancho():
+    """
+    El intervalo normalizado tiene que hacer dos cosas: cubrir lo prometido, y
+    ser MÁS ANCHO donde el modelo falla más. Si sólo cubriera, un intervalo de
+    ancho constante bastaría y no habría razón para modelar la dispersión.
+    """
+    rng = np.random.default_rng(31)
+    n = 2000
+    # La mitad fácil (poco ruido) y la mitad difícil (mucho): σ̂ debe notarlo.
+    dificil = np.arange(n) % 2 == 0
+    y = np.where(dificil, rng.normal(0, 3, n), rng.normal(0, 0.5, n))
+    pred = np.zeros(n)
+    sigma = np.where(dificil, 3.0, 0.5)          # una σ̂ perfecta, para aislar la lógica
+
+    cal, pru = slice(0, 1000), slice(1000, n)
+    c = conforme.calibrar_normalizado(y[cal], pred[cal], sigma[cal], ALPHA)
+    lo, hi = conforme.aplicar_normalizado(pred[pru], sigma[pru], c)
+
+    dentro = (y[pru] >= lo) & (y[pru] <= hi)
+    assert dentro.mean() >= 1 - ALPHA - 0.02
+
+    ancho = hi - lo
+    d = dificil[pru]
+    assert np.median(ancho[d]) > 3 * np.median(ancho[~d]), \
+        "el intervalo debe abrirse donde el modelo sabe menos"
+
+
+def test_bajar_el_nivel_de_confianza_estrecha_el_intervalo():
+    """
+    Con el score normalizado, cambiar α es otro cuantil de los mismos scores:
+    no hay que reentrenar nada. Y menos confianza tiene que dar menos ancho.
+    """
+    rng = np.random.default_rng(33)
+    n = 1200
+    y = rng.normal(0, 1, n)
+    pred, sigma = np.zeros(n), np.ones(n)
+    cal, pru = slice(0, 600), slice(600, n)
+
+    anchos = []
+    for a in (0.5, 0.2, 0.05):
+        c = conforme.calibrar_normalizado(y[cal], pred[cal], sigma[cal], a)
+        lo, hi = conforme.aplicar_normalizado(pred[pru], sigma[pru], c)
+        anchos.append(float(np.median(hi - lo)))
+    assert anchos[0] < anchos[1] < anchos[2]
+
+
+def test_la_dispersion_se_ajusta_fuera_de_muestra():
+    """
+    σ̂ ajustado sobre residuales de ENTRENAMIENTO aprendería que el sistema es
+    más preciso de lo que es, y el intervalo saldría estrecho y falso. La firma
+    obliga a pasar predicciones fuera de muestra.
+    """
+    import inspect
+
+    from atlas.modelos import arboles
+    assert "pred_fuera" in inspect.signature(arboles.dispersion).parameters
+    rng = np.random.default_rng(37)
+    X = pd.DataFrame({"a": rng.normal(size=300), "b": rng.normal(size=300)})
+    y = pd.Series(rng.normal(size=300))
+    s = arboles.dispersion(X, y, y.to_numpy() + rng.normal(0, 1, 300), semilla=0)
+    assert (s.predict(X) > 0).all(), "una dispersión negativa no significa nada"

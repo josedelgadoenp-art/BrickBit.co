@@ -14,8 +14,10 @@ Encadena lo que las fases anteriores dejaron listo:
      con ella justifica (o no) el modelo espacial.
   3. Ajusta tres modelos: hedónico OLS legible, Durbin espacial y boosting.
   4. Los combina por apilado, con pesos aprendidos fuera de muestra.
-  5. Convierte la predicción en un INTERVALO con cobertura garantizada, vía CQR
-     conformal con calibración Mondrian por segmento.
+  5. Convierte la predicción en un INTERVALO con cobertura garantizada. Se
+     calibran DOS formas —CQR y normalizado— con la misma garantía y distinto
+     ancho, y se reportan las dos: con muestras chicas el normalizado suele
+     ganar, porque no tiene que estimar los cuantiles 2.5% y 97.5% directamente.
   6. Explica el modelo con SHAP.
 
 LO QUE ESTE PIPELINE NO HACE, Y CONVIENE SABERLO DE ENTRADA.
@@ -129,6 +131,13 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     _linea(ap.texto())
     res["apilado"] = ap
 
+    # Modelo de dispersión: cuánto suele fallar la predicción en cada punto.
+    # Se ajusta sobre residuales FUERA DE MUESTRA; con residuales de
+    # entrenamiento aprendería que el sistema es más preciso de lo que es.
+    _linea("· Modelo de dispersión (para el intervalo adaptativo)…")
+    fuera_apilado = ap.predecir({"boosting": fuera_boost, "hedonico": fuera_ols})
+    m_sigma = arboles.dispersion(Xtr, ytr, fuera_apilado, semilla)
+
     def predecir(X: pd.DataFrame) -> np.ndarray:
         return ap.predecir({
             "boosting": m_media.predict(X),
@@ -145,11 +154,19 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
         _tipo_de(d, p["calibra"]), np.exp(pred_ca), alpha
     )
     _linea(f"    segmentación: {nombre_seg}  ({seg_ca.nunique()} grupos)")
-    c = conforme.calibrar(yca.to_numpy(), m_lo.predict(Xca), m_hi.predict(Xca),
-                          alpha, grupos_cal=seg_ca,
-                          minimo_por_grupo=conforme.minimo_por_grupo(alpha))
-    _linea(c.texto())
-    res["conformal"] = c
+    minimo = conforme.minimo_por_grupo(alpha)
+
+    # Dos formas de intervalo, las dos con la MISMA garantía de cobertura.
+    # Difieren sólo en el score de disconformidad, y por tanto en el ancho.
+    c_cqr = conforme.calibrar(yca.to_numpy(), m_lo.predict(Xca), m_hi.predict(Xca),
+                              alpha, grupos_cal=seg_ca, minimo_por_grupo=minimo)
+    sigma_ca = m_sigma.predict(Xca)
+    c_norm = conforme.calibrar_normalizado(yca.to_numpy(), pred_ca, sigma_ca,
+                                           alpha, grupos_cal=seg_ca, minimo_por_grupo=minimo)
+    _linea("    [normalizado]")
+    _linea(c_norm.texto())
+    res["conformal"] = c_norm
+    res["conformal_cqr"] = c_cqr
     res["segmentacion"] = nombre_seg
 
     # -------------------------------------------------------------- evaluación
@@ -161,13 +178,29 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
         "hedonico": evaluacion.punto(yte.to_numpy(), _lineal_predict(Xtr, ytr, d.bloque[p["entrena"]], Xte)),
     }
     seg_te = conforme.segmentar(nombre_seg, _tipo_de(d, p["prueba"]), np.exp(pred_te), cortes)
-    lo, hi = conforme.aplicar(m_lo.predict(Xte), m_hi.predict(Xte), c, seg_te)
+    sigma_te = m_sigma.predict(Xte)
+
+    lo, hi = conforme.aplicar_normalizado(pred_te, sigma_te, c_norm, seg_te)
     res["intervalo"] = evaluacion.intervalo(yte.to_numpy(), lo, hi, alpha, grupos=seg_te)
+    lo_q, hi_q = conforme.aplicar(m_lo.predict(Xte), m_hi.predict(Xte), c_cqr, seg_te)
+    res["intervalo_cqr"] = evaluacion.intervalo(yte.to_numpy(), lo_q, hi_q, alpha, grupos=seg_te)
     # Contraste: el mismo intervalo SIN conformalizar, para poder decir cuánto
     # aportó la calibración en vez de afirmarlo.
     res["intervalo_crudo"] = evaluacion.intervalo(
         yte.to_numpy(), m_lo.predict(Xte), m_hi.predict(Xte), alpha
     )
+
+    # Con el score normalizado, cambiar el nivel de confianza NO exige reentrenar
+    # nada: es otro cuantil de los mismos scores. Con CQR harían falta dos
+    # modelos de cuantil nuevos por cada nivel.
+    niveles = []
+    for a in (0.50, 0.20, 0.10, 0.05):
+        ca = conforme.calibrar_normalizado(
+            yca.to_numpy(), pred_ca, sigma_ca, a, grupos_cal=seg_ca,
+            minimo_por_grupo=conforme.minimo_por_grupo(a))
+        l, h = conforme.aplicar_normalizado(pred_te, sigma_te, ca, seg_te)
+        niveles.append((a, evaluacion.intervalo(yte.to_numpy(), l, h, a)))
+    res["niveles"] = niveles
 
     # ----------------------------------------------------------- explicabilidad
     _linea("· Explicabilidad…")
@@ -323,12 +356,30 @@ def informe(cfg, res: dict | None) -> None:
         _linea(f"  {nombre}")
         _linea(m.texto())
 
-    _linea("\nINTERVALO CONFORME  (CQR + Mondrian)")
+    _linea("\nINTERVALO CONFORME  (normalizado + Mondrian)")
     _linea(res["intervalo"].texto())
-    crudo = res["intervalo_crudo"]
-    _linea(f"\n  Sin conformalizar, los mismos cuantiles cubrían {crudo.cobertura * 100:.1f}%")
-    _linea(f"  con ancho ±{crudo.ancho_mediano_pct:.1f}%. Ésa es la diferencia entre un")
-    _linea("  intervalo con garantía y dos números pegados a una predicción.")
+
+    cqr, crudo = res["intervalo_cqr"], res["intervalo_crudo"]
+    _linea("\n  LOS TRES INTERVALOS, LADO A LADO")
+    _linea(f"    sin conformalizar   {crudo.cobertura * 100:5.1f}% de cobertura · ±{crudo.ancho_mediano_pct:.0f}%")
+    _linea(f"    CQR conformal       {cqr.cobertura * 100:5.1f}% · ±{cqr.ancho_mediano_pct:.0f}%")
+    _linea(f"    normalizado         {res['intervalo'].cobertura * 100:5.1f}% · ±{res['intervalo'].ancho_mediano_pct:.0f}%")
+    _linea("  Los dos conformales tienen la MISMA garantía; sólo difieren en el")
+    _linea("  score, y por tanto en el ancho. El primero no tiene garantía ninguna.")
+    if res["intervalo"].cobertura < 1 - res["alpha"]:
+        _linea(f"\n  La cobertura quedó {(1 - res['alpha'] - res['intervalo'].cobertura) * 100:.1f} puntos bajo el objetivo, y es")
+        _linea("  esperable: la partición por bloque hace que los barrios de")
+        _linea("  calibración y los de prueba sean DISTINTOS, lo que rompe a")
+        _linea("  propósito la intercambiabilidad de la que depende la garantía")
+        _linea("  exacta. Es la condición real —valuar donde no hubo comparables—")
+        _linea("  y no se corrige subiendo el nivel hasta que el número quede bonito.")
+
+    if res.get("niveles"):
+        _linea("\n  QUÉ CUESTA CADA NIVEL DE CONFIANZA")
+        _linea("    confianza   cobertura   ancho")
+        for a, iv in res["niveles"]:
+            _linea(f"      {(1 - a) * 100:3.0f}%        {iv.cobertura * 100:5.1f}%    ±{iv.ancho_mediano_pct:.0f}%")
+        _linea("  Con el score normalizado bajar el nivel no exige reentrenar nada.")
 
     # Cubrir no es lo mismo que servir. Un intervalo puede tener la garantía
     # perfecta y ser inútil para decidir, y decir sólo lo primero sería vender

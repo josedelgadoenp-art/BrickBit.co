@@ -74,6 +74,44 @@ def banda(X: pd.DataFrame, y: pd.Series, alpha: float, semilla: int):
     )
 
 
+def dispersion(X: pd.DataFrame, y: pd.Series, pred_fuera: np.ndarray,
+               semilla: int, piso: float = 0.02):
+    """
+    Modelo de cuánto SUELE equivocarse la predicción en cada punto.
+
+    Es la pieza que permite un intervalo conforme localmente adaptativo sin
+    estimar cuantiles extremos. La diferencia importa mucho con pocos datos:
+    ajustar el cuantil 2.5% con pérdida de pinball apoya la estimación en el
+    2.5% de las observaciones —unas 24 de 953—, mientras que |residual| se
+    ajusta con las 953. Medido sobre la CDMX, el intervalo por cuantiles salía
+    al doble de ancho de lo que el error justificaba.
+
+    Se modela log(|residual|) y no |residual| para que la predicción no pueda
+    salir negativa —una dispersión negativa no significa nada— y porque el error
+    inmobiliario es multiplicativo: equivocarse 300 mil pesos en Iztapalapa y en
+    Polanco no es lo mismo.
+
+    `pred_fuera` DEBE ser fuera de muestra. Con predicciones sobre sus propios
+    datos de entrenamiento los residuales salen pequeños y el modelo aprendería
+    que el sistema es más preciso de lo que es: intervalos estrechos y falsos.
+    """
+    r = np.abs(np.asarray(y, float) - np.asarray(pred_fuera, float))
+    ok = np.isfinite(r)
+    m = HistGradientBoostingRegressor(random_state=int(semilla), **BASE)
+    m.fit(X[ok], np.log(r[ok] + piso))
+    return _Dispersion(m, piso)
+
+
+class _Dispersion:
+    """Envuelve el modelo para deshacer el logaritmo y poner un piso."""
+
+    def __init__(self, modelo, piso: float):
+        self.modelo, self.piso = modelo, piso
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        return np.maximum(np.exp(self.modelo.predict(X)) - self.piso, 1e-4)
+
+
 def fuera_de_muestra_por_bloque(
     X: pd.DataFrame, y: pd.Series, bloque: pd.Series, semilla: int, n_pliegues: int = 5
 ) -> np.ndarray:
