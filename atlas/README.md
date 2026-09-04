@@ -188,22 +188,37 @@ Decisiones que conviene conocer, todas encontradas midiendo:
 ### Cobertura de la CDMX: siete alcaldías con ruta rota
 
 En la corrida del scraper de 2026-09 el barrido profundo devolvió **HTTP 404 en
-la página 1** para Benito Juárez, Cuauhtémoc, Coyoacán, Álvaro Obregón, Gustavo
-A. Madero, Venustiano Carranza y La Magdalena Contreras. Un 404 no es "no hay
-inventario": es una ruta que no existe. Son casi la mitad de la ciudad y las de
-mayor valor por m², así que el AVM las tendría prácticamente ciegas.
+la página 1** para siete alcaldías: casi la mitad de la ciudad y las de mayor
+valor por m². Un 404 no es "no hay inventario": es una ruta que no existe.
 
-`tools/c21-scraper.mjs` ahora resuelve el filtro **por municipio** en vez de
-aplicarle a todos el segmento que funcionó con el primero, y prueba variantes
-del slug (sin artículo, sin inicial, con acentos, con el estado para desambiguar
-homónimos). Y trae un modo que sólo mide:
+El modo `sondeo` —que no scrapea, sólo mide qué contesta cada ruta candidata—
+encontró la causa. **El portal usa dos convenciones a la vez:**
 
 ```bash
-node tools/c21-scraper.mjs sondeo --estado ciudad-de-mexico
+node tools/c21-scraper.mjs sondeo --estado ciudad-de-mexico   # ~6 min, en local
 ```
 
-Imprime, para cada alcaldía, qué contestó cada ruta candidata. Se corre en local
-porque el portal rechaza las IP de nube, igual que INEGI y Overpass.
+| | ruta | alcaldías |
+|---|---|---|
+| slug pelón | `en-municipio_iztapalapa` | 9 |
+| con el estado delante | `en-municipio_ciudad-de-mexico-benito-juarez` | 6 |
+
+Las seis del segundo grupo comparten nombre con un municipio de otro estado
+—Benito Juárez con Cancún, Cuauhtémoc con Chihuahua, Álvaro Obregón con
+Michoacán, Venustiano Carranza con Chiapas y Puebla—: el prefijo es cómo el
+portal desambigua homónimos. Es el mismo problema que ya había metido Cancún en
+la capa DENUE.
+
+Inventario recuperado: Benito Juárez 267, Álvaro Obregón 250, Cuauhtémoc 191,
+Coyoacán 131, Venustiano Carranza 52, La Magdalena Contreras 44.
+
+**Gustavo A. Madero sigue sin ruta** tras probar 30 combinaciones. La primera
+versión del generador tenía un hueco —las formas con el estado se cruzaban sólo
+con el slug base, nunca con las variantes reducidas, así que
+`ciudad-de-mexico-gustavo-madero` no llegó a probarse—; ya se cruzan todas.
+
+El sondeo se corre en local porque el portal rechaza las IP de nube, igual que
+INEGI y Overpass.
 
 ### Qué ingiere hoy, sin red
 

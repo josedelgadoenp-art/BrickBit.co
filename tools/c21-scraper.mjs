@@ -362,24 +362,48 @@ const urlEstadoMunJson = (est, seg, mun, p) =>
    con artículo o sin él, con la inicial de un nombre propio o sin ella, con
    acentos percent-encoded, o desambiguando el homónimo con el estado. */
 function variantesSlug(nombre, base, est) {
-  const v = [];
-  const add = (s) => {
+  /* MEDIDO CON EL MODO `sondeo`, 2026-09. El portal usa DOS convenciones:
+       ·  9 alcaldías responden al slug pelón:  en-municipio_iztapalapa
+       ·  6 responden sólo con el ESTADO DELANTE: en-municipio_ciudad-de-mexico-benito-juarez
+     Las seis del segundo grupo comparten nombre con un municipio de otro estado
+     (Benito Juárez/Cancún, Cuauhtémoc/Chihuahua, Álvaro Obregón/Michoacán,
+     Venustiano Carranza/Chiapas y Puebla, Coyoacán, La Magdalena Contreras):
+     el prefijo es cómo el portal desambigua homónimos. Es el mismo problema que
+     ya había metido Cancún en la capa DENUE del Atlas.
+
+     Y ahí estaba el hueco de la primera versión: las formas con el estado se
+     combinaban SÓLO con el slug base, nunca con las variantes reducidas, así
+     que `ciudad-de-mexico-gustavo-madero` jamás llegó a probarse. Ahora se
+     cruzan todas las formas del nombre con todas las del estado. */
+  const nombres = [];
+  const meteNombre = (s) => {
     s = String(s || '').replace(/^-+|-+$/g, '');
-    if (s && !v.includes(s)) v.push(s);
+    if (s && !nombres.includes(s)) nombres.push(s);
   };
-  add(base);
-  add(base.replace(/^(la|el|los|las)-/, ''));                    // la-magdalena-… → magdalena-…
-  add(base.split('-').filter((t) => t.length > 1).join('-'));     // gustavo-a-madero → gustavo-madero
-  // Con acentos: si el portal no los normaliza, el slug sin ellos da 404.
+  meteNombre(base);
+  meteNombre(base.replace(/^(la|el|los|las)-/, ''));               // la-magdalena-… → magdalena-…
+  meteNombre(base.split('-').filter((t) => t.length > 1).join('-')); // gustavo-a-madero → gustavo-madero
+  // Sin colapsar los separadores: "Gustavo A. Madero" → gustavo-a--madero.
+  // Algunos slugificadores sustituyen cada carácter no alfanumérico por un
+  // guión sin fusionar los repetidos, y entonces el punto deja un guión de más.
+  meteNombre(String(nombre || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().trim().replace(/[^a-z0-9]/g, '-').replace(/^-+|-+$/g, ''));
+  // Con acentos, por si el portal no los normaliza.
   const acentuado = String(nombre || '').toLowerCase().trim()
     .replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
-  add(encodeURIComponent(acentuado).replace(/%2F/g, '-'));
-  // Homónimos. Cinco de las siete alcaldías que fallaron comparten nombre con
-  // un municipio de otro estado (Benito Juárez con Cancún, Cuauhtémoc con
-  // Chihuahua, Álvaro Obregón con Michoacán, Venustiano Carranza con Chiapas y
-  // Puebla). Es exactamente el problema que ya mordió en el DENUE, y muchos
-  // portales lo resuelven metiendo el estado en el slug.
-  if (est) { add(`${base}-${est}`); add(`${est}-${base}`); if (est === 'ciudad-de-mexico') add(`${base}-cdmx`); }
+  meteNombre(encodeURIComponent(acentuado).replace(/%2F/g, '-'));
+
+  // El orden importa: primero todos los nombres pelones (9 de 16 aciertan ahí),
+  // después todos con el estado delante (los otros 6), y al final las formas
+  // raras. Así el caso normal sigue costando una sola petición.
+  const v = [];
+  const add = (s) => { if (s && !v.includes(s)) v.push(s); };
+  nombres.forEach(add);
+  if (est) {
+    nombres.forEach((n) => add(`${est}-${n}`));
+    nombres.forEach((n) => add(`${n}-${est}`));
+    if (est === 'ciudad-de-mexico') nombres.forEach((n) => add(`${n}-cdmx`));
+  }
   return v;
 }
 
