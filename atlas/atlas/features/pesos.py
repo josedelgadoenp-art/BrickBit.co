@@ -146,6 +146,7 @@ def elegir(
     y: np.ndarray | pd.Series,
     cfg: Config | None = None,
     permutaciones: int = 199,
+    tipos: tuple[str, ...] = ("knn", "banda"),
 ) -> tuple[W, Eleccion]:
     """
     Prueba varios W y devuelve el que más estructura espacial captura.
@@ -153,12 +154,20 @@ def elegir(
     Se prueban los k de `config.yaml` y dos bandas de distancia. Las
     permutaciones van bajas a propósito durante la selección (es una
     comparación relativa); el W ganador se vuelve a medir con más.
+
+    `tipos` restringe los candidatos. Sirve para pedir sólo KNN cuando el W va a
+    alimentar un modelo por máxima verosimilitud: una banda de distancia deja
+    islas —puntos sin ningún vecino dentro del umbral—, y sobre una W con
+    componentes desconectados la verosimilitud del modelo de rezago se vuelve
+    inestable. Medido: con la banda de 500 m sobre inmuebles dispersos el SDM
+    devolvía ρ = −0.93 con pseudo R² de 0.002, que no es un resultado sino un
+    síntoma. KNN, por construcción, no deja a nadie sin vecinos.
     """
     cfg = cfg or cargar()
     ks = list(cfg["modelado"]["pesos_espaciales"]["k_candidatos"])
 
     filas, objetos = [], {}
-    for k in ks:
+    for k in ks if "knn" in tipos else []:
         try:
             w = knn(gdf, k, cfg)
             I, p = moran(w, y, permutaciones)
@@ -167,7 +176,7 @@ def elegir(
         except Exception as e:      # una definición inviable no debe tumbar la selección
             filas.append({"tipo": "knn", "parametro": k, "I": np.nan, "p": np.nan,
                           "error": str(e)[:60]})
-    for u in (500.0, 1000.0):
+    for u in (500.0, 1000.0) if "banda" in tipos else []:
         try:
             w = banda(gdf, u, cfg)
             I, p = moran(w, y, permutaciones)

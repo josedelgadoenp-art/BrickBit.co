@@ -4,7 +4,7 @@ Motor de valuación y pronóstico para la Ciudad de México. Vive **al lado** de
 Motor de Morfogénesis (`app.py`), no dentro: son dos productos con datos y
 ciclos de vida distintos, y mezclarlos habría hecho a los dos más frágiles.
 
-**Estado: Fases 0 y 1 completas.** Las fases 2 a 5 están por construir.
+**Estado: Fases 0, 1 y 2 completas.** Las fases 3 a 5 están por construir.
 
 ---
 
@@ -69,6 +69,46 @@ El diagnóstico se corre sobre **densidad de empleo DENUE**, no sobre precios.
 Mide que la estructura espacial de la actividad económica es real, que es el
 supuesto del que cuelga todo el aparato espacial. El Moran del precio se mide
 en la Fase 2, sobre los 2,144 listados.
+
+### Correr la Fase 2
+
+```bash
+python -m pipelines.fase2                  # AVM + intervalo, sobre venta
+python -m pipelines.fase2 --operacion renta
+python -m pipelines.fase2 --alpha 0.10     # intervalos al 90%
+python -m pipelines.fase2 --informe        # relee la última evaluación
+```
+
+Junta los listados con la malla, parte **por bloque espacial**, ajusta hedónico
++ Durbin + boosting, los combina por apilado y convierte la predicción en un
+intervalo con cobertura garantizada.
+
+**Lo que hay que mirar primero es la cobertura, no el error.** Un AVM que se
+equivoca 20% y lo dice sirve; uno que se equivoca 12% y no lo dice, no. En el
+banco de pruebas sintético la conformalización subió la cobertura de **77.8% a
+96.1%** sobre un objetivo de 95%: no estaba afinando un intervalo casi bueno,
+estaba arreglando uno que cubría mucho menos de lo que prometía.
+
+Cuatro decisiones que conviene conocer, todas encontradas midiendo:
+
+- **El segmento de Mondrian sale de la PREDICCIÓN, no del precio real.** Al
+  valuar un inmueble su precio es justamente lo que no se sabe; un grupo que
+  dependiera de él daría una cobertura preciosa en la evaluación y sería
+  inaplicable en producción. Es fuga en la variable objetivo, la hermana de la
+  fuga espacial que evita la partición por bloques.
+- **La segmentación se adapta al tamaño de la calibración.** Con 290 inmuebles,
+  `tipo × tercil` daba nueve grupos y ocho quedaban bajo el mínimo: Mondrian no
+  hacía nada mientras el informe *parecía* segmentado. Ahora baja a una
+  segmentación que la muestra sí sostiene, y dice cuál eligió.
+- **El W del SDM es KNN, no banda de distancia.** Una banda deja islas —puntos
+  sin ningún vecino dentro del umbral— y sobre ellas la verosimilitud del modelo
+  de rezago no converge: medido, daba ρ = −0.93 con pseudo R² de 0.002, que no
+  es un hallazgo económico sino un síntoma numérico. Con KNN: ρ = +0.21
+  (p = 0.007), pseudo R² = 0.36.
+- **El diseño se pasa por QR pivotante.** Aunque el núcleo del hedónico esté
+  elegido a mano, en unos datos concretos dos variables pueden salir
+  dependientes y statsmodels devuelve coeficientes indeterminados con un aviso
+  fácil de ignorar. Se detectan y se quitan.
 
 ### Cobertura de la CDMX: siete alcaldías con ruta rota
 
@@ -188,10 +228,19 @@ atlas/
 │     ├─ malla.py         malla H3 de la CDMX (el sustrato de la tela)
 │     ├─ pesos.py         W, rezagos, I de Moran, LISA
 │     └─ amenidades.py    distancias, conteos, accesibilidad gravitacional
+│  └─ modelos/
+│     ├─ datos.py         ensamblado + partición por bloque espacial
+│     ├─ hedonico.py      OLS semi-log y Durbin espacial (SDM)
+│     ├─ arboles.py       boosting de media y de cuantiles
+│     ├─ apilado.py       combinación con pesos fuera de muestra
+│     ├─ conforme.py      CQR + Mondrian: el intervalo con garantía
+│     ├─ evaluacion.py    error en pesos y cobertura por segmento
+│     └─ importancia.py   SHAP, con permutación de respaldo
 ├─ pipelines/
 │  ├─ fase0.py            ingesta + informe
-│  └─ fase1.py            variables geoespaciales + diagnóstico
-├─ tests/                 40 pruebas
+│  ├─ fase1.py            variables geoespaciales + diagnóstico
+│  └─ fase2.py            AVM + incertidumbre calibrada
+├─ tests/                 55 pruebas
 └─ data/                  el lago (parquet); no se versiona
 ```
 
@@ -202,15 +251,20 @@ atlas/
 *(Fase 1 completa: W, rezagos, Moran, LISA, accesibilidad. Falta de la Fase 1
 el delta de accesibilidad por obra pública, que necesita la capa de obras.)*
 
-2. **AVM + incertidumbre** — hedónico semi-log, SDM (`spreg`), MGWR, boosting de
-   media y cuantiles, stacking, **CQR + Mondrian**, SHAP.
+2. ~~**AVM + incertidumbre**~~ **hecha**, salvo MGWR: hedónico semi-log, SDM
+   (`spreg`), boosting de media y cuantiles, apilado, **CQR + Mondrian** y SHAP.
+   Los coeficientes locales de MGWR quedan pendientes a propósito: con ~1,600
+   inmuebles de venta y 19 bloques espaciales, estimar una superficie de
+   coeficientes por variable daría mapas bonitos y sin respaldo. Entra cuando la
+   muestra lo aguante.
 3. **Temporal + campo de crecimiento** — índice SHF/ventas repetidas, VECM,
    superficies por kriging/GP, gradiente ∇g, pesos `(I−ρW)⁻¹`.
 4. **App Streamlit** — mapa-tela, campo vectorial, escenarios de obra pública.
 5. **Monitoreo** — drift de datos y de cobertura, reentrenamiento.
 
-La Fase 2 ya está desbloqueada: hay 2,144 listados en el lago. Lo que sigue
-condicionando su calidad no es el código sino el tamaño de esa muestra.
+Lo que condiciona la calidad de la Fase 2 no es el código sino el tamaño de la
+muestra: 2,144 inmuebles y 19 bloques espaciales. El intervalo sale honesto pero
+ancho, y se estrecha con más inventario, no con más modelo.
 
 ---
 

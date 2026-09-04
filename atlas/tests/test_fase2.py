@@ -1,0 +1,234 @@
+"""
+Pruebas de la Fase 2.
+
+Lo que aquí se congela no son detalles de implementación sino las propiedades de
+las que depende que el sistema no mienta: que el intervalo cubra lo que promete,
+que la partición no filtre vecinos, que el segmento de Mondrian se pueda calcular
+sin conocer la respuesta, y que los bugs que ya costaron encontrar no vuelvan.
+"""
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from atlas.config import cargar
+from atlas.modelos import apilado, conforme, datos, evaluacion, hedonico
+
+CFG = cargar()
+ALPHA = 0.05
+
+
+# ------------------------------------------------------------------ conforme
+def test_el_intervalo_conforme_cubre_lo_que_promete():
+    """
+    La propiedad que justifica todo el módulo: con datos intercambiables, la
+    cobertura en prueba debe alcanzar (1−α). Se repite sobre muchas semillas
+    porque una sola corrida no distingue una garantía de una casualidad.
+    """
+    coberturas = []
+    for s in range(40):
+        rng = np.random.default_rng(s)
+        n = 600
+        y = rng.normal(0, 1, n)
+        # Cuantiles deliberadamente MAL calibrados: demasiado estrechos. Si el
+        # conformal sirve, los arregla; si no, esta prueba lo desnuda.
+        lo, hi = np.full(n, -0.4), np.full(n, 0.4)
+        cal = slice(0, 300)
+        c = conforme.calibrar(y[cal], lo[cal], hi[cal], ALPHA)
+        blo, bhi = conforme.aplicar(lo[300:], hi[300:], c)
+        coberturas.append(np.mean((y[300:] >= blo) & (y[300:] <= bhi)))
+
+    media = float(np.mean(coberturas))
+    assert media >= 1 - ALPHA - 0.01, f"cobertura media {media:.3f}, prometía {1 - ALPHA}"
+
+    # Y sin conformalizar, esa misma banda [−0.4, 0.4] sobre una normal estándar
+    # cubre ~31%. El contraste es lo que hace que la corrección no sea
+    # decorativa: no está afinando un intervalo casi bueno, está arreglando uno
+    # que cubría un tercio de lo que prometía.
+    crudo = np.random.default_rng(0).normal(0, 1, 20000)
+    assert np.mean((crudo >= -0.4) & (crudo <= 0.4)) < 0.4
+
+
+def test_sin_suficientes_datos_no_finge_una_garantia():
+    """
+    Con n < 1/α − 1 el índice ⌈(n+1)(1−α)⌉ cae fuera de la muestra: no existe
+    corrección finita. Debe devolver infinito —intervalo no informativo— y no
+    un número plausible que aparentaría una garantía inexistente.
+    """
+    assert conforme._cuantil_conforme(np.arange(5.0), 0.05) == float("inf")
+    assert np.isfinite(conforme._cuantil_conforme(np.arange(200.0), 0.05))
+
+
+def test_el_cuantil_conforme_usa_n_mas_1_y_no_el_percentil_ingenuo():
+    """
+    El ⌈(n+1)(1−α)⌉ es lo que da la garantía en muestra finita. El percentil
+    ingenuo queda por debajo, y siempre en la dirección de cubrir de MENOS.
+    """
+    E = np.arange(100.0)
+    conf = conforme._cuantil_conforme(E, 0.05)
+    ingenuo = float(np.percentile(E, 95))
+    assert conf >= ingenuo
+
+
+def test_mondrian_arregla_un_segmento_que_el_global_dejaba_corto():
+    """
+    El caso de uso entero de Mondrian: un grupo mucho más disperso que el resto.
+    Con una sola corrección global ese grupo queda descubierto aunque el
+    promedio se vea bien; calibrando por grupo, se cubre.
+    """
+    rng = np.random.default_rng(7)
+    n = 1200
+    grupo = np.where(np.arange(n) % 6 == 0, "volatil", "tranquilo")
+    y = np.where(grupo == "volatil", rng.normal(0, 4, n), rng.normal(0, 1, n))
+    lo, hi = np.full(n, -1.0), np.full(n, 1.0)
+
+    cal, pru = slice(0, 600), slice(600, n)
+    g = pd.Series(grupo)
+
+    solo_global = conforme.calibrar(y[cal], lo[cal], hi[cal], ALPHA)
+    con_grupos = conforme.calibrar(y[cal], lo[cal], hi[cal], ALPHA, grupos_cal=g[cal])
+
+    def cobertura(c, grupos):
+        blo, bhi = conforme.aplicar(lo[pru], hi[pru], c, grupos)
+        dentro = (y[pru] >= blo) & (y[pru] <= bhi)
+        return float(dentro[(g[pru] == "volatil").to_numpy()].mean())
+
+    assert cobertura(solo_global, None) < 1 - ALPHA, \
+        "el global debería quedarse corto en el segmento volátil"
+    assert cobertura(con_grupos, g[pru]) >= 1 - ALPHA - 0.03
+
+
+def test_la_segmentacion_se_adapta_al_tamano_de_la_calibracion():
+    """
+    El bug que congela: con 290 inmuebles de calibración, `tipo × tercil` daba
+    nueve grupos y ocho quedaban por debajo del mínimo, así que Mondrian no
+    hacía nada mientras el informe parecía segmentado. Ahora se baja a una
+    segmentación que la muestra sí sostiene.
+    """
+    rng = np.random.default_rng(3)
+    tipo_pocos = pd.Series(rng.choice(["depto", "casa", "terreno"], 200))
+    nombre, seg, _ = conforme.elegir_segmentacion(
+        tipo_pocos, pd.Series(rng.lognormal(10, 0.5, 200)), ALPHA)
+    assert seg.nunique() <= 3, "con 200 filas no se sostienen nueve grupos"
+
+    tipo_muchos = pd.Series(rng.choice(["depto", "casa"], 4000))
+    nombre_g, seg_g, cortes = conforme.elegir_segmentacion(
+        tipo_muchos, pd.Series(rng.lognormal(10, 0.5, 4000)), ALPHA)
+    assert seg_g.nunique() >= seg.nunique(), "con más datos debe poder afinar más"
+    assert nombre_g == "tipo × tercil" and cortes is not None
+
+
+def test_el_segmento_se_calcula_sin_conocer_la_respuesta():
+    """
+    El segmento de Mondrian tiene que salir de la PREDICCIÓN, porque al valuar
+    un inmueble el precio real es justamente lo que no se sabe. `segmentar`
+    debe poder aplicarse a datos nuevos usando sólo los cortes aprendidos.
+    """
+    tipo = pd.Series(["depto"] * 300 + ["casa"] * 300)
+    pred = pd.Series(np.linspace(1000, 9000, 600))
+    nombre, _, cortes = conforme.elegir_segmentacion(tipo, pred, ALPHA)
+
+    nuevos = conforme.segmentar(nombre, pd.Series(["depto", "casa"]),
+                                pd.Series([1100.0, 8800.0]), cortes)
+    assert len(nuevos) == 2 and nuevos.notna().all()
+    # Los mismos cortes aplicados dos veces dan lo mismo: si cada conjunto usara
+    # sus propios terciles, "caro" significaría cosas distintas en cada uno.
+    otra = conforme.segmentar(nombre, pd.Series(["depto", "casa"]),
+                              pd.Series([1100.0, 8800.0]), cortes)
+    assert list(nuevos) == list(otra)
+
+
+def test_el_intervalo_nunca_sale_invertido():
+    c = conforme.Conformal(alpha=0.05, global_=-5.0)   # corrección enorme y negativa
+    lo, hi = conforme.aplicar(np.array([1.0, 2.0]), np.array([1.5, 2.5]), c)
+    assert (lo <= hi).all()
+
+
+# ------------------------------------------------------------------- apilado
+def test_el_apilado_pesa_mas_al_modelo_que_acierta():
+    rng = np.random.default_rng(11)
+    y = rng.normal(0, 1, 500)
+    bueno = y + rng.normal(0, 0.1, 500)
+    malo = rng.normal(0, 1, 500)
+    a = apilado.ajustar({"bueno": bueno, "malo": malo}, y)
+    assert a.pesos[a.nombres.index("bueno")] > a.pesos[a.nombres.index("malo")]
+    assert np.isclose(a.pesos.sum(), 1.0)
+    assert (a.pesos >= 0).all(), "los pesos negativos harían ininterpretable la mezcla"
+
+
+# ---------------------------------------------------------------- evaluación
+def test_la_cobertura_medida_es_la_fraccion_dentro_del_intervalo():
+    y = np.array([1.0, 2.0, 3.0, 4.0])
+    lo = np.array([0.0, 0.0, 0.0, 0.0])
+    hi = np.array([1.5, 2.5, 2.5, 2.5])       # cubre 2 de 4
+    r = evaluacion.intervalo(y, lo, hi, 0.05)
+    assert r.cobertura == 0.5
+    assert not r.cumple()
+
+
+def test_el_error_se_reporta_en_pesos_no_en_logaritmos():
+    """Un R² sobre logaritmos no le dice nada a nadie; un 10% de error sí."""
+    y = np.log(np.array([1000.0, 2000.0, 4000.0]))
+    pred = np.log(np.array([1100.0, 1800.0, 4400.0]))   # +10%, −10%, +10%
+    m = evaluacion.punto(y, pred)
+    assert abs(m.mdape_pct - 10.0) < 0.01
+    assert m.dentro_20_pct == 100.0
+
+
+# -------------------------------------------------------------------- diseño
+def test_se_quitan_las_columnas_linealmente_dependientes():
+    """
+    El bug que congela: `tipo_otro` se quitaba por nombre como categoría de
+    referencia, y cuando esa categoría no existía en los datos no se quitaba
+    ninguna. Las indicadoras sumaban 1 contra la constante y statsmodels
+    devolvía coeficientes indeterminados con un SingularMatrixWarning.
+    """
+    rng = np.random.default_rng(5)
+    a = rng.normal(size=200)
+    b = rng.normal(size=200)
+    Z = np.column_stack([a, b, a + b])          # la tercera es redundante
+    Zr, nombres, fuera = hedonico._rango_completo(Z, ["a", "b", "a+b"])
+    assert Zr.shape[1] == 2
+    assert len(fuera) == 1 and len(nombres) == 2
+
+
+# ------------------------------------------------------------------ partición
+def test_ningun_bloque_cae_en_dos_conjuntos():
+    """
+    La fuga que la partición existe para evitar: si un bloque estuviera en
+    entrenamiento y en prueba, un comparable vecino se vería a los dos lados y
+    el desempeño saldría inflado.
+    """
+    rng = np.random.default_rng(2)
+    bloque = pd.Series(rng.choice([f"b{i}" for i in range(40)], 2000))
+    p = datos.particion(bloque, CFG)
+
+    conjuntos = {k: set(bloque[v]) for k, v in p.items()}
+    assert not (conjuntos["entrena"] & conjuntos["calibra"])
+    assert not (conjuntos["entrena"] & conjuntos["prueba"])
+    assert not (conjuntos["calibra"] & conjuntos["prueba"])
+    assert sum(v.sum() for v in p.values()) == len(bloque), "nadie puede quedarse fuera"
+
+
+def test_la_particion_es_determinista():
+    bloque = pd.Series([f"b{i % 30}" for i in range(1500)])
+    a = datos.particion(bloque, CFG)
+    b = datos.particion(bloque, CFG)
+    for k in a:
+        assert (a[k] == b[k]).all()
+
+
+def test_con_muy_pocos_bloques_avisa_en_vez_de_partir_mal():
+    """Dos bloques no se pueden partir en tres sin dejar uno vacío."""
+    with pytest.raises(ValueError, match="pocos bloques"):
+        datos.particion(pd.Series(["a"] * 50 + ["b"] * 50), CFG)
+
+
+def test_las_fracciones_quedan_cerca_de_lo_pedido():
+    rng = np.random.default_rng(4)
+    bloque = pd.Series(rng.choice([f"b{i}" for i in range(60)], 3000))
+    p = datos.particion(bloque, CFG, fracciones=(0.6, 0.2, 0.2))
+    n = len(bloque)
+    assert abs(p["entrena"].sum() / n - 0.6) < 0.12
+    assert abs(p["prueba"].sum() / n - 0.2) < 0.12

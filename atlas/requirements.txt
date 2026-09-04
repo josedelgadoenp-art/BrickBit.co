@@ -21,15 +21,17 @@ esda>=2.5            # I de Moran, LISA
 scipy>=1.11
 scikit-learn>=1.4
 
-# --- Fase 2: modelado e incertidumbre (aún no se importan) ---
-# spreg>=1.4         # SDM, SEM, SARAR
-# mgwr>=2.2          # coeficientes locales
-# statsmodels>=0.14  # hedónico, VECM
-# lightgbm>=4.3      # media y cuantiles
-# catboost>=1.2      # categóricas de alta cardinalidad (colonia, CP)
-# mapie>=0.8         # conformal (CQR)
-# crepes>=0.6        # conformal Mondrian
-# shap>=0.45         # explicabilidad
+# --- Fase 2: modelado e incertidumbre ---
+spreg>=1.4           # Durbin espacial (SDM) por máxima verosimilitud
+statsmodels>=0.14    # hedónico OLS con errores robustos HC1
+shap>=0.45           # explicabilidad; sin él se usa importancia por permutación
+# El boosting de media y de cuantiles sale de scikit-learn
+# (HistGradientBoostingRegressor con loss='quantile'): maneja NaN de forma
+# nativa y evita dos dependencias más. El conformal (CQR + Mondrian) está
+# escrito en `atlas/modelos/conforme.py`, unas 60 líneas: mapie y crepes
+# traerían más superficie de la que ahorran, y aquí la garantía tiene que
+# poder leerse y auditarse.
+# mgwr>=2.2          # coeficientes locales — pendiente, ver README
 
 # --- Fase 3: superficies ---
 # pykrige>=1.7       # kriging ordinario
