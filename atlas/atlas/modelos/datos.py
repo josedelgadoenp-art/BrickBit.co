@@ -228,8 +228,26 @@ def particion(
         fracciones = tuple(cfg["modelado"]["validacion"].get("fracciones", (0.6, 0.2, 0.2)))
     rng = np.random.default_rng(int(cfg.semilla))
     tam = bloque.value_counts()
+
+    # DE MAYOR A MENOR, no al azar.
+    #
+    # Los bloques de la CDMX son muy desiguales: el centro concentra el
+    # inventario y un solo bloque puede valer el 20% de la muestra. Con los
+    # bloques barajados, si uno enorme sale temprano se lleva un conjunto entero
+    # por delante y ya no hay cómo recuperar el equilibrio con los chicos que
+    # quedan. Medido: pidiendo 60/20/20 salía 49/24/27 en una simulación y
+    # 76/10/14 sobre los datos reales —la calibración quedó en 183 filas, con
+    # grupos de Mondrian de 61, y el cuantil conforme del 95% pasó a ser el
+    # tercer valor más grande de 61: puro ruido, cobertura 98% y +-121% de ancho.
+    #
+    # Colocar primero los grandes es la heurística estándar de reparto
+    # multiconjunto (longest-processing-time-first): los bloques grandes se
+    # acomodan cuando todos los cupos están libres, y los chicos sirven después
+    # para afinar. El barajado se conserva sólo para desempatar entre bloques
+    # del mismo tamaño, que es donde sí conviene no tener un sesgo fijo.
     orden = tam.index.to_numpy()
     rng.shuffle(orden)
+    orden = sorted(orden, key=lambda b: -int(tam[b]))
 
     n = int(tam.sum())
     cupos = [f * n for f in fracciones]

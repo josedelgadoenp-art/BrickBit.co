@@ -10,20 +10,20 @@ ciclos de vida distintos, y mezclarlos habría hecho a los dos más frágiles.
 
 ## Lo primero que hay que saber
 
-**La muestra de la CDMX es delgada: 2,144 inmuebles.**
+**La muestra de la CDMX es delgada: 2,313 inmuebles.**
 
 Durante un tiempo el bloqueo fue no tener ningún listado individual —sin precio
 + m² + atributos por inmueble no hay AVM, ni SHAP, ni intervalo conforme—. Eso
 ya se resolvió: el scraper autorizado de Century 21 corrió sobre el país entero
-y de sus **18,380 propiedades**, 2,144 caen dentro de la CDMX y sobreviven a la
-validación. La Fase 2 puede arrancar.
+y de sus **18,560 propiedades**, 2,313 caen dentro de la CDMX y sobreviven a la
+validación.
 
-Pero 2,144 para 16 alcaldías **no da para intervalos estrechos**, y menos por
+Pero 2,313 para 16 alcaldías **no da para intervalos estrechos**, y menos por
 segmento. Conviene saberlo antes de leer el primer resultado del AVM: las bandas
 van a salir anchas, y eso será una propiedad honesta del dato, no un defecto del
-modelo. Dos cosas engordan la muestra, las dos documentadas más abajo: arreglar
-las siete alcaldías que el scraper no supo pedir, y volver a correrlo cada mes
-—cada corrida agrega inventario nuevo y, de paso, alimenta la serie temporal—.
+modelo. Lo que engorda la muestra es volver a correr el scraper cada mes —cada
+corrida agrega inventario nuevo y, de paso, alimenta la serie temporal de la
+Fase 3—.
 
 ```bash
 node tools/c21-scraper.mjs todo      # deja c21_out/listados.json

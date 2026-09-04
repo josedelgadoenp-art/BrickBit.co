@@ -433,3 +433,29 @@ def test_todos_los_gammas_dan_intervalos_validos():
         lo, hi = conforme.aplicar_normalizado(pred[pru], s[pru], c)
         cob = float(((y[pru] >= lo) & (y[pru] <= hi)).mean())
         assert cob >= 1 - ALPHA - 0.03, f"γ={gamma} rompió la cobertura ({cob:.3f})"
+
+
+def test_la_particion_aguanta_bloques_muy_desiguales():
+    """
+    El bug que congela: los bloques se barajaban y se iban asignando en ese
+    orden. Los de la CDMX son muy desiguales —el centro concentra el inventario
+    y un solo bloque puede valer el 20% de la muestra—, así que si uno enorme
+    salía temprano se llevaba un conjunto por delante.
+
+    Medido sobre los datos reales: pidiendo 60/20/20 salió 76/10/14. La
+    calibración quedó en 183 filas con grupos de Mondrian de 61, el cuantil
+    conforme del 95% pasó a ser el tercer valor más grande de 61 —puro ruido— y
+    el intervalo se fue a ±121% con 98% de cobertura.
+
+    Colocar primero los grandes es la heurística estándar de reparto
+    multiconjunto. Aquí se exige que aguante incluso con un bloque gigante.
+    """
+    for semilla in (7, 11, 19, 23):
+        rng = np.random.default_rng(semilla)
+        tam = (rng.pareto(1.1, 38) * 40 + 5).astype(int)
+        bloque = pd.Series(np.repeat([f"b{i}" for i in range(38)], tam))
+        p = datos.particion(bloque, CFG, fracciones=(0.6, 0.2, 0.2))
+        n = len(bloque)
+        assert abs(p["entrena"].sum() / n - 0.6) < 0.05, f"semilla {semilla}"
+        assert abs(p["calibra"].sum() / n - 0.2) < 0.05, f"semilla {semilla}"
+        assert abs(p["prueba"].sum() / n - 0.2) < 0.05, f"semilla {semilla}"
