@@ -42,7 +42,17 @@ const flag = (n, d) => {
 
 fs.mkdirSync(OUT, { recursive: true });
 
-/* ---------- red ---------- */
+/* ---------- red ----------
+   REINTENTAR UN 404 ES TIRAR TIEMPO. Un error de red o un 5xx pueden arreglarse
+   solos al segundo intento; un 404 no: la ruta no existe y no va a existir.
+   La primera versión metía todo en el mismo catch y reintentaba cuatro veces
+   con espera creciente, así que cada ruta inexistente costaba ~14 s. En el modo
+   `sondeo`, que prueba hasta 36 rutas por municipio y espera que la mayoría den
+   404, eso eran ocho minutos por alcaldía y más de una hora en total —para un
+   diagnóstico que debe tardar dos minutos—. Los errores deterministas del
+   cliente (4xx, salvo 408 y 429, que sí son transitorios) fallan de inmediato. */
+class ErrorFatal extends Error {}
+
 async function fetchText(url, intento = 1) {
   const MAX = 4;
   try {
@@ -60,10 +70,13 @@ async function fetchText(url, intento = 1) {
       await new Promise((s) => setTimeout(s, espera));
       return fetchText(url, intento + 1);
     }
+    if (r.status >= 400 && r.status < 500 && r.status !== 408) {
+      throw new ErrorFatal('HTTP ' + r.status);   // determinista: no se reintenta
+    }
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return await r.text();
   } catch (e) {
-    if (intento >= MAX) throw e;
+    if (e instanceof ErrorFatal || intento >= MAX) throw e;
     await new Promise((s) => setTimeout(s, 2000 * 2 ** (intento - 1)));
     return fetchText(url, intento + 1);
   }
