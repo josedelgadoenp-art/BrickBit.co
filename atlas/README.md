@@ -68,7 +68,7 @@ no hay modelo— y se declara como lo que es.
 El diagnóstico se corre sobre **densidad de empleo DENUE**, no sobre precios.
 Mide que la estructura espacial de la actividad económica es real, que es el
 supuesto del que cuelga todo el aparato espacial. El Moran del precio se mide
-en la Fase 2, sobre los 2,144 listados.
+en la Fase 2, sobre los listados.
 
 ### Correr la Fase 2
 
@@ -84,106 +84,79 @@ Junta los listados con la malla, parte **por bloque espacial**, ajusta hedónico
 intervalo con cobertura garantizada.
 
 **Lo que hay que mirar primero es la cobertura, no el error.** Un AVM que se
-equivoca 20% y lo dice sirve; uno que se equivoca 12% y no lo dice, no. Sobre
-los datos reales de la CDMX la conformalización subió la cobertura de **77.7% a
-97.8%** contra un objetivo de 95%: no estaba afinando un intervalo casi bueno,
-estaba arreglando uno que cubría tres cuartas partes de lo que prometía.
+equivoca 27% y lo dice sirve; uno que se equivoca 12% y no lo dice, no.
 
-**Pero cubrir no es servir**, y el informe lo dice cuando toca. La primera
-corrida real dio ±139% de ancho: garantía perfecta, utilidad nula.
-
-Parte de eso era ineficiencia y se puede recuperar. Con un error mediano del 25%,
-un intervalo del 95% *eficiente* mide **±69%**; el de CQR daba el doble. La causa
-es que CQR tiene que estimar los cuantiles 2.5% y 97.5% **directamente**, y esa
-cola se apoya en el 2.5% de las observaciones —unas 24 de 953—. Así que se
-calibran **dos** formas, con la misma garantía y distinto ancho:
-
-| | qué estima | con cuántas observaciones |
-|---|---|---|
-| CQR | los cuantiles 2.5% y 97.5% | las ~24 de cada cola |
-| Normalizado | \|y − ŷ\| / σ̂(x) | las 953 |
-
-El normalizado sigue siendo adaptativo —donde el modelo sabe menos, σ̂ es grande
-y el intervalo se abre— y de regalo permite cambiar el nivel de confianza sin
-reentrenar nada: es otro cuantil de los mismos scores. El informe imprime la
-tabla de qué cuesta cada nivel (50 / 80 / 90 / 95%).
-
-**El ruido en σ̂ se paga en ancho, y no compra cobertura.** Medido en simulación:
-con la misma cobertura, una σ̂ ruidosa infla la corrección conforme de 1.92 a
-3.44 y casi DUPLICA el ancho. Se vio en producción cuando entró OSM: el error
-puntual mejoró (mediana 24.7% → 22.0%) y el intervalo se ENSANCHÓ (±107% →
-±126%), porque σ̂ con 137 variables y 953 filas se volvió más ruidosa. Dos
-remedios: σ̂ se ajusta con un modelo más suave que la media —es un parámetro de
-estorbo, su trabajo es la FORMA del ancho, no acertar— y el score se calcula
-sobre σ̂(x) + γ, la estabilización aditiva de Lei et al. (2018). γ se elige
-midiendo el ancho sobre datos fuera de muestra del entrenamiento. Se puede
-elegir por ancho sin miedo porque **todos los γ dan intervalos válidos**: la
-garantía no depende de que σ̂ sea correcta.
-
-Lo que NO se recupera con método es el resto: el modelo se equivoca ~25% en la
-mediana, y un intervalo honesto sobre ese error tiene que ser ancho. Eso se
-estrecha con más inventario y mejores atributos.
-
-**La intercambiabilidad se rompe a propósito.** La garantía conforme exacta
-supone que calibración y despliegue son intercambiables, y la partición por
-bloque hace que sean barrios DISTINTOS. Por eso la cobertura medida puede caer
-un par de puntos bajo el objetivo. No se corrige subiendo el nivel hasta que el
-número quede bonito: es la condición real de uso —valuar donde no hubo
-comparables— y con una partición al azar el número saldría clavado y no diría
-nada sobre el barrio siguiente.
-
-Lo que sí midió bien la primera corrida real:
+Sobre los datos reales de la CDMX, con 1,773 inmuebles de venta repartidos en 38
+bloques espaciales (1,063 / 355 / 355):
 
 | | |
 |---|---|
-| I de Moran del **precio** | **0.444** (p=0.001) con knn(5) |
-| SDM · ρ | **+0.377** (p = 4.8e-21), pseudo R² 0.574 |
-| Error del apilado en prueba | mediana 23.9% · dentro de ±20%: 43.7% |
+| I de Moran del **precio** | **0.447** (p = 0.001) con knn(5) |
+| SDM · ρ | **+0.302** (p = 3.2e-13), pseudo R² 0.580 |
+| Error del apilado en prueba | mediana **26.9%** · R²(log) 0.525 |
+| **Cobertura del intervalo 95%** | **94.9%** — calibrado |
 
-El ρ de 0.38 con esa significancia es el hallazgo de fondo de la fase: el precio
-de un inmueble en la CDMX depende materialmente del de sus vecinos, y un modelo
-sin componente espacial estaría mal especificado. Ya no es un supuesto heredado
-de la Fase 1 —que se midió sobre densidad de empleo—, es una medición sobre
-precios.
+El ρ positivo y muy significativo es el hallazgo de fondo: el precio de un
+inmueble en la CDMX depende materialmente del de sus vecinos, y un modelo sin
+componente espacial estaría mal especificado. Ya no es un supuesto heredado de
+la Fase 1 —medida sobre densidad de empleo—, es una medición sobre precios.
 
-Decisiones que conviene conocer, todas encontradas midiendo:
+### Qué cuesta cada nivel de confianza
 
-- **El segmento de Mondrian sale de la PREDICCIÓN, no del precio real.** Al
-  valuar un inmueble su precio es justamente lo que no se sabe; un grupo que
-  dependiera de él daría una cobertura preciosa en la evaluación y sería
-  inaplicable en producción. Es fuga en la variable objetivo, la hermana de la
-  fuga espacial que evita la partición por bloques.
-- **La segmentación se adapta al tamaño de la calibración.** Con 290 inmuebles,
-  `tipo × tercil` daba nueve grupos y ocho quedaban bajo el mínimo: Mondrian no
-  hacía nada mientras el informe *parecía* segmentado. Ahora baja a una
-  segmentación que la muestra sí sostiene, y dice cuál eligió.
-- **El W del SDM es KNN, no banda de distancia.** Una banda deja islas —puntos
-  sin ningún vecino dentro del umbral— y sobre ellas la verosimilitud del modelo
-  de rezago no converge: medido, daba ρ = −0.93 con pseudo R² de 0.002, que no
-  es un hallazgo económico sino un síntoma numérico. Con KNN: ρ = +0.21
-  (p = 0.007), pseudo R² = 0.36.
-- **El diseño se pasa por QR pivotante y después por VIF.** El QR sólo ve
-  dependencias EXACTAS; la colinealidad real es casi-exacta y pasaba entera. En
-  los datos de la CDMX salieron `dist_servicios_m` en −0.91 y `dist_abasto_m` en
-  +0.78 —dos variables que miden casi lo mismo, con signos opuestos— y el
-  hedónico se derrumbó de R²=0.456 dentro de muestra a **R²=0.002 fuera**. No es
-  sobreajuste: unos coeficientes que se cancelan entre sí no transfieren a otro
-  barrio.
-- **Interpretar y predecir son dos trabajos, y se hacen con dos herramientas.**
-  Para LEER el modelo, OLS sobre variables podadas por VIF, con errores robustos.
-  Para PREDECIR, cresta con el α elegido por validación cruzada espacial: la
-  penalización reparte el peso entre variables colineales en vez de dárselo todo
-  a una con signo arbitrario.
-- **Los grupos chicos de Mondrian se juntan y se calibran juntos**, en vez de
-  caer a la corrección global. La global la dominan los segmentos numerosos:
-  medido, `depto·barato` —12 inmuebles en calibración— cubrió **69.6%** cuando
-  prometía 95%. Un intervalo del 95% que cubre 70% no es un intervalo del 95%.
-- **La categoría de referencia no es "otro".** La fila sin ninguna indicadora
-  encendida es la categoría que se dejó fuera del diseño. En los datos reales
-  resultó ser `casa`, y las 144 casas de la calibración salían en el informe
-  como "otro" mientras el segmento `casa` no existía. Se detectó porque la
-  salida traía depto, otro y terreno y ninguna casa, que en un inventario
-  inmobiliario es imposible.
+La conformalización lleva la cobertura de 73.2% a 94.9% contra un objetivo de
+95%. Pero **cubrir no es servir**, y el informe lo dice cuando toca: a 95% el
+ancho es de ±101%, que es un intervalo con la garantía perfecta y sin utilidad
+para decidir.
+
+Contra la frontera de eficiencia —lo que ese error justifica si los errores
+fueran log-normales—:
+
+| nivel | cobertura | ancho ideal | ancho real | sobrecosto |
+|---|---|---|---|---|
+| 50% | 47.6% | ±24% | ±26% | 1.08× |
+| **80%** | **79.7%** | ±47% | **±58%** | 1.24× |
+| 90% | 88.7% | ±61% | ±76% | 1.24× |
+| 95% | 94.9% | ±75% | ±101% | 1.35× |
+
+**La banda del 80% es la que sirve como número de producto.** El 95% se guarda
+para riesgo y cumplimiento, donde la cola importa y el ancho se tolera. El
+sobrecosto que queda en los niveles altos es mitad colas pesadas reales —hay
+anuncios mal capturados y hay que cubrirlos— y mitad ruido de estimar un
+percentil extremo con seis bloques de calibración.
+
+Lo que NO se recupera con método es el resto: el modelo se equivoca ~27% en la
+mediana, y un intervalo honesto sobre ese error tiene que ser ancho. Eso se
+estrecha con más inventario y mejores atributos.
+
+### Cómo se llegó a un intervalo calibrado
+
+Cuatro cosas, todas encontradas midiendo:
+
+**Dos scores, no uno.** CQR estima los cuantiles 2.5% y 97.5% *directamente*, y
+esa cola se apoya en el 2.5% de las observaciones —unas 26 de 1,063—. El
+normalizado usa \|y − ŷ\| / σ̂(x), que se ajusta con todas. Los dos tienen la
+misma garantía; medido sobre los datos reales, CQR da ±144% y el normalizado
+±101%. Se calibran los dos y se reportan lado a lado.
+
+**El ruido en σ̂ se paga en ancho y no compra cobertura.** En simulación, con la
+misma cobertura, una σ̂ ruidosa infla la corrección de 1.92 a 3.44 y casi duplica
+el ancho. Por eso σ̂ se ajusta con un modelo más suave que la media —es un
+parámetro de estorbo: su trabajo es la FORMA del ancho, no acertar— y el score
+usa σ̂(x) + γ, la estabilización aditiva de Lei et al. (2018). γ se elige
+midiendo el ancho sobre datos que σ̂ no vio; todos los γ dan intervalos válidos,
+así que elegir por ancho no compromete la cobertura.
+
+**Los grupos chicos de Mondrian se juntan y se calibran juntos**, en vez de caer
+a la corrección global —que la dominan los segmentos numerosos—. Medido:
+`depto·barato`, con 12 inmuebles en calibración, cubría 69.6% cuando prometía 95%.
+
+**La intercambiabilidad se rompe a propósito.** La garantía conforme exacta
+supone que calibración y despliegue son intercambiables, y la partición por
+bloque hace que sean barrios DISTINTOS. Por eso la cobertura puede caer un par
+de puntos bajo el objetivo. No se corrige subiendo el nivel hasta que el número
+quede bonito: es la condición real de uso —valuar donde no hubo comparables— y
+con una partición al azar el número saldría clavado sin decir nada del barrio
+siguiente.
 
 ### Cobertura de la CDMX: siete alcaldías con ruta rota
 
@@ -227,7 +200,8 @@ INEGI y Overpass.
 | `denue` | 351,631 | INEGI DENUE, 9 de 16 alcaldías |
 | `cp` | 1,182 | Polígonos de código postal de la CDMX |
 | `calles` | 9,090 | Ejes viales por alcaldía |
-| `properties` | 2,144 | Century 21 — de 18,380 nacionales, los de la CDMX |
+| `osm_poi` | 15,904 | OpenStreetMap: parques, transporte, salud, educación |
+| `properties` | 2,313 | Century 21 — de 18,560 nacionales, los de la CDMX |
 
 ### Lo que se corre en tu máquina
 
@@ -238,7 +212,12 @@ que ya seguían `tools/riesgos_local.py` y `tools/macro_local.py`.
 ```bash
 python -m pipelines.fase0 --osm      # parques, plazas, Metro, Metrobús, Cablebús…
 python scripts/ingerir_denue.py      # las 7 alcaldías que faltan
+node ../tools/c21-scraper.mjs sondeo --estado ciudad-de-mexico   # rutas del portal
 ```
+
+OSM ya está ingerido (15,904 puntos) y se notó: al entrar, el error mediano bajó
+de 24.7% a 22.0% y `W_acc_hospitales` apareció como segundo motor de precio en
+SHAP, por encima de la accesibilidad a servicios. Falta el DENUE de 7 alcaldías.
 
 El resultado queda en el lago y las fases siguientes ya no necesitan red.
 
@@ -330,7 +309,7 @@ atlas/
 │  ├─ fase0.py            ingesta + informe
 │  ├─ fase1.py            variables geoespaciales + diagnóstico
 │  └─ fase2.py            AVM + incertidumbre calibrada
-├─ tests/                 63 pruebas
+├─ tests/                 66 pruebas
 └─ data/                  el lago (parquet); no se versiona
 ```
 
