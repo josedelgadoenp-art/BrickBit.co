@@ -159,6 +159,49 @@ Lo que NO se recupera con método es el resto: el modelo se equivoca ~27% en la
 mediana, y un intervalo honesto sobre ese error tiene que ser ancho. Eso se
 estrecha con más inventario y mejores atributos.
 
+> Esta tabla es de la corrida con **partición simple**. La calibración cruzada
+> que se describe abajo la cambia entera: se vuelve a medir en la próxima
+> corrida de la Fase 2 y el informe la imprime.
+
+### La calibración es cruzada por bloque
+
+La corrida sobre la CDMX destapó el defecto que más importa: **el intervalo del
+95% cubría 91.3%**. Cubrir de menos es la dirección peligrosa —una banda que
+promete 95 y da 91 es peor que una banda ancha y honesta—, y el informe lo
+marcaba con una cruz sin poder arreglarlo.
+
+Dos causas que se sumaban:
+
+- **Seis bloques de calibración son pocos** para estimar un percentil extremo.
+  Con 355 residuales, el corte del 95% se apoya en la punta de la distribución
+  y su error de muestreo es del mismo tamaño que lo que se quiere medir.
+- **La de fondo**: los residuales de calibración se medían con un modelo
+  entrenado en OTROS barrios, y esa diferencia no entraba en la corrección. Se
+  calibraba en una condición y se desplegaba en otra.
+
+El arreglo **no** es apretar el nivel hasta que el número quede bonito. Es
+calibrar en la condición real: entrenamiento y calibración se juntan en un solo
+conjunto y los residuales se calculan **fuera de pliegue por bloque**, de modo
+que cada inmueble se puntúa con un modelo que no vio su barrio. Eso es
+exactamente lo que pasa al valuar donde no hubo comparables, así que la
+corrección lo incorpora en vez de ignorarlo.
+
+Medido sobre el banco de pruebas, todo en la misma dirección:
+
+| | partición simple | cruzada por bloque |
+|---|---|---|
+| scores de calibración | 331 | **1,311** |
+| grupos de Mondrian | 3 | **9** (7 con calibración propia) |
+| ancho del intervalo 95% | ±70% | **±63%** |
+| CQR conformal | ±143% | **±64%** |
+| cobertura | — | 93.1% |
+
+**El precio se declara.** La garantía de la conformal cruzada es
+**aproximada**, no exacta como la de la partición simple. Se acepta a sabiendas:
+una garantía exacta sobre un supuesto que rompimos a propósito —la partición
+por bloque hace que calibración y prueba sean barrios distintos— vale menos que
+una aproximada que sí mide lo que pasa.
+
 ### Cómo se llegó a un intervalo calibrado
 
 Cuatro cosas, todas encontradas midiendo:
@@ -183,11 +226,13 @@ a la corrección global —que la dominan los segmentos numerosos—. Medido:
 
 **La intercambiabilidad se rompe a propósito.** La garantía conforme exacta
 supone que calibración y despliegue son intercambiables, y la partición por
-bloque hace que sean barrios DISTINTOS. Por eso la cobertura puede caer un par
-de puntos bajo el objetivo. No se corrige subiendo el nivel hasta que el número
-quede bonito: es la condición real de uso —valuar donde no hubo comparables— y
-con una partición al azar el número saldría clavado sin decir nada del barrio
-siguiente.
+bloque hace que sean barrios DISTINTOS. No se corrige subiendo el nivel hasta
+que el número quede bonito: es la condición real de uso —valuar donde no hubo
+comparables— y con una partición al azar el número saldría clavado sin decir
+nada del barrio siguiente. Lo que sí se hace es **calibrar dentro de esa misma
+condición**, con residuales fuera de pliegue por bloque; es la sección de
+arriba. Sobre datos reales todavía está por medirse: el 91.3% es de la versión
+anterior, y el número nuevo lo imprime la próxima corrida de la Fase 2.
 
 ### Correr la Fase 3
 
