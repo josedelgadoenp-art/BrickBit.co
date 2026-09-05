@@ -297,7 +297,7 @@ def pestana_mapa() -> None:
                                 ((np.exp(x["brecha_vecinos"]) - 1) * 100).round(0)})
                  .drop(columns=["ln_precio_m2", "brecha_vecinos"])
                  .sort_values("bajo sus vecinos", ascending=False).head(20))
-        st.dataframe(tabla, use_container_width=True, hide_index=True,
+        st.dataframe(tabla, width="stretch", hide_index=True,
                      column_config={"bajo sus vecinos": st.column_config.NumberColumn(
                          "bajo sus vecinos", format="%d %%")})
 

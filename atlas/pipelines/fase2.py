@@ -14,10 +14,10 @@ Encadena lo que las fases anteriores dejaron listo:
      con ella justifica (o no) el modelo espacial.
   3. Ajusta tres modelos: hedónico OLS legible, Durbin espacial y boosting.
   4. Los combina por apilado, con pesos aprendidos fuera de muestra.
-  5. Convierte la predicción en un INTERVALO con cobertura garantizada. Se
-     calibran DOS formas —CQR y normalizado— con la misma garantía y distinto
-     ancho, y se reportan las dos: con muestras chicas el normalizado suele
-     ganar, porque no tiene que estimar los cuantiles 2.5% y 97.5% directamente.
+  5. Convierte la predicción en un INTERVALO con cobertura garantizada. La
+     calibración es CRUZADA POR BLOQUE: cada inmueble se puntúa con un modelo
+     que no vio su barrio, que es la condición real de despliegue. Se calibran
+     dos formas —CQR y normalizado— y se reportan las dos.
   6. Explica el modelo con SHAP.
 
 LO QUE ESTE PIPELINE NO HACE, Y CONVIENE SABERLO DE ENTRADA.
@@ -86,15 +86,20 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     # salen de la base que ya se tiene— y a cada fila se le excluyen los de su
     # PROPIO bloque, para que la variable signifique lo mismo al entrenar que al
     # valuar un barrio nuevo.
+    # Las fuentes son el conjunto que el modelo va a conocer —entrenamiento más
+    # calibración—, que es exactamente lo que el paquete guarda y lo que existe
+    # en producción cuando llega un inmueble nuevo. El conjunto de prueba nunca
+    # es fuente de nada.
     _linea("· Comparables (precio de los vecinos, fuera del propio bloque)…")
-    xy_tr = d.coords[p["entrena"]]
-    y_tr = ytr.to_numpy()
-    b_tr = d.bloque[p["entrena"]].to_numpy()
+    m_pool = p["entrena"] | p["calibra"]
+    xy_fuente = d.coords[m_pool]
+    y_fuente = d.y[m_pool].to_numpy()
+    b_fuente = d.bloque[m_pool].to_numpy()
     comp = {}
     for k in ("entrena", "calibra", "prueba"):
         comp[k] = comparables.variables(
-            d.coords[p[k]], xy_tr, y_tr,
-            bloque_objetivo=d.bloque[p[k]].to_numpy(), bloque_fuente=b_tr)
+            d.coords[p[k]], xy_fuente, y_fuente,
+            bloque_objetivo=d.bloque[p[k]].to_numpy(), bloque_fuente=b_fuente)
     cob = comparables.cobertura(comp["prueba"])
     _linea(f"    {comp['entrena'].shape[1]} variables · "
            f"{cob.get('pct_sin', 0):.1f}% del conjunto de prueba sin comparables")
@@ -159,68 +164,84 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
             res["sdm"] = None
             _linea(f"    ⚠ no convergió: {type(e).__name__}: {e}")
 
-    # ------------------------------------------------------------ boosting
-    _linea("· Boosting: media y cuantiles…")
-    m_media = arboles.media(Xtr, ytr, semilla)
-    m_lo, m_hi = arboles.banda(Xtr, ytr, alpha, semilla)
-    _linea(f"    3 modelos sobre {Xtr.shape[1]} variables ({arboles.BASE['max_iter']} iteraciones)")
+    # ══════════════════════════════════════════ calibración CRUZADA por bloque
+    #
+    # Antes: se apartaba un 20% como calibración y el intervalo se ajustaba con
+    # esos 6 bloques. Medido sobre la CDMX, esa versión cubría 91.3% prometiendo
+    # 95% — cubrir de menos es la dirección peligrosa—, y por dos razones que se
+    # suman: seis bloques son pocos para estimar un percentil extremo, y los
+    # residuales de calibración se medían con un modelo entrenado en OTROS
+    # barrios, sin que esa diferencia entrara en la corrección.
+    #
+    # Ahora entrenamiento y calibración se juntan en un solo conjunto y los
+    # residuales se calculan FUERA DE PLIEGUE: cada inmueble se puntúa con un
+    # modelo que no vio su bloque. Eso es exactamente la condición de despliegue
+    # —valuar donde no hubo comparables—, así que la corrección la incorpora en
+    # vez de ignorarla. De paso, los scores pasan de 355 a los del conjunto
+    # entero, que era el otro problema.
+    #
+    # El precio a pagar: la garantía de la conformal cruzada es aproximada y no
+    # exacta como la de la partición simple. Se acepta a sabiendas, porque una
+    # garantía exacta sobre un supuesto que rompimos a propósito vale menos que
+    # una aproximada que sí mide lo que pasa.
+    _linea("· Calibración cruzada por bloque (entrenamiento + calibración juntos)…")
+    Xpool = pd.concat([Xtr, Xca], ignore_index=True)
+    ypool = pd.concat([ytr, yca], ignore_index=True)
+    bpool = pd.concat([d.bloque[p["entrena"]], d.bloque[p["calibra"]]],
+                      ignore_index=True)
+    _linea(f"    {len(ypool):,} inmuebles · {bpool.nunique()} bloques para puntuar")
 
-    # ------------------------------------------------ apilado fuera de muestra
-    _linea("· Apilado (pesos aprendidos fuera de muestra por bloque)…")
-    b_entrena = d.bloque[p["entrena"]].reset_index(drop=True)
-    fuera_boost = arboles.fuera_de_muestra_por_bloque(Xtr, ytr, b_entrena, semilla)
-    fuera_ols = _lineal_fuera_de_muestra(Xtr, ytr, b_entrena)
-    ap = apilado.ajustar({"boosting": fuera_boost, "hedonico": fuera_ols}, ytr.to_numpy())
+    fuera_boost = arboles.fuera_de_muestra_por_bloque(Xpool, ypool, bpool, semilla)
+    fuera_ols = _lineal_fuera_de_muestra(Xpool, ypool, bpool)
+    ap = apilado.ajustar({"boosting": fuera_boost, "hedonico": fuera_ols},
+                         ypool.to_numpy())
     _linea(ap.texto())
     res["apilado"] = ap
-
-    # Modelo de dispersión: cuánto suele fallar la predicción en cada punto.
-    # Se ajusta sobre residuales FUERA DE MUESTRA; con residuales de
-    # entrenamiento aprendería que el sistema es más preciso de lo que es.
-    _linea("· Modelo de dispersión (para el intervalo adaptativo)…")
     fuera_apilado = ap.predecir({"boosting": fuera_boost, "hedonico": fuera_ols})
-    m_sigma = arboles.dispersion(Xtr, ytr, fuera_apilado, semilla)
-    # γ se elige sobre las predicciones FUERA DE MUESTRA del entrenamiento, que
-    # el conjunto de calibración no ha tocado. Todos los γ dan intervalos
-    # válidos —la garantía no depende de σ̂—, así que elegir por ancho no
-    # compromete la cobertura, sólo mejora la eficiencia.
+
+    m_sigma = arboles.dispersion(Xpool, ypool, fuera_apilado, semilla)
     sigma_fuera = arboles.dispersion_fuera_de_muestra(
-        Xtr, ytr, fuera_apilado, b_entrena, semilla)
+        Xpool, ypool, fuera_apilado, bpool, semilla)
     gamma = conforme.elegir_estabilizador(
-        ytr.to_numpy(), fuera_apilado, sigma_fuera, m_sigma.escala, alpha)
+        ypool.to_numpy(), fuera_apilado, sigma_fuera, m_sigma.escala, alpha)
     m_sigma.gamma = gamma
     _linea(f"    estabilizador γ = {gamma:g} × la mediana de |residual|")
+
+    # Los modelos que se despliegan se entrenan con TODO el conjunto: más datos,
+    # mejor predicción. Los scores, en cambio, salieron fuera de pliegue.
+    _linea("· Modelos finales sobre el conjunto completo…")
+    m_media = arboles.media(Xpool, ypool, semilla)
+    m_lo, m_hi = arboles.banda(Xpool, ypool, alpha, semilla)
 
     def predecir(X: pd.DataFrame) -> np.ndarray:
         return ap.predecir({
             "boosting": m_media.predict(X),
-            "hedonico": _lineal_predict(Xtr, ytr, b_entrena, X),
+            "hedonico": _lineal_predict(Xpool, ypool, bpool, X),
         })
 
     # ------------------------------------------------------- conformalización
-    _linea("· Calibrando el intervalo (CQR + Mondrian)…")
-    # El segmento se arma con el precio PREDICHO, nunca con el observado: en el
-    # momento de valuar un inmueble el precio real es justamente lo que no se
-    # sabe, y un grupo que dependiera de él no se podría asignar en producción.
-    pred_ca = predecir(Xca)
-    nombre_seg, seg_ca, cortes = conforme.elegir_segmentacion(
-        _tipo_de(d, p["calibra"]), np.exp(pred_ca), alpha
-    )
-    _linea(f"    segmentación: {nombre_seg}  ({seg_ca.nunique()} grupos)")
+    _linea("· Calibrando el intervalo (Mondrian sobre scores fuera de pliegue)…")
     minimo = conforme.minimo_por_grupo(alpha)
+    tipo_pool = pd.concat([_tipo_de(d, p["entrena"]), _tipo_de(d, p["calibra"])],
+                          ignore_index=True)
+    nombre_seg, seg_pool, cortes = conforme.elegir_segmentacion(
+        tipo_pool, np.exp(fuera_apilado), alpha)
+    _linea(f"    segmentación: {nombre_seg}  ({seg_pool.nunique()} grupos)")
 
-    # Dos formas de intervalo, las dos con la MISMA garantía de cobertura.
-    # Difieren sólo en el score de disconformidad, y por tanto en el ancho.
-    c_cqr = conforme.calibrar(yca.to_numpy(), m_lo.predict(Xca), m_hi.predict(Xca),
-                              alpha, grupos_cal=seg_ca, minimo_por_grupo=minimo)
-    sigma_ca = m_sigma.predict(Xca)
-    c_norm = conforme.calibrar_normalizado(yca.to_numpy(), pred_ca, sigma_ca,
-                                           alpha, grupos_cal=seg_ca, minimo_por_grupo=minimo)
+    sigma_score = np.maximum(sigma_fuera + gamma * m_sigma.escala, 1e-9)
+    E_norm = np.abs(ypool.to_numpy() - fuera_apilado) / sigma_score
+    c_norm = conforme.calibrar_desde_scores(E_norm, alpha, seg_pool, minimo)
+
+    lo_oof, hi_oof = arboles.cuantiles_fuera_de_muestra(
+        Xpool, ypool, bpool, alpha, semilla)
+    E_cqr = np.maximum(lo_oof - ypool.to_numpy(), ypool.to_numpy() - hi_oof)
+    c_cqr = conforme.calibrar_desde_scores(E_cqr, alpha, seg_pool, minimo)
+
     _linea("    [normalizado]")
     _linea(c_norm.texto())
-    res["conformal"] = c_norm
-    res["conformal_cqr"] = c_cqr
+    res["conformal"], res["conformal_cqr"] = c_norm, c_cqr
     res["segmentacion"] = nombre_seg
+    res["n_scores"] = int(len(E_norm))
 
     # -------------------------------------------------------------- evaluación
     _linea("· Evaluando en el conjunto de prueba (bloques nunca vistos)…")
@@ -228,11 +249,13 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     res["punto"] = {
         "apilado": evaluacion.punto(yte.to_numpy(), pred_te),
         "boosting": evaluacion.punto(yte.to_numpy(), m_media.predict(Xte)),
-        "hedonico": evaluacion.punto(yte.to_numpy(), _lineal_predict(Xtr, ytr, b_entrena, Xte)),
+        "hedonico": evaluacion.punto(yte.to_numpy(), _lineal_predict(Xpool, ypool, bpool, Xte)),
     }
     # Contraste medido: el MISMO modelo sin las variables de comparables. Sin
     # esto, "los comparables ayudan" sería una afirmación, no un resultado.
-    _sin = arboles.media(Xtr_sin, ytr, semilla)
+    Xpool_sin = pd.concat([Xtr_sin, Xca[Xtr_sin.columns].reset_index(drop=True)],
+                          ignore_index=True)
+    _sin = arboles.media(Xpool_sin, ypool, semilla)
     res["punto"]["sin_comparables"] = evaluacion.punto(
         yte.to_numpy(), _sin.predict(Xte[Xtr_sin.columns]))
 
@@ -254,9 +277,8 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     # modelos de cuantil nuevos por cada nivel.
     niveles = []
     for a in (0.50, 0.20, 0.10, 0.05):
-        ca = conforme.calibrar_normalizado(
-            yca.to_numpy(), pred_ca, sigma_ca, a, grupos_cal=seg_ca,
-            minimo_por_grupo=conforme.minimo_por_grupo(a))
+        ca = conforme.calibrar_desde_scores(
+            E_norm, a, seg_pool, conforme.minimo_por_grupo(a))
         l, h = conforme.aplicar_normalizado(pred_te, sigma_te, ca, seg_te)
         niveles.append((a, evaluacion.intervalo(yte.to_numpy(), l, h, a)))
     res["niveles"] = niveles
@@ -266,26 +288,24 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     # reentrenar tres modelos y recalibrar el intervalo. Van juntos a propósito
     # —predictor y banda sólo significan algo emparejados—.
     _linea("· Guardando el AVM entrenado…")
-    _prep, _lin, _cols = hedonico.ridge_por_bloque(Xtr, ytr, b_entrena)
+    _prep, _lin, _cols = hedonico.ridge_por_bloque(Xpool, ypool, bpool)
     paquete = persistencia.Paquete(
         columnas=list(Xtr.columns),
         boosting=m_media,
         lineal=(_prep, _lin, _cols),
         apilado=ap,
         dispersion=m_sigma,
-        conforme_por_alpha={a: c for a, c in
-                            [(a, conforme.calibrar_normalizado(
-                                yca.to_numpy(), pred_ca, sigma_ca, a, grupos_cal=seg_ca,
-                                minimo_por_grupo=conforme.minimo_por_grupo(a)))
-                             for a in (0.50, 0.20, 0.10, 0.05)]},
+        conforme_por_alpha={a: conforme.calibrar_desde_scores(
+            E_norm, a, seg_pool, conforme.minimo_por_grupo(a))
+            for a in (0.50, 0.20, 0.10, 0.05)},
         cortes=cortes,
         nombre_segmentacion=nombre_seg,
         tipo_referencia=d.tipo_referencia,
         operacion=operacion,
-        n_entrenamiento=int(len(ytr)),
+        n_entrenamiento=int(len(ypool)),
         fecha_datos=_fecha_de_los_datos(cfg),
-        fuentes_xy=xy_tr,
-        fuentes_y=y_tr,
+        fuentes_xy=xy_fuente,
+        fuentes_y=ypool.to_numpy(),
         metricas={
             "mdape_pct": res["punto"]["apilado"].mdape_pct,
             "r2_log": res["punto"]["apilado"].r2_log,
@@ -473,6 +493,13 @@ def informe(cfg, res: dict | None) -> None:
         _linea("  usa primero. Las fuentes son SÓLO el entrenamiento y se excluyen")
         _linea("  los del propio bloque, para que la variable signifique lo mismo")
         _linea("  al entrenar que al valuar un barrio que el modelo no vio.")
+
+    if res.get("n_scores"):
+        _linea(f"\nCALIBRACIÓN CRUZADA POR BLOQUE")
+        _linea(f"  {res['n_scores']:,} residuales, cada uno medido con un modelo que")
+        _linea("  NO vio ese barrio. Antes se apartaba un 20% como calibración y")
+        _linea("  los scores salían de un puñado de bloques; ahora salen del")
+        _linea("  conjunto entero y en la condición de despliegue.")
 
     _linea("\nAPILADO")
     _linea(res["apilado"].texto())

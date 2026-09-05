@@ -200,6 +200,24 @@ class _Dispersion:
         return base + self.gamma * self.escala
 
 
+def cuantiles_fuera_de_muestra(
+    X: pd.DataFrame, y: pd.Series, bloque: pd.Series, alpha: float,
+    semilla: int, n_pliegues: int = 5,
+):
+    """Los dos modelos de cuantil, evaluados en bloques que no entrenaron."""
+    from sklearn.model_selection import GroupKFold
+
+    g = bloque.to_numpy()
+    k = int(min(n_pliegues, pd.Series(g).nunique()))
+    lo = np.full(len(y), np.nan)
+    hi = np.full(len(y), np.nan)
+    for tr, va in GroupKFold(n_splits=k).split(X, y, groups=g):
+        a, b = banda(X.iloc[tr], y.iloc[tr], alpha, semilla)
+        lo[va] = a.predict(X.iloc[va])
+        hi[va] = b.predict(X.iloc[va])
+    return lo, hi
+
+
 def dispersion_fuera_de_muestra(
     X: pd.DataFrame, y: pd.Series, pred_fuera: np.ndarray, bloque: pd.Series,
     semilla: int, n_pliegues: int = 5,
