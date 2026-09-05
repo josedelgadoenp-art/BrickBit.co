@@ -173,15 +173,17 @@ class ARIMA(EspecNodo):
     class Params(BaseModel):
         model_config = ConfigDict(extra="forbid")
         variable: str = CampoColumna(tipo="numerica")
-        p: int = Field(default=1, ge=0, le=12)
-        d: int = Field(default=1, ge=0, le=2)
-        q: int = Field(default=1, ge=0, le=12)
-        estacional: bool = False
-        P: int = Field(default=0, ge=0, le=4)
-        D: int = Field(default=0, ge=0, le=1)
-        Q: int = Field(default=0, ge=0, le=4)
-        periodo_estacional: int = Field(default=4, ge=2, le=52)
-        horizonte: int = Field(default=8, ge=0, le=60)
+        p: int = Field(default=1, ge=0, le=12, title="p — rezagos de la serie (AR)")
+        d: int = Field(default=1, ge=0, le=2, title="d — diferencias (I)")
+        q: int = Field(default=1, ge=0, le=12, title="q — rezagos del error (MA)")
+        estacional: bool = Field(default=False, title="Agregar parte estacional")
+        P: int = Field(default=0, ge=0, le=4, title="P estacional — rezagos de la serie")
+        D: int = Field(default=0, ge=0, le=1, title="D estacional — diferencias")
+        Q: int = Field(default=0, ge=0, le=4, title="Q estacional — rezagos del error")
+        periodo_estacional: int = Field(default=4, ge=2, le=52,
+                                        title="Periodo estacional (4 = trimestral, 12 = mensual)")
+        horizonte: int = Field(default=8, ge=0, le=60,
+                               title="Horizonte del pronóstico (periodos)")
 
     def emit(self, ctx: Any) -> Any:
         ctx.importar("SARIMAX", desde="statsmodels.tsa.statespace.sarimax")

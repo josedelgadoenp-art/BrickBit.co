@@ -77,7 +77,10 @@ export default function Formulario({ nodoId, descriptor, params }: Props) {
       {Object.entries(propiedades).map(([clave, crudo]) => {
         const { campo, opcional } = desenvolver(crudo);
         const control = crudo.abaco?.control ?? campo.abaco?.control;
-        const valor = params[clave];
+        // Un análisis guardado puede no traer todos los parámetros: el backend
+        // les aplica el valor por omisión al validar, así que el formulario
+        // tiene que enseñar ese mismo valor y no un campo vacío que miente.
+        const valor = clave in params ? params[clave] : campo.default;
         const problema = diagnosticos.find((d) => d.param === clave);
         const poner = (v: unknown) => actualizar(nodoId, { [clave]: v });
 
@@ -163,11 +166,16 @@ export default function Formulario({ nodoId, descriptor, params }: Props) {
             </select>
           );
         } else if (campo.type === 'boolean') {
+          // La casilla lleva el NOMBRE del parámetro. Antes usaba la
+          // descripción y, cuando no había, decía «Sí»: una casilla que dice
+          // «Sí» no informa de nada.
           control_jsx = (
-            <label className="flex cursor-pointer items-center gap-2">
-              <input type="checkbox" checked={Boolean(valor)} className="accent-salvia"
+            <label className="flex cursor-pointer items-start gap-2">
+              <input type="checkbox" checked={Boolean(valor)} className="mt-0.5 accent-salvia"
                      onChange={(e) => poner(e.target.checked)} />
-              <span className="text-[12px] text-crema">{campo.description ?? 'Sí'}</span>
+              <span className="text-[12px] leading-snug text-crema">
+                {etiquetaDe(clave, campo)}
+              </span>
             </label>
           );
         } else if (campo.type === 'integer' || campo.type === 'number') {
@@ -210,7 +218,7 @@ export default function Formulario({ nodoId, descriptor, params }: Props) {
           <div key={clave}>
             {campo.type !== 'boolean' && etiqueta}
             {control_jsx}
-            {campo.description && campo.type !== 'boolean' && (
+            {campo.description && (
               <p className="mt-1 text-[11px] leading-snug text-tenue/80">{campo.description}</p>
             )}
             {problema && (
