@@ -46,10 +46,12 @@ export interface EsquemaParam {
   const?: string;
   /** Pista de interfaz que pone el backend: qué control dibujar. */
   abak?: {
-    control: 'columna' | 'columnas' | 'opcion' | 'archivo' | 'mapa_sectores';
+    control: 'columna' | 'columnas' | 'opcion' | 'archivo' | 'mapa_sectores' | 'claves';
     puerto?: string;
     tipo_columna?: string | null;
     etiquetas?: Record<string, string>;
+    /** Claves frecuentes de una fuente oficial: atajos, no un catálogo cerrado. */
+    sugerencias?: Record<string, string>;
   };
 }
 

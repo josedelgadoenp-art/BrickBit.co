@@ -66,3 +66,30 @@ def test_familias_no_vacias():
     """Una familia sin herramientas es una pestaña vacía en la paleta."""
     vacias = [f.id for f in FAMILIAS.values() if not list(todos(f.id))]
     assert not vacias, f"Familias sin herramientas: {vacias}"
+
+
+def test_los_ayudantes_declaran_a_quien_llaman():
+    """Si un ayudante llama a otro, tiene que declararlo en `depende_de`.
+
+    Sin esto el fallo es tardío y confuso: el nodo compila, el script se ve
+    bien, y truena con un NameError en medio de la ejecución porque la función
+    que llamaba no se emitió. Se detecta leyendo el árbol de cada ayudante y
+    viendo a qué otros ayudantes llama.
+    """
+    import ast
+
+    from abak_core.codegen.contexto import resolver_ayudantes
+
+    problemas = []
+    for nombre, ayudante in AYUDANTES.items():
+        llamados = {
+            n.func.id
+            for n in ast.walk(ast.parse(ayudante.fuente))
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in AYUDANTES
+        } - {nombre}
+        # `depende_de` puede ser indirecto: cuenta el cierre transitivo.
+        disponibles = {a.nombre for a in resolver_ayudantes(list(ayudante.depende_de))}
+        faltan = llamados - disponibles
+        if faltan:
+            problemas.append(f"{nombre} llama a {sorted(faltan)} y no lo(s) declara en depende_de")
+    assert not problemas, "\n".join(problemas)

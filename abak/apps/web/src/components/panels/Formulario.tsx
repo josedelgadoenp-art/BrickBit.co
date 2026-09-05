@@ -154,6 +154,52 @@ export default function Formulario({ nodoId, descriptor, params }: Props) {
               ))}
             </div>
           );
+        } else if (control === 'claves') {
+          // Claves de una fuente oficial (series del SIE, indicadores del BIE).
+          // Es texto libre porque los catálogos tienen miles de entradas, con
+          // atajos para las que se piden todo el tiempo. El nodo muestra
+          // después el título oficial que devolvió la fuente: si la clave está
+          // mal, se ve en el resultado y no pasa inadvertida.
+          const sugerencias = (crudo.abak?.sugerencias ?? {}) as Record<string, string>;
+          const actuales = (valor as string[]) ?? [];
+          control_jsx = (
+            <>
+              <input
+                className={`${clase} font-mono`}
+                value={actuales.join(', ')}
+                placeholder="SF43718, SP1"
+                onChange={(e) => poner(e.target.value.split(',').map((x) => x.trim()).filter(Boolean))}
+              />
+              {Object.keys(sugerencias).length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {Object.entries(sugerencias).map(([clave, texto]) => {
+                    const puesta = actuales.includes(clave);
+                    return (
+                      <button
+                        key={clave}
+                        type="button"
+                        title={texto}
+                        onClick={() =>
+                          poner(puesta ? actuales.filter((c) => c !== clave) : [...actuales, clave])
+                        }
+                        className={`rounded border px-1.5 py-0.5 font-mono text-[10px] transition-colors ${
+                          puesta
+                            ? 'border-salvia bg-salvia/15 text-salvia'
+                            : 'border-borde text-tenue hover:text-crema'
+                        }`}
+                      >
+                        {clave}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="mt-1 text-[11px] leading-snug text-tenue/80">
+                Los atajos son sugerencias, no un catálogo verificado. Confirma siempre el título
+                que aparece en el resultado.
+              </p>
+            </>
+          );
         } else if (campo.enum) {
           const etiquetas = crudo.abak?.etiquetas ?? {};
           control_jsx = (

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import os
 import resource
+import shutil
 import time
+from pathlib import Path
 from typing import Any
 
 from abak_core import GrafoSpec, compilar, emitir
@@ -12,6 +14,7 @@ from abak_core.registry import cargar_todos
 from abak_core.runtime.almacen import ALMACEN
 from abak_core.runtime.cache import CacheDisco
 from abak_core.runtime.ejecutor import Ejecutor
+from abak_core.nodes.fuentes.http import dir_fuentes
 from abak_core.runtime.exportar import archivos_del_programa
 
 from .celery_app import app
@@ -62,9 +65,10 @@ def ejecutar_grafo(self: Any, ejecucion_id: str, grafo_json: dict[str, Any],
     dir_datos = ALMACEN.dir_salida(ejecucion_id) / "datos"
     dir_datos.mkdir(parents=True, exist_ok=True)
     for destino, origen in archivos_del_programa(programa).items():
-        ruta = dir_datos / os.path.basename(destino)
+        ruta = dir_datos / Path(destino).relative_to("datos")
+        ruta.parent.mkdir(parents=True, exist_ok=True)
         if os.path.exists(origen) and not ruta.exists():
-            ruta.write_bytes(open(origen, "rb").read())
+            ruta.write_bytes(Path(origen).read_bytes())
     os.environ["ABAK_DATOS"] = str(dir_datos)
     os.environ["ABAK_SALIDA"] = str(ALMACEN.dir_salida(ejecucion_id))
 
@@ -77,6 +81,11 @@ def ejecutar_grafo(self: Any, ejecucion_id: str, grafo_json: dict[str, Any],
         cancelado=lambda: ALMACEN.cancelacion_pedida(ejecucion_id),
     )
     resultado = ejecutor.ejecutar(programa, emision)
+
+    # Lo que se haya descargado en esta corrida pasa a la caché global de
+    # fuentes: la siguiente ejecución (y la exportación) ya no lo vuelven a
+    # pedir, que es justo lo que hace reproducible un análisis con datos en vivo.
+    _guardar_fuentes(dir_datos / "fuentes")
 
     ALMACEN.actualizar_ejecucion(
         ejecucion_id,
@@ -97,3 +106,18 @@ def ejecutar_grafo(self: Any, ejecucion_id: str, grafo_json: dict[str, Any],
         },
     )
     return {"ok": resultado.ok, "ms": resultado.ms_total}
+
+
+def _guardar_fuentes(origen: Path) -> None:
+    """Copia la caché de fuentes de una corrida a la caché global."""
+    if not origen.is_dir():
+        return
+    destino = dir_fuentes()
+    destino.mkdir(parents=True, exist_ok=True)
+    for archivo in origen.glob("*.json"):
+        objetivo = destino / archivo.name
+        if not objetivo.exists():
+            try:
+                shutil.copy2(archivo, objetivo)
+            except OSError:
+                pass  # no poder cachear nunca tumba un análisis que sí corrió

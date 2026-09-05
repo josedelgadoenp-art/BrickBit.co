@@ -44,6 +44,9 @@ FAMILIAS: dict[str, Familia] = {
     for f in [
         Familia(id="datos", titulo="Datos", orden=10, color="#6fa287", icono="tabla",
                 descripcion="Traer datos al analisis y prepararlos: archivos, ejemplos, uniones, filtros."),
+        Familia(id="fuentes", titulo="Fuentes oficiales", orden=15, color="#55997e", icono="antena",
+                descripcion="Series en vivo de INEGI y Banxico. Se guardan en cache: el analisis "
+                            "reproduce los mismos numeros aunque la fuente revise la serie."),
         Familia(id="transformar", titulo="Transformar", orden=20, color="#55997e", icono="funcion",
                 descripcion="Crear variables nuevas: logaritmos, tasas de crecimiento, rezagos, deflactar, estandarizar."),
         Familia(id="explorar", titulo="Explorar", orden=30, color="#9aac6b", icono="lupa",

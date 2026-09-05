@@ -3,11 +3,12 @@
 **Este archivo se genera solo.** Sale del registro (`abak_core/nodes/`), así que
 no puede quedar desactualizado. Para regenerarlo: `python tools/generar_docs.py`.
 
-60 herramientas en 10 familias.
+63 herramientas en 11 familias.
 
 | Familia | Herramientas | Para qué |
 |---|---:|---|
 | [Datos](#datos) | 12 | Traer datos al analisis y prepararlos: archivos, ejemplos, uniones, filtros. |
+| [Fuentes oficiales](#fuentes) | 3 | Series en vivo de INEGI y Banxico. Se guardan en cache: el analisis reproduce los mismos numeros aunque la fuente revise la serie. |
 | [Transformar](#transformar) | 7 | Crear variables nuevas: logaritmos, tasas de crecimiento, rezagos, deflactar, estandarizar. |
 | [Explorar](#explorar) | 3 | Mirar los datos antes de modelarlos: descriptivos, correlaciones, tablas cruzadas, pruebas. |
 | [Econometria](#econometria) | 7 | Regresiones y modelos de siempre: MCO, variables instrumentales, panel, eleccion discreta. |
@@ -345,6 +346,115 @@ Si vienes de otro sistema — **Stata**: `drop if missing()` · **R**: `na.omit(
 | `tipo` | `izquierda` |
 
 Si vienes de otro sistema — **Stata**: `merge` · **R**: `dplyr::left_join()`
+
+<a id="fuentes"></a>
+
+## Fuentes oficiales
+
+Series en vivo de INEGI y Banxico. Se guardan en cache: el analisis reproduce los mismos numeros aunque la fuente revise la serie.
+
+### Banxico (SIE)
+
+`fuentes.banxico` · v1.0.0
+
+**Qué hace.** Descarga series del Sistema de Informacion Economica de Banxico: tipo de cambio, TIIE, tasa objetivo, INPC, IGAE y cualquier otra por su clave.
+
+**Cuándo usarlo.** Cuando el analisis necesita datos macro reales y actuales, en vez de un ejemplo.
+
+**Cómo se lee el resultado.** El resultado es una tabla con la fecha en el indice y una columna por serie. Abajo se muestra el TITULO OFICIAL que devolvio Banxico para cada clave: si no es el que esperabas, la clave esta mal.
+
+**Supuestos que impone:**
+
+- Hace falta un token gratuito del SIE en la variable de entorno BANXICO_TOKEN. El token no se guarda en el analisis ni viaja en el codigo exportado.
+
+**Ten cuidado con:**
+
+- Banxico rechaza peticiones desde IPs de centros de datos. Si el servidor no tiene salida, corre `python tools/traer_datos.py` desde una computadora con conexion domestica: llena la cache y el servidor deja de necesitar red.
+- La primera descarga se guarda en cache y el analisis vuelve a usar ESE archivo. Es a proposito: un resultado no debe cambiar solo porque la fuente revisó la serie. Para traer datos nuevos, marca «volver a descargar».
+- Las claves sugeridas son un atajo, no un catalogo verificado: confirma siempre el titulo que aparece en el resultado.
+
+| | Puerto | Tipo |
+|---|---|---|
+| sale | Series de Banxico | Una tabla con fecha: cada fila es un periodo en orden |
+
+| Parámetro | Por omisión |
+|---|---|
+| `series` | `['SF43718']` |
+| `inicio` | `None` |
+| `fin` | `None` |
+| `volver_a_descargar` | `False` |
+
+Si vienes de otro sistema — **Stata**: `import delimited (descarga manual)` · **R**: `siebanxicor::getSeriesData()`
+
+Para leer más: https://www.banxico.org.mx/SieAPIRest/service/v1/doc/catalogoSeries
+
+### DENUE (establecimientos)
+
+`fuentes.denue` · v1.0.0
+
+**Qué hace.** Trae los establecimientos economicos que el INEGI tiene registrados alrededor de un punto: nombre, actividad, tamano y ubicacion.
+
+**Cuándo usarlo.** Para medir la economia de una zona: cuantos negocios hay, de que tipo y de que tamano. Es el insumo natural de un analisis de ubicacion.
+
+**Cómo se lee el resultado.** Cada fila es un establecimiento. El «estrato» es un rango de personal ocupado, no un numero exacto: el DENUE no publica el empleo puntual de cada negocio.
+
+**Supuestos que impone:**
+
+- El radio maximo que admite la API es de 5,000 metros.
+
+**Ten cuidado con:**
+
+- Esta es LA fuente que bloquea IPs de centros de datos: al proyecto ya le pasó con la funcion `denue.js`, que quedó inservible por eso. Cuenta con llenar la cache desde una computadora con conexion domestica.
+- El DENUE se actualiza por oleadas: un establecimiento cerrado puede seguir apareciendo, y uno nuevo puede faltar.
+
+| | Puerto | Tipo |
+|---|---|---|
+| sale | Establecimientos | Una tabla con ubicación: cada fila tiene coordenadas o geometría |
+
+| Parámetro | Por omisión |
+|---|---|
+| `condicion` | `todos` |
+| `latitud` | `19.4326` |
+| `longitud` | `-99.1332` |
+| `metros` | `1000` |
+| `volver_a_descargar` | `False` |
+
+Para leer más: https://www.inegi.org.mx/servicios/api_denue.html
+
+### INEGI (BIE / BISE)
+
+`fuentes.inegi` · v1.0.0
+
+**Qué hace.** Descarga indicadores del Banco de Informacion Economica (BIE) o del BISE de INEGI: PIB, IGAE, ocupacion, INPC, produccion industrial y cualquier otro por su clave.
+
+**Cuándo usarlo.** Cuando necesitas la serie oficial mexicana en vez de una aproximacion.
+
+**Cómo se lee el resultado.** Cada columna es un indicador, con el periodo en el indice. Revisa la frecuencia que reporta INEGI: mezclar una serie mensual con una trimestral sin homologarlas produce huecos que despues se ven como datos faltantes.
+
+**Supuestos que impone:**
+
+- Hace falta un token gratuito de INEGI en la variable de entorno INEGI_TOKEN. No se guarda en el analisis ni viaja en el codigo exportado.
+- El area geografica va por clave del catalogo de INEGI: 0700 es nacional.
+
+**Ten cuidado con:**
+
+- INEGI rechaza peticiones desde IPs de centros de datos. Es el mismo problema que ya tenia el resto del proyecto. Si el servidor no tiene salida, llena la cache con `python tools/traer_datos.py` desde una computadora con conexion domestica.
+- Una serie descargada queda en cache y el analisis vuelve a usar ESE archivo, para que el resultado no cambie solo porque INEGI revisó la serie.
+
+| | Puerto | Tipo |
+|---|---|---|
+| sale | Indicadores de INEGI | Una tabla con fecha: cada fila es un periodo en orden |
+
+| Parámetro | Por omisión |
+|---|---|
+| `indicadores` | `—` |
+| `area` | `0700` |
+| `banco` | `BIE` |
+| `volver_a_descargar` | `False` |
+
+Si vienes de otro sistema — **R**: `inegiR::inegi_series()` · **Stata**: `descarga manual`
+
+Para leer más: https://www.inegi.org.mx/servicios/api_indicadores.html
 
 <a id="transformar"></a>
 
