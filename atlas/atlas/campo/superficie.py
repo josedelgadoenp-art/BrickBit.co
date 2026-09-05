@@ -51,11 +51,12 @@ class Superficie:
     """El campo de precio evaluado sobre la malla."""
 
     valores: np.ndarray          # ln(precio/m²) predicho por celda
-    sigma: np.ndarray            # desviación estándar posterior
+    sigma: np.ndarray            # incertidumbre TOTAL (nivel + ruido de anuncio)
+    sigma_nivel: np.ndarray      # sólo la del nivel: qué tan bien se conoce la zona
     grad_x: np.ndarray           # ∂ln(p)/∂x, por metro
     grad_y: np.ndarray
     escala_m: float              # longitud característica aprendida
-    ruido: float
+    ruido: float                 # varianza del ruido de anuncio
 
     @property
     def pendiente_pct_km(self) -> np.ndarray:
@@ -70,10 +71,12 @@ class Superficie:
     def texto(self) -> str:
         p = self.pendiente_pct_km
         return (
-            f"    escala característica {self.escala_m / 1000:.2f} km · "
-            f"ruido {self.ruido:.3f}\n"
-            f"    incertidumbre: mediana ±{np.median(self.sigma) * 100:.0f}% · "
-            f"máxima ±{np.max(self.sigma) * 100:.0f}%\n"
+            f"    escala característica {self.escala_m / 1000:.2f} km\n"
+            f"    incertidumbre del NIVEL de la zona: mediana ±"
+            f"{np.median(self.sigma_nivel) * 100:.0f}% · máxima ±"
+            f"{np.max(self.sigma_nivel) * 100:.0f}%\n"
+            f"    dispersión entre anuncios de una misma zona: ±"
+            f"{np.sqrt(self.ruido) * 100:.0f}%  (irreducible con estos datos)\n"
             f"    pendiente del precio: mediana {np.median(p):.1f}%/km · "
             f"percentil 90 {np.percentile(p, 90):.1f}%/km"
         )
@@ -149,26 +152,46 @@ def evaluar(gp, centro: np.ndarray, media: float, xy: np.ndarray,
         if p.endswith("noise_level") and np.isscalar(v):
             ruido = float(v)
 
+    # LA SIGMA DE SKLEARN INCLUYE EL RUIDO DE ANUNCIO, y confundir las dos hace
+    # que la superficie parezca inútil. Comprobado: con un WhiteKernel de 0.0785
+    # la sigma devuelta era 0.281 y la del nivel 0.024-0.054, un orden de
+    # magnitud menos. Son preguntas distintas:
+    #   · sigma        ¿cuánto puede valer ESTE anuncio concreto?
+    #   · sigma_nivel  ¿cuánto vale el m² TÍPICO de esta zona?
+    # La segunda es la que interesa para un mapa, y es la que se conoce bien.
+    # La primera incluye la variación entre dos departamentos de la misma
+    # cuadra, que es real y no baja por poner más modelo.
+    nivel = np.sqrt(np.maximum(np.asarray(sig, float) ** 2 - float(ruido), 0.0))
     return Superficie(
-        valores=val + media, sigma=sig, grad_x=grad_x, grad_y=grad_y,
-        escala_m=escala, ruido=ruido,
+        valores=val + media, sigma=sig, sigma_nivel=nivel,
+        grad_x=grad_x, grad_y=grad_y, escala_m=escala, ruido=ruido,
     )
 
 
-def frontera(valores: np.ndarray, w, umbral: float = 0.05) -> pd.DataFrame:
+def frontera(precios_log: np.ndarray, w, umbral: float = 0.05) -> pd.DataFrame:
     """
-    Dónde el precio propio va MUY por debajo del de su vecindario.
+    Dónde el precio va MUY por debajo del de su vecindario.
 
-    Es el cuadrante bajo-alto del LISA aplicado al precio, y es la lectura de
-    negocio de toda la Fase 3: una celda barata rodeada de caras es donde el
-    diferencial tiene más recorrido. Se declara como lo que es —un diferencial
-    presente, no una plusvalía futura—: que el mercado lo cierre depende de por
-    qué está abierto, y esa razón puede ser una barrera física, un uso de suelo
-    o una diferencia real de calidad que ninguna de estas variables ve.
+    Es el cuadrante bajo-alto del LISA, y es la lectura de negocio de la fase:
+    un punto barato rodeado de caros es donde el diferencial tiene recorrido.
+
+    ⚠ SE CALCULA SOBRE LOS LISTADOS, NO SOBRE LA SUPERFICIE SUAVIZADA. La
+    primera versión se lo aplicaba al proceso gaussiano y devolvía CERO celdas
+    en toda la ciudad —lo cual parecía decir "no hay oportunidad en la CDMX"
+    cuando en realidad era imposible por construcción—: con una escala
+    característica de 6.66 km, dos celdas vecinas a 174 m tienen valores casi
+    idénticos, así que una superficie suave no puede contener un hoyo local.
+    Suavizar es exactamente borrar lo que esta función busca.
+
+    Se declara como lo que es: un diferencial PRESENTE, no una plusvalía futura.
+    Que el mercado lo cierre depende de POR QUÉ está abierto, y esa razón puede
+    ser una barrera física, un uso de suelo o una diferencia real de calidad que
+    ninguna de estas variables ve.
     """
     from ..features.pesos import lisa
 
-    cl = lisa(w, valores, permutaciones=999)
-    cl["brecha"] = np.asarray(w.sparse @ valores) - valores
+    y = np.asarray(precios_log, float)
+    cl = lisa(w, y, permutaciones=999)
+    cl["brecha"] = np.asarray(w.sparse @ y) - y
     cl["es_frontera"] = (cl["lisa_cuadrante"] == "BA") & (cl["lisa_p"] < umbral)
     return cl

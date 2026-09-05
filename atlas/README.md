@@ -194,11 +194,30 @@ al otro. La prueba es predecir, y no predice.
 
 **Superficie de precio** sobre la CDMX por proceso gaussiano —kriging con otro
 nombre— con kernel Matérn ν=1.5 y no RBF: los precios cambian de golpe al cruzar
-una avenida, y un kernel infinitamente suave difumina justo esos bordes. Da el
-gradiente ∇p en **% por kilómetro** y, sobre todo, **la incertidumbre**: donde no
-hay comparables la σ se dispara, y eso es una respuesta, no un hueco.
+una avenida, y un kernel infinitamente suave difumina justo esos bordes. Escala
+característica aprendida: **6.66 km**. Pendiente mediana **7.8%/km**, p90 17.7%/km.
 
-**Multiplicador espacial (I − ρW)⁻¹** con el ρ de la Fase 2. Aquí hay una trampa
+**Y la incertidumbre se reporta partida en dos**, porque `predict(return_std=True)`
+de scikit-learn devuelve la de UN ANUNCIO, con el ruido del WhiteKernel dentro.
+Confundirlas hacía parecer que no se sabe nada:
+
+| | |
+|---|---|
+| incertidumbre del **nivel** de la zona | ±19% mediana |
+| dispersión **entre anuncios** de una misma zona | ±30%, irreducible |
+
+Son preguntas distintas —cuánto puede valer este anuncio, contra cuánto vale el
+m² típico de la zona— y sólo la segunda sirve para un mapa. Reportar la total
+daba ±53%.
+
+**Frente de precio**: dónde un inmueble va muy por debajo de sus vecinos —el
+cuadrante bajo-alto del LISA—. Se busca sobre los **listados**, no sobre la
+superficie: una superficie con escala de kilómetros no puede contener un hoyo
+local de 174 m, y aplicarle LISA devolvía **cero** en toda la ciudad, lo cual
+parecía decir "no hay oportunidad en la CDMX" cuando era imposible por
+construcción. Suavizar borra exactamente lo que esa función busca.
+
+**Multiplicador espacial (I − ρW)⁻¹** con el ρ de la Fase 2 (0.302). Aquí hay una trampa
 que costó caer: la **suma de fila** vale 1/(1−ρ) para todas las celdas —es una
 identidad algebraica— así que un mapa de sumas de fila sale plano por
 construcción. Lo que varía es la **columna**: cuánto mueve al sistema entero un

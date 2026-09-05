@@ -107,12 +107,19 @@ def construir(cfg, zona: str = "Ciudad de México") -> dict:
         res["superficie"] = s
         res["malla"] = g
 
-        _linea("· Frontera de precio (barato rodeado de caro)…")
-        w_malla = pesos.knn(centros, 8, cfg)
-        fr = superficie.frontera(s.valores, w_malla)
+        # La frontera se busca sobre los LISTADOS, no sobre la superficie: una
+        # superficie con escala de kilómetros no puede contener un hoyo local de
+        # 174 m, y aplicarle LISA devolvía cero en toda la ciudad.
+        _linea("· Frontera de precio sobre los listados (barato rodeado de caro)…")
+        gprops = puntos(props.loc[ok].reset_index(drop=True), cfg=cfg)
+        w_props = pesos.knn(gprops, 8, cfg)
+        fr = superficie.frontera(y[ok], w_props)
         n_fr = int(fr["es_frontera"].sum())
-        _linea(f"    {n_fr:,} celdas en el frente ({n_fr / len(fr) * 100:.1f}% de la malla)")
+        _linea(f"    {n_fr:,} inmuebles en el frente de {len(fr):,} "
+               f"({n_fr / max(len(fr), 1) * 100:.1f}%)")
         res["frontera"] = fr
+        res["props_frontera"] = props.loc[ok].reset_index(drop=True)
+        w_malla = pesos.knn(centros, 8, cfg)
 
         # --------------------------------------------- 4. multiplicador espacial
         _linea("· Multiplicador espacial (I − ρW)⁻¹…")
@@ -130,15 +137,24 @@ def construir(cfg, zona: str = "Ciudad de México") -> dict:
             "lat": g["lat"].to_numpy(),
             "lng": g["lng"].to_numpy(),
             "ln_precio_m2": s.valores,
-            "sigma": s.sigma,
+            "sigma_total": s.sigma,
+            "sigma_nivel": s.sigma_nivel,
             "pendiente_pct_km": s.pendiente_pct_km,
             "rumbo_grados": s.rumbo,
-            "frontera": fr["es_frontera"].to_numpy(),
-            "brecha_vecinos": fr["brecha"].to_numpy(),
         })
         if res.get("multiplicador") is not None:
             salida["efecto_propio"] = res["multiplicador"].propio
             salida["influencia"] = res["multiplicador"].influencia
+        lago.guardar("frontera_cdmx", pd.DataFrame({
+            "id": res["props_frontera"]["id"].to_numpy(),
+            "lat": res["props_frontera"]["lat"].to_numpy(),
+            "lng": res["props_frontera"]["lng"].to_numpy(),
+            "ln_precio_m2": y[ok],
+            "brecha_vecinos": fr["brecha"].to_numpy(),
+            "cuadrante": fr["lisa_cuadrante"].to_numpy(),
+            "es_frontera": fr["es_frontera"].to_numpy(),
+        }), fuente="Fase 3 · LISA del precio sobre los listados",
+            nota="diferencial PRESENTE, no plusvalía futura", cfg=cfg)
         lago.guardar("campo_cdmx", salida,
                      fuente="Fase 3 · superficie GP, gradiente y multiplicador espacial",
                      nota=f"ρ={rho}; precio de OFERTA, no de cierre", cfg=cfg)
@@ -224,8 +240,8 @@ def informe(cfg, res: dict | None) -> None:
         _linea("\nSUPERFICIE DE PRECIO DE LA CDMX")
         _linea(res["superficie"].texto())
         fr = res["frontera"]
-        _linea(f"\n  Frente de precio: {int(fr['es_frontera'].sum()):,} celdas baratas")
-        _linea("  rodeadas de caras. Es un diferencial PRESENTE, no una plusvalía")
+        _linea(f"\n  Frente de precio: {int(fr['es_frontera'].sum()):,} inmuebles baratos")
+        _linea("  rodeados de caros. Es un diferencial PRESENTE, no una plusvalía")
         _linea("  futura: que el mercado lo cierre depende de por qué está abierto,")
         _linea("  y esa razón puede ser una barrera, un uso de suelo o una")
         _linea("  diferencia real de calidad que estas variables no ven.")

@@ -175,3 +175,53 @@ def test_la_incertidumbre_crece_donde_no_hay_datos():
         f"sigma dentro {dentro.sigma[0]:.4f}, fuera {fuera.sigma[0]:.4f}: "
         "la incertidumbre tiene que crecer donde no hay comparables"
     )
+
+
+def test_la_sigma_del_nivel_se_separa_del_ruido_de_anuncio():
+    """
+    El bug que congela: `GaussianProcessRegressor.predict(return_std=True)`
+    devuelve la desviación de la predicción de UN ANUNCIO, con el ruido del
+    WhiteKernel incluido. Reportarla como incertidumbre del mapa hace parecer
+    que no se sabe nada: sobre los datos reales daba ±53% cuando la del nivel
+    era ±19%. Son preguntas distintas —cuánto puede valer este anuncio, contra
+    cuánto vale el m² típico de la zona— y sólo la segunda sirve para un mapa.
+    """
+    rng = np.random.default_rng(CFG.semilla)
+    xy = rng.uniform(-6000, 6000, size=(500, 2))
+    y = 0.00006 * xy[:, 0] + rng.normal(0, 0.3, len(xy))   # mucho ruido de anuncio
+    gp, centro, media = superficie.ajustar(xy, y, CFG)
+    s = superficie.evaluar(gp, centro, media, xy[:50])
+
+    assert (s.sigma_nivel <= s.sigma + 1e-9).all(), "el nivel no puede saber menos que el total"
+    assert np.median(s.sigma_nivel) < np.median(s.sigma) / 2, (
+        "con ruido de anuncio grande, la incertidumbre del nivel tiene que ser "
+        "mucho menor que la total"
+    )
+    assert np.allclose(s.sigma ** 2 - s.sigma_nivel ** 2, s.ruido, atol=1e-6), \
+        "la diferencia en varianza es exactamente el ruido de anuncio"
+
+
+def test_la_frontera_no_se_busca_sobre_una_superficie_suavizada():
+    """
+    El bug que congela: la frontera se calculaba sobre la superficie del proceso
+    gaussiano y devolvía CERO celdas en toda la CDMX. Parecía decir "no hay
+    oportunidad" y en realidad era imposible por construcción: con una escala
+    característica de kilómetros, dos puntos vecinos a 174 m tienen valores casi
+    idénticos, así que una superficie suave no puede contener un hoyo local.
+    Suavizar borra exactamente lo que la función busca.
+    """
+    g = _rejilla(n=14, paso=0.008)
+    w = pesos.knn(g, 8, CFG)
+    m = g.to_crs(CFG.crs_metrico)
+    base = 1e-5 * m.geometry.x.to_numpy()
+
+    suave = base                                    # sin anomalías locales
+    con_hoyo = base.copy()
+    rng = np.random.default_rng(CFG.semilla)
+    hoyos = rng.choice(len(con_hoyo), 15, replace=False)
+    con_hoyo[hoyos] -= 1.2                          # puntos baratos entre caros
+
+    n_suave = int(superficie.frontera(suave, w)["es_frontera"].sum())
+    n_hoyo = int(superficie.frontera(con_hoyo, w)["es_frontera"].sum())
+    assert n_suave == 0, "una superficie perfectamente suave no tiene frontera, y está bien"
+    assert n_hoyo > 0, "con hoyos locales reales, la frontera tiene que encontrarlos"
