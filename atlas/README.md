@@ -4,7 +4,7 @@ Motor de valuación y pronóstico para la Ciudad de México. Vive **al lado** de
 Motor de Morfogénesis (`app.py`), no dentro: son dos productos con datos y
 ciclos de vida distintos, y mezclarlos habría hecho a los dos más frágiles.
 
-**Estado: Fases 0, 1 y 2 completas.** Las fases 3 a 5 están por construir.
+**Estado: Fases 0 a 3 completas.** Las fases 4 y 5 están por construir.
 
 ---
 
@@ -158,6 +158,62 @@ quede bonito: es la condición real de uso —valuar donde no hubo comparables�
 con una partición al azar el número saldría clavado sin decir nada del barrio
 siguiente.
 
+### Correr la Fase 3
+
+```bash
+python -m pipelines.fase3                  # tiempo + campo espacial
+python -m pipelines.fase3 --zona Guadalajara
+python -m pipelines.fase3 --informe
+```
+
+Cuatro piezas, y conviene saber cuál se apoya en qué.
+
+**Índice temporal (SHF, 32 zonas × 22 años).** Dato real de *transacciones* con
+crédito garantizado, no de ofertas — complementario de los listados: uno tiene la
+profundidad temporal que al otro le falta. La CDMX acumuló **×4.92 entre 2005 y
+2026**, 7.88% anual compuesto. **Nominal**: sin la serie del INPC no se puede
+decir cuánto de eso fue plusvalía y cuánto inflación, y el informe lo declara en
+vez de dejar que se lea como real.
+
+**¿El crecimiento se contagia entre zonas vecinas?** `data/forecast.json` afirma
+un modelo "50% momentum + 50% contagio espacial". La Fase 3 lo pone a prueba con
+validación hacia adelante —ajustar con los años anteriores, predecir el
+siguiente— sobre 480 predicciones fuera de muestra. Y el resultado incomoda:
+
+| predictor | error absoluto medio |
+|---|---|
+| media histórica | 2.17 pp |
+| sólo momentum | **1.81 pp** |
+| momentum + vecinos | 1.86 pp |
+
+**El término espacial no aporta: empeora el error un 2.6%**, y su coeficiente
+medio sale negativo. El I de Moran del crecimiento es apenas +0.10 y significativo
+en 5 de 21 años. Agrupamiento no es contagio: dos vecinos pueden crecer igual
+por un choque común —una tasa hipotecaria, un ciclo nacional— sin que uno empuje
+al otro. La prueba es predecir, y no predice.
+
+**Superficie de precio** sobre la CDMX por proceso gaussiano —kriging con otro
+nombre— con kernel Matérn ν=1.5 y no RBF: los precios cambian de golpe al cruzar
+una avenida, y un kernel infinitamente suave difumina justo esos bordes. Da el
+gradiente ∇p en **% por kilómetro** y, sobre todo, **la incertidumbre**: donde no
+hay comparables la σ se dispara, y eso es una respuesta, no un hueco.
+
+**Multiplicador espacial (I − ρW)⁻¹** con el ρ de la Fase 2. Aquí hay una trampa
+que costó caer: la **suma de fila** vale 1/(1−ρ) para todas las celdas —es una
+identidad algebraica— así que un mapa de sumas de fila sale plano por
+construcción. Lo que varía es la **columna**: cuánto mueve al sistema entero un
+cambio originado ahí. Con un W de k vecinos la variación es modesta (1.1×) y eso
+también se declara: un grafo KNN es casi regular por construcción, así que apenas
+hay diferencia de posición que capturar.
+
+**Lo que la Fase 3 NO puede hacer.** El documento pide un campo de *crecimiento*
+por celda. Eso exige ver la misma celda en dos momentos, y hoy hay **una sola
+captura** de listados; el SHF aporta el tiempo pero a resolución estatal. No se
+fabrica multiplicando una cosa por la otra —daría un mapa convincente y sin
+respaldo—. La condición para desbloquearlo es concreta: **correr el scraper cada
+mes**. En un año hay panel para estimar crecimiento por celda y validarlo hacia
+adelante, igual que aquí se valida el contagio entre zonas.
+
 ### Cobertura de la CDMX: siete alcaldías con ruta rota
 
 En la corrida del scraper de 2026-09 el barrido profundo devolvió **HTTP 404 en
@@ -305,11 +361,18 @@ atlas/
 │     ├─ conforme.py      CQR y normalizado + Mondrian: intervalos con garantía
 │     ├─ evaluacion.py    error en pesos y cobertura por segmento
 │     └─ importancia.py   SHAP, con permutación de respaldo
+│  └─ temporal/
+│     ├─ indice.py        panel SHF: 32 zonas × 22 años
+│     └─ difusion.py      ¿se contagia el crecimiento? validación hacia adelante
+│  └─ campo/
+│     ├─ superficie.py    proceso gaussiano, gradiente ∇p e incertidumbre
+│     └─ multiplicador.py (I − ρW)⁻¹: dónde un cambio mueve más ciudad
 ├─ pipelines/
 │  ├─ fase0.py            ingesta + informe
 │  ├─ fase1.py            variables geoespaciales + diagnóstico
-│  └─ fase2.py            AVM + incertidumbre calibrada
-├─ tests/                 66 pruebas
+│  ├─ fase2.py            AVM + incertidumbre calibrada
+│  └─ fase3.py            tiempo + campo espacial
+├─ tests/                 75 pruebas
 └─ data/                  el lago (parquet); no se versiona
 ```
 
@@ -326,8 +389,12 @@ el delta de accesibilidad por obra pública, que necesita la capa de obras.)*
    inmuebles de venta y 19 bloques espaciales, estimar una superficie de
    coeficientes por variable daría mapas bonitos y sin respaldo. Entra cuando la
    muestra lo aguante.
-3. **Temporal + campo de crecimiento** — índice SHF/ventas repetidas, VECM,
-   superficies por kriging/GP, gradiente ∇g, pesos `(I−ρW)⁻¹`.
+3. ~~**Temporal + campo de crecimiento**~~ **hecha**, salvo el crecimiento por
+   celda: índice SHF, prueba de difusión con validación hacia adelante,
+   superficie por proceso gaussiano con gradiente e incertidumbre, y el
+   multiplicador `(I−ρW)⁻¹`. El campo de crecimiento por celda queda
+   explícitamente pendiente de la segunda captura de listados; las ventas
+   repetidas necesitan lo mismo.
 4. **App Streamlit** — mapa-tela, campo vectorial, escenarios de obra pública.
 5. **Monitoreo** — drift de datos y de cobertura, reentrenamiento.
 
