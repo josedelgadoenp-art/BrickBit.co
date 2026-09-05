@@ -82,6 +82,10 @@ echo.
 echo ================================================================
 echo   LISTO. El lago quedo en atlas\data\
 echo.
+echo   Para ver todo esto en un mapa:
+echo       cd atlas
+echo       streamlit run app.py
+echo.
 echo   Cada corrida mensual suma inventario nuevo. Cuando haya dos
 echo   capturas separadas en el tiempo se podra estimar el crecimiento
 echo   POR CELDA, que es lo unico que hoy la Fase 3 no puede hacer.

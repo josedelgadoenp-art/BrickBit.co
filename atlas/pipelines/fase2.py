@@ -42,7 +42,7 @@ from atlas import lago                                          # noqa: E402
 from atlas.config import cargar, fijar_semilla                  # noqa: E402
 from atlas.geo import puntos                                    # noqa: E402
 from atlas.modelos import (apilado, arboles, conforme, datos,   # noqa: E402
-                           evaluacion, hedonico, importancia)
+                           evaluacion, hedonico, importancia, persistencia)
 
 
 def _linea(t: str = "") -> None:
@@ -212,6 +212,41 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
         niveles.append((a, evaluacion.intervalo(yte.to_numpy(), l, h, a)))
     res["niveles"] = niveles
 
+    # ------------------------------------------------------------- persistencia
+    # El paquete entrenado se guarda entero: sin esto, cada valuación exigiría
+    # reentrenar tres modelos y recalibrar el intervalo. Van juntos a propósito
+    # —predictor y banda sólo significan algo emparejados—.
+    _linea("· Guardando el AVM entrenado…")
+    _prep, _lin, _cols = hedonico.ridge_por_bloque(Xtr, ytr, d.bloque[p["entrena"]])
+    paquete = persistencia.Paquete(
+        columnas=list(Xtr.columns),
+        boosting=m_media,
+        lineal=(_prep, _lin, _cols),
+        apilado=ap,
+        dispersion=m_sigma,
+        conforme_por_alpha={a: c for a, c in
+                            [(a, conforme.calibrar_normalizado(
+                                yca.to_numpy(), pred_ca, sigma_ca, a, grupos_cal=seg_ca,
+                                minimo_por_grupo=conforme.minimo_por_grupo(a)))
+                             for a in (0.50, 0.20, 0.10, 0.05)]},
+        cortes=cortes,
+        nombre_segmentacion=nombre_seg,
+        tipo_referencia=d.tipo_referencia,
+        operacion=operacion,
+        n_entrenamiento=int(len(ytr)),
+        fecha_datos=_fecha_de_los_datos(cfg),
+        metricas={
+            "mdape_pct": res["punto"]["apilado"].mdape_pct,
+            "r2_log": res["punto"]["apilado"].r2_log,
+            "cobertura_95": res["intervalo"].cobertura,
+            "ancho_95_pct": res["intervalo"].ancho_mediano_pct,
+        },
+    )
+    destino = persistencia.guardar(paquete, cfg)
+    _linea(f"    {destino.name} · {paquete.n_entrenamiento:,} inmuebles · "
+           f"datos de {paquete.fecha_datos[:10]}")
+    res["paquete"] = paquete
+
     # ----------------------------------------------------------- explicabilidad
     _linea("· Explicabilidad…")
     res["importancia"] = importancia.calcular(m_media, Xtr, ytr, semilla)
@@ -235,6 +270,23 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
 
 
 # ----------------------------------------------------------------- auxiliares
+def _fecha_de_los_datos(cfg) -> str:
+    """
+    De cuándo son los listados que entrenaron el modelo.
+
+    Se guarda con el paquete porque un AVM entrenado con inventario viejo sigue
+    dando números convincentes mucho después de dejar de ser cierto, y quien lo
+    consulte tiene derecho a saber de cuándo es.
+    """
+    from datetime import datetime, timezone
+
+    try:
+        f = lago.leer("properties", cfg)["fecha_captura"].max()
+        return pd.Timestamp(f).isoformat()
+    except Exception:
+        return datetime.now(timezone.utc).isoformat()
+
+
 def _gdf_de(d: datos.Datos, mascara: np.ndarray, cfg):
     """GeoDataFrame de puntos del subconjunto, para construir W."""
     import geopandas as gpd

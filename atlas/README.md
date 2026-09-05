@@ -4,7 +4,7 @@ Motor de valuación y pronóstico para la Ciudad de México. Vive **al lado** de
 Motor de Morfogénesis (`app.py`), no dentro: son dos productos con datos y
 ciclos de vida distintos, y mezclarlos habría hecho a los dos más frágiles.
 
-**Estado: Fases 0 a 3 completas.** Las fases 4 y 5 están por construir.
+**Estado: Fases 0 a 4 completas.** Falta la 5 (monitoreo de drift).
 
 ---
 
@@ -233,6 +233,39 @@ respaldo—. La condición para desbloquearlo es concreta: **correr el scraper c
 mes**. En un año hay panel para estimar crecimiento por celda y validarlo hacia
 adelante, igual que aquí se valida el contagio entre zonas.
 
+### Correr la app (Fase 4)
+
+```bash
+cd atlas
+streamlit run app.py
+```
+
+Hace visible lo que las fases 0 a 3 dejaron en parquet. Tres pestañas, tres
+preguntas distintas: **Valuar** (cuánto vale este inmueble y con qué banda),
+**Mapa** (cómo está el precio en la ciudad y dónde el modelo no sabe) y **La
+ciudad en el tiempo** (veintiún años de índice SHF).
+
+Una regla la atraviesa entera: **ningún número aparece sin su incertidumbre y
+sin su procedencia**. El valor puntual va siempre con su intervalo; el mapa
+lleva su capa de "cuánto no sé"; y en todas partes se recuerda que son precios
+de oferta. Un número solo, grande y sin contexto, miente por omisión.
+
+El selector de confianza arranca en **80%**, que es la banda con la que se puede
+conversar. El 95% está disponible y es tan ancho que dice poco más que "no sé" —
+y eso no es defecto del método, es el error del modelo.
+
+**La Fase 2 ahora guarda el AVM entrenado** en `atlas/artifacts/avm_venta.joblib`.
+Sin eso, cada valuación exigiría reentrenar tres modelos y recalibrar el
+intervalo: minutos, cuando la app tiene que responder en un segundo. Las seis
+piezas —boosting, hedónico regularizado, pesos del apilado, modelo de dispersión,
+correcciones conformes y cortes de segmento— van en un mismo archivo porque sólo
+significan algo juntas: guardar el predictor y recalcular la banda por separado
+daría un número con un intervalo que no le corresponde.
+
+Y el paquete anota **de cuándo son sus datos**. La app avisa a partir de 90 días,
+porque un AVM entrenado con inventario viejo sigue dando números convincentes
+mucho después de haber dejado de ser cierto.
+
 ### Cobertura de la CDMX: siete alcaldías con ruta rota
 
 En la corrida del scraper de 2026-09 el barrido profundo devolvió **HTTP 404 en
@@ -391,6 +424,7 @@ atlas/
 │  ├─ fase1.py            variables geoespaciales + diagnóstico
 │  ├─ fase2.py            AVM + incertidumbre calibrada
 │  └─ fase3.py            tiempo + campo espacial
+│     └─ (modelos/persistencia.py guarda el AVM para la app)
 ├─ tests/                 75 pruebas
 └─ data/                  el lago (parquet); no se versiona
 ```
@@ -414,7 +448,10 @@ el delta de accesibilidad por obra pública, que necesita la capa de obras.)*
    multiplicador `(I−ρW)⁻¹`. El campo de crecimiento por celda queda
    explícitamente pendiente de la segunda captura de listados; las ventas
    repetidas necesitan lo mismo.
-4. **App Streamlit** — mapa-tela, campo vectorial, escenarios de obra pública.
+4. ~~**App Streamlit**~~ **hecha**: valuador con intervalo, mapa de precio e
+   incertidumbre, y el índice temporal. Los escenarios de obra pública quedan
+   pendientes: necesitan el multiplicador con un W que refleje densidad real,
+   no el KNN casi regular con el que se estimó ρ.
 5. **Monitoreo** — drift de datos y de cobertura, reentrenamiento.
 
 Lo que condiciona la calidad de la Fase 2 no es el código sino el tamaño de la

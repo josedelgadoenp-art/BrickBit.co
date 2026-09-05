@@ -34,9 +34,12 @@ shap>=0.45           # explicabilidad; sin él se usa importancia por permutaci�
 # mgwr>=2.2          # coeficientes locales — pendiente, ver README
 
 # --- Fase 3: superficies ---
-# pykrige>=1.7       # kriging ordinario
-# rasterio>=1.3      # GeoTIFF
+# El kriging sale del proceso gaussiano de scikit-learn: kriging ordinario y
+# regresión GP con kernel estacionario son el MISMO estimador, así que pykrige
+# no añadiría nada y sí una dependencia.
+# rasterio>=1.3      # GeoTIFF — pendiente, sólo si hace falta exportar ráster
 
-# --- Fase 4: app ---
-# streamlit>=1.35
-# pydeck>=0.9
+# --- Fase 4: la app ---
+streamlit>=1.49      # ya está en el requirements de la raíz (Morfogénesis)
+pydeck>=0.9          # mapa 3D de la ciudad
+joblib>=1.3          # guardar el AVM entrenado
