@@ -229,6 +229,26 @@ def particion(
     rng = np.random.default_rng(int(cfg.semilla))
     tam = bloque.value_counts()
 
+    # NUNCA BARAJAR LO QUE DEVUELVE `.to_numpy()`.
+    #
+    # Con un índice de dtype `object`, `Index.to_numpy()` devuelve una VISTA que
+    # comparte memoria con el índice. Barajarla en el sitio baraja el índice de
+    # `tam`, y como pandas guarda en caché la tabla de búsqueda por etiqueta, a
+    # partir de ese momento `tam[b]` devuelve el tamaño de OTRO bloque. El
+    # algoritmo cree que está equilibrando y suma números que no corresponden.
+    #
+    # Es un fallo silencioso y depende del entorno: en pandas 3 el arreglo viene
+    # marcado como sólo lectura y `shuffle` lanza excepción, así que aquí nunca
+    # se vio; en pandas 2.3 baraja sin decir nada. Pidiendo 60/20/20 salía
+    # 75.8/10.3/13.9 en una máquina y 60/20/20 en otra, con el mismo código y
+    # los mismos datos. Estaba desde la primera versión de esta función.
+    #
+    # El remedio son dos: una lista de Python propia —no una vista de nada— y un
+    # diccionario de tamaños, que además evita repetir la búsqueda por etiqueta
+    # dentro del bucle.
+    etiquetas = [str(e) for e in tam.index.to_list()]
+    tamano = {str(e): int(t) for e, t in zip(tam.index.to_list(), tam.to_list())}
+
     # DE MAYOR A MENOR, no al azar.
     #
     # Los bloques de la CDMX son muy desiguales: el centro concentra el
@@ -245,9 +265,8 @@ def particion(
     # acomodan cuando todos los cupos están libres, y los chicos sirven después
     # para afinar. El barajado se conserva sólo para desempatar entre bloques
     # del mismo tamaño, que es donde sí conviene no tener un sesgo fijo.
-    orden = tam.index.to_numpy()
-    rng.shuffle(orden)
-    orden = sorted(orden, key=lambda b: -int(tam[b]))
+    rng.shuffle(etiquetas)              # lista propia: no toca a `tam`
+    orden = sorted(etiquetas, key=lambda b: -tamano[b])
 
     n = int(tam.sum())
     cupos = [f * n for f in fracciones]
@@ -260,9 +279,12 @@ def particion(
         deficit = [(acumulado[i] - cupos[i]) / max(cupos[i], 1.0) for i in range(3)]
         i = int(np.argmin(deficit))
         destino[nombres[i]].append(b)
-        acumulado[i] += float(tam[b])
+        acumulado[i] += float(tamano[b])
 
-    en = {k: bloque.isin(v).to_numpy() for k, v in destino.items()}
+    # `bloque` se compara como texto porque las etiquetas se normalizaron a str
+    # arriba; sin eso, un índice de dtype `string` no casaría con claves `str`.
+    texto = bloque.astype(str)
+    en = {k: texto.isin(v).to_numpy() for k, v in destino.items()}
     vacios = [k for k, v in en.items() if v.sum() == 0]
     if vacios:
         raise ValueError(

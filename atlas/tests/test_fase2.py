@@ -459,3 +459,53 @@ def test_la_particion_aguanta_bloques_muy_desiguales():
         assert abs(p["entrena"].sum() / n - 0.6) < 0.05, f"semilla {semilla}"
         assert abs(p["calibra"].sum() / n - 0.2) < 0.05, f"semilla {semilla}"
         assert abs(p["prueba"].sum() / n - 0.2) < 0.05, f"semilla {semilla}"
+
+
+def test_la_particion_no_muta_lo_que_recibe():
+    """
+    EL BUG MÁS FEO DE LA FASE, y el más silencioso.
+
+    `Index.to_numpy()` sobre un índice de dtype `object` devuelve una VISTA que
+    comparte memoria con el índice. La partición barajaba esa vista en el sitio,
+    y con ella barajaba el índice de `value_counts()`. Como pandas guarda en
+    caché la tabla de búsqueda por etiqueta, a partir de ahí `tam[b]` devolvía
+    el tamaño de OTRO bloque: el algoritmo creía estar equilibrando mientras
+    sumaba números que no correspondían.
+
+    Lo peor es que dependía del entorno. En pandas 3 el arreglo viene marcado
+    como sólo lectura y `shuffle` lanza excepción, así que en una máquina nunca
+    se veía; en pandas 2.3 baraja sin decir nada. El mismo código con los mismos
+    datos daba 60/20/20 en una máquina y 75.8/10.3/13.9 en otra.
+
+    Se prueba con los DOS dtypes y se exige que la serie de entrada quede como
+    estaba: una función que reparte no tiene por qué tocar lo que le pasan.
+    """
+    tams = [201, 188, 164, 139, 120, 113, 94, 86, 78, 64, 58, 55, 49, 43, 34,
+            31, 30, 28, 27, 25, 25, 24, 19, 16, 12, 12, 12, 5, 4, 3, 3, 2, 2,
+            2, 2, 1, 1, 1]                       # los bloques reales de la CDMX
+    nombres = [f"b{i}" for i in range(len(tams))]
+
+    for dtype in ("object", "string"):
+        bloque = pd.Series(np.repeat(nombres, tams), dtype=dtype)
+        antes = bloque.value_counts().to_dict()
+
+        p = datos.particion(bloque, CFG, fracciones=(0.6, 0.2, 0.2))
+
+        assert bloque.value_counts().to_dict() == antes, \
+            f"dtype {dtype}: la partición mutó la serie que recibió"
+        n = len(bloque)
+        assert abs(p["entrena"].sum() / n - 0.6) < 0.02, f"dtype {dtype}"
+        assert abs(p["calibra"].sum() / n - 0.2) < 0.02, f"dtype {dtype}"
+        assert abs(p["prueba"].sum() / n - 0.2) < 0.02, f"dtype {dtype}"
+
+
+def test_la_particion_da_lo_mismo_con_cualquier_dtype_de_bloque():
+    """El dtype de la etiqueta es un detalle de almacenamiento, no del reparto."""
+    tams = [80, 60, 55, 40, 33, 28, 20, 15, 12, 10, 8, 5, 3, 2, 1]
+    nombres = [f"z{i}" for i in range(len(tams))]
+    resultados = []
+    for dtype in ("object", "string"):
+        b = pd.Series(np.repeat(nombres, tams), dtype=dtype)
+        p = datos.particion(b, CFG)
+        resultados.append(tuple(int(p[k].sum()) for k in ("entrena", "calibra", "prueba")))
+    assert resultados[0] == resultados[1]
