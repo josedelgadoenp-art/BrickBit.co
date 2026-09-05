@@ -1,0 +1,58 @@
+# Ábaco — el sistema completo con cola de verdad.
+#
+# Para desarrollo NO hace falta: `make api` + `make web` levanta todo, con
+# Celery en modo eager. Esto es para probar el camino de producción, donde la
+# ejecución sale del hilo de la petición.
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: { context: .., dockerfile: infra/Dockerfile.python }
+    command: uvicorn abaco_api.main:app --host 0.0.0.0 --port 8000
+    environment:
+      ABACO_REDIS: redis://redis:6379/0
+      ABACO_INICIO: /datos
+      ABACO_ORIGENES: http://localhost:3000
+    volumes: ["abaco-datos:/datos"]
+    ports: ["8000:8000"]
+    depends_on:
+      redis: { condition: service_healthy }
+
+  worker:
+    build: { context: .., dockerfile: infra/Dockerfile.python }
+    command: celery -A abaco_worker.celery_app worker -l info --concurrency 2
+    environment:
+      ABACO_REDIS: redis://redis:6379/0
+      ABACO_INICIO: /datos
+      ABACO_LIMITE_MEMORIA_GB: "4"
+      ABACO_LIMITE_SEGUNDOS: "900"
+    volumes: ["abaco-datos:/datos"]
+    depends_on:
+      redis: { condition: service_healthy }
+    # El worker ejecuta código generado. Corre sin privilegios, con el sistema
+    # de archivos de sólo lectura salvo /datos y /tmp, y sin poder escalar
+    # privilegios. Para multi-tenant hace falta además un sandbox por ejecución.
+    user: "10001:10001"
+    read_only: true
+    tmpfs: ["/tmp:size=512m"]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 4g }
+
+  web:
+    build: { context: .., dockerfile: infra/Dockerfile.web }
+    environment:
+      ABACO_API: http://api:8000
+    ports: ["3000:3000"]
+    depends_on: [api]
+
+volumes:
+  abaco-datos:
