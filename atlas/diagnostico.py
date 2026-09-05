@@ -40,8 +40,30 @@ def main() -> int:
     print(f"  módulo   {ruta}")
     print(f"  fecha    {datetime.fromtimestamp(ruta.stat().st_mtime, timezone.utc):%Y-%m-%d %H:%M} UTC")
     fuente = ruta.read_text(encoding="utf-8")
-    tiene = "sorted(orden" in fuente
-    print(f"  arreglo de reparto por tamaño: {'SÍ' if tiene else 'NO — está cargando una copia vieja'}")
+    tiene_texto = "sorted(orden" in fuente
+    print(f"  el ARCHIVO trae el arreglo:   {'SÍ' if tiene_texto else 'NO'}")
+
+    # Leer el .py no basta: Python puede estar ejecutando bytecode viejo de
+    # __pycache__ aunque el texto ya esté actualizado. Lo que importa es qué
+    # trae la FUNCIÓN cargada en memoria, y eso se lee del código compilado.
+    import inspect
+
+    try:
+        compilado = inspect.getsource(datos.particion)
+        tiene_memoria = "sorted(orden" in compilado
+    except OSError:
+        tiene_memoria = None
+    consts = datos.particion.__code__.co_consts
+    nombres = datos.particion.__code__.co_names
+    usa_sorted = "sorted" in nombres or any(
+        isinstance(c, str) and "sorted" in c for c in consts if isinstance(c, str)
+    )
+    print(f"  la FUNCIÓN cargada lo usa:    {'SÍ' if usa_sorted else 'NO — bytecode viejo en __pycache__'}")
+    if tiene_texto and not usa_sorted:
+        print()
+        print("  >>> El archivo está bien pero Python ejecuta una versión vieja.")
+        print("  >>> Borra la caché y vuelve a correr:")
+        print("  >>>   for /d /r . %d in (__pycache__) do @if exist \"%d\" rd /s /q \"%d\"")
 
     print()
     print("=" * 62)
@@ -71,6 +93,24 @@ def main() -> int:
         print(f"  pedido {int(f[0]*100)}/{int(f[1]*100)}/{int(f[2]*100)}"
               f"  →  sale {real[0]}/{real[1]}/{real[2]}"
               f"   ({filas[0]:,} / {filas[1]:,} / {filas[2]:,}){marca}")
+
+    print()
+    print("=" * 62)
+    print("4 · EL MISMO REPARTO, CALCULADO AQUÍ MISMO")
+    print("=" * 62)
+    print("  Si esto da 60/20/20 y el punto 3 no, la función importada es vieja.")
+    cupos = [0.60 * n, 0.20 * n, 0.20 * n]
+    orden = sorted(tam.index.to_list(), key=lambda b: -int(tam[b]))
+    acum, cuenta = [0.0, 0.0, 0.0], [0, 0, 0]
+    for b in orden:
+        deficit = [(acum[i] - cupos[i]) / cupos[i] for i in range(3)]
+        i = int(np.argmin(deficit))
+        acum[i] += float(tam[b])
+        cuenta[i] += 1
+    print(f"  orden (5 mayores): {[int(tam[b]) for b in orden[:5]]}")
+    print(f"  reparto  {acum[0] / n * 100:.1f}/{acum[1] / n * 100:.1f}/{acum[2] / n * 100:.1f}"
+          f"   ({int(acum[0]):,} / {int(acum[1]):,} / {int(acum[2]):,})"
+          f"   bloques {cuenta[0]}/{cuenta[1]}/{cuenta[2]}")
 
     print()
     print("  Pega esta salida completa en el chat.")
