@@ -83,6 +83,37 @@ Junta los listados con la malla, parte **por bloque espacial**, ajusta hedónico
 + Durbin + boosting, los combina por apilado y convierte la predicción en un
 intervalo con cobertura garantizada.
 
+### Los comparables: la señal que faltaba
+
+El modelo conocía las amenidades de la zona y los atributos del inmueble, pero
+**no sabía a qué precio se ofrece lo de al lado**. Un perito nunca valúa así:
+abre los comparables antes que nada. Medido sobre el banco de pruebas, añadirlos
+**baja el error del boosting un 19%** — la mejora más grande de todo el proyecto.
+
+La fuga tiene dos formas y las dos se evitan:
+
+- **La obvia**: si los comparables de un inmueble incluyen su propio anuncio, el
+  modelo copia la respuesta.
+- **La sutil, y la que de verdad muerde**: si a los inmuebles de entrenamiento se
+  les dan comparables de su misma cuadra pero a los de prueba —en bloques nunca
+  vistos— les tocan de otro barrio, la variable **no significa lo mismo en los dos
+  lados**. El modelo se apoya en un comparable a 200 m que en producción no va a
+  existir, y el desempeño se cae al desplegar sin que la evaluación lo avise.
+
+La solución es simétrica: a cada fila se le buscan comparables **fuera de su
+propio bloque**, y las fuentes son siempre el conjunto de entrenamiento — que es
+también lo que pasa en producción, donde los comparables salen de la base que ya
+se tiene.
+
+### Los hiperparámetros ahora se eligen, no se suponen
+
+Estaban puestos a mano. Se eligen por validación cruzada **por bloque**: al azar
+sería peor que no ajustarlos, porque con vecinos repartidos a los dos lados la
+validación premia al modelo que mejor memoriza la cuadra, que es exactamente el
+que peor generaliza a un barrio nuevo. Se mide con el error absoluto mediano y no
+con el cuadrático: unos pocos anuncios mal capturados dominan el MSE y elegirían
+el modelo que mejor persigue outliers.
+
 **Lo que hay que mirar primero es la cobertura, no el error.** Un AVM que se
 equivoca 27% y lo dice sirve; uno que se equivoca 12% y no lo dice, no.
 
@@ -411,6 +442,8 @@ atlas/
 │     ├─ arboles.py       boosting de media y de cuantiles
 │     ├─ apilado.py       combinación con pesos fuera de muestra
 │     ├─ conforme.py      CQR y normalizado + Mondrian: intervalos con garantía
+│     ├─ comparables.py   a qué precio se ofrece lo de alrededor
+│     ├─ persistencia.py  guardar el AVM para la app
 │     ├─ evaluacion.py    error en pesos y cobertura por segmento
 │     └─ importancia.py   SHAP, con permutación de respaldo
 │  └─ temporal/

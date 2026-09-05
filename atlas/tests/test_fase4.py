@@ -128,3 +128,74 @@ def test_el_paquete_sabe_de_cuando_son_sus_datos():
     p = _paquete()
     d = p.antiguedad_dias()
     assert d >= 0, "la fecha de los datos tiene que ser legible"
+
+
+# ─────────────────────────── comparables: la señal que faltaba ───────────────
+def test_los_comparables_no_se_miran_a_si_mismos():
+    """
+    La fuga obvia: si los comparables de un inmueble incluyen su propio anuncio,
+    el modelo aprende a copiar la respuesta. Se evita excluyendo su bloque.
+    """
+    from atlas.modelos import comparables
+
+    rng = np.random.default_rng(0)
+    xy = rng.uniform(0, 10_000, size=(200, 2))
+    y = rng.normal(10, 1, 200)
+    bloque = np.array([f"b{i % 10}" for i in range(200)], dtype=object)
+
+    c = comparables.variables(xy, xy, y, bloque_objetivo=bloque, bloque_fuente=bloque)
+    # Si se mirara a sí mismo, con k=5 el propio valor entraría en la mediana y
+    # la correlación con y sería altísima. Al excluir el bloque, no.
+    corr = float(np.corrcoef(c["comp5_ln_precio_m2"].fillna(y.mean()), y)[0, 1])
+    assert abs(corr) < 0.5, f"correlación {corr:.2f}: parece estar viéndose a sí mismo"
+
+
+def test_los_comparables_recuperan_una_estructura_espacial_real():
+    """Con precio que depende de la posición, el comparable tiene que reflejarlo."""
+    from atlas.modelos import comparables
+
+    rng = np.random.default_rng(1)
+    xy = rng.uniform(0, 20_000, size=(400, 2))
+    y = 1e-4 * xy[:, 0] + rng.normal(0, 0.05, 400)     # caro al este
+    # Bloques por franjas verticales: los comparables vienen de otras franjas.
+    bloque = np.array([f"f{int(x // 4000)}" for x in xy[:, 0]], dtype=object)
+
+    c = comparables.variables(xy, xy, y, bloque_objetivo=bloque, bloque_fuente=bloque)
+    ok = c["comp15_ln_precio_m2"].notna()
+    corr = float(np.corrcoef(c.loc[ok, "comp15_ln_precio_m2"], y[ok.to_numpy()])[0, 1])
+    assert corr > 0.5, "el comparable debe captar que al este es más caro"
+
+
+def test_sin_fuentes_las_columnas_existen_con_ausencia_declarada():
+    """
+    Un modelo entrenado con comparables revienta si le llega una matriz sin esas
+    columnas. Deben existir siempre, en NaN cuando no hay con qué llenarlas.
+    """
+    from atlas.modelos import comparables
+
+    vacio = np.zeros((0, 2))
+    c = comparables.variables(np.array([[0.0, 0.0]]), vacio, np.array([]))
+    assert len(c) == 1
+    assert any(col.endswith("ln_precio_m2") for col in c.columns)
+    assert c.filter(like="ln_precio_m2").isna().all().all()
+
+
+def test_los_hiperparametros_se_eligen_por_bloque_y_no_al_azar():
+    """
+    Ajustarlos al azar sería peor que no ajustarlos: con vecinos a los dos lados
+    la validación premia al que mejor memoriza la cuadra, que es justo el que
+    peor generaliza a un barrio nuevo.
+    """
+    from atlas.modelos import arboles
+
+    rng = np.random.default_rng(2)
+    n = 600
+    X = pd.DataFrame(rng.normal(size=(n, 6)), columns=[f"v{i}" for i in range(6)])
+    y = pd.Series(X["v0"] * 2 + rng.normal(0, 0.4, n))
+    bloque = pd.Series([f"b{i % 12}" for i in range(n)])
+
+    mejores, tabla = arboles.elegir_hiperparametros(X, y, bloque, semilla=0)
+    assert mejores["early_stopping"] is False, "el paro temprano parte al azar"
+    assert len(tabla) == len(arboles.REJILLA)
+    assert tabla["mediana_abs_log"].is_monotonic_increasing, "la tabla va de mejor a peor"
+    assert mejores["max_leaf_nodes"] in {c["max_leaf_nodes"] for c in arboles.REJILLA}

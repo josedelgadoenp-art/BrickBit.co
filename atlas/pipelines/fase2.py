@@ -41,8 +41,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from atlas import lago                                          # noqa: E402
 from atlas.config import cargar, fijar_semilla                  # noqa: E402
 from atlas.geo import puntos                                    # noqa: E402
-from atlas.modelos import (apilado, arboles, conforme, datos,   # noqa: E402
-                           evaluacion, hedonico, importancia, persistencia)
+from atlas.modelos import (apilado, arboles, comparables, conforme,   # noqa: E402
+                           datos, evaluacion, hedonico, importancia, persistencia)
 
 
 def _linea(t: str = "") -> None:
@@ -78,6 +78,48 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     Xtr, ytr = d.X[p["entrena"]], d.y[p["entrena"]]
     Xca, yca = d.X[p["calibra"]], d.y[p["calibra"]]
     Xte, yte = d.X[p["prueba"]], d.y[p["prueba"]]
+
+    # ------------------------------------------------------------ comparables
+    # La señal que un valuador usa PRIMERO y que al modelo le faltaba: a qué
+    # precio se ofrece lo que está alrededor. Las fuentes son siempre el
+    # conjunto de entrenamiento —igual que en producción, donde los comparables
+    # salen de la base que ya se tiene— y a cada fila se le excluyen los de su
+    # PROPIO bloque, para que la variable signifique lo mismo al entrenar que al
+    # valuar un barrio nuevo.
+    _linea("· Comparables (precio de los vecinos, fuera del propio bloque)…")
+    xy_tr = d.coords[p["entrena"]]
+    y_tr = ytr.to_numpy()
+    b_tr = d.bloque[p["entrena"]].to_numpy()
+    comp = {}
+    for k in ("entrena", "calibra", "prueba"):
+        comp[k] = comparables.variables(
+            d.coords[p[k]], xy_tr, y_tr,
+            bloque_objetivo=d.bloque[p[k]].to_numpy(), bloque_fuente=b_tr)
+    cob = comparables.cobertura(comp["prueba"])
+    _linea(f"    {comp['entrena'].shape[1]} variables · "
+           f"{cob.get('pct_sin', 0):.1f}% del conjunto de prueba sin comparables")
+    res["cobertura_comparables"] = cob
+
+    def _pega(X, c):
+        return pd.concat([X.reset_index(drop=True), c.reset_index(drop=True)], axis=1)
+
+    Xtr_sin = Xtr.reset_index(drop=True)
+    Xtr = _pega(Xtr, comp["entrena"])
+    Xca = _pega(Xca, comp["calibra"])
+    Xte = _pega(Xte, comp["prueba"])
+    ytr = ytr.reset_index(drop=True)
+    yca = yca.reset_index(drop=True)
+    yte = yte.reset_index(drop=True)
+
+    # ------------------------------------------------------ hiperparámetros
+    _linea("· Eligiendo hiperparámetros por validación cruzada espacial…")
+    mejores, tabla_hp = arboles.elegir_hiperparametros(
+        Xtr, ytr, d.bloque[p["entrena"]].reset_index(drop=True), semilla)
+    arboles.BASE.update(mejores)
+    _linea(f"    hojas {mejores['max_leaf_nodes']} · min/hoja {mejores['min_samples_leaf']} "
+           f"· L2 {mejores['l2_regularization']} · lr {mejores['learning_rate']}")
+    res["hiperparametros"] = mejores
+    res["tabla_hp"] = tabla_hp
 
     # ------------------------------------------------- Moran del PRECIO
     _linea("· I de Moran del precio…")
@@ -125,8 +167,9 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
 
     # ------------------------------------------------ apilado fuera de muestra
     _linea("· Apilado (pesos aprendidos fuera de muestra por bloque)…")
-    fuera_boost = arboles.fuera_de_muestra_por_bloque(Xtr, ytr, d.bloque[p["entrena"]], semilla)
-    fuera_ols = _lineal_fuera_de_muestra(Xtr, ytr, d.bloque[p["entrena"]])
+    b_entrena = d.bloque[p["entrena"]].reset_index(drop=True)
+    fuera_boost = arboles.fuera_de_muestra_por_bloque(Xtr, ytr, b_entrena, semilla)
+    fuera_ols = _lineal_fuera_de_muestra(Xtr, ytr, b_entrena)
     ap = apilado.ajustar({"boosting": fuera_boost, "hedonico": fuera_ols}, ytr.to_numpy())
     _linea(ap.texto())
     res["apilado"] = ap
@@ -142,7 +185,7 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     # válidos —la garantía no depende de σ̂—, así que elegir por ancho no
     # compromete la cobertura, sólo mejora la eficiencia.
     sigma_fuera = arboles.dispersion_fuera_de_muestra(
-        Xtr, ytr, fuera_apilado, d.bloque[p["entrena"]], semilla)
+        Xtr, ytr, fuera_apilado, b_entrena, semilla)
     gamma = conforme.elegir_estabilizador(
         ytr.to_numpy(), fuera_apilado, sigma_fuera, m_sigma.escala, alpha)
     m_sigma.gamma = gamma
@@ -151,7 +194,7 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     def predecir(X: pd.DataFrame) -> np.ndarray:
         return ap.predecir({
             "boosting": m_media.predict(X),
-            "hedonico": _lineal_predict(Xtr, ytr, d.bloque[p["entrena"]], X),
+            "hedonico": _lineal_predict(Xtr, ytr, b_entrena, X),
         })
 
     # ------------------------------------------------------- conformalización
@@ -185,8 +228,14 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     res["punto"] = {
         "apilado": evaluacion.punto(yte.to_numpy(), pred_te),
         "boosting": evaluacion.punto(yte.to_numpy(), m_media.predict(Xte)),
-        "hedonico": evaluacion.punto(yte.to_numpy(), _lineal_predict(Xtr, ytr, d.bloque[p["entrena"]], Xte)),
+        "hedonico": evaluacion.punto(yte.to_numpy(), _lineal_predict(Xtr, ytr, b_entrena, Xte)),
     }
+    # Contraste medido: el MISMO modelo sin las variables de comparables. Sin
+    # esto, "los comparables ayudan" sería una afirmación, no un resultado.
+    _sin = arboles.media(Xtr_sin, ytr, semilla)
+    res["punto"]["sin_comparables"] = evaluacion.punto(
+        yte.to_numpy(), _sin.predict(Xte[Xtr_sin.columns]))
+
     seg_te = conforme.segmentar(nombre_seg, _tipo_de(d, p["prueba"]), np.exp(pred_te), cortes)
     sigma_te = m_sigma.predict(Xte)
 
@@ -217,7 +266,7 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     # reentrenar tres modelos y recalibrar el intervalo. Van juntos a propósito
     # —predictor y banda sólo significan algo emparejados—.
     _linea("· Guardando el AVM entrenado…")
-    _prep, _lin, _cols = hedonico.ridge_por_bloque(Xtr, ytr, d.bloque[p["entrena"]])
+    _prep, _lin, _cols = hedonico.ridge_por_bloque(Xtr, ytr, b_entrena)
     paquete = persistencia.Paquete(
         columnas=list(Xtr.columns),
         boosting=m_media,
@@ -235,6 +284,8 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
         operacion=operacion,
         n_entrenamiento=int(len(ytr)),
         fecha_datos=_fecha_de_los_datos(cfg),
+        fuentes_xy=xy_tr,
+        fuentes_y=y_tr,
         metricas={
             "mdape_pct": res["punto"]["apilado"].mdape_pct,
             "r2_log": res["punto"]["apilado"].r2_log,
@@ -410,6 +461,19 @@ def informe(cfg, res: dict | None) -> None:
         _linea("\nDURBIN ESPACIAL")
         _linea(res["sdm"].texto())
 
+    if res.get("hiperparametros"):
+        h = res["hiperparametros"]
+        _linea(f"\nHIPERPARÁMETROS  (elegidos por validación cruzada espacial)")
+        _linea(f"  hojas {h['max_leaf_nodes']} · mín/hoja {h['min_samples_leaf']} · "
+               f"L2 {h['l2_regularization']} · lr {h['learning_rate']} · {h['max_iter']} iter")
+    if res.get("cobertura_comparables"):
+        c = res["cobertura_comparables"]
+        _linea(f"\nCOMPARABLES  ({100 - c['pct_sin']:.0f}% del conjunto de prueba tiene)")
+        _linea("  A qué precio se ofrece lo de alrededor: la señal que un perito")
+        _linea("  usa primero. Las fuentes son SÓLO el entrenamiento y se excluyen")
+        _linea("  los del propio bloque, para que la variable signifique lo mismo")
+        _linea("  al entrenar que al valuar un barrio que el modelo no vio.")
+
     _linea("\nAPILADO")
     _linea(res["apilado"].texto())
 
@@ -417,6 +481,12 @@ def informe(cfg, res: dict | None) -> None:
     for nombre, m in res["punto"].items():
         _linea(f"  {nombre}")
         _linea(m.texto())
+    if "sin_comparables" in res["punto"]:
+        con = res["punto"]["boosting"].mdape_pct
+        sin = res["punto"]["sin_comparables"].mdape_pct
+        signo = "bajaro" if con < sin else "SUBIERO"
+        _linea(f"\n  Los comparables {signo}n el error del boosting de {sin:.1f}% a "
+               f"{con:.1f}% ({(con - sin) / sin * 100:+.1f}%).")
 
     _linea("\nINTERVALO CONFORME  (normalizado + Mondrian)")
     _linea(res["intervalo"].texto())

@@ -39,6 +39,56 @@ BASE = dict(
 )
 
 
+# Rejilla para el ajuste por validación cruzada ESPACIAL. Es pequeña a
+# propósito: con ~1,000 filas de entrenamiento y 25 bloques, una rejilla grande
+# encuentra el mejor pliegue por casualidad y no el mejor modelo. Cuatro
+# combinaciones bien elegidas separan lo que hay que separar —cuánto puede
+# curvarse el modelo y cuánto se le penaliza— sin invitar a sobreajustar la
+# propia validación.
+REJILLA = [
+    dict(max_leaf_nodes=7,  min_samples_leaf=40, l2_regularization=5.0, learning_rate=0.05, max_iter=500),
+    dict(max_leaf_nodes=15, min_samples_leaf=20, l2_regularization=1.0, learning_rate=0.05, max_iter=400),
+    dict(max_leaf_nodes=31, min_samples_leaf=10, l2_regularization=0.1, learning_rate=0.05, max_iter=400),
+    dict(max_leaf_nodes=15, min_samples_leaf=20, l2_regularization=1.0, learning_rate=0.02, max_iter=900),
+]
+
+
+def elegir_hiperparametros(X: pd.DataFrame, y: pd.Series, bloque: pd.Series,
+                           semilla: int, n_pliegues: int = 5):
+    """
+    Elige la configuración del boosting por validación cruzada POR BLOQUE.
+
+    Estaban puestos a mano y ahí se habían quedado. Ajustarlos al azar sería
+    peor que no ajustarlos: con vecinos repartidos a los dos lados, la
+    validación premia al modelo que mejor memoriza la cuadra, que es
+    exactamente el que peor generaliza a un barrio nuevo. Con GroupKFold sobre
+    los bloques, gana el que de verdad transfiere.
+
+    Se mide con el error absoluto mediano en logaritmos, no con el cuadrático:
+    unos pocos anuncios mal capturados dominan el MSE y elegirían el modelo que
+    mejor persigue outliers.
+    """
+    from sklearn.model_selection import GroupKFold
+
+    g = bloque.to_numpy()
+    k = int(min(n_pliegues, pd.Series(g).nunique()))
+    if k < 2:
+        return dict(BASE), []
+
+    filas = []
+    for i, cfg in enumerate(REJILLA):
+        errores = []
+        for tr, va in GroupKFold(n_splits=k).split(X, y, groups=g):
+            m = HistGradientBoostingRegressor(
+                random_state=int(semilla), early_stopping=False, **cfg)
+            m.fit(X.iloc[tr], y.iloc[tr])
+            errores.append(float(np.median(np.abs(y.iloc[va] - m.predict(X.iloc[va])))))
+        filas.append({"i": i, "mediana_abs_log": float(np.mean(errores)), **cfg})
+    tabla = pd.DataFrame(filas).sort_values("mediana_abs_log")
+    mejor = dict(REJILLA[int(tabla.iloc[0]["i"])])
+    return {**mejor, "early_stopping": False}, tabla
+
+
 def media(X: pd.DataFrame, y: pd.Series, semilla: int, **extra) -> HistGradientBoostingRegressor:
     """Modelo de la media condicional: la predicción puntual de ln(precio/m²)."""
     m = HistGradientBoostingRegressor(random_state=int(semilla), **{**BASE, **extra})

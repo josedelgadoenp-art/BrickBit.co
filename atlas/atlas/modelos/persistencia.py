@@ -48,6 +48,10 @@ class Paquete:
     operacion: str
     n_entrenamiento: int
     fecha_datos: str
+    # Coordenadas y precios del entrenamiento: sin ellos no se pueden calcular
+    # los comparables de un inmueble nuevo, y el modelo espera esas columnas.
+    fuentes_xy: np.ndarray | None = None
+    fuentes_y: np.ndarray | None = None
     metricas: dict = field(default_factory=dict)
     version: int = VERSION
 
@@ -103,6 +107,7 @@ def fila_de_inmueble(
     columnas: list[str],
     tipo_referencia: str | None,
     cfg: Config | None = None,
+    fuentes: tuple[np.ndarray, np.ndarray] | None = None,
 ) -> pd.DataFrame:
     """
     Arma la fila de variables de un inmueble que no está en la base.
@@ -167,7 +172,21 @@ def fila_de_inmueble(
         if c.startswith("tipo_"):
             x[c] = 1.0 if c == f"tipo_{tipo}" else 0.0
 
-    return pd.DataFrame([x], columns=columnas)
+    fila_df = pd.DataFrame([x], columns=columnas)
+
+    # Comparables: a qué precio se ofrece lo de alrededor. Es la señal más
+    # fuerte del modelo, así que si el paquete trae las fuentes hay que
+    # calcularla; dejarla en NaN daría una valuación que ignora el barrio.
+    if fuentes is not None and any(c.startswith("comp") for c in columnas):
+        from ..geo import _xy, puntos as _puntos
+        from . import comparables
+
+        xy = _xy(_puntos(pd.DataFrame([{"lat": lat, "lng": lng}]), cfg=cfg), cfg)
+        c = comparables.variables(xy, fuentes[0], fuentes[1])
+        for col in c.columns:
+            if col in fila_df.columns:
+                fila_df.loc[0, col] = c[col].iloc[0]
+    return fila_df
 
 
 @dataclass
