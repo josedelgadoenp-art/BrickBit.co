@@ -1,0 +1,18 @@
+# Abak
+.abak/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+
+# Frontend
+node_modules/
+.next/
+next-env.d.ts
+.tsbuildinfo
+
+# Salidas locales
+capturas/
+*.zip

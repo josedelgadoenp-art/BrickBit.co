@@ -113,12 +113,12 @@
   status = 404
   force = true
 
-# Ábaco es un producto aparte que vive en este repositorio (como atlas/ y
+# Abak es un producto aparte que vive en este repositorio (como atlas/ y
 # app.py) y NO se sirve desde brickbit.co: es un monorepo con backend, worker y
 # frontend, no páginas estáticas. Sin esta regla, `publish = "."` publicaría su
 # código fuente, sus datos de ejemplo y su ARCHITECTURE.md.
 [[redirects]]
-  from = "/abaco/*"
+  from = "/abak/*"
   to = "/404.html"
   status = 404
   force = true
