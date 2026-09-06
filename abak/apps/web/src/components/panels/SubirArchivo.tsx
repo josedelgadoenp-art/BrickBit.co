@@ -75,7 +75,7 @@ export default function SubirArchivo({ nodoId }: { nodoId: string }) {
       <input
         ref={entrada}
         type="file"
-        accept=".csv,.tsv,.txt,.xlsx,.xls,.parquet"
+        accept=".csv,.tsv,.txt,.xlsx,.xls,.parquet,.zip"
         className="hidden"
         onChange={(e) => {
           const archivo = e.target.files?.[0];

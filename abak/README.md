@@ -163,6 +163,32 @@ El detalle está en [docs/nodos.md](docs/nodos.md), que se genera del registro.
 
 ---
 
+## Cargar tus propios datos
+
+1. En el buscador de la izquierda escribe **cargar** y haz clic en
+   **«Cargar archivo (CSV o Excel)»**. Cae un bloque en el lienzo.
+2. En el panel derecho, **«Subir archivo»** y eliges el tuyo.
+3. Antes de subir, si hace falta: **separador** (`,` `;` tab `|`), **decimal**
+   (`.` o `,` — el Excel en español guarda con coma) y **codificación**
+   (`utf-8`, o `latin-1` si los acentos salen rotos).
+4. **Ejecutar**. La pestaña **Datos** te muestra la tabla.
+
+Formatos: `.csv`, `.tsv`, `.txt`, `.xlsx`, `.xls`, `.parquet` y `.zip`.
+
+El `.zip` está porque las fuentes oficiales mexicanas publican así —el DENUE,
+las series de la SHF, casi todo el INEGI— y descomprimir a mano antes de subir
+es un paso de más en lo que más se repite. Se saca el archivo tabular de
+adentro; si el zip trae varios **no se adivina cuál**: se listan y se pide
+elegir, porque analizar el archivo equivocado en silencio es peor que fallar.
+
+Al subir, el archivo se convierte a **Parquet** (columnar). Eso es lo que
+permite trabajar con millones de filas: se lee sólo las columnas que el
+análisis usa. El original se borra después de convertirlo.
+
+Tope por archivo: 2 GB (`ABAK_TOPE_SUBIDA_MB` lo cambia).
+
+---
+
 ## Volúmenes grandes: lo que está medido
 
 Los números de abajo se midieron en este repositorio, con un CSV de **2 millones

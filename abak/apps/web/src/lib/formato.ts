@@ -5,9 +5,16 @@ export function num(v: unknown, decimales = 4): string {
   if (typeof v !== 'number') return String(v);
   if (!Number.isFinite(v)) return '—';
   const abs = Math.abs(v);
+  // Un entero se escribe entero, por grande que sea: son pesos, metros
+  // cuadrados o conteos, y nadie escribe el precio de una casa con cuatro
+  // decimales. El corte estaba en 1e6, así que en una misma tabla los m2
+  // salían «127» y el precio «7,397,420.0000».
+  if (Number.isInteger(v) && abs < 1e15) {
+    return v.toLocaleString('es-MX', { maximumFractionDigits: 0 });
+  }
   if (abs !== 0 && (abs < 1e-4 || abs >= 1e9)) return v.toExponential(2);
   return v.toLocaleString('es-MX', {
-    minimumFractionDigits: Number.isInteger(v) && abs < 1e6 ? 0 : decimales,
+    minimumFractionDigits: decimales,
     maximumFractionDigits: decimales,
   });
 }

@@ -31,7 +31,81 @@ TOPE_MB = int(os.environ.get("ABAK_TOPE_SUBIDA_MB", "2048"))
 TOPE_BYTES = TOPE_MB * 1024 * 1024
 TOPE_COLUMNAS = 4096
 TROZO = 4 * 1024 * 1024
-EXTENSIONES = {".csv", ".tsv", ".txt", ".xlsx", ".xls", ".parquet"}
+TABULARES = {".csv", ".tsv", ".txt", ".xlsx", ".xls", ".parquet"}
+EXTENSIONES = TABULARES | {".zip"}
+# Ruido de empaquetado que traen los zips hechos en Mac y en Windows.
+BASURA_ZIP = ("__MACOSX/", ".DS_Store", "Thumbs.db")
+
+
+def _extraer_del_zip(crudo: Path) -> tuple[Path, str, str]:
+    """Saca el único archivo tabular de un .zip y devuelve (ruta, sufijo, nombre).
+
+    Existe porque las fuentes oficiales mexicanas publican así: el DENUE, las
+    series de la SHF y casi todo lo del INEGI se bajan comprimidos. Obligar a
+    descomprimir a mano antes de subir es un paso de más en el trabajo que más
+    se repite.
+
+    Si el zip trae varios archivos tabulares NO se adivina cuál: se listan y se
+    pide elegir. Adivinar aquí significaría analizar el archivo equivocado sin
+    que nadie se entere, que es peor que fallar.
+    """
+    import zipfile
+
+    try:
+        with zipfile.ZipFile(crudo) as z:
+            candidatos = []
+            for info in z.infolist():
+                if info.is_dir():
+                    continue
+                interno = info.filename
+                if any(b in interno for b in BASURA_ZIP):
+                    continue
+                if Path(interno).name.startswith("."):
+                    continue
+                if Path(interno).suffix.lower() in TABULARES:
+                    candidatos.append(info)
+
+            if not candidatos:
+                raise ErrorIngesta(
+                    "El .zip no trae ningún archivo de datos. Se buscan "
+                    f"{', '.join(sorted(TABULARES))}.")
+            if len(candidatos) > 1:
+                lista = ", ".join(sorted(Path(c.filename).name for c in candidatos)[:6])
+                raise ErrorIngesta(
+                    f"El .zip trae {len(candidatos)} archivos de datos ({lista}"
+                    f"{', …' if len(candidatos) > 6 else ''}). Descomprímelo y sube el "
+                    f"que quieras analizar: adivinar cuál es sería peor que preguntarte.")
+
+            elegido = candidatos[0]
+            # El nombre de adentro NUNCA se usa como ruta: un zip puede traer
+            # «../../algo» y escribir fuera de su carpeta (zip slip). Se toma
+            # sólo el nombre final y se escribe donde nosotros decidimos.
+            nombre = Path(elegido.filename).name
+            sufijo = Path(nombre).suffix.lower()
+            destino = crudo.parent / nombre
+
+            # El tamaño declarado en el zip puede mentir, así que el tope se
+            # cuenta sobre los bytes que salen de verdad (bomba de descompresión).
+            try:
+                with z.open(elegido) as origen, destino.open("wb") as salida:
+                    escrito = 0
+                    while bloque := origen.read(TROZO):
+                        escrito += len(bloque)
+                        if escrito > TOPE_BYTES:
+                            salida.close()
+                            destino.unlink(missing_ok=True)
+                            raise ErrorIngesta(
+                                f"Descomprimido, «{nombre}» pasa de {TOPE_MB:,} MB.")
+                        salida.write(bloque)
+            except RuntimeError as exc:  # zip con contraseña
+                raise ErrorIngesta(f"No se pudo abrir «{nombre}»: {exc}") from exc
+
+            if escrito == 0:
+                destino.unlink(missing_ok=True)
+                raise ErrorIngesta(f"«{nombre}» venía vacío dentro del .zip.")
+            return destino, sufijo, nombre
+    except zipfile.BadZipFile as exc:
+        raise ErrorIngesta("El archivo no es un .zip válido o está dañado.") from exc
 
 
 @router.post("/subir")
@@ -76,6 +150,8 @@ async def subir(
     parquet = ALMACEN.dir_subidas() / f"{archivo_id}.parquet"
 
     try:
+        if sufijo == ".zip":
+            crudo, sufijo, nombre = _extraer_del_zip(crudo)
         if sufijo in (".xlsx", ".xls"):
             info = await _excel_a_parquet(crudo, parquet, fechas)
         elif sufijo == ".parquet":
