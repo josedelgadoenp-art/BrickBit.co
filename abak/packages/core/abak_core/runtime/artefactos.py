@@ -19,7 +19,10 @@ def _limpio(v: Any) -> Any:
     if v is None:
         return None
     if isinstance(v, float):
-        return None if (math.isnan(v) or math.isinf(v)) else round(v, 10)
+        # `round()` sobre un np.float64 devuelve np.float64. Se fuerza a float
+        # de Python: lo que sale de aquí va a JSON y a un PDF, y un tipo de
+        # numpy escondido ahí es una fuga que aparece meses después.
+        return None if (math.isnan(v) or math.isinf(v)) else float(round(v, 10))
     if isinstance(v, (int, bool, str)):
         return v
     if hasattr(v, "item"):
@@ -74,6 +77,56 @@ def tabla_a_json(df: Any, *, tope: int = TOPE_FILAS, titulo: str | None = None,
     }
 
 
+def _es_multiecuacion(params: Any) -> bool:
+    """Un VAR o un VECM traen una TABLA de coeficientes, no una serie.
+
+    Es la diferencia entre `params[i]` y `params[variable][ecuacion]`. Tratarlos
+    igual produce una comparacion de un nombre de columna contra un numero, que
+    es como se descubrio esto: «'<' not supported between str and float».
+    """
+    return getattr(params, "ndim", 1) == 2
+
+
+def _coeficientes_multiecuacion(res: Any) -> list[dict[str, Any]]:
+    """Coeficientes de un modelo con varias ecuaciones, en formato largo."""
+    params = res.params
+    errores = getattr(res, "stderr", None)
+    pvals = getattr(res, "pvalues", None)
+    filas: list[dict[str, Any]] = []
+    for ecuacion in list(params.columns):
+        for variable in list(params.index):
+            p = None
+            if pvals is not None:
+                try:
+                    p = float(pvals.loc[variable, ecuacion])
+                except Exception:
+                    p = None
+            ee = None
+            if errores is not None:
+                try:
+                    ee = float(errores.loc[variable, ecuacion])
+                except Exception:
+                    ee = None
+            coef = _limpio(params.loc[variable, ecuacion])
+            filas.append({
+                "variable": f"{ecuacion} <- {variable}",
+                "coeficiente": coef,
+                "error_estandar": _limpio(ee),
+                "estadistico": _limpio(None if (ee in (None, 0) or coef is None)
+                                       else coef / ee),
+                "p_valor": _limpio(p),
+                "ic_bajo": None, "ic_alto": None,
+                "estrellas": _estrellas(p),
+            })
+    return filas
+
+
+def _estrellas(p: float | None) -> str:
+    if p is None:
+        return ""
+    return "***" if p < 0.01 else "**" if p < 0.05 else "*" if p < 0.10 else ""
+
+
 def modelo_a_json(res: Any, *, titulo: str | None = None) -> dict[str, Any]:
     """Resultados de statsmodels/spreg -> tabla de coeficientes + diagnosticos.
 
@@ -81,54 +134,65 @@ def modelo_a_json(res: Any, *, titulo: str | None = None) -> dict[str, Any]:
     superficie de statsmodels no es uniforme entre familias de modelos, y un
     `AttributeError` aqui no debe tumbar una estimacion que si corrio.
     """
-    coefs: list[dict[str, Any]] = []
-    try:
-        nombres = list(getattr(res, "params", {}).index)  # type: ignore[union-attr]
-    except Exception:
-        nombres = [str(i) for i in range(len(getattr(res, "params", []) or []))]
+    params = getattr(res, "params", None)
 
-    def col(attr: str) -> list[Any]:
-        v = getattr(res, attr, None)
-        if v is None:
-            return [None] * len(nombres)
+    if params is not None and _es_multiecuacion(params):
+        coefs = _coeficientes_multiecuacion(res)
+    else:
+        coefs = []
         try:
-            return list(v)
+            nombres = list(params.index)  # type: ignore[union-attr]
         except Exception:
-            return [None] * len(nombres)
+            nombres = [str(i) for i in range(len(params or []))]
 
-    params, errores = col("params"), col("bse")
-    tvals = col("tvalues") or col("z_stat")
-    pvals = col("pvalues")
-    try:
-        ic = res.conf_int()
-        bajo, alto = list(ic.iloc[:, 0]), list(ic.iloc[:, 1])
-    except Exception:
-        bajo = alto = [None] * len(nombres)
+        def col(attr: str) -> list[Any]:
+            v = getattr(res, attr, None)
+            if v is None:
+                return [None] * len(nombres)
+            try:
+                return list(v)
+            except Exception:
+                return [None] * len(nombres)
 
-    for i, nombre in enumerate(nombres):
-        p = _limpio(pvals[i] if i < len(pvals) else None)
-        coefs.append({
-            "variable": str(nombre),
-            "coeficiente": _limpio(params[i] if i < len(params) else None),
-            "error_estandar": _limpio(errores[i] if i < len(errores) else None),
-            "estadistico": _limpio(tvals[i] if i < len(tvals) else None),
-            "p_valor": p,
-            "ic_bajo": _limpio(bajo[i] if i < len(bajo) else None),
-            "ic_alto": _limpio(alto[i] if i < len(alto) else None),
-            "estrellas": "***" if p is not None and p < 0.01 else
-                         "**" if p is not None and p < 0.05 else
-                         "*" if p is not None and p < 0.10 else "",
-        })
+        valores, errores = col("params"), col("bse")
+        tvals = col("tvalues") or col("z_stat")
+        pvals = col("pvalues")
+        try:
+            ic = res.conf_int()
+            bajo, alto = list(ic.iloc[:, 0]), list(ic.iloc[:, 1])
+        except Exception:
+            bajo = alto = [None] * len(nombres)
+
+        for i, nombre in enumerate(nombres):
+            crudo = pvals[i] if i < len(pvals) else None
+            p = _limpio(crudo)
+            coefs.append({
+                "variable": str(nombre),
+                "coeficiente": _limpio(valores[i] if i < len(valores) else None),
+                "error_estandar": _limpio(errores[i] if i < len(errores) else None),
+                "estadistico": _limpio(tvals[i] if i < len(tvals) else None),
+                "p_valor": p,
+                "ic_bajo": _limpio(bajo[i] if i < len(bajo) else None),
+                "ic_alto": _limpio(alto[i] if i < len(alto) else None),
+                "estrellas": _estrellas(p if isinstance(p, (int, float)) else None),
+            })
 
     diagnosticos: dict[str, Any] = {}
     for etiqueta, attr in [
         ("Observaciones", "nobs"), ("R²", "rsquared"), ("R² ajustada", "rsquared_adj"),
         ("Log-verosimilitud", "llf"), ("AIC", "aic"), ("BIC", "bic"),
         ("F", "fvalue"), ("Prob(F)", "f_pvalue"), ("Pseudo R²", "prsquared"),
+        ("Ecuaciones", "neqs"), ("Rezagos", "k_ar"),
     ]:
         v = getattr(res, attr, None)
-        if v is not None and not callable(v):
-            diagnosticos[etiqueta] = _limpio(v)
+        if v is None or callable(v):
+            continue
+        # Sólo escalares: en un modelo multiecuación varios de estos atributos
+        # son vectores o matrices, y meterlos aquí produce un diagnóstico
+        # ilegible.
+        if getattr(v, "ndim", 0) != 0 and not isinstance(v, (int, float)):
+            continue
+        diagnosticos[etiqueta] = _limpio(v)
 
     texto = None
     try:

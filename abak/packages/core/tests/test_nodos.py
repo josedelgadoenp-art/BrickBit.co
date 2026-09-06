@@ -114,6 +114,28 @@ def test_el_flujo_corre_completo(nombre):
     assert not fallidos, fallidos
     assert resultado.ok
 
+    # Que un nodo corra no basta: su resultado tiene que poder llegar a la
+    # interfaz. Un resumen que falla deja el bloque en verde y el panel vacío,
+    # que es peor que un error visible.
+    sin_resumen = [b for b in resultado.bitacora if "no se pudo resumir" in b]
+    assert not sin_resumen, sin_resumen
+
+
+@pytest.mark.parametrize("nombre", list(FLUJOS))
+def test_los_artefactos_son_json_estricto(nombre):
+    """Todo lo que va a la interfaz y al PDF tiene que serializar sin trucos.
+
+    JSON no tiene NaN ni Infinity, y los tipos de numpy se cuelan con facilidad
+    (un `round()` sobre un np.float64 devuelve np.float64). Serializar con
+    `allow_nan=False` es la forma de detectarlo aquí y no en producción.
+    """
+    import json
+
+    nodos, aristas = FLUJOS[nombre]
+    resultado = ejecutar(compilar(grafo(nombre, nodos, aristas)))
+    for nodo in resultado.nodos:
+        json.dumps(nodo.artefactos, allow_nan=False)
+
 
 def test_el_cache_evita_recalcular():
     from abak_core.runtime.cache import CacheMemoria

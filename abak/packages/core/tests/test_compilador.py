@@ -171,16 +171,79 @@ def test_mover_un_nodo_no_invalida_nada():
 
 
 def test_cambiar_un_parametro_invalida_aguas_abajo():
+    def construir(columna, tipo="log"):
+        return grafo("huella", [
+            ("d", "datos.ejemplo", "Datos", {"conjunto": "mexico_estados"}),
+            ("t", "transformar.calcular", "Log",
+             {"operacion": tipo, "columna_a": columna}),
+        ], [("d", "datos", "t", "datos")])
+
+    a = compilar(construir("precio_m2"))
+    b = compilar(construir("precio_m2", tipo="raiz"))
+    assert a.instrucciones[0].huella == b.instrucciones[0].huella, (
+        "cambiar la operación no cambia qué columnas se leen: el nodo de datos no cambió"
+    )
+    assert a.instrucciones[1].huella != b.instrucciones[1].huella, "el nodo cambiado sí"
+
+
+def test_cambiar_de_columna_invalida_tambien_al_nodo_de_carga():
+    """Regresión de un bug que se detectó probando en el navegador.
+
+    El nodo de carga lee del archivo SÓLO las columnas que el grafo usa. Dos
+    análisis con el mismo bloque de datos pero distintas necesidades de
+    columnas producen tablas DISTINTAS, así que no pueden compartir caché. Con
+    la huella vieja —que no incluía la poda— el segundo análisis recibía la
+    tabla del primero, sin las columnas que le faltaban, y fallaba con un
+    KeyError que no apuntaba a la causa.
+    """
     def construir(columna):
         return grafo("huella", [
             ("d", "datos.ejemplo", "Datos", {"conjunto": "mexico_estados"}),
-            ("t", "transformar.calcular", "Log", {"operacion": "log", "columna_a": columna}),
+            ("t", "transformar.calcular", "Calcular", {"operacion": "log", "columna_a": columna}),
         ], [("d", "datos", "t", "datos")])
 
     a = compilar(construir("precio_m2"))
     b = compilar(construir("plusvalia_pct"))
-    assert a.instrucciones[0].huella == b.instrucciones[0].huella, "el nodo de datos no cambió"
-    assert a.instrucciones[1].huella != b.instrucciones[1].huella, "el nodo cambiado sí"
+    assert a.proyeccion != b.proyeccion, "leen columnas distintas"
+    assert a.instrucciones[0].huella != b.instrucciones[0].huella, (
+        "el nodo de carga produce tablas distintas: no puede compartir caché"
+    )
+
+
+def test_agregar_un_bloque_que_pide_otra_columna_invalida_aguas_abajo():
+    """El precio de la poda, escrito a propósito.
+
+    Agregar un bloque que necesita una columna nueva cambia lo que el nodo de
+    carga produce, y eso invalida en cascada todo lo que cuelga de él — incluido
+    un modelo caro que no cambió.
+
+    Se podría afinar: cuando la poda está activa, TODOS los nodos nombran sus
+    columnas, así que un consumidor que sólo lee las suyas daría el mismo
+    resultado con la tabla ancha o con la angosta. Pero el argumento se rompe
+    con los nodos que dejan pasar la tabla entera —«Calcular variable» agrega
+    una columna y conserva las demás—: su salida cacheada de un grafo angosto
+    le faltaría columnas a un nodo de más abajo del grafo ancho, y eso truena
+    lejos de la causa.
+
+    Entre recomputar de más y servir una tabla incompleta, se recomputa. La
+    lectura con poda cuesta cientos de milisegundos; un resultado silenciosamente
+    incompleto cuesta la confianza en el sistema.
+    """
+    base = grafo("huella", [
+        ("d", "datos.ejemplo", "Datos", {"conjunto": "mexico_estados"}),
+        ("m", "econometria.mco", "MCO", {"y": "precio_m2", "x": ["escolaridad_anios"]}),
+    ], [("d", "datos", "m", "datos")])
+    con_extra = grafo("huella", [
+        ("d", "datos.ejemplo", "Datos", {"conjunto": "mexico_estados"}),
+        ("m", "econometria.mco", "MCO", {"y": "precio_m2", "x": ["escolaridad_anios"]}),
+        ("c", "explorar.correlacion", "Correlaciones",
+         {"columnas": ["plusvalia_pct", "yield_pct"]}),
+    ], [("d", "datos", "m", "datos"), ("d", "datos", "c", "datos")])
+
+    a = {i.nodo_id: i.huella for i in compilar(base).instrucciones}
+    b = {i.nodo_id: i.huella for i in compilar(con_extra).instrucciones}
+    assert a["d"] != b["d"], "el nodo de carga ahora lee más columnas"
+    assert a["m"] != b["m"], "y por lo tanto lo que cuelga de él se recalcula"
 
 
 # --- seguridad --------------------------------------------------------------

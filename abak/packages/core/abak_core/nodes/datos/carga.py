@@ -82,6 +82,7 @@ class DatosEjemplo(EspecNodo):
     titulo = "Datos de ejemplo"
     prefijo_var = "datos"
     necesita_datos = True
+    usa_proyeccion = True
     ayuda = Ayuda(
         que_hace="Carga uno de los conjuntos que trae Abak para aprender y probar.",
         cuando_usarlo="Cuando quieras entender como funciona una herramienta antes de usarla con tus propios datos.",
@@ -175,6 +176,7 @@ class CargarCSV(EspecNodo):
     titulo = "Cargar archivo (CSV o Excel)"
     prefijo_var = "datos"
     necesita_datos = True
+    usa_proyeccion = True
     ayuda = Ayuda(
         que_hace="Lee un archivo que subiste y lo convierte en una tabla. Al subirlo se guarda en "
                  "formato columnar, que es lo que permite trabajar con archivos de millones de filas.",

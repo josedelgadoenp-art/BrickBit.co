@@ -18,7 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import unicodedata
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from pydantic import BaseModel, ValidationError
@@ -398,7 +398,8 @@ def _podar(
 
 
 def _huella(
-    op: str, version: str, params: BaseModel, huellas_padres: list[str], semilla: int
+    op: str, version: str, params: BaseModel, huellas_padres: list[str], semilla: int,
+    proyeccion: list[str] | None = None,
 ) -> str:
     crudo = json.dumps(
         {
@@ -407,6 +408,11 @@ def _huella(
             "params": params.model_dump(mode="json"),
             "padres": sorted(huellas_padres),
             "semilla": semilla,
+            # Sólo para los nodos cuyo código depende de qué columnas pide el
+            # grafo: sin esto, dos análisis con el mismo bloque de carga pero
+            # distintas necesidades de columnas comparten caché, y el segundo
+            # recibe una tabla a la que le faltan columnas.
+            "proyeccion": proyeccion,
         },
         sort_keys=True, ensure_ascii=False, default=str,
     )
@@ -442,6 +448,7 @@ def compilar(grafo: GrafoSpec, objetivo: str | None = None) -> Programa:
     programa.orden = orden
 
     nombrador = Nombrador()
+    pendientes_huella: list[tuple[str, type[EspecNodo], BaseModel, list[str]]] = []
     var_de: dict[tuple[str, str], str] = {}       # (nodo, puerto salida) -> variable
     esq_de: dict[tuple[str, str], Esquema] = {}   # (nodo, puerto salida) -> esquema
     huella_de: dict[str, str] = {}
@@ -477,9 +484,7 @@ def compilar(grafo: GrafoSpec, objetivo: str | None = None) -> Programa:
         }
 
         padres = sorted({o for (o, _p) in sum(conexiones[nodo_id].values(), [])})
-        huella = _huella(spec.op, spec.version, params,
-                         [huella_de.get(p, p) for p in padres], grafo.semilla)
-        huella_de[nodo_id] = huella
+        pendientes_huella.append((nodo_id, spec, params, padres))
 
         try:
             salida_esq = spec().esquema_salida(esquemas_entrada, params)
@@ -496,10 +501,21 @@ def compilar(grafo: GrafoSpec, objetivo: str | None = None) -> Programa:
         programa.instrucciones.append(Instruccion(
             nodo_id=nodo_id, op=spec.op, version=spec.version, etiqueta=etiqueta,
             entradas=entradas, salidas=salidas, params=params,
-            esquemas_entrada=esquemas_entrada, huella=huella, notas=nodo.notas,
+            esquemas_entrada=esquemas_entrada, huella="", notas=nodo.notas,
         ))
 
+    # La poda se calcula con los parámetros ya validados y ANTES de las huellas,
+    # porque para algunos nodos forma parte de su identidad.
     programa.proyeccion = _proyeccion(programa, especs, diag)
+    poda = sorted(programa.proyeccion) if programa.proyeccion is not None else None
+
+    for indice, (nodo_id, spec, params, padres) in enumerate(pendientes_huella):
+        huella = _huella(spec.op, spec.version, params,
+                         [huella_de.get(x, x) for x in padres], grafo.semilla,
+                         proyeccion=poda if spec.usa_proyeccion else None)
+        huella_de[nodo_id] = huella
+        programa.instrucciones[indice] = replace(programa.instrucciones[indice], huella=huella)
+
     programa.diagnosticos = diag
     return programa
 

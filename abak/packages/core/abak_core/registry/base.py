@@ -63,8 +63,11 @@ FAMILIAS: dict[str, Familia] = {
                 descripcion="Prediccion con XGBoost y validacion honesta para series y panel."),
         Familia(id="graficos", titulo="Graficos", orden=90, color="#7f93a8", icono="grafica",
                 descripcion="Gramatica por capas: un lienzo y encima puntos, lineas, bandas, tendencias y facetas."),
-        Familia(id="salida", titulo="Resultados", orden=100, color="#a99b8c", icono="salida",
-                descripcion="Lo que te llevas: tablas de publicacion, exportar a Excel o CSV, informe."),
+        # No se llama «Resultados» a proposito: asi se llama tambien la pestana
+        # del area de trabajo, y dos cosas con el mismo nombre en la misma
+        # pantalla mandan a la gente al lugar equivocado. Se detecto probando.
+        Familia(id="salida", titulo="Entregables", orden=100, color="#a99b8c", icono="salida",
+                descripcion="Lo que te llevas: tablas de publicacion, exportar a Excel o CSV, informe en PDF."),
     ]
 }
 
@@ -238,6 +241,11 @@ class EspecNodo:
     cacheable: ClassVar[bool] = True
     #: el nodo lee archivos: el preludio define RUTA_DATOS y la exportacion arma un .zip
     necesita_datos: ClassVar[bool] = False
+    #: el codigo que emite depende de QUE columnas pide el grafo entero, asi que
+    #: la poda tiene que entrar en su huella de cache. Sin esto, el mismo bloque
+    #: en dos analisis distintos comparte cache aunque uno necesite columnas que
+    #: el otro no: se detecto probando, y produce datos incompletos en silencio.
+    usa_proyeccion: ClassVar[bool] = False
 
     def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
         """Qué columnas usa este nodo. `None` significa «cualquiera».

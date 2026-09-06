@@ -17,7 +17,7 @@ no puede quedar desactualizado. Para regenerarlo: `python tools/generar_docs.py`
 | [Macro e insumo-producto](#macro) | 4 | Estructura productiva: Leontief, multiplicadores, encadenamientos, impacto sectorial, keynesiano. |
 | [Machine learning](#ml) | 3 | Prediccion con XGBoost y validacion honesta para series y panel. |
 | [Graficos](#graficos) | 11 | Gramatica por capas: un lienzo y encima puntos, lineas, bandas, tendencias y facetas. |
-| [Resultados](#salida) | 2 | Lo que te llevas: tablas de publicacion, exportar a Excel o CSV, informe. |
+| [Entregables](#salida) | 2 | Lo que te llevas: tablas de publicacion, exportar a Excel o CSV, informe en PDF. |
 
 <a id="datos"></a>
 
@@ -1892,9 +1892,9 @@ Si vienes de otro sistema — **R**: `ggplot(datos, aes(x, y, color))` · **SPSS
 
 <a id="salida"></a>
 
-## Resultados
+## Entregables
 
-Lo que te llevas: tablas de publicacion, exportar a Excel o CSV, informe.
+Lo que te llevas: tablas de publicacion, exportar a Excel o CSV, informe en PDF.
 
 ### Exportar tabla
 
