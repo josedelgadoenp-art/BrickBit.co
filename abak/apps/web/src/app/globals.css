@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Paleta v2: mate. Sombras sólo neutras — ningún glow de color. */
+:root {
+  color-scheme: dark;
+}
+
+html, body, #__next { height: 100%; }
+
+body {
+  background: #100c0a;
+  color: #f5ede3;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'tnum';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- El ámbar es intocable: marca lo estimado y sólo eso. --------------- */
+.estimado { color: #F5C277; }
+.marca-estimado {
+  border-bottom: 1px dotted rgba(245, 194, 119, 0.55);
+  cursor: help;
+}
+
+/* --- Barras de desplazamiento discretas --------------------------------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #3a302a; border-radius: 6px; border: 2px solid #100c0a;
+}
+::-webkit-scrollbar-thumb:hover { background: #4a3f37; }
+
+/* --- React Flow ---------------------------------------------------------- */
+.react-flow__background { background: #100c0a; }
+.react-flow__edge-path { stroke: #4a3f37; stroke-width: 2; }
+.react-flow__edge.selected .react-flow__edge-path,
+.react-flow__edge:hover .react-flow__edge-path { stroke: #6fa287; }
+.react-flow__handle {
+  width: 11px; height: 11px; border: 2px solid #1d1713; border-radius: 999px;
+}
+.react-flow__handle-left { left: -6px; }
+.react-flow__handle-right { right: -6px; }
+.react-flow__attribution { display: none; }
+.react-flow__controls-button {
+  background: #1d1713; border-bottom: 1px solid #3a302a; fill: #a89e93;
+}
+.react-flow__controls-button:hover { background: #241d18; }
+.react-flow__minimap { background: #1d1713 !important; border: 1px solid #3a302a; }
+
+/* --- Utilidades ---------------------------------------------------------- */
+.panel { background: #1d1713; border: 1px solid #3a302a; }
+.tarjeta-nodo { transition: border-color .12s ease, transform .12s ease; }
+.tarjeta-nodo:hover { transform: translateY(-1px); }
+
+.tabla-datos th {
+  position: sticky; top: 0; z-index: 2;
+  background: #241d18; text-align: left; font-weight: 500;
+  /* La ventana de explicación vive dentro del encabezado y tiene que poder
+     salirse de la celda sin que la tabla la recorte. */
+  overflow: visible;
+}
+.tabla-datos td, .tabla-datos th {
+  padding: 7px 14px; border-bottom: 1px solid rgba(58, 48, 42, .7); white-space: nowrap;
+  vertical-align: baseline;
+}
+.tabla-datos tbody tr:hover { background: rgba(111, 162, 135, .06); }
+.tabla-datos tbody tr:last-child td { border-bottom: 0; }
+
+/* --- Jerarquía de lectura ------------------------------------------------ */
+/* El cuerpo de texto explicativo se lee, no se ojea: interlínea generosa. */
+p, dd, li { text-wrap: pretty; }
+h1, h2, h3 { text-wrap: balance; }
