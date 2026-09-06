@@ -1,0 +1,14 @@
+# Los scripts de Windows tienen que llegar con finales de línea CRLF pase lo
+# que pase. Un .bat con finales de Unix falla de maneras raras (cmd puede
+# tragarse el último argumento de una línea), y depender de core.autocrlf de
+# cada máquina es dejarlo al azar.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Todo lo demás, finales de Unix.
+*.py   text eol=lf
+*.ts   text eol=lf
+*.tsx  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf

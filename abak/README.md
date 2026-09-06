@@ -43,7 +43,27 @@ make api           # FastAPI en :8000   (Celery corre en proceso)
 make web           # Next.js en :3000   (en otra terminal)
 ```
 
-En **Windows** no hay `make`. Desde PowerShell, en la carpeta `abak`:
+### Windows: un clic
+
+En Windows no hay `make`, y arrancar a mano son dos comandos en dos terminales.
+Para uso diario eso se paga todos los días, así que hay atajos:
+
+```
+Instalar Abak.bat          doble clic, una sola vez (tarda unos minutos)
+crear-acceso-directo.ps1   deja «Abak» en el Escritorio
+```
+
+A partir de ahí, **doble clic en el icono del Escritorio**: levanta el API y la
+interfaz en ventanas minimizadas, espera a que compile y abre el navegador
+solo. Para cerrarlo todo, `detener.ps1` o cierra las dos ventanas.
+
+`iniciar.ps1` usa `npm run dev` a propósito y no `npm run start`: `start` sirve
+una compilación ya hecha, y después de un `git pull` estaría enseñando la
+versión vieja sin avisar.
+
+### Windows a mano
+
+Si prefieres los comandos sueltos, desde PowerShell en la carpeta `abak`:
 
 ```powershell
 python -m venv .venv
