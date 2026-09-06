@@ -316,3 +316,47 @@ def test_los_p_valores_llegan_a_la_interfaz_sin_aplastarse():
     prob = art["diagnosticos"]["Prob(F)"]
     assert prob is not None and prob > 0.0, "Prob(F) se aplastó a cero"
     assert prob == pytest.approx(res.f_pvalue, rel=1e-9)
+
+
+def test_la_salida_de_un_mco_trae_lo_mismo_que_eviews():
+    """Los 14 estadísticos que EViews imprime en un MCO, con sus mismos valores.
+
+    Quien llega de EViews compara renglón por renglón. Si falta la mitad del
+    bloque de abajo, la conclusión es que la herramienta es de juguete, aunque
+    los coeficientes estén bien.
+    """
+    import numpy as np
+    import pandas as pd
+    import statsmodels.api as sm
+    from statsmodels.stats.stattools import durbin_watson
+
+    from abak_core.registry import glosario
+    from abak_core.runtime.artefactos import modelo_a_json
+
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame({f"X{i}": rng.normal(size=40) for i in range(1, 5)})
+    y = X @ [0.17, -1.56, 1.57, 1.63] + rng.normal(scale=24, size=40)
+    res = sm.OLS(y, sm.add_constant(X)).fit()
+    d = modelo_a_json(res)["diagnosticos"]
+
+    esperado = {
+        "R²": res.rsquared, "R² ajustada": res.rsquared_adj,
+        "Log-verosimilitud": res.llf, "AIC": res.aic, "BIC": res.bic,
+        "F": res.fvalue, "Prob(F)": res.f_pvalue, "Observaciones": res.nobs,
+        "E.E. de la regresión": np.sqrt(res.mse_resid),
+        "Suma de residuos²": res.ssr,
+        "Media de la dependiente": np.mean(res.model.endog),
+        "D.E. de la dependiente": np.std(res.model.endog, ddof=1),
+        "Durbin-Watson": durbin_watson(np.asarray(res.resid)),
+    }
+    for k, v in esperado.items():
+        assert k in d, f"falta {k}, que EViews sí imprime"
+        assert d[k] == pytest.approx(float(v), rel=1e-9), k
+
+    # Hannan-Quinn: -2·log L + 2·k·ln(ln n), con k contando la constante.
+    hq = -2 * res.llf + 2 * (res.df_model + 1) * np.log(np.log(res.nobs))
+    assert d["Hannan-Quinn"] == pytest.approx(hq, rel=1e-9)
+
+    # Y ninguno se queda sin explicación en pantalla.
+    sin_ficha = [k for k in d if glosario.buscar(k) is None]
+    assert not sin_ficha, f"indicadores sin ficha: {sin_ficha}"

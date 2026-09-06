@@ -204,6 +204,37 @@ def modelo_a_json(res: Any, *, titulo: str | None = None) -> dict[str, Any]:
             continue
         diagnosticos[etiqueta] = _limpio(v)
 
+    # Los seis que EViews imprime siempre y statsmodels no expone como atributo
+    # suelto. Se calculan aparte para que la salida de un MCO se pueda comparar
+    # renglón por renglón contra la de EViews: quien llega de ahí necesita ver
+    # los mismos números, no una selección nuestra.
+    try:
+        import numpy as _np
+
+        if getattr(res, "df_resid", 0) and hasattr(res, "mse_resid"):
+            diagnosticos["E.E. de la regresión"] = _limpio(float(_np.sqrt(res.mse_resid)))
+        if hasattr(res, "ssr"):
+            diagnosticos["Suma de residuos²"] = _limpio(float(res.ssr))
+        y = getattr(getattr(res, "model", None), "endog", None)
+        if y is not None and getattr(y, "ndim", 1) == 1 and len(y) > 1:
+            diagnosticos["Media de la dependiente"] = _limpio(float(_np.mean(y)))
+            diagnosticos["D.E. de la dependiente"] = _limpio(float(_np.std(y, ddof=1)))
+        # Hannan-Quinn: -2·log L + 2·k·ln(ln n). statsmodels sólo lo trae en
+        # algunos modelos, así que se calcula con la fórmula.
+        llf, k, nobs = getattr(res, "llf", None), getattr(res, "df_model", None), getattr(res, "nobs", None)
+        if llf is not None and k is not None and nobs and nobs > _np.e:
+            hq = getattr(res, "hqic", None)
+            if hq is None:
+                hq = -2.0 * float(llf) + 2.0 * (float(k) + 1.0) * _np.log(_np.log(float(nobs)))
+            diagnosticos["Hannan-Quinn"] = _limpio(float(hq))
+        resid = getattr(res, "resid", None)
+        if resid is not None and getattr(resid, "ndim", 1) == 1 and len(resid) > 1:
+            from statsmodels.stats.stattools import durbin_watson
+            diagnosticos["Durbin-Watson"] = _limpio(float(durbin_watson(_np.asarray(resid))))
+    except Exception:
+        # Un diagnóstico de adorno nunca puede tumbar el resultado del modelo.
+        pass
+
     texto = None
     try:
         texto = str(res.summary())

@@ -175,6 +175,45 @@ _f("f|fvalue|prob_f|f_pvalue",
    ojo_con="Un F significativo con ningún coeficiente significativo por separado es la firma "
            "de la colinealidad. Revisa el VIF.")
 
+_f("e_e_de_la_regresion|ee_de_la_regresion|se_of_regression|error_estandar_de_la_regresion|sigma",
+   titulo="E.E. de la regresión",
+   que_es="El tamaño típico del error del modelo, en las MISMAS unidades que la variable "
+          "dependiente.",
+   como_se_lee="Si estás modelando precio por m² en pesos y sale 2,400, el modelo se "
+               "equivoca unos 2,400 pesos por m² en un caso típico. Es la cifra que de "
+               "verdad dice si el modelo sirve para decidir.",
+   ojo_con="Es más útil que el R² para uso práctico: un R² de 0.85 suena bien hasta que ves "
+           "que el error típico es de 4,000 pesos por m² y tú necesitabas afinar a 500.")
+
+_f("suma_de_residuos2|ssr|sum_squared_resid|suma_de_cuadrados_residual",
+   titulo="Suma de residuos²",
+   que_es="La suma de todos los errores al cuadrado. Es lo que el método de mínimos "
+          "cuadrados minimiza, literalmente.",
+   como_se_lee="Sola no dice nada: depende de las unidades y del número de casos. Sirve para "
+               "comparar dos modelos sobre exactamente los mismos datos.",
+   ojo_con="Siempre baja al agregar variables, aunque sean basura. Para comparar modelos usa "
+           "AIC o BIC, que castigan el número de variables.")
+
+_f("media_de_la_dependiente|mean_dependent_var|media_dependiente",
+   titulo="Media de la dependiente",
+   que_es="El promedio de la variable que estás explicando.",
+   como_se_lee="Compárala con el E.E. de la regresión: si el error típico es una fracción "
+               "chica de la media, el modelo afina; si es del mismo orden, no.")
+
+_f("d_e_de_la_dependiente|de_de_la_dependiente|sd_dependent_var|desviacion_dependiente",
+   titulo="D.E. de la dependiente",
+   que_es="Cuánto varía la variable explicada antes de meter ningún modelo.",
+   como_se_lee="Es la vara contra la que se mide el modelo: si el E.E. de la regresión no es "
+               "bastante menor que esto, el modelo no está aportando gran cosa.")
+
+_f("hannan_quinn|hqic|hannan_quinn_criter",
+   titulo="Hannan-Quinn",
+   que_es="Un criterio para elegir entre modelos, hermano del AIC y del BIC.",
+   como_se_lee="Menor es mejor. Castiga las variables de más con menos dureza que el BIC y "
+               "más que el AIC.",
+   ojo_con="Sólo compara modelos estimados sobre EXACTAMENTE los mismos datos. Si un modelo "
+           "perdió filas por datos faltantes, la comparación no vale.")
+
 _f("pseudo_r2|prsquared",
    titulo="Pseudo R²",
    que_es="El análogo del R² para modelos de elección discreta (logit, probit).",
