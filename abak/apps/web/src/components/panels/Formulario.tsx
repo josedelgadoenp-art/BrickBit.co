@@ -41,10 +41,22 @@ function desenvolver(campo: EsquemaParam): { campo: EsquemaParam; opcional: bool
   };
 }
 
+/**
+ * La etiqueta que ve el usuario.
+ *
+ * Pydantic genera un `title` automático a partir del nombre del campo, con
+ * Cada Palabra En Mayúscula: «volver_a_descargar» sale «Volver A Descargar»,
+ * que en español se lee mal. Ese título automático se descarta y sólo se
+ * respeta el que alguien escribió a mano.
+ */
 function etiquetaDe(clave: string, campo: EsquemaParam): string {
-  if (campo.title && campo.title !== clave) return campo.title;
-  const limpio = clave.replace(/_/g, ' ');
-  return limpio.charAt(0).toUpperCase() + limpio.slice(1);
+  const enOracion = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+  const automatico = clave
+    .split('_')
+    .map((parte) => parte.charAt(0).toUpperCase() + parte.slice(1))
+    .join(' ');
+  if (campo.title && campo.title !== clave && campo.title !== automatico) return campo.title;
+  return enOracion(clave.replace(/_/g, ' '));
 }
 
 export default function Formulario({ nodoId, descriptor, params }: Props) {
