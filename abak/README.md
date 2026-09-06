@@ -85,9 +85,10 @@ servidor, en la práctica no se probaría.
 
 ## Qué trae hoy
 
-**60 herramientas** en 10 familias:
+**63 herramientas** en 11 familias:
 
 - **Datos** — archivos, ejemplos, filtros, uniones, agrupar, remodelar, declarar serie / panel / ubicación
+- **Fuentes oficiales** — Banxico (SIE), INEGI (BIE/BISE), DENUE, con caché en disco
 - **Transformar** — logaritmos, rezagos, crecimiento, deflactar, estandarizar, dummies, winsorizar
 - **Explorar** — descriptivos, correlaciones, comparación de grupos
 - **Econometría** — MCO con errores robustos (HC1/HC3/HAC/cluster), variables instrumentales, logit/probit con efectos marginales, cuantiles, panel (efectos fijos y aleatorios + Hausman), diagnósticos, VIF
@@ -96,7 +97,13 @@ servidor, en la práctica no se probaría.
 - **Macro e insumo-producto** — Leontief, multiplicadores de producción, empleo e ingreso, encadenamientos de Rasmussen, impacto de un choque de demanda, multiplicador keynesiano
 - **Machine learning** — partición honesta, XGBoost, validación de origen móvil, importancias
 - **Gráficos** — gramática por capas (lienzo + puntos, línea, barras, área, banda, tendencia, facetas, escalas, tema) renderizada con Plotly
-- **Resultados** — tabla de publicación estilo `esttab`, exportar a CSV o Excel
+- **Entregables** — tabla de publicación estilo `esttab`, exportar a CSV o Excel
+
+Cada resultado se baja en PDF: un bloque suelto, o el informe completo del
+análisis con su metodología. Y cada indicador que aparece en pantalla —el
+coeficiente, el p, el R², el AIC, la I de Moran, los multiplicadores— trae un
+botón que explica qué es, cómo se lee y con qué hay que tener cuidado. Son 139
+fichas; si un indicador no tiene ficha el botón no aparece.
 
 El detalle está en [docs/nodos.md](docs/nodos.md), que se genera del registro.
 
@@ -257,10 +264,57 @@ Y, específicamente para lo que este sistema tiene que sostener:
 
 ---
 
+## Frente a R, Stata y EViews
+
+La pregunta honesta es si esto sustituye a esos programas. La respuesta corta:
+**para el análisis económico aplicado que se hace todos los días, sí, y con
+bastante menos fricción. Como reemplazo general de R, todavía no.**
+
+**Lo que Abak hace igual y más fácil.** El camino completo de un trabajo
+aplicado —traer datos, limpiarlos, declarar el panel o la serie, estimar,
+diagnosticar, graficar, publicar la tabla— está cubierto y no pide escribir una
+línea. Un MCO con errores HC3, un panel de efectos fijos con Hausman, un
+ARIMA con banda de pronóstico, un VAR con impulso-respuesta, un Johansen, un
+SAR contra un SEM decidido con pruebas LM: todo eso son bloques conectados. En
+EViews el VAR sale de un cuadro de diálogo con veinte casillas; en Stata hay
+que acordarse de `xtset` antes de `xtreg` o el resultado es otro y nadie avisa.
+
+**Dos cosas en las que Abak está por delante de los tres.** La primera es que
+el código exportado *es* el que se ejecutó —el mismo AST se imprime y se corre,
+no hay dos caminos que puedan separarse—, así que la reproducibilidad no
+depende de que alguien se acuerde de guardar el log. La segunda es que cada
+herramienta y cada cifra se explican en pantalla: quién debe usarla, cómo se
+lee, qué la invalida. Eso no existe en ninguno de los tres, y es justo donde se
+pierde la gente que no viene de econometría.
+
+**Lo que todavía no está.** Frente a **EViews**: la familia GARCH y volatilidad,
+ARDL con prueba de límites, espacio de estados y Kalman, cambio de régimen
+(Markov switching), SVAR con identificación distinta de Cholesky, ajuste
+estacional X-13, raíces unitarias en panel, GMM y panel dinámico
+(Arellano-Bond), pruebas de quiebre estructural (Chow, Bai-Perron), tobit y
+modelos de conteo, estimación en ventana móvil, resolución de modelos de
+ecuaciones simultáneas. Frente a **R**: todo lo anterior, más modelos
+multinivel, GAM, inferencia bayesiana, la caja de inferencia causal moderna
+(diferencias en diferencias, estudios de evento, RDD, control sintético),
+remuestreo y bootstrap como ciudadano de primera, componentes principales y
+análisis factorial, conglomerados, supervivencia, ponderadores de encuesta e
+imputación múltiple. Y R tiene 20,000 paquetes: en cobertura bruta esa
+comparación no se gana, ni se pretende.
+
+**Dónde queda el límite real.** Si el trabajo cabe en las 63 herramientas,
+Abak lo hace más rápido, con menos errores silenciosos y dejando un script que
+otra persona puede correr. Si hace falta algo de la lista de arriba, hoy hay
+que salirse — y la salida está prevista: se exporta el `.py`, que es Python
+normal, y se sigue ahí. Esa puerta abierta es deliberada; encerrar al usuario
+sería el mismo error que cometen los otros.
+
+---
+
 ## Lo que falta
 
+- Las técnicas listadas arriba, por orden de demanda: GARCH, ARDL, panel
+  dinámico y quiebre estructural son las que más se piden en economía aplicada
 - Persistencia en Postgres, cuentas y colaboración
-- Conectores en vivo: INEGI, Banxico (SIE), SHF
 - Sandbox por ejecución (gVisor/Firecracker) para multi-tenant
 - Nodo de expresión restringida (una expresión de pandas sobre columnas
   conocidas) en lugar del bloque de código libre, que no existe a propósito

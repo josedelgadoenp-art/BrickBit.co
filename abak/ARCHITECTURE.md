@@ -548,13 +548,17 @@ En desarrollo, todo lo anterior cae a disco (`.abak/`) y Celery corre en modo
 | 0 | Monorepo, contratos, arquitectura | ✅ |
 | 1 | Núcleo: grafo, tipos, registro, esquemas | ✅ |
 | 2 | Compilador, shadow code, ejecutor, caché | ✅ |
-| 3 | Nodos: datos, transformación, econometría, series, espacial, insumo-producto, ML | ✅ 60 herramientas |
+| 3 | Nodos: datos, transformación, econometría, series, espacial, insumo-producto, ML | ✅ 63 herramientas |
 | 4 | Gramática de gráficos por capas → Plotly | ✅ |
 | 5 | API FastAPI + Celery | ✅ |
 | 6 | Frontend: lienzo, pestañas, inspector | ✅ |
-| — | Pruebas: 234, incluida la reproducibilidad del script exportado | ✅ |
+| — | Conectores en vivo: Banxico (SIE), INEGI (BIE/BISE), DENUE, con caché en disco | ✅ |
+| — | Exportación a PDF: por bloque y el informe completo con su metodología | ✅ |
+| — | Glosario: 139 fichas, una por indicador, servidas desde el registro | ✅ |
+| — | Volúmenes grandes: ingesta por trozos a Parquet, poda de columnas, topes de memoria | ✅ |
+| — | Pruebas: 308, incluida la reproducibilidad del script exportado | ✅ |
 | 7 | Persistencia Postgres, cuentas, colaboración | ⏳ |
-| 8 | Conectores en vivo (INEGI, Banxico SIE, SHF) | ⏳ |
+| 8 | Técnicas pendientes (GARCH, ARDL, panel dinámico, quiebre estructural) | ⏳ |
 | 9 | Sandbox por ejecución para multi-tenant | ⏳ |
 
 El detalle de qué nodo existe hoy está en `docs/nodos.md`, que se genera del registro
