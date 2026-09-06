@@ -20,8 +20,20 @@ import { create } from 'zustand';
 
 import { api, ErrorApi } from '@/lib/api';
 import type {
-  Catalogo, DescriptorNodo, Diagnostico, Ejecucion, Esquema, Grafo, ResultadoNodo,
+  Catalogo, DescriptorNodo, Diagnostico, Ejecucion, Esquema, Glosario, Grafo, Indicador,
+  ResultadoNodo,
 } from '@/lib/tipos';
+
+/** «R² ajustada» y «r2_ajustada» tienen que encontrar la misma ficha. */
+function normalizarClave(clave: string): string {
+  return clave
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/²/g, '2')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
 
 export type Pestana = 'lienzo' | 'datos' | 'resultados' | 'graficos' | 'codigo' | 'metodologia' | 'bitacora';
 
@@ -37,6 +49,7 @@ export type NodoLienzo = Node<DatosNodo, 'abak'>;
 interface Estado {
   // --- catálogo
   catalogo: Catalogo | null;
+  glosario: Glosario;
   cargandoCatalogo: boolean;
   errorCatalogo: string | null;
 
@@ -67,6 +80,8 @@ interface Estado {
   // --- acciones
   cargarCatalogo: () => Promise<void>;
   descriptor: (op: string) => DescriptorNodo | undefined;
+  /** La ficha de un indicador, o undefined si no hay. No se inventa nada. */
+  indicador: (clave: string) => Indicador | undefined;
   agregarNodo: (op: string, posicion?: { x: number; y: number }) => void;
   duplicarNodo: (id: string) => void;
   borrarNodo: (id: string) => void;
@@ -110,6 +125,7 @@ let sondeo: ReturnType<typeof setInterval> | null = null;
 
 export const usarLienzo = create<Estado>((set, get) => ({
   catalogo: null,
+  glosario: {},
   cargandoCatalogo: false,
   errorCatalogo: null,
   titulo: 'Análisis sin título',
@@ -133,7 +149,13 @@ export const usarLienzo = create<Estado>((set, get) => ({
     if (get().catalogo || get().cargandoCatalogo) return;
     set({ cargandoCatalogo: true, errorCatalogo: null });
     try {
-      set({ catalogo: await api.catalogo(), cargandoCatalogo: false });
+      // El glosario no es indispensable para trabajar: si falla, la aplicación
+      // sigue y sólo se quedan sin explicación las fichas de los indicadores.
+      const [catalogo, glosario] = await Promise.all([
+        api.catalogo(),
+        api.glosario().catch(() => ({})),
+      ]);
+      set({ catalogo, glosario, cargandoCatalogo: false });
     } catch (e) {
       set({
         cargandoCatalogo: false,
@@ -144,6 +166,8 @@ export const usarLienzo = create<Estado>((set, get) => ({
   },
 
   descriptor: (op) => get().catalogo?.nodos.find((n) => n.op === op),
+
+  indicador: (clave) => get().glosario[normalizarClave(clave)],
 
   agregarNodo(op, posicion) {
     const d = get().descriptor(op);

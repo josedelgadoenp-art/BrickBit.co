@@ -18,6 +18,19 @@ export function pValor(p: number | null): string {
   return p.toFixed(3);
 }
 
+/**
+ * ¿Esta cifra es una probabilidad de una prueba?
+ *
+ * Importa porque un p-valor no se escribe como cualquier número: redondeado a
+ * tres decimales, 1e-20 sale como «0», y ninguna probabilidad es cero. Se
+ * escribe «<0.001», que es lo que se publica en un artículo.
+ */
+export function esProbabilidad(clave: string): boolean {
+  const c = clave.toLowerCase().replace(/[()\s]/g, '');
+  return c === 'p' || c === 'pvalor' || c === 'pvalue'
+      || c.startsWith('prob') || c.endsWith('_p') || c.endsWith('pvalor');
+}
+
 export function duracion(ms: number | null | undefined): string {
   if (!ms && ms !== 0) return '—';
   if (ms < 1000) return `${ms} ms`;

@@ -11,7 +11,7 @@ __pycache__/
 node_modules/
 .next/
 next-env.d.ts
-.tsbuildinfo
+*.tsbuildinfo
 
 # Salidas locales
 capturas/

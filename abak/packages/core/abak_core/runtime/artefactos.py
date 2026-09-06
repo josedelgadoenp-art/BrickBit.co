@@ -19,10 +19,20 @@ def _limpio(v: Any) -> Any:
     if v is None:
         return None
     if isinstance(v, float):
-        # `round()` sobre un np.float64 devuelve np.float64. Se fuerza a float
-        # de Python: lo que sale de aquí va a JSON y a un PDF, y un tipo de
-        # numpy escondido ahí es una fuga que aparece meses después.
-        return None if (math.isnan(v) or math.isinf(v)) else float(round(v, 10))
+        if math.isnan(v) or math.isinf(v):
+            return None
+        # Se recorta a 12 CIFRAS SIGNIFICATIVAS, no a 12 decimales.
+        #
+        # Antes esto era `round(v, 10)`, y eso borraba magnitudes: un p-valor de
+        # 1e-20 salía como 0.0 exacto —la pantalla decía «Prob(F): 0», que es
+        # falso, ninguna probabilidad es cero— y un coeficiente de 3e-12 se
+        # perdía entero. Recortar por cifras significativas quita el ruido del
+        # flotante (0.30000000000000004 -> 0.3) sin tocar el orden de magnitud.
+        #
+        # `float(...)` fuerza el tipo de Python: `round()` sobre un np.float64
+        # devuelve np.float64, y un tipo de numpy escondido en algo que va a
+        # JSON y a un PDF es una fuga que aparece meses después.
+        return float(f"{v:.12g}")
     if isinstance(v, (int, bool, str)):
         return v
     if hasattr(v, "item"):

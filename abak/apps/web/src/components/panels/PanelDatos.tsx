@@ -26,12 +26,12 @@ export default function PanelDatos() {
 
   return (
     <div className="flex h-full">
-      <nav className="w-56 shrink-0 overflow-y-auto border-r border-borde bg-superficie p-2">
+      <nav className="w-60 shrink-0 overflow-y-auto border-r border-borde bg-superficie p-2">
         {conTabla.map(({ id, r }) => (
           <button
             key={id}
             onClick={() => setActivo(id)}
-            className={`mb-1 block w-full truncate rounded px-2 py-1.5 text-left text-[12px] ${
+            className={`mb-1 block w-full rounded px-2 py-1.5 text-left text-[12px] leading-snug ${
               id === elegido ? 'bg-superficie2 text-crema' : 'text-tenue hover:text-crema'
             }`}
           >

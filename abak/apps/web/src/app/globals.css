@@ -54,10 +54,20 @@ body {
 .tarjeta-nodo:hover { transform: translateY(-1px); }
 
 .tabla-datos th {
-  position: sticky; top: 0; z-index: 1;
+  position: sticky; top: 0; z-index: 2;
   background: #241d18; text-align: left; font-weight: 500;
+  /* La ventana de explicación vive dentro del encabezado y tiene que poder
+     salirse de la celda sin que la tabla la recorte. */
+  overflow: visible;
 }
 .tabla-datos td, .tabla-datos th {
-  padding: 6px 12px; border-bottom: 1px solid rgba(58, 48, 42, .7); white-space: nowrap;
+  padding: 7px 14px; border-bottom: 1px solid rgba(58, 48, 42, .7); white-space: nowrap;
+  vertical-align: baseline;
 }
 .tabla-datos tbody tr:hover { background: rgba(111, 162, 135, .06); }
+.tabla-datos tbody tr:last-child td { border-bottom: 0; }
+
+/* --- Jerarquía de lectura ------------------------------------------------ */
+/* El cuerpo de texto explicativo se lee, no se ojea: interlínea generosa. */
+p, dd, li { text-wrap: pretty; }
+h1, h2, h3 { text-wrap: balance; }

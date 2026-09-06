@@ -267,3 +267,52 @@ def test_dos_corridas_dan_exactamente_lo_mismo():
         return {tuple(f) for f in resultado.por_nodo()["x"].artefactos["metricas"]["filas"]}
 
     assert metricas() == metricas(), "dos corridas con la misma semilla difieren"
+
+
+def test_limpiar_no_borra_las_magnitudes_pequenas():
+    """Un p-valor diminuto NO puede salir como cero.
+
+    Con `round(v, 10)` cualquier cosa por debajo de 5e-11 se volvía 0.0 exacto y
+    la pantalla decía «Prob(F): 0». Ninguna probabilidad es cero: eso es afirmar
+    algo que los datos no dicen.
+    """
+    from abak_core.runtime.artefactos import _limpio
+
+    for v in (1e-20, 3.2e-14, 5e-300, -1e-18):
+        assert _limpio(v) == pytest.approx(v, rel=1e-9), f"se borró {v}"
+        assert _limpio(v) != 0.0
+
+    # Y sigue quitando el ruido del flotante, que era para lo que estaba.
+    assert _limpio(0.1 + 0.2) == 0.3
+    assert _limpio(2.6749999999999998) == 2.675
+
+    # Sale float de Python, no np.float64: lo que va a JSON no lleva numpy.
+    import numpy as np
+    assert type(_limpio(np.float64(1e-20))) is float
+    assert _limpio(float("nan")) is None
+    assert _limpio(float("inf")) is None
+
+
+def test_los_p_valores_llegan_a_la_interfaz_sin_aplastarse():
+    """El artefacto de un modelo conserva el p-valor por chico que sea."""
+    import numpy as np
+    import pandas as pd
+    import statsmodels.api as sm
+
+    from abak_core.runtime.artefactos import modelo_a_json
+
+    # Una relación clara pero no absurda: Prob(F) ~ 4e-14. Tiene que caer por
+    # debajo de 5e-11 (lo que el `round(v, 10)` de antes borraba) y por encima
+    # del mínimo representable, o el aplastamiento vendría de statsmodels y no
+    # de nosotros: con una relación mucho más fuerte, scipy devuelve 0.0 real
+    # porque el p-valor verdadero no cabe en un flotante de doble precisión.
+    rng = np.random.default_rng(0)
+    x = rng.normal(size=300)
+    y = 0.4 * x + rng.normal(size=300)
+    res = sm.OLS(y, sm.add_constant(pd.DataFrame({"x": x}))).fit()
+    assert 0.0 < res.f_pvalue < 1e-11, "el caso de prueba ya no ejercita el aplastamiento"
+
+    art = modelo_a_json(res)
+    prob = art["diagnosticos"]["Prob(F)"]
+    assert prob is not None and prob > 0.0, "Prob(F) se aplastó a cero"
+    assert prob == pytest.approx(res.f_pvalue, rel=1e-9)

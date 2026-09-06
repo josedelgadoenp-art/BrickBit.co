@@ -80,6 +80,17 @@ export interface Familia {
   icono: string;
 }
 
+/** La ficha de un indicador: qué es, cómo se lee y con qué hay que tener cuidado. */
+export interface Indicador {
+  titulo: string;
+  que_es: string;
+  como_se_lee: string;
+  ojo_con: string | null;
+  referencia: string | null;
+}
+
+export type Glosario = Record<string, Indicador>;
+
 export interface Catalogo {
   familias: Familia[];
   nodos: DescriptorNodo[];

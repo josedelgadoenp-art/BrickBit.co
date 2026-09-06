@@ -7,7 +7,7 @@ herramienta nueva en el backend aparece en la interfaz sin tocar el frontend.
 from __future__ import annotations
 
 from abak_core.registry import FAMILIAS, catalogo, obtener
-from abak_core.runtime.metodologia import _valor_legible  # noqa: F401
+from abak_core.registry.glosario import buscar, como_json
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter(tags=["registro"])
@@ -17,6 +17,25 @@ router = APIRouter(tags=["registro"])
 def leer_registro() -> dict:
     """Familias, herramientas y tipos de puerto. Es lo que dibuja la paleta."""
     return catalogo()
+
+
+@router.get("/glosario")
+def leer_glosario() -> dict:
+    """Qué es cada indicador que Abak pone en pantalla.
+
+    La interfaz lo baja una vez y lo consulta al vuelo por el nombre de la
+    columna o del diagnóstico. Un indicador sin ficha no muestra nada: no se
+    inventa una explicación.
+    """
+    return como_json()
+
+
+@router.get("/glosario/{clave}")
+def leer_indicador(clave: str) -> dict:
+    ficha = buscar(clave)
+    if ficha is None:
+        raise HTTPException(404, f"No hay ficha para «{clave}».")
+    return ficha.model_dump()
 
 
 @router.get("/registro/familias")

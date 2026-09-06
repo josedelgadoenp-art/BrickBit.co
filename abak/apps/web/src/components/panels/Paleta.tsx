@@ -39,7 +39,7 @@ export default function Paleta() {
   const familiaActual = familias.find((f) => f.id === activa);
 
   return (
-    <aside className="flex w-[292px] shrink-0 flex-col border-r border-borde bg-superficie">
+    <aside className="flex w-[312px] shrink-0 flex-col border-r border-borde bg-superficie">
       <div className="border-b border-borde p-3">
         <input
           value={busqueda}
@@ -83,7 +83,7 @@ export default function Paleta() {
         </p>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
         {visibles.map((n) => {
           const familia = familias.find((f) => f.id === n.familia);
           return (
@@ -95,14 +95,16 @@ export default function Paleta() {
                 e.dataTransfer.effectAllowed = 'move';
               }}
               onClick={() => agregarNodo(n.op)}
-              className="mb-1.5 w-full cursor-grab rounded border border-borde bg-tierra/60 p-2.5 text-left transition-colors hover:border-salvia/60 active:cursor-grabbing"
+              className="mb-2 w-full cursor-grab rounded-lg border border-borde bg-tierra/60 p-3 text-left transition-colors hover:border-salvia/60 active:cursor-grabbing"
             >
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm"
+              <div className="flex items-start gap-2">
+                <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-sm"
                       style={{ background: familia?.color ?? '#6b6259' }} />
-                <span className="truncate text-[13px] font-medium text-crema">{n.titulo}</span>
+                {/* Sin `truncate`: el nombre de una herramienta es lo primero
+                    que la persona necesita leer completo. */}
+                <span className="text-[13px] font-medium leading-snug text-crema">{n.titulo}</span>
               </div>
-              <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-tenue">
+              <p className="mt-1.5 text-[11px] leading-relaxed text-tenue">
                 {n.ayuda.que_hace}
               </p>
               {n.ayuda.equivalente.stata && (

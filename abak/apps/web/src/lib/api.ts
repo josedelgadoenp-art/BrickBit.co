@@ -1,7 +1,7 @@
 /** Cliente de la API. Todo pasa por /api gracias al reescrito de Next. */
 
 import type {
-  Catalogo, Ejecucion, Esquema, Grafo, RespuestaCodigo, RespuestaValidacion,
+  Catalogo, Ejecucion, Esquema, Glosario, Grafo, RespuestaCodigo, RespuestaValidacion,
 } from './tipos';
 
 const BASE = '/api/v1';
@@ -35,6 +35,7 @@ export class ErrorApi extends Error {
 
 export const api = {
   catalogo: () => pedir<Catalogo>('/registro'),
+  glosario: () => pedir<Glosario>('/glosario'),
   salud: () => pedir<{ ok: boolean; herramientas: number; modo_ejecucion: string }>('/salud'),
 
   validar: (grafo: Grafo) =>

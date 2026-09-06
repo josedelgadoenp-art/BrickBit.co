@@ -47,7 +47,7 @@ function NodoAbak({ id, data, selected }: NodeProps<NodoLienzo>) {
 
   return (
     <div
-      className={`tarjeta-nodo w-[248px] rounded-lg border ${borde} bg-superficie shadow-nodo ${
+      className={`tarjeta-nodo w-[264px] rounded-lg border ${borde} bg-superficie shadow-nodo ${
         podado ? 'opacity-45' : ''
       }`}
       title={podado ? 'Este bloque no alimenta ningún resultado, así que no se ejecuta.' : undefined}
@@ -67,11 +67,16 @@ function NodoAbak({ id, data, selected }: NodeProps<NodoLienzo>) {
           )}
         </div>
 
-        <div className="mt-0.5 truncate text-[13px] font-medium text-crema" title={data.etiqueta}>
+        {/* Dos líneas antes de cortar: un nombre a medias en el lienzo obliga
+            a abrir el inspector para saber qué bloque es. */}
+        <div className="mt-0.5 line-clamp-2 text-[13px] font-medium leading-snug text-crema"
+             title={data.etiqueta}>
           {data.etiqueta || descriptor?.titulo || data.op}
         </div>
         {data.etiqueta !== descriptor?.titulo && (
-          <div className="truncate text-[11px] text-tenue">{descriptor?.titulo}</div>
+          <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-tenue">
+            {descriptor?.titulo}
+          </div>
         )}
 
         {errores.length > 0 && (
