@@ -32,7 +32,7 @@ web:
 	cd apps/web && npm run dev
 
 pruebas:
-	$(VENV)/bin/pytest packages/core/tests -q
+	$(VENV)/bin/pytest packages/core/tests services/api/tests -q
 
 docs:
 	$(PY) tools/generar_docs.py

@@ -43,6 +43,22 @@ make api           # FastAPI en :8000   (Celery corre en proceso)
 make web           # Next.js en :3000   (en otra terminal)
 ```
 
+En **Windows** no hay `make`. Desde PowerShell, en la carpeta `abak`:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\pip install -e "packages/core[todo,dev]"
+.venv\Scripts\pip install -e services/worker -e services/api
+cd apps\web ; npm install ; cd ..\..
+```
+
+Y luego, en dos terminales:
+
+```powershell
+.venv\Scripts\python -m uvicorn abak_api.main:app --port 8000   # terminal 1
+cd apps\web ; npm run dev                                        # terminal 2
+```
+
 Abre <http://localhost:3000> y carga un ejemplo desde la barra superior.
 
 Con cola de verdad:

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-import resource
 import shutil
 import time
 from pathlib import Path
@@ -39,6 +38,15 @@ def _limitar_memoria() -> None:
     un worker aparte que puede morir sin llevarse a nadie.
     """
     if LIMITE_MEMORIA_GB <= 0 or EAGER:
+        return
+    # `resource` es de Unix y no existe en Windows. Se importa aquí adentro y no
+    # arriba: importarlo al principio del módulo tumbaba la API entera al
+    # arrancar en Windows con «No module named 'resource'», porque este módulo
+    # lo carga el router de ejecuciones. Sin tope de memoria se ejecuta igual;
+    # sin API no se ejecuta nada.
+    try:
+        import resource
+    except ImportError:
         return
     tope = int(LIMITE_MEMORIA_GB * 1024**3)
     try:
