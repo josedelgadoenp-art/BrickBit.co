@@ -214,3 +214,7 @@ class Remodelar(EspecNodo):
 
     def esquema_salida(self, entradas: dict[str, Esquema], params: BaseModel) -> dict[str, Esquema]:
         return {"datos": Esquema()}  # cambia demasiado para anticiparlo con honestidad
+
+    def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
+        # Pasar de ancho a largo toca todas las columnas que no son identificador.
+        return None

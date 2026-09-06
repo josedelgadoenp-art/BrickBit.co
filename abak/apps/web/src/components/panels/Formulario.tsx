@@ -2,6 +2,8 @@
 
 import { useMemo } from 'react';
 
+import SubirArchivo from '@/components/panels/SubirArchivo';
+
 import type { ColumnaEsquema, DescriptorNodo, EsquemaParam } from '@/lib/tipos';
 import { usarLienzo } from '@/store/lienzo';
 
@@ -154,6 +156,27 @@ export default function Formulario({ nodoId, descriptor, params }: Props) {
               ))}
             </div>
           );
+        } else if (control === 'archivo') {
+          control_jsx = <SubirArchivo nodoId={nodoId} />;
+        } else if (clave === 'columnas' && descriptor.op === 'datos.csv') {
+          // El esquema del archivo lo llena la subida; enseñarlo como un campo
+          // editable invitaría a romperlo a mano.
+          const columnas = (valor as { nombre: string }[] | undefined) ?? [];
+          control_jsx = columnas.length ? (
+            <p className="text-[11px] leading-snug text-tenue">
+              {columnas.length} columnas leídas del archivo:{' '}
+              {columnas.slice(0, 8).map((c) => c.nombre).join(', ')}
+              {columnas.length > 8 ? '…' : ''}
+            </p>
+          ) : (
+            <p className="text-[11px] text-tenue">Sube un archivo para ver sus columnas.</p>
+          );
+        } else if (clave === 'n_filas' && descriptor.op === 'datos.csv') {
+          control_jsx = (
+            <p className="text-[11px] text-tenue">
+              {Number(valor ?? 0).toLocaleString('es-MX')} filas
+            </p>
+          );
         } else if (control === 'claves') {
           // Claves de una fuente oficial (series del SIE, indicadores del BIE).
           // Es texto libre porque los catálogos tienen miles de entradas, con
@@ -262,7 +285,7 @@ export default function Formulario({ nodoId, descriptor, params }: Props) {
 
         return (
           <div key={clave}>
-            {campo.type !== 'boolean' && etiqueta}
+            {campo.type !== 'boolean' && control !== 'archivo' && etiqueta}
             {control_jsx}
             {campo.description && (
               <p className="mt-1 text-[11px] leading-snug text-tenue/80">{campo.description}</p>

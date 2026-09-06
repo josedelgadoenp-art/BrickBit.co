@@ -115,16 +115,24 @@ class DatosEjemplo(EspecNodo):
         info = EJEMPLOS[ctx.p("conjunto")]
         ctx.importar("pandas", "pd")
         ctx.nota(f"{info['titulo']}. {info['descripcion']}")
+        usadas = ctx.columnas_a_leer(
+            _esquema_de_csv(DIR_EJEMPLOS / info["archivo"], info.get("fechas")).nombres())
         if info.get("estimadas"):
             ctx.nota("Columnas estimadas o simuladas (no son mediciones): "
                      + ", ".join(info["estimadas"]) + ".")
-        if info.get("fechas"):
-            ctx.emitir("SAL = pd.read_csv(RUTA_DATOS / ARCH, parse_dates=FECHAS)",
-                       SAL=ctx.salida("datos"), ARCH=ctx.lit(info["archivo"]),
-                       FECHAS=ctx.lit(info["fechas"]))
-        else:
-            ctx.emitir("SAL = pd.read_csv(RUTA_DATOS / ARCH)",
-                       SAL=ctx.salida("datos"), ARCH=ctx.lit(info["archivo"]))
+        if usadas:
+            ctx.nota(f"Se leen {len(usadas)} columnas: son las unicas que este analisis usa.")
+        fechas = [f for f in (info.get("fechas") or []) if not usadas or f in usadas]
+        argumentos = []
+        huecos = {"SAL": ctx.salida("datos"), "ARCH": ctx.lit(info["archivo"])}
+        if usadas:
+            argumentos.append("usecols=COLS")
+            huecos["COLS"] = ctx.lit(usadas)
+        if fechas:
+            argumentos.append("parse_dates=FECHAS")
+            huecos["FECHAS"] = ctx.lit(fechas)
+        cola = (", " + ", ".join(argumentos)) if argumentos else ""
+        ctx.emitir(f"SAL = pd.read_csv(RUTA_DATOS / ARCH{cola})", **huecos)
         return ctx.fin()
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
@@ -137,6 +145,29 @@ class DatosEjemplo(EspecNodo):
         return {"datos": tabla_a_json(df, titulo=info["titulo"], estimadas=info.get("estimadas"))}
 
 
+def tipo_de_arrow(tipo: str) -> str:
+    """Tipo de Arrow -> el vocabulario de tipos de Abak."""
+    t = str(tipo).lower()
+    if t.startswith(("timestamp", "date")):
+        return "fecha"
+    if t.startswith("bool"):
+        return "booleana"
+    if t.startswith(("int", "uint", "float", "double", "decimal")):
+        return "numerica"
+    if t.startswith("dictionary"):
+        return "categorica"
+    return "texto"
+
+
+class ColumnaArchivo(BaseModel):
+    """Una columna del archivo subido, tal como quedó al convertirlo."""
+
+    model_config = ConfigDict(extra="ignore")
+    nombre: str
+    tipo_arrow: str = "string"
+    faltantes: int = 0
+
+
 @registrar
 class CargarCSV(EspecNodo):
     op = "datos.csv"
@@ -145,12 +176,20 @@ class CargarCSV(EspecNodo):
     prefijo_var = "datos"
     necesita_datos = True
     ayuda = Ayuda(
-        que_hace="Lee un archivo que subiste y lo convierte en una tabla.",
+        que_hace="Lee un archivo que subiste y lo convierte en una tabla. Al subirlo se guarda en "
+                 "formato columnar, que es lo que permite trabajar con archivos de millones de filas.",
         cuando_usarlo="Es casi siempre el primer paso de un analisis propio.",
-        interpretacion="Revisa en la pestana Datos que las columnas se hayan leido con el tipo correcto: "
-                       "una columna numerica leida como texto es la causa mas comun de errores mas adelante.",
-        advertencias=["Si los numeros traen coma decimal, indicalo abajo o se leeran como texto."],
-        equivalente={"stata": "import delimited", "r": "read.csv()", "spss": "Abrir datos"},
+        interpretacion="Revisa en la pestana Datos que las columnas se hayan leido con el tipo "
+                       "correcto y cuantos faltantes trae cada una. Una columna numerica leida como "
+                       "texto es la causa mas comun de errores mas adelante.",
+        supuestos=["Los tipos se deducen de una muestra grande del archivo y luego se aplican a todo. "
+                   "Es a proposito: dejar que se deduzcan trozo por trozo produce columnas de tipo "
+                   "mixto que fallan raro y sin avisar."],
+        advertencias=["Si los numeros traen coma decimal, indicalo al subir el archivo o se leeran "
+                      "como texto.",
+                      "Abak lee del archivo SOLO las columnas que tu analisis usa. Si agregas un "
+                      "bloque que necesita otra columna, se lee tambien: no hay que volver a subir nada."],
+        equivalente={"stata": "import delimited", "r": "arrow::read_parquet()", "spss": "Abrir datos"},
     )
     salidas = [Puerto(nombre="datos", tipo="tabla", titulo="Tabla")]
 
@@ -158,26 +197,54 @@ class CargarCSV(EspecNodo):
         model_config = ConfigDict(extra="forbid")
         archivo_id: str = Field(json_schema_extra={"abak": {"control": "archivo"}})
         nombre: str = "datos.csv"
-        separador: Literal[",", ";", "\t", "|"] = ","
-        decimal: Literal[".", ","] = "."
-        codificacion: Literal["utf-8", "latin-1", "cp1252"] = "utf-8"
-        columnas_fecha: list[str] = Field(default_factory=list)
+        #: Esquema que devolvio la subida. Viaja en el grafo para que los
+        #: desplegables de aguas abajo funcionen sin haber ejecutado nada.
+        columnas: list["ColumnaArchivo"] = Field(default_factory=list)
+        n_filas: int = 0
+        tope_filas: int | None = Field(
+            default=None, ge=1,
+            description="Leer solo las primeras N filas. Cambia los resultados: dilo si lo usas.")
+
+    def _ruta(self, params: BaseModel) -> str:
+        return f"{params.archivo_id}.parquet"  # type: ignore[attr-defined]
+
+    def archivos(self, params: BaseModel) -> dict[str, str]:
+        from ...runtime.almacen import ALMACEN
+
+        nombre = self._ruta(params)
+        return {f"datos/{nombre}": str(ALMACEN.dir_subidas() / nombre)}
+
+    def esquema_salida(self, entradas: dict[str, Esquema], params: BaseModel) -> dict[str, Esquema]:
+        cols = [Columna(nombre=c.nombre, tipo=tipo_de_arrow(c.tipo_arrow),  # type: ignore[attr-defined]
+                        fuente=params.nombre,                                # type: ignore[attr-defined]
+                        nota=(f"{c.faltantes:,} valores faltantes" if c.faltantes else None))
+                for c in params.columnas]                                    # type: ignore[attr-defined]
+        return {"datos": Esquema(columnas=cols,
+                                 n_filas=params.n_filas or None)}            # type: ignore[attr-defined]
 
     def emit(self, ctx: Any) -> Any:
         ctx.importar("pandas", "pd")
-        nombre = ctx.p("nombre")
-        ctx.nota(f"Archivo del usuario: {nombre}")
-        if str(nombre).lower().endswith((".xlsx", ".xls")):
-            ctx.emitir("SAL = pd.read_excel(RUTA_DATOS / ARCH)",
-                       SAL=ctx.salida("datos"), ARCH=ctx.lit(nombre))
-        elif ctx.p("columnas_fecha"):
-            ctx.emitir("SAL = pd.read_csv(RUTA_DATOS / ARCH, sep=SEP, decimal=DEC, encoding=ENC, parse_dates=FECHAS)",
-                       SAL=ctx.salida("datos"), ARCH=ctx.lit(nombre), SEP=ctx.plit("separador"),
-                       DEC=ctx.plit("decimal"), ENC=ctx.plit("codificacion"), FECHAS=ctx.plit("columnas_fecha"))
+        nombre_visible = ctx.p("nombre")
+        disponibles = [c.nombre for c in ctx.p("columnas")]
+        usadas = ctx.columnas_a_leer(disponibles)
+
+        ctx.nota(f"Archivo del usuario: {nombre_visible}"
+                 + (f" ({ctx.p('n_filas'):,} filas)" if ctx.p("n_filas") else "")
+                 + ". Se guardo en formato columnar al subirlo.")
+        if usadas:
+            ctx.nota(f"De las {len(disponibles)} columnas del archivo se leen {len(usadas)}: "
+                     f"son las unicas que este analisis usa. Leer las demas solo gastaria memoria.")
+            ctx.emitir("SAL = pd.read_parquet(RUTA_DATOS / ARCH, columns=COLS)",
+                       SAL=ctx.salida("datos"), ARCH=ctx.lit(self._ruta(ctx.params)),
+                       COLS=ctx.lit(usadas))
         else:
-            ctx.emitir("SAL = pd.read_csv(RUTA_DATOS / ARCH, sep=SEP, decimal=DEC, encoding=ENC)",
-                       SAL=ctx.salida("datos"), ARCH=ctx.lit(nombre), SEP=ctx.plit("separador"),
-                       DEC=ctx.plit("decimal"), ENC=ctx.plit("codificacion"))
+            ctx.emitir("SAL = pd.read_parquet(RUTA_DATOS / ARCH)",
+                       SAL=ctx.salida("datos"), ARCH=ctx.lit(self._ruta(ctx.params)))
+
+        if ctx.p("tope_filas"):
+            ctx.nota(f"ATENCION: solo se leen las primeras {ctx.p('tope_filas'):,} filas. "
+                     "Los resultados NO son los de la tabla completa.")
+            ctx.emitir("SAL = SAL.head(TOPE)", SAL=ctx.salida("datos"), TOPE=ctx.plit("tope_filas"))
         return ctx.fin()
 
 
@@ -206,6 +273,12 @@ class TratarFaltantes(EspecNodo):
         columnas: list[str] = CampoColumnas(default_factory=list)
 
     #: (con columnas elegidas, sin columnas elegidas) por metodo
+    def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
+        # Sin lista, trata TODAS las columnas.
+        if not params.columnas:  # type: ignore[attr-defined]
+            return None
+        return super().columnas_requeridas(params)
+
     PLANTILLAS = {
         "quitar_filas": ("SAL = ENT.dropna(subset=COLS)", "SAL = ENT.dropna()"),
         "media": ("SAL[COLS] = ENT[COLS].fillna(ENT[COLS].mean())", "SAL = ENT.fillna(ENT.mean(numeric_only=True))"),
@@ -246,3 +319,6 @@ class TratarFaltantes(EspecNodo):
         base = entradas.get("datos", Esquema())
         reporte = Esquema(columnas=[Columna(nombre="faltantes_antes", tipo="numerica")])
         return {"datos": base, "reporte": reporte}
+
+
+CargarCSV.Params.model_rebuild()

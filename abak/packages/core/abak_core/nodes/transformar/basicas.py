@@ -339,6 +339,11 @@ class Indicadoras(EspecNodo):
         base = entradas.get("datos", Esquema())
         return {"datos": base.con(quitar=list(params.columnas))}  # type: ignore[attr-defined]
 
+    def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
+        # Las indicadoras nuevas se llaman como los VALORES de la columna, que
+        # nadie nombró en el grafo: podar por nombre no sería seguro.
+        return None
+
 
 @registrar
 class Winsorizar(EspecNodo):

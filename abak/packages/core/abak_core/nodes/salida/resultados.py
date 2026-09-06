@@ -136,6 +136,12 @@ class Exportar(EspecNodo):
         nombre_archivo: str = Field(default="resultados")
         formato: Literal["csv", "xlsx"] = "csv"
 
+    def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
+        # Escribe la tabla COMPLETA. Si se podaran columnas aguas arriba, el
+        # archivo saldría incompleto sin que nadie se enterara, que es
+        # exactamente el tipo de fallo silencioso que hay que evitar.
+        return None
+
     def emit(self, ctx: Any) -> Any:
         ctx.importar("os")
         ctx.importar("Path", desde="pathlib")

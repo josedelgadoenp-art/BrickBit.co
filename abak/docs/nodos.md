@@ -81,15 +81,20 @@ Si vienes de otro sistema — **Stata**: `reshape long` · **R**: `tidyr::pivot_
 
 `datos.csv` · v1.0.0
 
-**Qué hace.** Lee un archivo que subiste y lo convierte en una tabla.
+**Qué hace.** Lee un archivo que subiste y lo convierte en una tabla. Al subirlo se guarda en formato columnar, que es lo que permite trabajar con archivos de millones de filas.
 
 **Cuándo usarlo.** Es casi siempre el primer paso de un analisis propio.
 
-**Cómo se lee el resultado.** Revisa en la pestana Datos que las columnas se hayan leido con el tipo correcto: una columna numerica leida como texto es la causa mas comun de errores mas adelante.
+**Cómo se lee el resultado.** Revisa en la pestana Datos que las columnas se hayan leido con el tipo correcto y cuantos faltantes trae cada una. Una columna numerica leida como texto es la causa mas comun de errores mas adelante.
+
+**Supuestos que impone:**
+
+- Los tipos se deducen de una muestra grande del archivo y luego se aplican a todo. Es a proposito: dejar que se deduzcan trozo por trozo produce columnas de tipo mixto que fallan raro y sin avisar.
 
 **Ten cuidado con:**
 
-- Si los numeros traen coma decimal, indicalo abajo o se leeran como texto.
+- Si los numeros traen coma decimal, indicalo al subir el archivo o se leeran como texto.
+- Abak lee del archivo SOLO las columnas que tu analisis usa. Si agregas un bloque que necesita otra columna, se lee tambien: no hay que volver a subir nada.
 
 | | Puerto | Tipo |
 |---|---|---|
@@ -99,12 +104,11 @@ Si vienes de otro sistema — **Stata**: `reshape long` · **R**: `tidyr::pivot_
 |---|---|
 | `archivo_id` | `—` |
 | `nombre` | `datos.csv` |
-| `separador` | `,` |
-| `decimal` | `.` |
-| `codificacion` | `utf-8` |
-| `columnas_fecha` | `—` |
+| `columnas` | `—` |
+| `n_filas` | `0` |
+| `tope_filas` | `None` |
 
-Si vienes de otro sistema — **Stata**: `import delimited` · **R**: `read.csv()` · **SPSS**: `Abrir datos`
+Si vienes de otro sistema — **Stata**: `import delimited` · **R**: `arrow::read_parquet()` · **SPSS**: `Abrir datos`
 
 ### Datos de ejemplo
 

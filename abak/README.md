@@ -102,6 +102,64 @@ El detalle está en [docs/nodos.md](docs/nodos.md), que se genera del registro.
 
 ---
 
+## Volúmenes grandes: lo que está medido
+
+Los números de abajo se midieron en este repositorio, con un CSV de **2 millones
+de filas × 40 columnas (553 MB)**, en un contenedor de 2 vCPU. No son
+estimaciones.
+
+| Paso | Tiempo | Pico de RAM |
+|---|---:|---:|
+| Subir y convertir a columnar (por trozos) | 49 s | 385 MB |
+| Análisis completo: leer → log → MCO robusto | 4.1 s | 770 MB |
+| Informe en PDF de ese análisis | 1 s | — |
+
+553 MB de CSV quedan en 318 MB de Parquet. Los coeficientes salieron idénticos
+a calcularlos a mano con pandas y statsmodels, hasta el último dígito que
+guarda el artefacto.
+
+Tres cosas hacen que eso funcione:
+
+**Se lee sólo lo que el análisis usa.** El compilador ya sabe qué columnas
+nombra cada bloque, así que el nodo de carga emite `columns=[...]` con esa
+lista. En ese archivo de 40 columnas, el análisis usaba 3: leer las otras 37
+sólo habría gastado memoria. Sale gratis, porque la información ya estaba en el
+grafo.
+
+La poda se apaga sola en cuanto **un** bloque puede tocar columnas que no
+nombró —«Descriptivos» sin lista resume todas las numéricas, «Exportar tabla»
+escribe la tabla completa—. Se prefiere gastar memoria a cambiar un resultado
+en silencio. Hay una prueba que corre el mismo análisis con y sin poda y exige
+que los coeficientes sean idénticos.
+
+**Los tipos se fijan antes de leer, no trozo por trozo.** Es un asunto de
+corrección, no de memoria: si `pandas` infiere por trozo, una columna que en
+las primeras 500 mil filas sólo trae enteros se lee `int64`, y cuando en la
+fila 800 mil aparece un decimal, ese trozo se lee `float64`. Queda una columna
+de tipo mixto que falla raro y sin avisar. Abak hace una pasada de muestreo,
+fija el tipo de cada columna y lee todo con ese tipo.
+
+**Los enteros se reducen; los flotantes no.** Un año o una edad caben en 16
+bits. Los `float64` **se quedan en 64 bits**: `float32` tiene ~7 dígitos
+significativos y una suma de un millón de valores acumula error visible. En un
+sistema que va a hacer econometría, cambiar precisión por memoria es un mal
+canje.
+
+### Dónde están los límites hoy
+
+- **La subida pasa por la API.** Un archivo de 2 GB tarda y ocupa el proceso
+  mientras llega. Para archivos así, lo correcto es subir directo al almacén de
+  objetos con una URL firmada y avisar a la API cuando terminó. Está anotado,
+  no construido.
+- **Excel se lee completo en memoria.** Es una limitación del formato, no del
+  código. El nodo lo dice al subir el archivo.
+- **Todo cabe en una máquina.** No hay ejecución distribuida. Para decenas de
+  millones de filas con modelos pesados, el siguiente paso es un motor
+  fuera-de-memoria (DuckDB o Polars con streaming) detrás de los mismos nodos;
+  el compilador no cambiaría.
+
+---
+
 ## Tres decisiones que vale la pena conocer
 
 ### El código exportado es el que se ejecutó
@@ -172,14 +230,30 @@ parámetros benignos y hostiles.
 ## Pruebas
 
 ```bash
-make pruebas          # 234 pruebas
+make pruebas          # 297 pruebas
 ```
 
 Cubren: pureza del núcleo, invariantes del registro (incluida la ayuda de cada
-herramienta), tipos de puerto, ciclos, poda, propagación de esquema, nombres de
-variable, huellas de caché, inyección de código, ejecución real de las siete
-familias de flujos, aislamiento de fallos y reproducibilidad del script
-exportado.
+herramienta), tipos de puerto, ciclos, poda de ramas muertas, propagación de
+esquema, nombres de variable, huellas de caché, inyección de código, ejecución
+real de las ocho familias de flujos, aislamiento de fallos y reproducibilidad
+del script exportado.
+
+Y, específicamente para lo que este sistema tiene que sostener:
+
+- **Precisión** (`test_numerico.py`): MCO contra la solución analítica y contra
+  (X'X)⁻¹X'y calculada aparte; la inversa de Leontief contra una matriz de 2×2
+  resuelta con lápiz; la identidad x = (I−A)⁻¹f; el multiplicador keynesiano
+  contra su fórmula; Moran contra patrones construidos con la respuesta puesta;
+  y que dos corridas con la misma semilla den lo mismo hasta el último dígito.
+- **Volumen** (`test_grandes.py`): que los tipos no se mezclen entre trozos, que
+  la conversión a columnar no mueva ni un valor, que la poda de columnas **no
+  cambie el resultado**, y que se apague sola cuando no es segura.
+- **Fuentes** (`test_fuentes.py`): el parseo de cada API con sus rarezas reales,
+  que el token no llegue nunca al código exportado, y que una clave hostil no
+  entre a una URL.
+- **Informe** (`test_informe.py`): que el PDF se genere igual cuando falta
+  Chrome, porque una dependencia opcional no puede tumbar el entregable.
 
 ---
 

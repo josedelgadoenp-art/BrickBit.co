@@ -17,7 +17,7 @@ from abak_core.runtime.ejecutor import Ejecutor
 from abak_core.nodes.fuentes.http import dir_fuentes
 from abak_core.runtime.exportar import archivos_del_programa
 
-from .celery_app import app
+from .celery_app import EAGER, app
 
 cargar_todos()
 
@@ -25,18 +25,24 @@ LIMITE_MEMORIA_GB = float(os.environ.get("ABAK_LIMITE_MEMORIA_GB", "0") or 0)
 
 
 def _limitar_memoria() -> None:
-    """Tope duro de memoria del proceso.
+    """Tope duro de memoria, SÓLO en un worker de verdad.
 
-    Un usuario puede pedir, sin mala intencion, una matriz de pesos de 200 mil
-    puntos y llevarse el contenedor por delante. Con el limite, el proceso
-    recibe MemoryError, el traductor de errores lo convierte en «el analisis no
-    cabe en memoria» y el resto de las ejecuciones siguen vivas.
+    Un usuario puede pedir sin mala intención una matriz de pesos de 200 mil
+    puntos y llevarse el contenedor por delante. Con el límite, el proceso
+    recibe MemoryError, el traductor lo convierte en «el análisis no cabe en
+    memoria» y las demás ejecuciones siguen vivas.
+
+    El detalle que importa: `RLIMIT_AS` aplica al PROCESO ENTERO, y en modo
+    eager ese proceso es el de la API. Ponerlo ahí no acota una ejecución:
+    tumba el servidor completo la primera vez que alguien sube un archivo
+    grande. Se comprobó midiendo, y por eso el límite sólo se pone cuando hay
+    un worker aparte que puede morir sin llevarse a nadie.
     """
-    if LIMITE_MEMORIA_GB <= 0:
+    if LIMITE_MEMORIA_GB <= 0 or EAGER:
         return
     tope = int(LIMITE_MEMORIA_GB * 1024**3)
     try:
-        suave, duro = resource.getrlimit(resource.RLIMIT_AS)
+        _suave, duro = resource.getrlimit(resource.RLIMIT_AS)
         resource.setrlimit(resource.RLIMIT_AS, (tope, duro if duro > 0 else tope))
     except (ValueError, OSError):
         pass  # en algunos entornos no se puede; no es motivo para no ejecutar
@@ -72,6 +78,12 @@ def ejecutar_grafo(self: Any, ejecucion_id: str, grafo_json: dict[str, Any],
     os.environ["ABAK_DATOS"] = str(dir_datos)
     os.environ["ABAK_SALIDA"] = str(ALMACEN.dir_salida(ejecucion_id))
 
+    # Antes de gastar minutos, se estima si va a caber. Es mucho mejor decirlo
+    # de entrada, con qué hacer al respecto, que morir a la mitad.
+    aviso_memoria = _revisar_tamano(programa)
+    if aviso_memoria:
+        ALMACEN.actualizar_ejecucion(ejecucion_id, aviso=aviso_memoria)
+
     emision = emitir(programa)
 
     ejecutor = Ejecutor(
@@ -106,6 +118,27 @@ def ejecutar_grafo(self: Any, ejecucion_id: str, grafo_json: dict[str, Any],
         },
     )
     return {"ok": resultado.ok, "ms": resultado.ms_total}
+
+
+def _revisar_tamano(programa) -> str | None:
+    """Estima la memoria de los archivos que el análisis va a leer."""
+    from abak_core.runtime.ingesta import revisar_memoria
+
+    for ins in programa.instrucciones:
+        columnas = getattr(ins.params, "columnas", None)
+        n_filas = getattr(ins.params, "n_filas", 0)
+        if not columnas or not n_filas:
+            continue
+        # Sólo las columnas que de verdad se van a leer.
+        proyeccion = programa.proyeccion
+        usadas = [
+            {"nombre": c.nombre, "tipo_arrow": getattr(c, "tipo_arrow", "double")}
+            for c in columnas
+            if proyeccion is None or c.nombre in proyeccion
+        ]
+        if (aviso := revisar_memoria(int(n_filas), usadas)):
+            return aviso
+    return None
 
 
 def _guardar_fuentes(origen: Path) -> None:

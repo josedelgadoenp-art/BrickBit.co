@@ -98,6 +98,12 @@ class Descriptivos(EspecNodo):
         columnas: list[str] = CampoColumnas(tipo="numerica", default_factory=list)
         por: str | None = CampoColumna(default=None)
 
+    def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
+        # Sin lista, resume TODAS las numéricas: no se puede podar nada.
+        if not params.columnas:  # type: ignore[attr-defined]
+            return None
+        return super().columnas_requeridas(params)
+
     def emit(self, ctx: Any) -> Any:
         ctx.usar_ayudante("descriptivos")
         if ctx.p("por"):

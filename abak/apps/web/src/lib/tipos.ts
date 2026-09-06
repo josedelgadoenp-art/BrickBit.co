@@ -101,6 +101,21 @@ export interface Esquema {
   n_filas: number | null;
 }
 
+/** Lo que devuelve la subida de un archivo, ya convertido a columnar. */
+export interface Subida {
+  archivo_id: string;
+  nombre: string;
+  n_filas: number;
+  n_columnas: number;
+  bytes_origen: number;
+  bytes_parquet: number;
+  compresion: number;
+  sha256: string;
+  columnas: { nombre: string; tipo_arrow: string; faltantes: number }[];
+  avisos: string[];
+  vista_previa: Record<string, unknown>[];
+}
+
 export interface Diagnostico {
   severidad: 'error' | 'aviso' | 'info';
   codigo: string;

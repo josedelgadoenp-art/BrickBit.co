@@ -128,6 +128,12 @@ class Almacen:
     def dir_datos(self, archivo_id: str) -> Path:
         return self.raiz / "subidas" / archivo_id
 
+    def dir_subidas(self) -> Path:
+        """Donde viven los archivos convertidos a Parquet."""
+        d = self.raiz / "subidas"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
     # -- caches y salidas -----------------------------------------------------
 
     def dir_cache(self) -> Path:

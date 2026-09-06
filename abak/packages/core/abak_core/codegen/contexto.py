@@ -104,6 +104,7 @@ class ContextoEmision:
         entradas: dict[str, str],
         salidas: dict[str, str],
         esquemas: dict[str, Any] | None = None,
+        proyeccion: set[str] | None = None,
     ) -> None:
         self.nodo_id = nodo_id
         self.etiqueta = etiqueta
@@ -111,6 +112,8 @@ class ContextoEmision:
         self._entradas = entradas
         self._salidas = salidas
         self.esquemas = esquemas or {}
+        #: Columnas que el grafo entero necesita, o None si no se puede podar.
+        self.proyeccion = proyeccion
         self.bloque = BloqueCodigo()
 
     # -- entradas y salidas ---------------------------------------------------
@@ -146,6 +149,19 @@ class ContextoEmision:
 
     def nombre_salida(self, puerto: str) -> str:
         return self._salidas[puerto]
+
+    def columnas_a_leer(self, disponibles: list[str]) -> list[str] | None:
+        """De las columnas del archivo, cuáles hacen falta de verdad.
+
+        Devuelve `None` cuando hay que leerlas todas: o porque algún nodo del
+        grafo puede tocar columnas que no nombró, o porque no se ahorra nada.
+        """
+        if self.proyeccion is None or not disponibles:
+            return None
+        usadas = [c for c in disponibles if c in self.proyeccion]
+        if not usadas or len(usadas) == len(disponibles):
+            return None
+        return usadas
 
     def esquema(self, puerto: str = "datos") -> Any:
         from ..graph.spec import Esquema

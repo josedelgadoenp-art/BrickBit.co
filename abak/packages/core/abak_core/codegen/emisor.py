@@ -59,6 +59,7 @@ def emitir(programa: Programa) -> Emision:
         ctx = ContextoEmision(
             nodo_id=ins.nodo_id, etiqueta=ins.etiqueta, params=ins.params,
             entradas=ins.entradas, salidas=ins.salidas, esquemas=ins.esquemas_entrada,
+            proyeccion=programa.proyeccion,
         )
         bloque: BloqueCodigo = spec().emit(ctx) or ctx.fin()
         for imp in bloque.imports:

@@ -239,6 +239,32 @@ class EspecNodo:
     #: el nodo lee archivos: el preludio define RUTA_DATOS y la exportacion arma un .zip
     necesita_datos: ClassVar[bool] = False
 
+    def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
+        """Qué columnas usa este nodo. `None` significa «cualquiera».
+
+        Sirve para leer del archivo SÓLO lo que el análisis necesita. En un CSV
+        de 200 columnas del que se usan 6, eso es 30 veces menos memoria, y sale
+        gratis: la información ya está en los parámetros.
+
+        Devolver `None` desactiva la poda para todo el grafo aguas arriba. Es lo
+        correcto para un nodo que puede tocar columnas que no nombró —por
+        ejemplo, «Descriptivos» sin lista, que resume todas las numéricas—:
+        podar ahí cambiaría el resultado en silencio, y eso es peor que gastar
+        memoria.
+        """
+        pedidas: set[str] = set()
+        for campo, esquema in self.esquema_params().get("properties", {}).items():
+            control = (esquema.get("abak") or {}).get("control")
+            if control not in ("columna", "columnas"):
+                continue
+            valor = getattr(params, campo, None)
+            if control == "columna":
+                if valor:
+                    pedidas.add(str(valor))
+            else:
+                pedidas.update(str(c) for c in (valor or []))
+        return pedidas
+
     def archivos(self, params: BaseModel) -> dict[str, str]:
         """{ruta dentro del zip: ruta real en disco}.
 

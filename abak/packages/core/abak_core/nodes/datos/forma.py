@@ -46,6 +46,11 @@ class Filtrar(EspecNodo):
         condiciones: list["Filtrar.Condicion"] = Field(default_factory=list)
         unir_con: Literal["y", "o"] = "y"
 
+    def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
+        # Las columnas van anidadas dentro de cada condición: la deducción
+        # genérica lee pistas de primer nivel y no las vería.
+        return {c.columna for c in params.condiciones if c.columna}  # type: ignore[attr-defined]
+
     def emit(self, ctx: Any) -> Any:
         ctx.importar("pandas", "pd")
         ent, sal = ctx.entrada("datos"), ctx.salida("datos")
@@ -103,6 +108,12 @@ class Seleccionar(EspecNodo):
         model_config = ConfigDict(extra="forbid")
         columnas: list[str] = CampoColumnas(default_factory=list)
         modo: Literal["conservar", "quitar"] = "conservar"
+
+    def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
+        # «Quitar» conserva todo lo demás: lo que se usa no está en la lista.
+        if params.modo == "quitar":  # type: ignore[attr-defined]
+            return None
+        return super().columnas_requeridas(params)
 
     def emit(self, ctx: Any) -> Any:
         ent, sal = ctx.entrada("datos"), ctx.salida("datos")
@@ -187,6 +198,12 @@ class Agrupar(EspecNodo):
         por: list[str] = CampoColumnas(default_factory=list)
         columnas: list[str] = CampoColumnas(default_factory=list)
         funcion: Literal["mean", "sum", "median", "min", "max", "std", "count"] = "mean"
+
+    def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
+        # Sin lista de columnas, agrupa TODAS las numéricas.
+        if not params.columnas:  # type: ignore[attr-defined]
+            return None
+        return super().columnas_requeridas(params)
 
     def emit(self, ctx: Any) -> Any:
         por, cols, fn = ctx.p("por"), ctx.p("columnas"), ctx.p("funcion")

@@ -86,6 +86,8 @@ class Instruccion:
 @dataclass
 class Programa:
     instrucciones: list[Instruccion] = field(default_factory=list)
+    #: Columnas que el análisis usa de verdad. `None` = no se puede podar.
+    proyeccion: set[str] | None = None
     titulo: str = "Analisis"
     semilla: int = 42
     huella_grafo: str = ""
@@ -497,5 +499,36 @@ def compilar(grafo: GrafoSpec, objetivo: str | None = None) -> Programa:
             esquemas_entrada=esquemas_entrada, huella=huella, notas=nodo.notas,
         ))
 
+    programa.proyeccion = _proyeccion(programa, especs, diag)
     programa.diagnosticos = diag
     return programa
+
+
+def _proyeccion(programa: Programa, especs: dict[str, type[EspecNodo]],
+                diag: list[Diagnostico]) -> set[str] | None:
+    """Las columnas que el grafo completo necesita.
+
+    Sirve para que los nodos de carga lean del archivo SÓLO eso. En un CSV de
+    200 columnas del que se usan 6, es 30 veces menos memoria, y no cuesta
+    nada: la información ya estaba en los parámetros.
+
+    Basta con que UN nodo pueda tocar columnas que no nombró para que la poda
+    deje de ser segura en todo el grafo. Se prefiere gastar memoria a cambiar
+    un resultado en silencio.
+    """
+    union: set[str] = set()
+    for ins in programa.instrucciones:
+        spec = especs.get(ins.nodo_id)
+        if spec is None:
+            continue
+        try:
+            pedidas = spec().columnas_requeridas(ins.params)
+        except Exception as exc:
+            diag.append(Diagnostico(
+                severidad="aviso", codigo="proyeccion_desconocida", nodo_id=ins.nodo_id,
+                mensaje=f"No se pudo saber qué columnas usa «{spec.titulo}»: se leerán todas. {exc}"))
+            return None
+        if pedidas is None:
+            return None
+        union |= pedidas
+    return union
