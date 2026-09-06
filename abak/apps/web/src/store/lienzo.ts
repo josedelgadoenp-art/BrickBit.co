@@ -21,7 +21,7 @@ import { create } from 'zustand';
 import { api, ErrorApi } from '@/lib/api';
 import type {
   Catalogo, DescriptorNodo, Diagnostico, Ejecucion, Esquema, Glosario, Grafo, Indicador,
-  ResultadoNodo,
+  Puerto, ResultadoNodo,
 } from '@/lib/tipos';
 
 /** «R² ajustada» y «r2_ajustada» tienen que encontrar la misma ficha. */
@@ -177,13 +177,37 @@ export const usarLienzo = create<Estado>((set, get) => ({
     for (const [clave, campo] of Object.entries(d.params_schema.properties ?? {})) {
       if (campo.default !== undefined) params[clave] = campo.default;
     }
+
+    // Se busca de dónde colgarlo ANTES de colocarlo, para ponerlo a la derecha
+    // de su fuente y que el análisis se lea de izquierda a derecha.
+    const enlace = posicion ? null : buscarFuente(get(), d);
+    const origen = enlace ? get().nodos.find((n) => n.id === enlace.nodoId) : undefined;
+
     const nodo: NodoLienzo = {
       id: nuevoId(),
       type: 'abak',
-      position: posicion ?? { x: 120 + get().nodos.length * 40, y: 80 + get().nodos.length * 70 },
+      position: posicion
+        ?? (origen
+          ? { x: origen.position.x + 330, y: origen.position.y }
+          : { x: 120 + get().nodos.length * 40, y: 80 + get().nodos.length * 70 }),
       data: { op, etiqueta: d.titulo, params },
     };
-    set((s) => ({ nodos: [...s.nodos, nodo], seleccionado: nodo.id }));
+
+    set((s) => ({
+      nodos: [...s.nodos, nodo],
+      // Conectarlo solo. Antes el bloque caía suelto y había que arrastrar un
+      // hilo entre dos puntos de seis píxeles para que sirviera de algo; quien
+      // no descubría ese gesto veía «Ejecutar» apagado y se quedaba sin saber
+      // si la herramienta estaba rota o si él no sabía usarla.
+      aristas: enlace
+        ? addEdge({
+            source: enlace.nodoId, sourceHandle: enlace.salida,
+            target: nodo.id, targetHandle: enlace.entrada,
+            type: 'smoothstep',
+          }, s.aristas)
+        : s.aristas,
+      seleccionado: nodo.id,
+    }));
     get().validar();
   },
 
@@ -381,3 +405,58 @@ export const usarLienzo = create<Estado>((set, get) => ({
   diagnosticosDe: (nodoId) => get().diagnosticos.filter((d) => d.nodo_id === nodoId),
   resultadoDe: (nodoId) => get().ejecucion?.nodos?.[nodoId],
 }));
+
+
+/**
+ * ¿Un dato de tipo `origen` sirve donde se pide `destino`?
+ *
+ * Los tipos forman una jerarquía: `serie`, `panel` y `geotabla` son casos
+ * particulares de `tabla`, así que encajan donde se pide una tabla. El catálogo
+ * trae esa jerarquía en `tipos[x].padre` y aquí se sube por ella.
+ */
+function aceptaTipo(
+  origen: string,
+  destino: string,
+  tipos: Record<string, { padre: string | null }>,
+): boolean {
+  if (destino === 'cualquiera' || origen === destino) return true;
+  let actual: string | null = origen;
+  const vistos = new Set<string>();
+  while (actual && !vistos.has(actual)) {
+    if (actual === destino) return true;
+    vistos.add(actual);
+    actual = tipos[actual]?.padre ?? null;
+  }
+  return false;
+}
+
+/**
+ * De dónde colgar un bloque recién agregado.
+ *
+ * Se prefiere el bloque seleccionado —es lo que la persona estaba mirando— y
+ * si no encaja, el más reciente que sí. Sólo se ocupa la PRIMERA entrada
+ * obligatoria: un nodo que junta dos tablas se conecta a una y deja la otra a
+ * la vista, que es la decisión que sí hay que tomar a mano.
+ */
+function buscarFuente(
+  estado: Estado,
+  destino: DescriptorNodo,
+): { nodoId: string; salida: string; entrada: string } | null {
+  const entrada = destino.entradas.find((e) => e.requerido) ?? destino.entradas[0];
+  if (!entrada) return null;
+  const tipos = estado.catalogo?.tipos ?? {};
+
+  const candidatos = [
+    ...(estado.seleccionado ? [estado.seleccionado] : []),
+    ...[...estado.nodos].reverse().map((n) => n.id),
+  ];
+  for (const nodoId of candidatos) {
+    const nodo = estado.nodos.find((n: NodoLienzo) => n.id === nodoId);
+    if (!nodo) continue;
+    const fuente = estado.catalogo?.nodos.find((x: DescriptorNodo) => x.op === nodo.data.op);
+    if (!fuente) continue;
+    const salida = fuente.salidas.find((sa: Puerto) => aceptaTipo(sa.tipo, entrada.tipo, tipos));
+    if (salida) return { nodoId, salida: salida.nombre, entrada: entrada.nombre };
+  }
+  return null;
+}

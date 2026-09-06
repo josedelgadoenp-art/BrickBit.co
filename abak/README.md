@@ -165,6 +165,20 @@ El detalle está en [docs/nodos.md](docs/nodos.md), que se genera del registro.
 
 ## Cargar tus propios datos
 
+Un análisis se arma encadenando bloques. Al hacer clic en una herramienta de la
+izquierda, **se conecta sola** con el bloque que tenías seleccionado si los
+tipos encajan, y se coloca a su derecha. No hay que arrastrar hilos entre
+puntos de seis píxeles: ese gesto era el que dejaba a la gente con «Ejecutar»
+apagado, sin saber si la herramienta estaba rota o si les faltaba algo.
+
+Y **Ejecutar nunca se queda muerto**: si falta configurar algo, el clic te
+lleva al bloque que lo pide y dice qué le falta.
+
+Una regresión sobre tu propio archivo son diez acciones, contadas en una prueba
+de navegador (`recorrido3`): buscar «cargar», clic, subir el archivo, buscar
+«MCO», clic, elegir la columna a explicar, marcar tres explicativas, Ejecutar.
+
+
 1. En el buscador de la izquierda escribe **cargar** y haz clic en
    **«Cargar archivo (CSV o Excel)»**. Cae un bloque en el lienzo.
 2. En el panel derecho, **«Subir archivo»** y eliges el tuyo.

@@ -11,13 +11,32 @@ export default function BarraSuperior() {
   const {
     titulo, ponerTitulo, semilla, ponerSemilla, ejecutar, cancelar, ejecutando,
     ejecucion, validando, diagnosticos, nodos, limpiar, cargarGrafo, aGrafo, errorEjecucion,
+    seleccionar, irA,
   } = usarLienzo();
   const [abiertoEjemplos, setAbiertoEjemplos] = useState(false);
   const [bajando, setBajando] = useState<'zip' | 'pdf' | null>(null);
   const [problema, setProblema] = useState<string | null>(null);
 
   const errores = diagnosticos.filter((d) => d.severidad === 'error').length;
-  const puedeEjecutar = nodos.length > 0 && errores === 0 && !ejecutando;
+  // El botón NO se apaga por tener problemas. Un botón muerto con un tooltip
+  // es la peor señal posible: la persona hace clic, no pasa nada, y no sabe si
+  // la herramienta está rota o si le falta hacer algo. Con problemas, el clic
+  // lleva al bloque que los tiene y dice qué le falta.
+  const puedeEjecutar = nodos.length > 0 && !ejecutando;
+  const primerProblema = diagnosticos.find((d) => d.severidad === 'error');
+
+  function alEjecutar() {
+    if (errores > 0 && primerProblema) {
+      if (primerProblema.nodo_id) seleccionar(primerProblema.nodo_id);
+      irA('lienzo');
+      setProblema(primerProblema.sugerencia
+        ? `${primerProblema.mensaje} — ${primerProblema.sugerencia}`
+        : primerProblema.mensaje);
+      return;
+    }
+    setProblema(null);
+    ejecutar();
+  }
 
   async function exportar() {
     setBajando('zip');
@@ -122,9 +141,9 @@ export default function BarraSuperior() {
         </button>
       ) : (
         <button
-          onClick={() => ejecutar()}
+          onClick={alEjecutar}
           disabled={!puedeEjecutar}
-          title={errores ? 'Corrige los problemas marcados en rojo' : 'Ejecuta el análisis completo'}
+          title={errores ? 'Te lleva al bloque que falta configurar' : 'Ejecuta el análisis completo'}
           className="rounded bg-salvia px-3 py-1 text-[12px] font-medium text-tierra hover:bg-salviaProfunda disabled:cursor-not-allowed disabled:opacity-40"
         >
           Ejecutar

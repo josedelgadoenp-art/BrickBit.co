@@ -83,7 +83,17 @@ export default function Formulario({ nodoId, descriptor, params }: Props) {
       }
     }
     const todas = [...extra, ...esquema.columnas];
-    return tipoPedido ? todas.filter((c) => c.tipo === tipoPedido) : todas;
+    const porTipo = tipoPedido ? todas.filter((c) => c.tipo === tipoPedido) : todas;
+
+    // La columna explicada NO se ofrece como explicativa. Ponerla de los dos
+    // lados da un ajuste perfecto —R² = 1, coeficiente 1, todo lo demás cero—
+    // que parece un resultado buenísimo y no dice absolutamente nada. Es el
+    // error clásico de quien empieza, y aquí simplemente no se puede cometer.
+    const explicada = params['y'];
+    if (typeof explicada === 'string' && explicada && campo.abak?.control === 'columnas') {
+      return porTipo.filter((c) => c.nombre !== explicada);
+    }
+    return porTipo;
   }
 
   return (
