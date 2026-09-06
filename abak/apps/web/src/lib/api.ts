@@ -75,4 +75,52 @@ export const api = {
 
   /** La exportación es un .zip: se descarga, no se parsea. */
   urlExportar: () => `${BASE}/grafos/exportar`,
+
+  /** El informe en PDF de una ejecución, completo o de un solo bloque. */
+  urlInforme: (ejecucionId: string, opciones?: { nodo?: string; codigo?: boolean; metodologia?: boolean }) => {
+    const q = new URLSearchParams();
+    if (opciones?.nodo) q.set('nodo', opciones.nodo);
+    if (opciones?.codigo === false) q.set('codigo', 'false');
+    if (opciones?.metodologia === false) q.set('metodologia', 'false');
+    const cola = q.toString();
+    return `${BASE}/ejecuciones/${ejecucionId}/informe${cola ? `?${cola}` : ''}`;
+  },
 };
+
+/**
+ * Descarga un archivo que devuelve la API.
+ *
+ * Se hace con fetch y no con un `<a href>` porque así se puede distinguir un
+ * error del servidor de una descarga vacía: con un enlace directo, un 409
+ * termina en una pestaña con un JSON de error, que no le dice nada a nadie.
+ * El nombre lo pone el servidor en Content-Disposition.
+ */
+export async function descargar(
+  url: string,
+  opciones?: { metodo?: 'GET' | 'POST'; cuerpo?: unknown; nombrePorOmision?: string },
+): Promise<void> {
+  const respuesta = await fetch(url, {
+    method: opciones?.metodo ?? 'GET',
+    headers: opciones?.cuerpo ? { 'Content-Type': 'application/json' } : undefined,
+    body: opciones?.cuerpo ? JSON.stringify(opciones.cuerpo) : undefined,
+  });
+  if (!respuesta.ok) {
+    let detalle: unknown;
+    try { detalle = await respuesta.json(); } catch { detalle = null; }
+    throw new ErrorApi(respuesta.status, detalle);
+  }
+
+  const cabecera = respuesta.headers.get('content-disposition') ?? '';
+  const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(cabecera)?.[1];
+  const simple = /filename="([^"]+)"/i.exec(cabecera)?.[1];
+  const nombre = utf8 ? decodeURIComponent(utf8) : simple ?? opciones?.nombrePorOmision ?? 'abak';
+
+  const objeto = URL.createObjectURL(await respuesta.blob());
+  const enlace = document.createElement('a');
+  enlace.href = objeto;
+  enlace.download = nombre;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  URL.revokeObjectURL(objeto);
+}

@@ -10,6 +10,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
 
+from ..descargas import cabecera_descarga
+
 router = APIRouter(prefix="/grafos", tags=["grafos"])
 
 
@@ -77,12 +79,8 @@ def exportar(peticion: PeticionGrafo) -> Response:
     programa = _compilar(peticion)
     if programa.hay_errores:
         raise HTTPException(400, "El analisis todavia tiene errores.")
-    contenido = paquete(programa)
-    nombre = (programa.titulo or "analisis").lower().replace(" ", "-")[:60]
-    return Response(
-        content=contenido, media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{nombre}.zip"'},
-    )
+    return Response(content=paquete(programa), media_type="application/zip",
+                    headers=cabecera_descarga(programa.titulo, ".zip"))
 
 
 @router.post("")

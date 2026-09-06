@@ -4,9 +4,16 @@ FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1
 
+# Chromium es para kaleido: es lo que convierte una gráfica de Plotly en imagen
+# para el informe en PDF. Pesa ~300 MB. Si se quita, el informe se genera igual
+# —con sus tablas y su metodología— y dice en el lugar de cada figura por qué
+# falta. Las tipografías DejaVu son las que le dan acentos y «·» al PDF.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends build-essential libgomp1 \
+ && apt-get install -y --no-install-recommends \
+      build-essential libgomp1 chromium fonts-dejavu-core \
  && rm -rf /var/lib/apt/lists/*
+
+ENV BROWSER_PATH=/usr/bin/chromium
 
 WORKDIR /app
 COPY packages/core /app/packages/core

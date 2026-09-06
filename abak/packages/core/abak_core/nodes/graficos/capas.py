@@ -17,6 +17,37 @@ from ...graph.spec import Esquema
 from ...registry.base import Ayuda, CampoColumna, EspecNodo, Puerto, registrar
 
 
+def _resumen_pila(pila: Any, titulo: str) -> dict[str, Any]:
+    """Ficha de la pila de capas, no los datos que lleva dentro.
+
+    El valor que viaja entre nodos de grafico es un diccionario con el
+    DataFrame completo adentro. Resumirlo con el resumen generico convertia
+    esa tabla en miles de caracteres de texto, que acababan en el panel de
+    resultados y en el PDF sin servirle a nadie.
+    """
+    if not isinstance(pila, dict):
+        return {}
+    mapeo = pila.get("mapeo") or {}
+    datos = pila.get("datos")
+    ficha: dict[str, Any] = {}
+    for etiqueta, clave in [("eje horizontal", "x"), ("eje vertical", "y"),
+                            ("una serie por", "color"), ("tamano por", "tamano")]:
+        if mapeo.get(clave):
+            ficha[etiqueta] = mapeo[clave]
+    capas = [c.get("tipo") for c in (pila.get("capas") or [])]
+    ficha["capas apiladas"] = ", ".join(capas) if capas else "ninguna todavia"
+    if pila.get("facetas"):
+        ficha["facetas por"] = pila["facetas"].get("por")
+    if datos is not None:
+        try:
+            ficha["filas"] = len(datos)
+        except TypeError:
+            pass
+    ficha["falta"] = ("conecta un nodo «Dibujar» para verlo"
+                      if capas else "agrega al menos una capa (puntos, linea, barras)")
+    return {"grafico": {"tipo": "detalle", "titulo": titulo, "datos": ficha}}
+
+
 class _Capa(EspecNodo):
     """Base de las capas: entra un grafico, sale el mismo grafico con una capa mas."""
 
@@ -29,6 +60,9 @@ class _Capa(EspecNodo):
 
     def esquema_salida(self, entradas: dict[str, Esquema], params: BaseModel) -> dict[str, Esquema]:
         return {}
+
+    def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
+        return _resumen_pila(salidas.get("grafico"), self.titulo)
 
 
 @registrar
@@ -71,6 +105,9 @@ class Lienzo(EspecNodo):
 
     def esquema_salida(self, entradas: dict[str, Esquema], params: BaseModel) -> dict[str, Esquema]:
         return {}
+
+    def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
+        return _resumen_pila(salidas.get("grafico"), "Lienzo")
 
 
 @registrar

@@ -29,7 +29,10 @@ def _limpio(v: Any) -> Any:
             pass
     if hasattr(v, "isoformat"):
         return v.isoformat()
-    return str(v)
+    # Un objeto grande (un DataFrame, un modelo) convertido a texto son miles de
+    # caracteres que no le sirven a nadie y que ensucian la interfaz y el PDF.
+    texto = str(v)
+    return texto if len(texto) <= 240 else texto[:237] + "..."
 
 
 def tabla_a_json(df: Any, *, tope: int = TOPE_FILAS, titulo: str | None = None,

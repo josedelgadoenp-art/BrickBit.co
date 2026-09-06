@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { api, descargar, ErrorApi } from '@/lib/api';
 import { EJEMPLOS } from '@/lib/ejemplos';
 import { duracion } from '@/lib/formato';
 import { usarLienzo } from '@/store/lienzo';
@@ -12,24 +13,35 @@ export default function BarraSuperior() {
     ejecucion, validando, diagnosticos, nodos, limpiar, cargarGrafo, aGrafo, errorEjecucion,
   } = usarLienzo();
   const [abiertoEjemplos, setAbiertoEjemplos] = useState(false);
+  const [bajando, setBajando] = useState<'zip' | 'pdf' | null>(null);
+  const [problema, setProblema] = useState<string | null>(null);
 
   const errores = diagnosticos.filter((d) => d.severidad === 'error').length;
   const puedeEjecutar = nodos.length > 0 && errores === 0 && !ejecutando;
 
   async function exportar() {
-    const r = await fetch('/api/v1/grafos/exportar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ grafo: aGrafo() }),
-    });
-    if (!r.ok) return;
-    const blob = await r.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${titulo.toLowerCase().replace(/\s+/g, '-').slice(0, 60)}.zip`;
-    a.click();
-    URL.revokeObjectURL(url);
+    setBajando('zip');
+    setProblema(null);
+    try {
+      await descargar(api.urlExportar(), { metodo: 'POST', cuerpo: { grafo: aGrafo() } });
+    } catch (e) {
+      setProblema(e instanceof ErrorApi ? e.mensaje : 'No se pudo exportar.');
+    } finally {
+      setBajando(null);
+    }
+  }
+
+  async function informePdf() {
+    if (!ejecucion) return;
+    setBajando('pdf');
+    setProblema(null);
+    try {
+      await descargar(api.urlInforme(ejecucion.id));
+    } catch (e) {
+      setProblema(e instanceof ErrorApi ? e.mensaje : 'No se pudo generar el informe.');
+    } finally {
+      setBajando(null);
+    }
   }
 
   return (
@@ -90,10 +102,18 @@ export default function BarraSuperior() {
       <button onClick={limpiar} className="rounded border border-borde px-2.5 py-1 text-[12px] text-tenue hover:text-crema">
         Vaciar
       </button>
-      <button onClick={exportar} disabled={!nodos.length}
+      <button onClick={exportar} disabled={!nodos.length || bajando !== null}
               title="Descarga un .zip con el script de Python, sus datos y la nota metodológica"
               className="rounded border border-borde px-2.5 py-1 text-[12px] text-tenue hover:text-crema disabled:opacity-40">
-        Exportar
+        {bajando === 'zip' ? 'Preparando…' : 'Exportar .zip'}
+      </button>
+      <button onClick={informePdf}
+              disabled={!ejecucion || ejecucion.estado !== 'listo' || bajando !== null}
+              title={ejecucion?.estado === 'listo'
+                ? 'Informe en PDF con portada, resultados, gráficas, metodología y el código'
+                : 'Ejecuta el análisis para poder generar el informe'}
+              className="rounded border border-borde px-2.5 py-1 text-[12px] text-tenue hover:text-crema disabled:opacity-40">
+        {bajando === 'pdf' ? 'Generando…' : 'Informe PDF'}
       </button>
 
       {ejecutando ? (
@@ -114,7 +134,9 @@ export default function BarraSuperior() {
       {ejecucion?.ms_total != null && !ejecutando && (
         <span className="text-[11px] text-tenue">{duracion(ejecucion.ms_total)}</span>
       )}
-      {errorEjecucion && <span className="text-[11px] text-arcilla">{errorEjecucion}</span>}
+      {(errorEjecucion || problema) && (
+        <span className="text-[11px] text-arcilla">{errorEjecucion ?? problema}</span>
+      )}
     </header>
   );
 }

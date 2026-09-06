@@ -1,5 +1,6 @@
 'use client';
 
+import BotonPdf from '@/components/ui/BotonPdf';
 import Grafica from '@/components/ui/Grafica';
 import Tabla from '@/components/ui/Tabla';
 import TablaModelo from '@/components/ui/TablaModelo';
@@ -59,6 +60,14 @@ export default function PanelResultados() {
   return (
     <div className="h-full overflow-y-auto p-4">
       <div className="mx-auto max-w-5xl space-y-6">
+        <div className="flex items-center gap-2 border-b border-borde pb-3">
+          <span className="text-[12px] text-tenue">
+            {ids.length} paso{ids.length === 1 ? '' : 's'} con resultado
+          </span>
+          <div className="ml-auto">
+            <BotonPdf completo etiqueta="Informe completo en PDF" />
+          </div>
+        </div>
         {ids.map((id) => {
           const r = ejecucion.nodos[id];
           if (!r) return null;
@@ -72,6 +81,9 @@ export default function PanelResultados() {
                   {r.etiqueta ?? id}
                 </button>
                 {r.ms !== undefined && <span className="text-[11px] text-tenue">{r.ms} ms</span>}
+                <div className="ml-auto">
+                  <BotonPdf nodo={id} />
+                </div>
               </div>
               {r.error && (
                 <div className="rounded border border-terracota/40 bg-terracota/8 p-3">

@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from abak_core import GrafoSpec, compilar
 from abak_core.runtime.almacen import ALMACEN
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from abak_worker.celery_app import EAGER
 from abak_worker.tareas import ejecutar_grafo
+
+from ..descargas import cabecera_descarga
 
 router = APIRouter(prefix="/ejecuciones", tags=["ejecuciones"])
 
@@ -45,6 +48,48 @@ def leer(ejecucion_id: str) -> dict:
         raise HTTPException(404, "No existe esa ejecucion.")
     doc.pop("grafo", None)   # la interfaz ya lo tiene; no hace falta devolverlo
     return doc
+
+
+@router.get("/{ejecucion_id}/informe")
+def informe(ejecucion_id: str,
+            nodo: str | None = Query(default=None, description="Sólo los resultados de ese bloque"),
+            codigo: bool = Query(default=True, description="Incluir el apéndice con el código"),
+            metodologia: bool = Query(default=True)) -> Response:
+    """El informe en PDF, armado con los MISMOS artefactos que ve la interfaz.
+
+    No se recalcula nada: un informe que vuelve a correr el análisis es un
+    informe que puede contradecir a la pantalla.
+    """
+    from abak_core import GrafoSpec, a_texto, compilar, emitir
+    from abak_core.runtime.informe import ErrorInforme, informe_pdf
+    from abak_core.runtime.metodologia import nota_metodologica
+
+    doc = ALMACEN.leer_ejecucion(ejecucion_id)
+    if doc is None:
+        raise HTTPException(404, "No existe esa ejecución.")
+    if not doc.get("nodos"):
+        raise HTTPException(409, "Esa ejecución todavía no tiene resultados.")
+
+    grafo = GrafoSpec.model_validate(doc["grafo"])
+    programa = compilar(grafo)
+
+    try:
+        pdf = informe_pdf(
+            titulo=grafo.titulo,
+            huella=programa.huella_grafo,
+            semilla=grafo.semilla,
+            nodos=doc["nodos"],
+            orden=programa.orden,
+            metodologia=nota_metodologica(programa) if metodologia else None,
+            codigo=a_texto(emitir(programa)) if codigo else None,
+            solo_nodo=nodo,
+        )
+    except ErrorInforme as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+    sufijo = f"-{nodo}.pdf" if nodo else ".pdf"
+    return Response(content=pdf, media_type="application/pdf",
+                    headers=cabecera_descarga(grafo.titulo, sufijo, "informe"))
 
 
 @router.post("/{ejecucion_id}/cancelar")
