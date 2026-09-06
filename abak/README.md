@@ -61,6 +61,24 @@ solo. Para cerrarlo todo, `detener.ps1` o cierra las dos ventanas.
 una compilación ya hecha, y después de un `git pull` estaría enseñando la
 versión vieja sin avisar.
 
+### Desde el celular, en tu propia red
+
+`Iniciar Abak en red.bat` (o `.\iniciar.ps1 -Red`) deja la interfaz escuchando
+en toda la red local y te dice la dirección — algo como `http://192.168.1.42:3000`.
+La primera vez hay que correr `Permitir Abak en la red.bat`, que abre el puerto
+en el Firewall **sólo para redes privadas** y pide permisos de administrador.
+
+Se expone **un solo puerto, el 3000**. El API se queda escuchando nada más en
+`127.0.0.1`: la interfaz le habla desde la misma máquina, así que el celular
+nunca necesita alcanzarlo. Verificado: por la IP de red, el 3000 responde 200 y
+el 8000 rechaza la conexión.
+
+Aun así, esto **no es una puerta con llave**: quien esté en tu red y llegue al
+puerto 3000 puede ejecutar código en tu computadora, porque eso es exactamente
+lo que hace Abak. En tu casa es tu gente; en el wifi de un café es cualquiera.
+Por eso el modo red es opcional y no el predeterminado, y por eso el lanzador
+se detiene a preguntar cuando Windows tiene la red marcada como pública.
+
 ### Windows a mano
 
 Si prefieres los comandos sueltos, desde PowerShell en la carpeta `abak`:

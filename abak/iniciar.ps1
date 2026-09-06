@@ -11,6 +11,12 @@
     la aplicación es una sola ruta, compila una vez y ya.
 #>
 
+param(
+    # Con -Red, la interfaz escucha en toda la red local y puedes entrar desde
+    # el celular o la laptop. Sin el parametro, solo responde en esta maquina.
+    [switch]$Red
+)
+
 $ErrorActionPreference = "Stop"
 $raiz = $PSScriptRoot
 
@@ -31,6 +37,26 @@ function Responde([int]$puerto) {
     try   { $cliente.Connect("127.0.0.1", $puerto); $cliente.Close(); return $true }
     catch { return $false }
     finally { $cliente.Dispose() }
+}
+
+# La IP con la que te ven los demas aparatos de tu casa.
+function IPLocal {
+    $ip = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+        Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } |
+        Sort-Object -Property SkipAsSource, InterfaceMetric |
+        Select-Object -First 1
+    if ($ip) { return $ip.IPAddress }
+    return $null
+}
+
+# Windows sabe si estas en tu casa o en el wifi de un cafe. Es la diferencia
+# entre abrirle Abak a tu celular y abrirselo a desconocidos: Abak EJECUTA
+# codigo, asi que quien alcance el puerto puede correr lo que quiera en esta
+# maquina. En una red publica se pregunta antes; no se asume.
+function RedesPublicas {
+    $perfiles = Get-NetConnectionProfile -ErrorAction SilentlyContinue |
+        Where-Object { $_.NetworkCategory -eq "Public" }
+    return @($perfiles)
 }
 
 Escribir ""
@@ -57,11 +83,41 @@ if (Responde 8000) {
         -WorkingDirectory $raiz -WindowStyle Minimized
 }
 
+if ($Red) {
+    $publicas = RedesPublicas
+    if ($publicas.Count -gt 0) {
+        $nombres = ($publicas | ForEach-Object { $_.Name }) -join ", "
+        Escribir ""
+        Escribir "  CUIDADO: Windows tiene esta red marcada como PUBLICA ($nombres)." "Yellow"
+        Escribir "  Abak ejecuta codigo Python. Quien alcance el puerto 3000 puede" "Yellow"
+        Escribir "  correr lo que quiera en esta computadora. En el wifi de un cafe," "Yellow"
+        Escribir "  un hotel o una oficina ajena, eso es cualquiera." "Yellow"
+        Escribir ""
+        $r = Read-Host "  Escribe SI (mayusculas) si aun asi quieres abrirlo en esta red"
+        if ($r -cne "SI") {
+            Escribir ""
+            Escribir "  Cancelado. Arranca sin -Red para usarlo solo en esta maquina." "Green"
+            Escribir ""
+            exit 0
+        }
+    }
+}
+
 if (Responde 3000) {
     Escribir "  Interfaz ya estaba corriendo" "DarkGray"
 } else {
-    Escribir "  Interfaz arrancando en :3000"
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "npm run dev" `
+    if ($Red) {
+        Escribir "  Interfaz arrancando en :3000 (abierta a la red local)"
+        # -H 0.0.0.0 hace que escuche en todas las interfaces, no solo en
+        # localhost. El API se queda en 127.0.0.1 a proposito: el navegador
+        # del celular solo habla con el 3000, y Next reenvia al API desde
+        # ESTA maquina. Un puerto expuesto en vez de dos.
+        $orden = "npm run dev -- -H 0.0.0.0"
+    } else {
+        Escribir "  Interfaz arrancando en :3000"
+        $orden = "npm run dev"
+    }
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $orden `
         -WorkingDirectory $web -WindowStyle Minimized
 }
 
@@ -92,6 +148,19 @@ Start-Process "http://localhost:3000"
 
 Escribir ""
 Escribir "  Listo: http://localhost:3000" "Green"
+
+if ($Red) {
+    $ip = IPLocal
+    if ($ip) {
+        Escribir "  Desde el celular o la laptop: http://${ip}:3000" "Green"
+        Escribir ""
+        Escribir "  Si no abre desde el otro aparato, falta el permiso del" "DarkGray"
+        Escribir "  Firewall: corre una vez  .\permitir-en-red.ps1  (pide admin)." "DarkGray"
+    } else {
+        Escribir "  No pude detectar la IP de esta maquina en la red." "Yellow"
+    }
+}
+
 Escribir ""
 Escribir "  Para cerrarlo todo:  .\detener.ps1" "DarkGray"
 Escribir "  (o cierra las dos ventanas minimizadas)" "DarkGray"
