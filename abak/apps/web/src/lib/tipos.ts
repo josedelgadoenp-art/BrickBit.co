@@ -244,3 +244,13 @@ export interface ResumenEspecificaciones {
   desde?: number;
   variables: VariableEspecificada[];
 }
+
+
+/** Lo que devuelve el asistente: un grafo ya validado, más su razonamiento. */
+export interface RespuestaAsistente {
+  grafo: Grafo;
+  explicacion: string;
+  advertencias: string[];
+  diagnosticos: Diagnostico[];
+  uso?: { entrada: number; salida: number; cache_leido: number };
+}

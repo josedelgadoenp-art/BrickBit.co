@@ -7,6 +7,7 @@ import '@xyflow/react/dist/style.css';
 import { useCallback, useMemo, useRef } from 'react';
 
 import NodoAbak from '@/components/canvas/NodoAbak';
+import Asistente from '@/components/panels/Asistente';
 import { usarLienzo } from '@/store/lienzo';
 
 function LienzoInterno() {
@@ -85,6 +86,7 @@ export default function Lienzo() {
     <ReactFlowProvider>
       <div className="relative h-full w-full">
         <LienzoInterno />
+        <Asistente />
       </div>
     </ReactFlowProvider>
   );

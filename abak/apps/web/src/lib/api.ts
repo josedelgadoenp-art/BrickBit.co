@@ -1,7 +1,7 @@
 /** Cliente de la API. Todo pasa por /api gracias al reescrito de Next. */
 
 import type {
-  ResumenEspecificaciones,
+  RespuestaAsistente, ResumenEspecificaciones,
   Catalogo, Ejecucion, Esquema, Glosario, Grafo, RespuestaCodigo, RespuestaValidacion,
 } from './tipos';
 
@@ -26,9 +26,26 @@ export class ErrorApi extends Error {
   }
   /** Mensaje en español listo para enseñar, sin códigos de estado crudos. */
   get mensaje(): string {
-    const d = this.detalle as { detail?: { mensaje?: string } | string; detalle?: string };
+    const d = this.detalle as {
+      detail?: { mensaje?: string } | string | { msg?: string; loc?: unknown[] }[];
+      detalle?: string;
+    };
     if (typeof d?.detail === 'string') return d.detail;
-    if (d?.detail?.mensaje) return d.detail.mensaje;
+    // FastAPI devuelve una LISTA cuando el cuerpo no valida. Sin esta rama, un
+    // error de validación se veía como «La API respondió 422», que no le dice
+    // nada a nadie y esconde el problema real.
+    if (Array.isArray(d?.detail)) {
+      const partes = d.detail
+        .map((x) => {
+          const campo = Array.isArray(x?.loc) ? x.loc.filter((v) => v !== 'body').join('.') : '';
+          return campo ? `${campo}: ${x?.msg ?? ''}` : (x?.msg ?? '');
+        })
+        .filter(Boolean);
+      if (partes.length) return `La petición no era válida — ${partes.join('; ')}`;
+    }
+    if (typeof d?.detail === 'object' && d.detail && 'mensaje' in d.detail && d.detail.mensaje) {
+      return d.detail.mensaje;
+    }
     if (d?.detalle) return d.detalle;
     return this.estado === 0 ? 'No se pudo contactar al servidor.' : this.message;
   }
@@ -92,6 +109,16 @@ export const api = {
   especificaciones: (resultado: string, nodo?: string) =>
     pedir<ResumenEspecificaciones>(
       `/especificaciones/${encodeURIComponent(resultado)}` + (nodo ? `?nodo=${encodeURIComponent(nodo)}` : '')),
+  asistenteDisponible: () => pedir<{ disponible: boolean }>('/asistente/estado'),
+  asistente: (peticion: string, esquemas: unknown[], grafo: unknown) =>
+    // Sin `headers`: `pedir` ya pone Content-Type. Ponerlo otra vez en
+    // minúsculas creaba DOS claves distintas en el objeto, fetch las unía en
+    // «application/json, application/json», y FastAPI recibía el cuerpo como
+    // texto plano en vez de objeto.
+    pedir<RespuestaAsistente>('/asistente', {
+      method: 'POST',
+      body: JSON.stringify({ peticion, esquemas, grafo }),
+    }),
 };
 
 /**

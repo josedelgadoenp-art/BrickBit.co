@@ -83,7 +83,8 @@ interface Estado {
   descriptor: (op: string) => DescriptorNodo | undefined;
   /** La ficha de un indicador, o undefined si no hay. No se inventa nada. */
   indicador: (clave: string) => Indicador | undefined;
-  agregarNodo: (op: string, posicion?: { x: number; y: number }) => void;
+  /** Devuelve el id del bloque creado, para poder configurarlo enseguida. */
+  agregarNodo: (op: string, posicion?: { x: number; y: number }) => string | null;
   duplicarNodo: (id: string) => void;
   borrarNodo: (id: string) => void;
   cambiarNodos: (cambios: NodeChange<NodoLienzo>[]) => void;
@@ -172,7 +173,7 @@ export const usarLienzo = create<Estado>((set, get) => ({
 
   agregarNodo(op, posicion) {
     const d = get().descriptor(op);
-    if (!d) return;
+    if (!d) return null;
     // Valores por omisión del esquema: el nodo nace configurado, no vacío.
     const params: Record<string, unknown> = {};
     for (const [clave, campo] of Object.entries(d.params_schema.properties ?? {})) {
@@ -210,6 +211,7 @@ export const usarLienzo = create<Estado>((set, get) => ({
       seleccionado: nodo.id,
     }));
     get().validar();
+    return nodo.id;
   },
 
   duplicarNodo(id) {

@@ -164,6 +164,38 @@ El detalle está en [docs/nodos.md](docs/nodos.md), que se genera del registro.
 
 ---
 
+## Pídelo en español
+
+Arriba del lienzo hay un recuadro: escribes lo que quieres —«explica el precio
+por m² con el ingreso y la escolaridad, en logaritmos, y grafica el ajuste»— y
+Abak arma el análisis.
+
+Lo que hace que esto sea seguro y no una caja negra: **el modelo no escribe
+código, escribe un GRAFO**. Su única salida posible es una lista de bloques del
+catálogo con sus parámetros, y ese grafo pasa por la misma validación de tipos
+y el mismo compilador que uno armado a mano. Un `op` inventado se rechaza por
+nombre; un parámetro con el tipo equivocado lo caza Pydantic; una **columna
+inventada** —la alucinación más probable— la caza el esquema propagado, que
+sabe qué columnas existen de verdad en ese punto del grafo.
+
+El peor caso de una alucinación es un bloque en rojo con su mensaje. Nunca
+código ejecutándose. Si el modelo pudiera emitir Python, esta función sería la
+vulnerabilidad más grande del producto; emitiendo grafos, es la más contenida.
+
+Y el resultado queda **en el lienzo**: se ve, se corrige y se ejecuta como
+cualquier otro análisis. La IA propone el punto de partida; el trabajo sigue
+siendo tuyo y sigue siendo auditable.
+
+Necesita una llave de Anthropic en el entorno del servidor:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...   # sólo en el servidor, nunca en el navegador
+```
+
+Sin llave, el recuadro simplemente no aparece y todo lo demás funciona igual.
+
+---
+
 ## Cargar tus propios datos
 
 Un análisis se arma encadenando bloques. Al hacer clic en una herramienta de la

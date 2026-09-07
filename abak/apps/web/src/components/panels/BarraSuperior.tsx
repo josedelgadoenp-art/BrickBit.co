@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { api, descargar, ErrorApi } from '@/lib/api';
 import { EJEMPLOS } from '@/lib/ejemplos';
@@ -11,11 +11,46 @@ export default function BarraSuperior() {
   const {
     titulo, ponerTitulo, semilla, ponerSemilla, ejecutar, cancelar, ejecutando,
     ejecucion, validando, diagnosticos, nodos, limpiar, cargarGrafo, aGrafo, errorEjecucion,
-    seleccionar, irA,
+    seleccionar, irA, agregarNodo, actualizarParams,
   } = usarLienzo();
   const [abiertoEjemplos, setAbiertoEjemplos] = useState(false);
   const [bajando, setBajando] = useState<'zip' | 'pdf' | null>(null);
   const [problema, setProblema] = useState<string | null>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const campoArchivo = useRef<HTMLInputElement>(null);
+
+  /**
+   * Subir datos en un solo gesto.
+   *
+   * Antes había que saber que la herramienta se llama «Cargar archivo», buscarla
+   * en la paleta, ponerla en el lienzo y recién entonces aparecía el botón de
+   * subir. Traer tus propios datos es lo primero que hace cualquiera: no puede
+   * estar a cuatro pasos de distancia y detrás de un nombre que hay que adivinar.
+   */
+  async function subirDatos(archivo: File) {
+    setSubiendo(true);
+    setProblema(null);
+    try {
+      const cuerpo = new FormData();
+      cuerpo.append('archivo', archivo);
+      const r = await fetch('/api/v1/datos/subir', { method: 'POST', body: cuerpo });
+      if (!r.ok) throw new ErrorApi(r.status, await r.json().catch(() => null));
+      const datos = await r.json();
+      const id = agregarNodo('datos.csv');
+      if (id) {
+        actualizarParams(id, {
+          archivo_id: datos.archivo_id, nombre: datos.nombre,
+          columnas: datos.columnas, n_filas: datos.n_filas,
+        });
+      }
+      irA('lienzo');
+    } catch (e) {
+      setProblema(e instanceof ErrorApi ? e.mensaje : 'No se pudo subir el archivo.');
+    } finally {
+      setSubiendo(false);
+      if (campoArchivo.current) campoArchivo.current.value = '';
+    }
+  }
 
   const errores = diagnosticos.filter((d) => d.severidad === 'error').length;
   // El botón NO se apaga por tener problemas. Un botón muerto con un tooltip
@@ -78,6 +113,23 @@ export default function BarraSuperior() {
         className="ml-2 min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-[13px] text-crema hover:border-borde focus:border-salvia focus:outline-none"
         aria-label="Título del análisis"
       />
+
+      <input
+        ref={campoArchivo}
+        type="file"
+        accept=".csv,.tsv,.txt,.xlsx,.xls,.parquet,.zip"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) subirDatos(f); }}
+      />
+      <button
+        onClick={() => campoArchivo.current?.click()}
+        disabled={subiendo}
+        title="Sube un CSV, Excel, Parquet o ZIP y queda listo en el lienzo"
+        className="inline-flex items-center gap-1.5 rounded border border-salvia/50 px-2.5 py-1 text-[12px] text-salvia hover:bg-salvia/10 disabled:opacity-50"
+      >
+        <span aria-hidden>↑</span>
+        {subiendo ? 'Subiendo…' : 'Subir datos'}
+      </button>
 
       <div className="relative">
         <button

@@ -195,8 +195,8 @@ class EfectoCausal(EspecNodo):
             default_factory=list,
             json_schema_extra=control("arcos"),
             description="Las flechas del grafo, como «causa->efecto».")
-        tratamiento: str = CampoColumna(descripcion="La causa cuyo efecto quieres medir.")
-        resultado: str = CampoColumna(tipo="numerica", descripcion="Lo que quieres explicar.")
+        tratamiento: str = CampoColumna(description="La causa cuyo efecto quieres medir.")
+        resultado: str = CampoColumna(tipo="numerica", description="Lo que quieres explicar.")
         errores: Literal["clasicos", "HC1", "HC3"] = "HC1"
 
     def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
