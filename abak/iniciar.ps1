@@ -78,8 +78,17 @@ if (Responde 8000) {
     Escribir "  API      ya estaba corriendo" "DarkGray"
 } else {
     Escribir "  API      arrancando en :8000"
+    # `--reload` no es un lujo de desarrollo: sin el, un `git pull` no surte
+    # efecto hasta reiniciar el servidor a mano, y eso se olvida. El sintoma es
+    # cruel — la pantalla sigue mostrando mensajes de error viejos, o una
+    # funcion recien agregada responde "Not Found", y parece que la
+    # actualizacion no sirvio. Con reload, actualizar es sólo `git pull`.
+    #
+    # Ojo con lo que reload NO arregla: si cambias una VARIABLE DE ENTORNO
+    # (la llave), hay que cerrar la ventana y abrirla de nuevo. El entorno se
+    # hereda al arrancar el proceso y reload no lo vuelve a leer.
     Start-Process -FilePath $python `
-        -ArgumentList "-m", "uvicorn", "abak_api.main:app", "--port", "8000" `
+        -ArgumentList "-m", "uvicorn", "abak_api.main:app", "--port", "8000", "--reload" `
         -WorkingDirectory $raiz -WindowStyle Minimized
 }
 

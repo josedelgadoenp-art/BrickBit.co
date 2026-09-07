@@ -101,9 +101,18 @@ cd apps\web ; npm install ; cd ..\..
 Y luego, en dos terminales:
 
 ```powershell
-.venv\Scripts\python -m uvicorn abak_api.main:app --port 8000   # terminal 1
-cd apps\web ; npm run dev                                        # terminal 2
+.venv\Scripts\python -m uvicorn abak_api.main:app --port 8000 --reload   # terminal 1
+cd apps\web ; npm run dev                                                 # terminal 2
 ```
+
+`--reload` importa: sin él, un `git pull` no surte efecto hasta reiniciar el
+servidor a mano, y el síntoma engaña — la pantalla sigue mostrando mensajes de
+error viejos, o una función recién agregada responde «Not Found», y parece que
+la actualización no sirvió.
+
+Lo que `--reload` **no** arregla: si cambias la **llave** (o cualquier variable
+de entorno), hay que cerrar la ventana y abrir una nueva. El entorno se hereda
+al arrancar el proceso; recargar el código no lo vuelve a leer.
 
 Abre <http://localhost:3000> y carga un ejemplo desde la barra superior.
 

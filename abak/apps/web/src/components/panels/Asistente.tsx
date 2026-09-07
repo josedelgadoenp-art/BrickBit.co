@@ -150,7 +150,16 @@ export default function Asistente() {
                   ? `Conexión correcta con ${r.modelo}. El problema no es la llave.`
                   : `Falló en «${r.etapa}»${r.codigo ? ` (${r.codigo})` : ''}: ${r.detalle}`);
               } catch (e) {
-                setPrueba(e instanceof ErrorApi ? e.mensaje : 'No se pudo probar.');
+                // Un 404 aquí no es un fallo de Anthropic: es que ESTE servidor
+                // no tiene la función todavía. Pasó de verdad, y «Not Found» a
+                // secas mandaba a buscar el problema del lado equivocado.
+                if (e instanceof ErrorApi && e.estado === 404) {
+                  setPrueba('Tu servidor de Abak no tiene esta prueba todavía: quedó en una '
+                    + 'versión anterior. Haz `git pull`, cierra la ventana del API y vuelve '
+                    + 'a abrirla.');
+                } else {
+                  setPrueba(e instanceof ErrorApi ? e.mensaje : 'No se pudo probar.');
+                }
               }
             }}
             className="mt-2 rounded border border-borde px-2 py-1 text-[11px] text-tenue
