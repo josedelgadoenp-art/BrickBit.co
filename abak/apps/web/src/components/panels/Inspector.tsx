@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { IconoDerecha, IconoIzquierda } from '@/components/ui/Icono';
 import Formulario from '@/components/panels/Formulario';
 import { usarLienzo } from '@/store/lienzo';
 
@@ -36,14 +37,23 @@ export default function Inspector() {
           Elige un bloque del lienzo para configurarlo y ver qué hace.
         </p>
         <div className="mt-4 space-y-2 text-[12px] leading-relaxed text-tenue/80">
-          <p className="text-crema">Cómo se arma un análisis</p>
-          <p>1 · Trae datos (un archivo tuyo o un ejemplo).</p>
-          <p>2 · Prepáralos: filtra, crea variables, declara si es serie o panel.</p>
-          <p>3 · Estima: una regresión, un modelo espacial, un pronóstico.</p>
-          <p>4 · Revisa los supuestos y grafica.</p>
+          <p className="text-crema">Las tres maneras de empezar</p>
+          <p>
+            <span className="text-crema">Pídelo.</span> Describe el análisis en español y la IA
+            lo arma. Es lo más rápido y no hay que saber nada de la herramienta.
+          </p>
+          <p>
+            <span className="text-crema">Ármalo.</span> Haz clic en una herramienta de la
+            izquierda: se conecta sola con lo que ya tienes.
+          </p>
+          <p>
+            <span className="text-crema">Cópialo.</span> Abre un ejemplo desde arriba y cámbiale
+            los datos.
+          </p>
           <p className="pt-2 text-tenue/70">
-            El código de Python se va escribiendo solo mientras armas el lienzo. Está en la
-            pestaña <span className="text-salvia">Código</span>, y es el mismo que se ejecuta.
+            Como lo hagas, el Python se va escribiendo solo. Está en la pestaña{' '}
+            <span className="text-salvia">Código</span>, y es el mismo que se ejecuta: no es una
+            traducción de lo que pasó, es lo que pasó.
           </p>
         </div>
       </aside>
@@ -196,14 +206,14 @@ export default function Inspector() {
               <div className="space-y-1">
                 {descriptor.entradas.map((p) => (
                   <div key={p.nombre} className="flex gap-2">
-                    <span className="w-4 shrink-0 text-tenue">←</span>
+                    <IconoIzquierda className="mt-0.5 w-4 shrink-0 text-tenue" />
                     <span className="text-crema">{p.titulo ?? p.nombre}</span>
                     <span className="ml-auto text-right text-[11px] text-tenue">{p.ayuda_tipo}</span>
                   </div>
                 ))}
                 {descriptor.salidas.map((p) => (
                   <div key={p.nombre} className="flex gap-2">
-                    <span className="w-4 shrink-0 text-tenue">→</span>
+                    <IconoDerecha className="mt-0.5 w-4 shrink-0 text-tenue" />
                     <span className="text-crema">{p.titulo ?? p.nombre}</span>
                     <span className="ml-auto text-right text-[11px] text-tenue">{p.ayuda_tipo}</span>
                   </div>

@@ -1,10 +1,18 @@
 # Abak
 
-Análisis estadístico y econométrico **sin escribir código**, enfocado en economía.
+**Inteligencia económica.** Describes el análisis en español y la IA lo arma con
+econometría de verdad; o lo armas tú conectando bloques. Las dos maneras llegan
+al mismo sitio.
 
-Conectas bloques en un lienzo. Abak compila ese lienzo a un programa de Python
-legible y lo ejecuta. El programa generado no es una bitácora de lo que pasó:
-**es** lo que pasó, y lo puedes exportar y correr en cualquier máquina sin Abak.
+Lo que separa esto de pedirle un análisis a un chatbot: la IA **no escribe
+código**, arma un grafo de herramientas del catálogo, y ese grafo pasa por el
+mismo validador y el mismo compilador que uno hecho a mano. Después Abak lo
+compila a un programa de Python legible y lo ejecuta. El programa generado no es
+una bitácora de lo que pasó: **es** lo que pasó, y lo puedes exportar y correr en
+cualquier máquina sin Abak.
+
+Nada queda en una caja negra: el análisis vive en el lienzo, cada herramienta
+explica qué hace, cada cifra explica cómo se lee, y lo estimado va en ámbar.
 
 > Vive **al lado** de BrickBit, no dentro: es un producto con su propio ciclo de
 > vida, como el Atlas (`atlas/`) y el Motor de Morfogénesis (`app.py`). No se

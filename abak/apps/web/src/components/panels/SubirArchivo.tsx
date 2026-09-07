@@ -106,7 +106,7 @@ export default function SubirArchivo({ nodoId }: { nodoId: string }) {
             {info.n_filas.toLocaleString('es-MX')} filas × {info.n_columnas} columnas
           </p>
           <p className="mt-0.5 text-tenue">
-            {bytes(info.bytes_origen)} → {bytes(info.bytes_parquet)} en columnar
+            {bytes(info.bytes_origen)} a {bytes(info.bytes_parquet)} en columnar
             {info.compresion > 1.1 && ` (${info.compresion}× más chico)`}
           </p>
           {info.columnas.some((c) => c.faltantes > 0) && (

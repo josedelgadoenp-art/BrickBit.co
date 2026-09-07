@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { IconoAyuda } from '@/components/ui/Icono';
 import { usarLienzo } from '@/store/lienzo';
 
 /**
@@ -137,13 +138,13 @@ export default function Explicacion({
         aria-label={`Qué es ${ficha.titulo}`}
         onClick={(e) => { e.stopPropagation(); setAbierta((v) => !v); }}
         className={`ml-1 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border
-                    align-middle text-[9px] leading-none transition-colors ${
+                    align-middle transition-colors ${
           abierta
             ? 'border-salvia bg-salvia text-tierra'
             : 'border-borde text-tenue hover:border-salvia hover:text-salvia'
         }`}
       >
-        ?
+        <IconoAyuda className="h-3 w-3" />
       </button>
       {abierta && typeof document !== 'undefined' && createPortal(ventana, document.body)}
     </>

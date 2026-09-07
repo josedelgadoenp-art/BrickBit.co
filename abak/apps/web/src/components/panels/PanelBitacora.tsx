@@ -66,7 +66,7 @@ export default function PanelBitacora() {
                 >
                   <span className="text-[13px] text-arcilla">{r.etiqueta ?? id}</span>
                   <span className="text-[12px] text-tenue">{r.error!.titulo}</span>
-                  <span className="ml-auto text-[11px] text-tenue">{abierto === id ? '−' : '+'}</span>
+                  <span className="ml-auto text-[11px] text-tenue">{abierto === id ? 'ocultar' : 'ver'}</span>
                 </button>
                 {abierto === id && (
                   <pre className="overflow-x-auto border-t border-borde bg-tierra p-3 font-mono text-[11px] leading-relaxed text-tenue">

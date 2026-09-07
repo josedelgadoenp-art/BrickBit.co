@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 
 import SubirArchivo from '@/components/panels/SubirArchivo';
 
+import { IconoCerrar, IconoRamal } from '@/components/ui/Icono';
 import type { ColumnaEsquema, DescriptorNodo, EsquemaParam } from '@/lib/tipos';
 import { usarLienzo } from '@/store/lienzo';
 
@@ -225,9 +226,9 @@ export default function Formulario({ nodoId, descriptor, params }: Props) {
                       type="button"
                       aria-label={`Quitar la flecha ${f.causa || '?'} a ${f.efecto || '?'}`}
                       onClick={() => guardar(flechas.filter((_, j) => j !== i))}
-                      className="rounded px-1 text-[11px] text-tenue hover:text-arcilla"
+                      className="rounded px-1 text-tenue hover:text-arcilla"
                     >
-                      ✕
+                      <IconoCerrar className="h-3 w-3" />
                     </button>
                   </div>
                   <select
@@ -246,7 +247,7 @@ export default function Formulario({ nodoId, descriptor, params }: Props) {
                     ))}
                   </select>
                   <div className="flex items-center gap-1.5 pt-1">
-                    <span className="shrink-0 text-[13px] leading-none text-salvia" aria-hidden>↳</span>
+                    <IconoRamal className="h-3.5 w-3.5 text-salvia" />
                     <select
                       value={f.efecto}
                       onChange={(e) => {

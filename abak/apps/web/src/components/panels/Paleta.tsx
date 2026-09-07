@@ -95,7 +95,10 @@ export default function Paleta() {
                 e.dataTransfer.effectAllowed = 'move';
               }}
               onClick={() => agregarNodo(n.op)}
-              className="mb-2 w-full cursor-grab rounded-lg border border-borde bg-tierra/60 p-3 text-left transition-colors hover:border-salvia/60 active:cursor-grabbing"
+              title={`${n.titulo} — ${n.ayuda.que_hace}`}
+              className="group mb-1 w-full cursor-grab rounded-lg border border-transparent
+                         bg-transparent px-2.5 py-2 text-left transition-colors
+                         hover:border-borde hover:bg-tierra/60 active:cursor-grabbing"
             >
               <div className="flex items-start gap-2">
                 <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-sm"
@@ -104,14 +107,13 @@ export default function Paleta() {
                     que la persona necesita leer completo. */}
                 <span className="text-[13px] font-medium leading-snug text-crema">{n.titulo}</span>
               </div>
-              <p className="mt-1.5 text-[11px] leading-relaxed text-tenue">
+              {/* Una línea, no tres. Sesenta y seis fichas con párrafo y equivalente
+                  de Stata son una pared de texto que hay que leer entera para
+                  encontrar una herramienta. El detalle completo está en la
+                  pestaña «Qué es» del inspector, a un clic. */}
+              <p className="mt-0.5 line-clamp-1 pl-[18px] text-[11px] leading-relaxed text-tenue">
                 {n.ayuda.que_hace}
               </p>
-              {n.ayuda.equivalente.stata && (
-                <p className="mt-1 font-mono text-[10px] text-tenue/70">
-                  Stata: {n.ayuda.equivalente.stata}
-                </p>
-              )}
             </button>
           );
         })}

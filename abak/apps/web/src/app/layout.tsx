@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Abak — análisis económico sin código',
+  title: 'Abak — inteligencia económica',
   description:
-    'Conecta bloques en un lienzo; Abak compila el análisis a un programa de Python legible y lo ejecuta. El código que exportas es el mismo que corrió.',
+    'Describe el análisis en español y la inteligencia artificial lo arma con herramientas de econometría de verdad. Todo queda a la vista: el código que exportas es el mismo que corrió.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap"
           rel="stylesheet"
         />
       </head>

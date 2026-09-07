@@ -62,21 +62,16 @@ function LienzoInterno() {
         defaultEdgeOptions={{ type: 'smoothstep' }}
       >
         <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#2a221c" />
-        <Controls className="!border-borde !bg-superficie" showInteractive={false} />
-        <MiniMap pannable zoomable nodeColor={colorNodo} maskColor="rgba(16,12,10,.72)" />
+        {/* Sin bloques no hay nada que encuadrar ni que navegar: dos cajas vacías
+            compitiendo con la pantalla de inicio. Aparecen cuando sirven. */}
+        {nodos.length > 0 && (
+          <>
+            <Controls className="!border-borde !bg-superficie" showInteractive={false} />
+            <MiniMap pannable zoomable nodeColor={colorNodo} maskColor="rgba(12,11,10,.74)" />
+          </>
+        )}
       </ReactFlow>
 
-      {nodos.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="max-w-md rounded-lg border border-borde bg-superficie/85 px-6 py-5 text-center">
-            <p className="text-sm text-crema">El lienzo está vacío.</p>
-            <p className="mt-2 text-[13px] leading-relaxed text-tenue">
-              Arrastra una herramienta de la izquierda, o abre un ejemplo desde la barra de arriba.
-              Empieza casi siempre por <span className="text-salvia">Datos de ejemplo</span>.
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

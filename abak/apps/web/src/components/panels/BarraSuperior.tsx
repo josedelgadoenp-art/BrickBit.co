@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 
+import { IconoAbajo, IconoSubir } from '@/components/ui/Icono';
 import { api, descargar, ErrorApi } from '@/lib/api';
 import { EJEMPLOS } from '@/lib/ejemplos';
 import { duracion } from '@/lib/formato';
@@ -103,7 +104,7 @@ export default function BarraSuperior() {
       <div className="flex items-center gap-2">
         <span className="text-[15px] font-semibold tracking-tight text-crema">Abak</span>
         <span className="hidden text-[11px] text-tenue lg:inline">
-          análisis económico sin código
+          inteligencia económica
         </span>
       </div>
 
@@ -127,16 +128,18 @@ export default function BarraSuperior() {
         title="Sube un CSV, Excel, Parquet o ZIP y queda listo en el lienzo"
         className="inline-flex items-center gap-1.5 rounded border border-salvia/50 px-2.5 py-1 text-[12px] text-salvia hover:bg-salvia/10 disabled:opacity-50"
       >
-        <span aria-hidden>↑</span>
+        <IconoSubir className="h-3.5 w-3.5" />
         {subiendo ? 'Subiendo…' : 'Subir datos'}
       </button>
 
       <div className="relative">
         <button
           onClick={() => setAbiertoEjemplos((v) => !v)}
-          className="rounded border border-borde px-2.5 py-1 text-[12px] text-tenue hover:text-crema"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-borde px-2.5 py-1
+                     text-[12px] text-tenue transition-colors hover:border-tenue/60 hover:text-crema"
         >
-          Ejemplos ▾
+          Ejemplos
+          <IconoAbajo className="h-3 w-3" />
         </button>
         {abiertoEjemplos && (
           <div className="absolute right-0 z-20 mt-1 w-80 rounded border border-borde bg-superficie shadow-panel">

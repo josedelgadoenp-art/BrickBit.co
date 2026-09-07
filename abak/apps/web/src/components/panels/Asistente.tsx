@@ -1,20 +1,34 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { IconoCerrar, IconoIA, IconoSubir } from '@/components/ui/Icono';
 import { api, ErrorApi } from '@/lib/api';
 import { usarLienzo } from '@/store/lienzo';
 
 /**
- * Pide el análisis en español y Abak lo arma solo.
+ * Pide el análisis en español y Abak lo arma.
  *
- * La propiedad que hace esto seguro: el modelo **no escribe código**, escribe
- * un grafo de bloques del catálogo. Ese grafo pasa por la misma validación de
- * tipos y el mismo compilador que uno armado a mano, así que el peor caso de
- * una alucinación es un bloque en rojo con su mensaje — nunca código
- * ejecutándose. Y el análisis queda en el lienzo: se ve, se corrige y se
- * ejecuta como cualquier otro. No es una caja negra que escupe un número.
+ * Es la puerta de entrada, no un accesorio: con el lienzo vacío ocupa el centro
+ * de la pantalla, porque escribir una frase es lo único que alguien sabe hacer
+ * sin haber aprendido nada de la herramienta. Cuando ya hay un análisis se
+ * repliega a una pastilla arriba, para no estorbar el trabajo.
+ *
+ * Lo que hace que esto sea seguro y no una caja negra: el modelo **no escribe
+ * código, escribe un grafo** de bloques del catálogo. Ese grafo pasa por la
+ * misma validación de tipos y el mismo compilador que uno armado a mano, así
+ * que el peor caso de una alucinación es un bloque en rojo con su mensaje. Y el
+ * análisis queda EN EL LIENZO: se ve, se corrige y se ejecuta como cualquier
+ * otro. La IA propone el punto de partida; el trabajo sigue siendo auditable.
  */
+
+const SUGERENCIAS = [
+  'Explica el precio por m² con el ingreso del hogar y la escolaridad, en logaritmos',
+  'Construye un índice de precios de calidad constante por trimestre',
+  '¿La ubicación importa? Prueba si los precios se agrupan en el espacio',
+  'Pronostica el PIB a ocho trimestres y grafica la banda',
+];
+
 export default function Asistente() {
   const cargarGrafo = usarLienzo((s) => s.cargarGrafo);
   const esquemas = usarLienzo((s) => s.esquemas);
@@ -22,6 +36,7 @@ export default function Asistente() {
   const aGrafo = usarLienzo((s) => s.aGrafo);
   const irA = usarLienzo((s) => s.irA);
 
+  const vacio = nodos.length === 0;
   const [abierto, setAbierto] = useState(false);
   const [disponible, setDisponible] = useState<boolean | null>(null);
   const [texto, setTexto] = useState('');
@@ -40,16 +55,16 @@ export default function Asistente() {
     if (abierto) caja.current?.focus();
   }, [abierto]);
 
-  async function construir() {
-    const peticion = texto.trim();
+  const construir = useCallback(async (peticionDada?: string) => {
+    const peticion = (peticionDada ?? texto).trim();
     if (peticion.length < 3 || pensando) return;
     setPensando(true);
     setProblema(null);
     setRespuesta(null);
     try {
       // Se le pasan las columnas que de verdad existen en cada bloque: sin eso
-      // el modelo adivina nombres, y adivinar un nombre de columna es la
-      // manera más fácil de producir un análisis que parece correcto.
+      // el modelo adivina nombres, y adivinar un nombre de columna es la manera
+      // más fácil de producir un análisis que parece correcto.
       const columnas = nodos.flatMap((n) =>
         Object.entries(esquemas[n.id] ?? {}).map(([, e]) => ({
           nodo_id: n.id, etiqueta: n.data.etiqueta, columnas: e.columnas,
@@ -63,9 +78,126 @@ export default function Asistente() {
     } finally {
       setPensando(false);
     }
+  }, [texto, pensando, nodos, esquemas, aGrafo, cargarGrafo, irA]);
+
+  if (disponible === null) return null;
+
+  const campo = (grande: boolean) => (
+    <>
+      <textarea
+        ref={caja}
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); construir(); }
+          if (e.key === 'Escape' && !vacio) setAbierto(false);
+        }}
+        rows={grande ? 3 : 3}
+        placeholder="Explica el precio por m² con el ingreso y la escolaridad, y grafica el ajuste."
+        className={`w-full resize-y rounded-xl2 border border-borde bg-tierra px-3.5 text-crema
+                    placeholder:text-tenue/60 focus:border-salvia focus:outline-none
+                    ${grande ? 'py-3 text-[14px] leading-relaxed' : 'py-2.5 text-[13px] leading-relaxed'}`}
+      />
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <span className="text-[11px] text-tenue">
+          Arma el análisis en el lienzo. Lo revisas y lo ejecutas tú.
+        </span>
+        <button
+          onClick={() => construir()}
+          disabled={pensando || texto.trim().length < 3}
+          className="ml-auto rounded-lg bg-salvia px-3.5 py-1.5 text-[12px] font-medium text-tierra
+                     transition-colors hover:bg-salviaProfunda disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {pensando ? 'Armando…' : 'Armar análisis'}
+        </button>
+      </div>
+    </>
+  );
+
+  const avisos = (
+    <>
+      {problema && (
+        <p className="mt-2.5 rounded-lg border border-terracota/40 bg-terracota/8 px-3 py-2
+                      text-[12px] leading-relaxed text-arcilla">
+          {problema}
+        </p>
+      )}
+      {respuesta && (
+        <div className="mt-2.5 rounded-lg border border-borde bg-tierra px-3 py-2.5 text-left">
+          <p className="text-[12px] leading-relaxed text-crema/90">{respuesta.explicacion}</p>
+          {respuesta.advertencias.length > 0 && (
+            <ul className="mt-2 space-y-1">
+              {respuesta.advertencias.map((a, i) => (
+                <li key={i} className="text-[11px] leading-relaxed text-ambar">{a}</li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-[11px] text-tenue">
+            Revisa el lienzo antes de ejecutar: lo que armó es una propuesta, no un veredicto.
+          </p>
+        </div>
+      )}
+    </>
+  );
+
+  // --- Lienzo vacío: la IA ocupa el centro -----------------------------------
+  if (vacio) {
+    return (
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+        <div className="pointer-events-auto w-full max-w-xl">
+          <div className="mb-5 text-center">
+            <h1 className="text-[26px] font-semibold tracking-apretado text-crema">
+              ¿Qué quieres analizar?
+            </h1>
+            <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-tenue">
+              {disponible
+                ? 'Descríbelo en español. La inteligencia artificial arma el análisis con las herramientas de Abak, y tú lo revisas paso por paso.'
+                : 'Sube tus datos o abre un ejemplo para empezar. Cada herramienta explica qué hace y cuándo usarla.'}
+            </p>
+          </div>
+
+          {disponible && (
+            <div className="rounded-xl2 border border-borde bg-superficie/95 p-3.5 shadow-alto backdrop-blur">
+              {campo(true)}
+              {avisos}
+            </div>
+          )}
+
+          {disponible && !respuesta && (
+            <div className="mt-4">
+              <p className="mb-2 text-center text-[11px] uppercase tracking-wide text-tenue">
+                O prueba con una de éstas
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {SUGERENCIAS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setTexto(s); construir(s); }}
+                    disabled={pensando}
+                    className="rounded-lg border border-bordeSuave bg-superficie/60 px-3 py-2 text-left
+                               text-[12px] leading-relaxed text-tenue transition-colors
+                               hover:border-salvia/40 hover:text-crema disabled:opacity-50"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-[12px] text-tenue">
+            <IconoSubir className="h-3.5 w-3.5" />
+            ¿Tienes tus propios datos? Usa
+            <span className="text-salvia">Subir datos</span>
+            arriba.
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  if (disponible === false) return null;
+  // --- Ya hay análisis: se repliega a una pastilla ---------------------------
+  if (!disponible) return null;
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center px-4">
@@ -73,73 +205,28 @@ export default function Asistente() {
         {!abierto ? (
           <button
             onClick={() => setAbierto(true)}
-            className="mx-auto flex items-center gap-2 rounded-full border border-salvia/40 bg-superficie/95 px-4 py-2 text-[12px] text-salvia shadow-panel backdrop-blur transition-colors hover:border-salvia hover:bg-superficie"
+            className="mx-auto flex items-center gap-2 rounded-full border border-salvia/40
+                       bg-superficie/95 px-4 py-2 text-[12px] text-salvia shadow-panel backdrop-blur
+                       transition-colors hover:border-salvia hover:bg-superficie"
           >
-            <span aria-hidden>✦</span>
-            Pídelo en español y Abak lo arma
+            <IconoIA className="h-3.5 w-3.5" />
+            Pídele otro paso a la IA
           </button>
         ) : (
-          <div className="rounded-xl border border-borde bg-superficie/97 p-3 shadow-panel backdrop-blur">
-            <div className="mb-2 flex items-baseline gap-2">
-              <span className="text-[12px] font-medium text-crema">
-                <span className="text-salvia" aria-hidden>✦</span> Pídelo en español
-              </span>
+          <div className="rounded-xl2 border border-borde bg-superficie/97 p-3.5 shadow-alto backdrop-blur">
+            <div className="mb-2.5 flex items-center gap-2">
+              <IconoIA className="h-3.5 w-3.5 text-salvia" />
+              <span className="text-[12px] font-medium text-crema">Pídelo en español</span>
               <button
                 onClick={() => { setAbierto(false); setRespuesta(null); setProblema(null); }}
-                className="ml-auto rounded px-1.5 text-[12px] text-tenue hover:text-crema"
+                className="ml-auto rounded px-1 text-tenue hover:text-crema"
                 aria-label="Cerrar el asistente"
               >
-                ✕
+                <IconoCerrar />
               </button>
             </div>
-
-            <textarea
-              ref={caja}
-              value={texto}
-              onChange={(e) => setTexto(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); construir(); }
-                if (e.key === 'Escape') setAbierto(false);
-              }}
-              rows={3}
-              placeholder="Explica el precio por m² con el ingreso y la escolaridad, en logaritmos, y grafica el ajuste."
-              className="w-full resize-y rounded-lg border border-borde bg-tierra px-3 py-2 text-[13px] leading-relaxed text-crema placeholder:text-tenue/70 focus:border-salvia focus:outline-none"
-            />
-
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="text-[11px] text-tenue">
-                Arma el análisis en el lienzo. Lo revisas y lo ejecutas tú.
-              </span>
-              <button
-                onClick={construir}
-                disabled={pensando || texto.trim().length < 3}
-                className="ml-auto rounded bg-salvia px-3 py-1 text-[12px] font-medium text-tierra hover:bg-salviaProfunda disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {pensando ? 'Armando…' : 'Armar análisis'}
-              </button>
-            </div>
-
-            {problema && (
-              <p className="mt-2 rounded border border-terracota/40 bg-terracota/8 px-2.5 py-1.5 text-[12px] leading-relaxed text-arcilla">
-                {problema}
-              </p>
-            )}
-
-            {respuesta && (
-              <div className="mt-2 rounded border border-borde bg-tierra px-2.5 py-2">
-                <p className="text-[12px] leading-relaxed text-crema/90">{respuesta.explicacion}</p>
-                {respuesta.advertencias.length > 0 && (
-                  <ul className="mt-1.5 space-y-1">
-                    {respuesta.advertencias.map((a, i) => (
-                      <li key={i} className="text-[11px] leading-relaxed text-ambar">· {a}</li>
-                    ))}
-                  </ul>
-                )}
-                <p className="mt-1.5 text-[11px] text-tenue">
-                  Revisa el lienzo antes de ejecutar: lo que armó es una propuesta, no un veredicto.
-                </p>
-              </div>
-            )}
+            {campo(false)}
+            {avisos}
           </div>
         )}
       </div>
