@@ -432,6 +432,48 @@ _f("importancia|feature_importance",
 
 # --- descriptivos y pruebas -------------------------------------------------
 
+_f("indice|indice_hedonico|indice_precios",
+   titulo="Índice de calidad constante",
+   que_es="El precio de la MISMA vivienda a lo largo del tiempo. Arranca en 100 en el primer "
+          "periodo.",
+   como_se_lee="Si llega a 118, los precios subieron 18% desde el periodo base, ya limpio del "
+               "cambio en la mezcla de lo que se vendió.",
+   ojo_con="No es el precio mediano de lo vendido. Si un trimestre se vendieron más "
+           "departamentos chicos, la mediana baja aunque ningún precio haya bajado; el índice "
+           "no se deja engañar por eso, que es justo para lo que existe.",
+   referencia="Eurostat/OCDE, «Handbook on Residential Property Price Indices» (2013), cap. 5")
+
+_f("cambio_pct|cambio_porcentual|variacion_pct",
+   titulo="Cambio a calidad constante",
+   que_es="Cuánto se movió el precio en ese periodo, descontando el cambio en las "
+          "características de lo que se vendió.",
+   como_se_lee="Sale del coeficiente de la variable ficticia del periodo: es exp(δ) − 1, "
+               "en porcentaje.",
+   ojo_con="Con pocas ventas en el periodo, este número brinca por ruido y no por mercado. "
+           "Mira la columna «ventas» antes de citarlo.")
+
+_f("ventas|operaciones|n_ventas",
+   titulo="Ventas del periodo",
+   que_es="Cuántas operaciones sostienen el cambio de ese periodo.",
+   como_se_lee="Es la vara para saber si el movimiento es señal o ruido. Con menos de unas "
+               "treinta, el índice de ese periodo no aguanta una conclusión.")
+
+_f("margen_95_pct|margen_muestreo|margen_95",
+   titulo="Margen por muestreo (95%)",
+   que_es="Cuánto se puede mover la media de esa columna por el puro hecho de haber trabajado "
+          "con una muestra, en porcentaje de la media.",
+   como_se_lee="0.4% significa que la muestra no te está costando nada. 12% significa que "
+               "cualquier conclusión fina sobre esa columna es de la muestra, no del mercado.",
+   ojo_con="Este error es ADICIONAL al error estadístico normal del modelo: se suma, no lo "
+           "sustituye. Y un resultado sacado de una muestra se reporta diciendo que lo es.",
+   referencia="Cochran, «Sampling Techniques» (1977), cap. 2")
+
+_f("media_en_muestra",
+   titulo="Media en la muestra",
+   que_es="El promedio de esa columna dentro de la muestra que se tomó.",
+   como_se_lee="Es una estimación de la media de la población entera; el margen de al lado dice "
+               "con cuánta holgura.")
+
 _f("papel|papel_causal|rol",
    titulo="Papel en el grafo causal",
    que_es="Qué es cada variable respecto de la pregunta que estás haciendo: confusor, mediador, "

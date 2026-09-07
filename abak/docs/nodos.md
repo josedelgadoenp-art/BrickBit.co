@@ -3,11 +3,11 @@
 **Este archivo se genera solo.** Sale del registro (`abak_core/nodes/`), así que
 no puede quedar desactualizado. Para regenerarlo: `python tools/generar_docs.py`.
 
-64 herramientas en 12 familias.
+66 herramientas en 13 familias.
 
 | Familia | Herramientas | Para qué |
 |---|---:|---|
-| [Datos](#datos) | 12 | Traer datos al analisis y prepararlos: archivos, ejemplos, uniones, filtros. |
+| [Datos](#datos) | 13 | Traer datos al analisis y prepararlos: archivos, ejemplos, uniones, filtros. |
 | [Fuentes oficiales](#fuentes) | 3 | Series en vivo de INEGI y Banxico. Se guardan en cache: el analisis reproduce los mismos numeros aunque la fuente revise la serie. |
 | [Transformar](#transformar) | 7 | Crear variables nuevas: logaritmos, tasas de crecimiento, rezagos, deflactar, estandarizar. |
 | [Explorar](#explorar) | 3 | Mirar los datos antes de modelarlos: descriptivos, correlaciones, tablas cruzadas, pruebas. |
@@ -16,6 +16,7 @@ no puede quedar desactualizado. Para regenerarlo: `python tools/generar_docs.py`
 | [Series de tiempo](#series) | 5 | Todo lo que tiene fecha: raiz unitaria, ARIMA, VAR, impulso-respuesta, cointegracion, ciclos. |
 | [Econometria espacial](#espacial) | 6 | Cuando la ubicacion importa: matrices de vecindad, Moran, LISA, SAR y SEM. |
 | [Macro e insumo-producto](#macro) | 4 | Estructura productiva: Leontief, multiplicadores, encadenamientos, impacto sectorial, keynesiano. |
+| [Inmobiliario](#inmobiliario) | 1 | Indices de precios de calidad constante y herramientas de mercado inmobiliario. |
 | [Machine learning](#ml) | 3 | Prediccion con XGBoost y validacion honesta para series y panel. |
 | [Graficos](#graficos) | 11 | Gramatica por capas: un lienzo y encima puntos, lineas, bandas, tendencias y facetas. |
 | [Entregables](#salida) | 2 | Lo que te llevas: tablas de publicacion, exportar a Excel o CSV, informe en PDF. |
@@ -292,6 +293,42 @@ Si vienes de otro sistema — **Stata**: `keep if` · **R**: `dplyr::filter()` �
 | `descendente` | `False` |
 
 Si vienes de otro sistema — **Stata**: `sort` · **R**: `dplyr::arrange()`
+
+### Trabajar sobre una muestra
+
+`datos.muestra` · v1.0.0
+
+**Qué hace.** Toma una muestra al azar para que el analisis corra en segundos, y te dice cuanta precision estas entregando a cambio, columna por columna.
+
+**Cuándo usarlo.** Mientras exploras un archivo de millones de filas. Cuando ya sepas que analisis quieres, prende «usar todo» y el mismo lienzo corre sobre la poblacion completa.
+
+**Cómo se lee el resultado.** `margen_95_pct` dice cuanto se puede mover la media de esa columna por el puro hecho de haber muestreado, en porcentaje de la media. Si es 0.4%, la muestra no te esta costando nada; si es 12%, cualquier conclusion fina sobre esa columna es de la muestra, no del mercado.
+
+**Supuestos que impone:**
+
+- La muestra es aleatoria: si tus filas vienen ordenadas por algo que importa, usa el estrato para no perder grupos chicos
+
+**Ten cuidado con:**
+
+- El error de muestreo es ADICIONAL al error estadistico normal. No lo sustituye ni se anula con el.
+- Un resultado sacado de una muestra se reporta diciendo que es de una muestra, y con que tamaño. Esta tabla es para copiarla al reporte.
+
+| | Puerto | Tipo |
+|---|---|---|
+| entra | datos | Una tabla de datos (filas y columnas) |
+| sale | La muestra | Una tabla de datos (filas y columnas) |
+| sale | Que precision entregas | Una tabla de datos (filas y columnas) |
+
+| Parámetro | Por omisión |
+|---|---|
+| `n` | `50000` |
+| `metodo` | `aleatorio` |
+| `estrato` | `None` |
+| `usar_todo` | `False` |
+
+Si vienes de otro sistema — **Stata**: `sample 5` · **R**: `dplyr::slice_sample(n = 50000)` · **Python**: `df.sample(50_000)`
+
+Para leer más: Cochran, «Sampling Techniques» (1977), caps. 2 y 5
 
 ### Tratar datos faltantes
 
@@ -1547,6 +1584,50 @@ Para leer más: Keynes (1936); Blanchard, «Macroeconomics», cap. 3
 Si vienes de otro sistema — **R**: `ioanalysis` · **EViews**: `—`
 
 Para leer más: Leontief (1936); Miller y Blair, «Input-Output Analysis», 2a ed.
+
+<a id="inmobiliario"></a>
+
+## Inmobiliario
+
+Indices de precios de calidad constante y herramientas de mercado inmobiliario.
+
+### Indice de precios de calidad constante
+
+`inmobiliario.indice_hedonico` · v1.0.0
+
+**Qué hace.** Construye un indice de precios que separa el movimiento del MERCADO del cambio en la mezcla de lo que se vendio. Es lo que hace el Case-Shiller y el indice de la SHF.
+
+**Cuándo usarlo.** Cuando tienes ventas u ofertas con fecha, precio y caracteristicas, y quieres saber si los precios subieron de verdad. La mediana de lo vendido NO contesta eso.
+
+**Cómo se lee el resultado.** El indice arranca en 100 en el primer periodo. Si llega a 118, los precios a calidad constante subieron 18% desde entonces. La columna cambio_pct es el movimiento de cada periodo, ya limpio de composicion.
+
+**Supuestos que impone:**
+
+- Las caracteristicas que incluyes explican buena parte del precio: lo que dejes fuera y cambie con el tiempo se cuela en el indice
+- Dentro de cada par de periodos, el valor de cada caracteristica es estable
+- Las observaciones de cada periodo son comparables entre si
+
+**Ten cuidado con:**
+
+- Con pocas ventas por periodo el indice brinca por ruido, no por mercado. La tabla marca los periodos flacos: hazles caso o agrega a trimestres.
+- Si tus datos son ASKING PRICE y no precio de cierre, esto mide lo que se pide, no lo que se paga. No son lo mismo y la diferencia se abre en las bajadas.
+
+| | Puerto | Tipo |
+|---|---|---|
+| entra | datos | Una tabla de datos (filas y columnas) |
+| sale | Indice encadenado | Una tabla de datos (filas y columnas) |
+
+| Parámetro | Por omisión |
+|---|---|
+| `periodo` | `—` |
+| `precio` | `—` |
+| `caracteristicas` | `—` |
+| `base` | `100.0` |
+| `minimo_por_periodo` | `30` |
+
+Si vienes de otro sistema — **R**: `hedonicIndex / IndexNumR` · **Stata**: `—` · **EViews**: `—`
+
+Para leer más: Eurostat/OCDE, «Handbook on Residential Property Price Indices» (2013), cap. 5
 
 <a id="ml"></a>
 

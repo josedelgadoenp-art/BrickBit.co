@@ -89,9 +89,15 @@ export default function Formulario({ nodoId, descriptor, params }: Props) {
     // lados da un ajuste perfecto —R² = 1, coeficiente 1, todo lo demás cero—
     // que parece un resultado buenísimo y no dice absolutamente nada. Es el
     // error clásico de quien empieza, y aquí simplemente no se puede cometer.
-    const explicada = params['y'];
-    if (typeof explicada === 'string' && explicada && campo.abak?.control === 'columnas') {
-      return porTipo.filter((c) => c.nombre !== explicada);
+    //
+    // Cada herramienta la nombra distinto: `y` en las regresiones, `precio` en
+    // el índice hedónico, `resultado` en el efecto causal. La lista se recorre
+    // entera porque un nodo sólo tiene una de ellas.
+    const EXPLICADA = ['y', 'precio', 'resultado'];
+    if (campo.abak?.control === 'columnas') {
+      const fuera = new Set(
+        EXPLICADA.map((k) => params[k]).filter((v): v is string => typeof v === 'string' && !!v));
+      if (fuera.size) return porTipo.filter((c) => !fuera.has(c.nombre));
     }
     return porTipo;
   }

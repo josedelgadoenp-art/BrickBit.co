@@ -62,6 +62,9 @@ FAMILIAS: dict[str, Familia] = {
                 descripcion="Cuando la ubicacion importa: matrices de vecindad, Moran, LISA, SAR y SEM."),
         Familia(id="macro", titulo="Macro e insumo-producto", orden=70, color="#24664a", icono="matriz",
                 descripcion="Estructura productiva: Leontief, multiplicadores, encadenamientos, impacto sectorial, keynesiano."),
+        Familia(id="inmobiliario", titulo="Inmobiliario", orden=75, color="#b5836b", icono="edificio",
+                descripcion="Indices de precios de calidad constante y herramientas de mercado "
+                            "inmobiliario."),
         Familia(id="ml", titulo="Machine learning", orden=80, color="#8fa8bd", icono="arbol",
                 descripcion="Prediccion con XGBoost y validacion honesta para series y panel."),
         Familia(id="graficos", titulo="Graficos", orden=90, color="#7f93a8", icono="grafica",

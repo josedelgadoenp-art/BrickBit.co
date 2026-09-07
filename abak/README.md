@@ -139,7 +139,7 @@ servidor, en la práctica no se probaría.
 
 ## Qué trae hoy
 
-**64 herramientas** en 12 familias:
+**66 herramientas** en 13 familias:
 
 - **Datos** — archivos, ejemplos, filtros, uniones, agrupar, remodelar, declarar serie / panel / ubicación
 - **Fuentes oficiales** — Banxico (SIE), INEGI (BIE/BISE), DENUE, con caché en disco
@@ -152,6 +152,7 @@ servidor, en la práctica no se probaría.
 - **Machine learning** — partición honesta, XGBoost, validación de origen móvil, importancias
 - **Gráficos** — gramática por capas (lienzo + puntos, línea, barras, área, banda, tendencia, facetas, escalas, tema) renderizada con Plotly
 - **Inferencia causal** — dibujas qué causa qué y el criterio de puerta trasera decide los controles
+- **Inmobiliario** — índice de precios de calidad constante (hedónico encadenado)
 - **Entregables** — tabla de publicación estilo `esttab`, exportar a CSV o Excel
 
 Cada resultado se baja en PDF: un bloque suelto, o el informe completo del
@@ -388,6 +389,46 @@ Y, específicamente para lo que este sistema tiene que sostener:
   entre a una URL.
 - **Informe** (`test_informe.py`): que el PDF se genere igual cuando falta
   Chrome, porque una dependencia opcional no puede tumbar el entregable.
+
+---
+
+## Para mercado inmobiliario
+
+### Un índice de precios, no la mediana de lo vendido
+
+**El precio mediano de las casas vendidas no es un índice de precios.** Si un
+trimestre se vendieron más departamentos chicos, la mediana baja aunque ningún
+precio haya bajado: cambió la mezcla, no el mercado.
+
+**Índice de precios de calidad constante** separa las dos cosas por el método
+de la ficticia de periodos adyacentes: para cada par de periodos estima
+`log(precio) = a + B'X + δ·D` y encadena `exp(δ) − 1`. Es la metodología del
+Case-Shiller y del índice de la SHF.
+
+La prueba mide las dos cosas a la vez sobre un mercado simulado: que el índice
+recupere la subida real (dentro del 2%) y que la mediana de lo vendido **caiga
+más de 20%** por composición. Si sólo comprobara lo primero, no estaría midiendo
+por qué existe la herramienta.
+
+### Iterar sobre millones de filas sin mentir sobre la precisión
+
+Con millones de filas, esperar cuatro segundos por iteración mata la
+exploración: se prueban tres ideas en vez de treinta, y las buenas son de las
+que no se probaron.
+
+**Trabajar sobre una muestra** toma la muestra y calcula, columna por columna,
+cuánta precisión estás entregando a cambio. `margen_95_pct` dice cuánto se puede
+mover la media por el puro hecho de haber muestreado: 0.4% significa que no te
+está costando nada; 12% significa que cualquier conclusión fina sobre esa
+columna es de la muestra, no del mercado. Y trae un interruptor —`usar todo`—
+para que el resultado final corra sobre la población completa sin tocar nada más
+del análisis.
+
+El error de muestreo es **adicional** al error estadístico de siempre: se suma,
+no lo sustituye. Por eso se reporta aparte en vez de esconderse dentro de un
+intervalo de confianza. La prueba repite el muestreo 200 veces y comprueba que
+el intervalo del 95% cubra la media real cerca del 95% de las veces: si el
+margen prometido no se cumpliera, la herramienta sería peor que no tenerla.
 
 ---
 
