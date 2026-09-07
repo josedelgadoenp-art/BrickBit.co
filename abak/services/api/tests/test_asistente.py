@@ -27,10 +27,11 @@ RESPUESTA_BUENA = {
     "advertencias": ["Los datos son de corte transversal: esto mide asociación, no efecto causal."],
     "nodos": [
         {"id": "n1", "op": "datos.ejemplo", "etiqueta": "Datos de ejemplo",
-         "params": {"conjunto": "mexico_estados"}, "notas": "Corte transversal de las 32 entidades."},
+         "params": '{"conjunto": "mexico_estados"}',
+         "notas": "Corte transversal de las 32 entidades."},
         {"id": "n2", "op": "econometria.mco", "etiqueta": "Modelo hedónico",
-         "params": {"y": "precio_m2", "x": ["ingreso_hogar_mensual", "escolaridad_anios"],
-                    "errores": "HC1"},
+         "params": '{"y": "precio_m2", "x": ["ingreso_hogar_mensual", "escolaridad_anios"],'
+                   ' "errores": "HC1"}',
          "notas": "MCO con errores robustos a heterocedasticidad."},
     ],
     "aristas": [{"origen": "n1", "puerto_origen": "datos",
@@ -80,14 +81,16 @@ def _errores(respuesta: dict) -> list[str]:
 
 def test_un_parametro_con_el_tipo_equivocado_lo_caza_el_compilador():
     respuesta = json.loads(json.dumps(RESPUESTA_BUENA))
-    respuesta["nodos"][1]["params"]["x"] = "ingreso_hogar_mensual"   # debe ser lista
+    respuesta["nodos"][1]["params"] = json.dumps(
+        {"y": "precio_m2", "x": "ingreso_hogar_mensual"})   # x debe ser lista
     assert any("lista" in e or "list" in e for e in _errores(respuesta))
 
 
 def test_un_parametro_que_no_existe_lo_caza_el_compilador():
     """`extra="forbid"` en los Params: un campo inventado no pasa."""
     respuesta = json.loads(json.dumps(RESPUESTA_BUENA))
-    respuesta["nodos"][1]["params"]["hacer_trampa"] = True
+    respuesta["nodos"][1]["params"] = json.dumps(
+        {"y": "precio_m2", "x": ["ingreso_hogar_mensual"], "hacer_trampa": True})
     assert any("hacer_trampa" in e for e in _errores(respuesta))
 
 
@@ -98,7 +101,8 @@ def test_una_columna_inventada_se_caza_contra_el_esquema_real():
     existen de verdad en ese punto y no hay que confiar en el modelo.
     """
     respuesta = json.loads(json.dumps(RESPUESTA_BUENA))
-    respuesta["nodos"][1]["params"]["y"] = "precio_por_metro_cuadrado"
+    respuesta["nodos"][1]["params"] = json.dumps(
+        {"y": "precio_por_metro_cuadrado", "x": ["ingreso_hogar_mensual"]})
     errores = _errores(respuesta)
     assert any("precio_por_metro_cuadrado" in e and "no existe" in e for e in errores), errores
 
@@ -114,7 +118,7 @@ def test_no_se_acepta_un_analisis_de_doscientos_pasos():
     respuesta = json.loads(json.dumps(RESPUESTA_BUENA))
     respuesta["nodos"] = [
         {"id": f"n{i}", "op": "datos.ejemplo", "etiqueta": "x",
-         "params": {"conjunto": "mexico_estados"}, "notas": ""} for i in range(60)
+         "params": '{"conjunto": "mexico_estados"}', "notas": ""} for i in range(60)
     ]
     respuesta["aristas"] = []
     with pytest.raises(ErrorAsistente) as exc:
@@ -294,3 +298,52 @@ def test_la_prueba_de_conexion_avisa_si_falta_configuracion(monkeypatch):
     r = CLIENTE.get("/api/v1/asistente/prueba").json()
     assert r["ok"] is False
     assert r["etapa"] == "configuracion"
+
+
+def _objetos_abiertos(nodo, ruta="raíz"):
+    """Todo objeto del esquema debe declarar additionalProperties: false."""
+    malos = []
+    if isinstance(nodo, dict):
+        if nodo.get("type") == "object" and nodo.get("additionalProperties") is not False:
+            malos.append(ruta)
+        for k, v in nodo.items():
+            malos += _objetos_abiertos(v, f"{ruta}.{k}")
+    elif isinstance(nodo, list):
+        for i, v in enumerate(nodo):
+            malos += _objetos_abiertos(v, f"{ruta}[{i}]")
+    return malos
+
+
+def test_ningun_objeto_del_esquema_queda_abierto():
+    """La salida estructurada exige `additionalProperties: false` en TODO objeto.
+
+    Se coló uno anidado —el de los parámetros— y la API respondió 400 sin que
+    nada del lado nuestro lo notara: sólo se descubrió cuando un usuario intentó
+    usar el asistente. Esta prueba recorre el esquema entero.
+    """
+    assert _objetos_abiertos(ESQUEMA_RESPUESTA) == []
+
+
+def test_los_parametros_viajan_como_texto_json_y_se_leen_con_sus_tipos():
+    """Como texto porque las claves de cada herramienta no se pueden enumerar
+    por adelantado; leídos con json.loads para que listas, números y booleanos
+    lleguen como lo que son y no como cadenas."""
+    respuesta = json.loads(json.dumps(RESPUESTA_BUENA))
+    grafo = armar_grafo(respuesta)["grafo"]
+    mco = next(n for n in grafo["nodos"] if n["op"] == "econometria.mco")
+    assert mco["params"]["x"] == ["ingreso_hogar_mensual", "escolaridad_anios"]
+    assert isinstance(mco["params"]["x"], list)
+
+
+def test_un_json_mal_escrito_en_los_parametros_se_dice_con_el_paso():
+    respuesta = json.loads(json.dumps(RESPUESTA_BUENA))
+    respuesta["nodos"][1]["params"] = '{"y": "precio_m2", "x": [roto}'
+    with pytest.raises(ErrorAsistente) as exc:
+        armar_grafo(respuesta)
+    assert "Modelo hedónico" in str(exc.value)
+
+
+def test_un_paso_sin_parametros_no_es_un_error():
+    respuesta = json.loads(json.dumps(RESPUESTA_BUENA))
+    respuesta["nodos"][0]["params"] = "{}"
+    assert armar_grafo(respuesta)["grafo"]["nodos"][0]["params"] == {}

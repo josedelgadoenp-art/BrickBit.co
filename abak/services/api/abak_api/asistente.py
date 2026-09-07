@@ -143,7 +143,24 @@ ESQUEMA_RESPUESTA: dict[str, Any] = {
                     "id": {"type": "string", "description": "Identificador corto y único, ej. «n1»."},
                     "op": {"type": "string", "description": "El `op` exacto de una herramienta del catálogo."},
                     "etiqueta": {"type": "string", "description": "Nombre en español para este paso."},
-                    "params": {"type": "object", "description": "Parámetros según el esquema de esa herramienta."},
+                    # Va como TEXTO con JSON adentro, no como objeto.
+                    #
+                    # La salida estructurada exige `additionalProperties: false`
+                    # en todo objeto del esquema, y aquí eso sería mentira: cada
+                    # herramienta tiene sus propios parámetros, así que las
+                    # claves no se pueden enumerar por adelantado. Declararlo
+                    # como objeto abierto es un 400 de la API; declararlo
+                    # cerrado y vacío significa «ninguna clave permitida».
+                    # Como texto, el esquema es estricto y los parámetros
+                    # conservan sus tipos —listas, números, booleanos— al
+                    # leerlos con json.loads.
+                    "params": {
+                        "type": "string",
+                        "description": "Los parámetros de esta herramienta, como un objeto JSON "
+                                       "escrito en texto. Ejemplo exacto: "
+                                       "{\"y\": \"precio_m2\", \"x\": [\"m2\", \"antiguedad\"], "
+                                       "\"errores\": \"HC1\"}. Si no lleva parámetros, escribe {}.",
+                    },
                     "notas": {"type": "string", "description": "Por qué este paso. Sale como comentario en el código."},
                 },
                 "required": ["id", "op", "etiqueta", "params", "notas"],
@@ -262,6 +279,23 @@ def armar_grafo(respuesta: dict[str, Any]) -> dict[str, Any]:
         raise ErrorAsistente(
             f"El asistente propuso {len(nodos)} pasos y el tope son {TOPE_NODOS}. "
             f"Pide algo más acotado.")
+
+    # Los parámetros vienen como texto JSON; se leen aquí. Un texto mal formado
+    # es un error con nombre, no un grafo a medias.
+    for n in nodos:
+        crudo = n.get("params")
+        if isinstance(crudo, str):
+            try:
+                n["params"] = json.loads(crudo) if crudo.strip() else {}
+            except json.JSONDecodeError as exc:
+                raise ErrorAsistente(
+                    f"El asistente escribió mal los parámetros del paso «{n.get('etiqueta', '?')}»: "
+                    f"{exc}. Vuelve a intentarlo.") from exc
+        elif crudo is None:
+            n["params"] = {}
+        if not isinstance(n["params"], dict):
+            raise ErrorAsistente(
+                f"Los parámetros del paso «{n.get('etiqueta', '?')}» no son un objeto.")
 
     desconocidos = sorted({n.get("op", "") for n in nodos} - set(REGISTRO))
     if desconocidos:
