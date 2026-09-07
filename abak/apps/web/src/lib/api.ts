@@ -1,6 +1,7 @@
 /** Cliente de la API. Todo pasa por /api gracias al reescrito de Next. */
 
 import type {
+  ResumenEspecificaciones,
   Catalogo, Ejecucion, Esquema, Glosario, Grafo, RespuestaCodigo, RespuestaValidacion,
 } from './tipos';
 
@@ -86,6 +87,11 @@ export const api = {
     const cola = q.toString();
     return `${BASE}/ejecuciones/${ejecucionId}/informe${cola ? `?${cola}` : ''}`;
   },
+  especificacionesRegistradas: () =>
+    pedir<{ resultados: { resultado: string; veces: number }[] }>('/especificaciones'),
+  especificaciones: (resultado: string, nodo?: string) =>
+    pedir<ResumenEspecificaciones>(
+      `/especificaciones/${encodeURIComponent(resultado)}` + (nodo ? `?nodo=${encodeURIComponent(nodo)}` : '')),
 };
 
 /**

@@ -6,6 +6,7 @@ import Lienzo from '@/components/canvas/Lienzo';
 import PanelBitacora from '@/components/panels/PanelBitacora';
 import PanelCodigo from '@/components/panels/PanelCodigo';
 import PanelDatos from '@/components/panels/PanelDatos';
+import PanelEspecificaciones from '@/components/panels/PanelEspecificaciones';
 import PanelGraficos from '@/components/panels/PanelGraficos';
 import PanelMetodologia from '@/components/panels/PanelMetodologia';
 import PanelResultados from '@/components/panels/PanelResultados';
@@ -26,6 +27,8 @@ const PESTANAS: { id: Pestana; texto: string; ayuda: string }[] = [
   { id: 'graficos', texto: 'Gráficos', ayuda: 'Las figuras que produjo el análisis' },
   { id: 'codigo', texto: 'Código', ayuda: 'El Python que se ejecuta. Es el mismo que exportas.' },
   { id: 'metodologia', texto: 'Metodología', ayuda: 'Qué se hizo, con qué supuestos y advertencias' },
+  { id: 'especificaciones', texto: 'Especificaciones',
+    ayuda: 'Cuántos modelos probaste antes de reportar uno, y cómo se mueve cada coeficiente' },
   { id: 'bitacora', texto: 'Bitácora', ayuda: 'El detalle técnico, incluidos los errores completos' },
 ];
 
@@ -77,6 +80,7 @@ export default function Pestanas() {
         {pestana === 'graficos' && <PanelGraficos />}
         {pestana === 'codigo' && <PanelCodigo />}
         {pestana === 'metodologia' && <PanelMetodologia />}
+        {pestana === 'especificaciones' && <PanelEspecificaciones />}
         {pestana === 'bitacora' && <PanelBitacora />}
       </div>
     </>

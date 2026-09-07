@@ -125,7 +125,44 @@ def ejecutar_grafo(self: Any, ejecucion_id: str, grafo_json: dict[str, Any],
             } for n in resultado.nodos
         },
     )
+    _anotar_especificaciones(ejecucion_id, grafo, resultado)
     return {"ok": resultado.ok, "ms": resultado.ms_total}
+
+
+# La variable explicada se llama distinto según la herramienta. Es lo único que
+# hace falta para poder comparar especificaciones entre sí.
+CLAVES_RESULTADO = ("y", "resultado", "dependiente", "objetivo")
+
+
+def _anotar_especificaciones(ejecucion_id: str, grafo: Any, resultado: Any) -> None:
+    """Deja una línea por cada modelo estimado, para poder contarlas después.
+
+    Va envuelto en un try: el libro de especificaciones es una comodidad, y
+    perder un análisis entero porque no se pudo escribir una bitácora sería
+    exactamente al revés de lo importante.
+    """
+    try:
+        from abak_core.runtime.especificaciones import libro_por_omision
+
+        params_de = {n.id: (n.params or {}) for n in grafo.nodos}
+        libro = libro_por_omision()
+        for nodo in resultado.nodos:
+            if nodo.estado != "listo":
+                continue
+            params = params_de.get(nodo.nodo_id, {})
+            explicada = next((str(params[c]) for c in CLAVES_RESULTADO
+                              if isinstance(params.get(c), str) and params[c]), None)
+            if not explicada:
+                continue
+            for artefacto in (nodo.artefactos or {}).values():
+                if isinstance(artefacto, dict) and artefacto.get("tipo") == "modelo":
+                    libro.anotar(
+                        ejecucion_id=ejecucion_id, nodo_id=nodo.nodo_id,
+                        etiqueta=nodo.etiqueta or nodo.nodo_id, op=nodo.op or "",
+                        resultado=explicada, artefacto_modelo=artefacto,
+                        semilla=getattr(grafo, "semilla", None))
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def _revisar_tamano(programa) -> str | None:

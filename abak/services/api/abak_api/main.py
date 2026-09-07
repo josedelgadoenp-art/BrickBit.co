@@ -16,7 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .routers import datos, ejecuciones, grafos, registro
+from .routers import datos, ejecuciones, especificaciones, grafos, registro
 
 DESCRIPCION = """
 Motor de analisis economico sin codigo.
@@ -42,7 +42,8 @@ def crear_app() -> FastAPI:
         allow_methods=["*"], allow_headers=["*"],
     )
 
-    for router in (registro.router, grafos.router, ejecuciones.router, datos.router):
+    for router in (registro.router, grafos.router, ejecuciones.router, datos.router,
+                   especificaciones.router):
         app.include_router(router, prefix="/api/v1")
 
     @app.get("/api/v1/salud", tags=["sistema"])

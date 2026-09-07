@@ -139,7 +139,7 @@ servidor, en la práctica no se probaría.
 
 ## Qué trae hoy
 
-**63 herramientas** en 11 familias:
+**64 herramientas** en 12 familias:
 
 - **Datos** — archivos, ejemplos, filtros, uniones, agrupar, remodelar, declarar serie / panel / ubicación
 - **Fuentes oficiales** — Banxico (SIE), INEGI (BIE/BISE), DENUE, con caché en disco
@@ -151,6 +151,7 @@ servidor, en la práctica no se probaría.
 - **Macro e insumo-producto** — Leontief, multiplicadores de producción, empleo e ingreso, encadenamientos de Rasmussen, impacto de un choque de demanda, multiplicador keynesiano
 - **Machine learning** — partición honesta, XGBoost, validación de origen móvil, importancias
 - **Gráficos** — gramática por capas (lienzo + puntos, línea, barras, área, banda, tendencia, facetas, escalas, tema) renderizada con Plotly
+- **Inferencia causal** — dibujas qué causa qué y el criterio de puerta trasera decide los controles
 - **Entregables** — tabla de publicación estilo `esttab`, exportar a CSV o Excel
 
 Cada resultado se baja en PDF: un bloque suelto, o el informe completo del
@@ -355,6 +356,51 @@ Y, específicamente para lo que este sistema tiene que sostener:
   entre a una URL.
 - **Informe** (`test_informe.py`): que el PDF se genere igual cuando falta
   Chrome, porque una dependencia opcional no puede tumbar el entregable.
+
+---
+
+## Dos cosas que no hace ningún otro programa
+
+### Decide qué controlar, en vez de obedecer
+
+«¿Qué variables meto de control?» es la pregunta que todo economista aplicado
+contesta a diario y que ningún programa estadístico responde: R, Stata, EViews
+y SPSS meten lo que les pidas. Y meter de más es tan grave como meter de menos.
+Un **mediador** —algo por lo que pasa el efecto— borra justo lo que querías
+medir. Un **colisionador** inventa una correlación que no existe. Ninguno de
+los dos errores mueve el R², el p-valor ni ningún diagnóstico: el modelo se ve
+perfecto y la respuesta es falsa.
+
+Como el lienzo ya es un grafo dirigido, dibujar quién causa a quién es el gesto
+natural. Con eso, **Efecto causal (puerta trasera)** decide el conjunto de
+controles y entrega, al lado del coeficiente, una tabla que dice de cada
+variable qué es, si entró y por qué. Cuando el efecto **no** se puede
+identificar con las columnas que hay, lo dice y no estima: ninguna regresión
+arregla un confusor que no observaste, y saberlo antes de publicar el número es
+justo el valor.
+
+El grafo lo pones tú y no se puede verificar con los datos: es un argumento, no
+un resultado. Abak no descubre estructura causal a partir de los datos, porque
+no se puede sin supuestos fuertes y fingir que sí sería la clase de
+deshonestidad que este producto existe para evitar.
+
+### Cuenta las especificaciones que probaste
+
+El fraude involuntario más extendido de la economía aplicada: alguien prueba
+veinte especificaciones y publica la que «funcionó». Nadie miente; nadie
+cuenta. Con veinte intentos, un p-valor bajo 0.05 es lo esperable aunque no
+haya nada.
+
+Abak puede contarlo porque cada ejecución pasa por su registro. La pestaña
+**Especificaciones** dice cuántas llevas para cada variable explicada, el rango
+completo de cada coeficiente entre todas, cuántas veces salió significativo, y
+avisa cuando el número que estás mirando es el extremo de todo lo que probaste
+o cuando el signo cambia entre especificaciones. No acusa a nadie: pone el
+contexto al lado del número, que es la diferencia entre informar y seleccionar.
+
+Es la regla de la casa un piso más arriba: si un dato estimado no se presenta
+como un hecho, una especificación elegida entre catorce tampoco se presenta
+como la única.
 
 ---
 

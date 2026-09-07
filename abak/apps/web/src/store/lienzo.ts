@@ -35,7 +35,8 @@ function normalizarClave(clave: string): string {
     .replace(/^_+|_+$/g, '');
 }
 
-export type Pestana = 'lienzo' | 'datos' | 'resultados' | 'graficos' | 'codigo' | 'metodologia' | 'bitacora';
+export type Pestana = 'lienzo' | 'datos' | 'resultados' | 'graficos' | 'codigo' | 'metodologia'
+  | 'especificaciones' | 'bitacora';
 
 export interface DatosNodo extends Record<string, unknown> {
   op: string;

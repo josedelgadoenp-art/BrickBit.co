@@ -223,3 +223,24 @@ export interface Ejecucion {
   nodos: Record<string, ResultadoNodo>;
   diagnosticos?: Diagnostico[];
 }
+
+
+/** Una variable, vista entre TODAS las especificaciones que la incluyeron. */
+export interface VariableEspecificada {
+  variable: string;
+  veces: number;
+  minimo: number;
+  maximo: number;
+  mediana: number;
+  veces_significativa: number;
+  cambia_de_signo: boolean;
+  actual: number | null;
+  actual_es_extremo: boolean;
+}
+
+export interface ResumenEspecificaciones {
+  resultado: string;
+  n_especificaciones: number;
+  desde?: number;
+  variables: VariableEspecificada[];
+}
