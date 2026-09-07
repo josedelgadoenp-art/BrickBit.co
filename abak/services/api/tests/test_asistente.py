@@ -218,3 +218,19 @@ def test_algo_que_no_es_una_llave_se_dice_antes_de_gastar_una_llamada(monkeypatc
         modulo.pedir_grafo("explica el precio de la vivienda")
     assert "sk-ant-" in str(exc.value)
     assert "console.anthropic.com" in str(exc.value)
+
+
+def test_el_texto_de_relleno_de_un_instructivo_se_caza_por_largo(monkeypatch):
+    """El caso real: alguien copió «sk-ant-tu-llave» de mis propias
+    instrucciones. Empieza con el prefijo correcto, así que el filtro anterior
+    lo dejaba pasar y sólo se descubría con un 401, que se lee como «mi llave
+    está mal» en vez de «pegué el ejemplo»."""
+    import abak_api.asistente as modulo
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-tu-llave")
+    monkeypatch.setattr(modulo, "revisar", lambda: (True, None))
+    with pytest.raises(modulo.ErrorAsistente) as exc:
+        modulo.pedir_grafo("explica el precio de la vivienda")
+    mensaje = str(exc.value)
+    assert "15 caracteres" in mensaje
+    assert "ejemplo" in mensaje

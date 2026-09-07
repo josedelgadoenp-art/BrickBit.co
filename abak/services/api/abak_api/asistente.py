@@ -268,6 +268,18 @@ def pedir_grafo(peticion: str, esquemas: list[dict[str, Any]] | None = None,
             "empiezan con «sk-ant-». Ojo con confundirla con la contraseña de claude.ai "
             "o con un token de sesión — la llave de la API se crea en "
             "console.anthropic.com, en API Keys.")
+    # Una llave de verdad pasa de 100 caracteres. Este caso es el texto de
+    # relleno de un instructivo («sk-ant-tu-llave», «sk-ant-...») copiado tal
+    # cual: empieza bien, así que el filtro del prefijo lo deja pasar, y sólo se
+    # descubre cuando la API responde 401 — que se lee como «mi llave está mal»
+    # en vez de «pegué el ejemplo». Pasó de verdad; por eso está aquí.
+    if len(llave) < 50:
+        raise ErrorAsistente(
+            f"En ANTHROPIC_API_KEY hay algo de {len(llave)} caracteres, y una llave de la "
+            f"API pasa de 100. Parece el texto de ejemplo de un instructivo copiado tal "
+            f"cual. Abre console.anthropic.com > API Keys, copia la llave COMPLETA y corre "
+            f"`setx ANTHROPIC_API_KEY \"<la llave completa>\"`; después abre una ventana "
+            f"nueva de PowerShell.")
 
     cliente = anthropic.Anthropic(api_key=llave)
     contexto = catalogo_para_el_modelo()
