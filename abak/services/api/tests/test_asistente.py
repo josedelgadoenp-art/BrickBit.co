@@ -259,3 +259,38 @@ def test_el_estado_dice_que_llave_tiene_EL_SERVIDOR(monkeypatch):
 def test_sin_llave_la_huella_no_inventa_nada(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     assert CLIENTE.get("/api/v1/asistente/estado").json()["llave"] == {"hay": False}
+
+
+def test_un_error_de_la_api_no_se_traga_su_motivo():
+    """Un 400 de Anthropic explica exactamente qué está mal.
+
+    Enseñar sólo «error (400)» le quita a la persona lo único que resuelve el
+    problema. Pasó de verdad: un 400 que no decía si era el modelo, la salida
+    estructurada o la caché.
+    """
+    from abak_api.asistente import _motivo_api
+
+    class ErrorFalso(Exception):
+        status_code = 400
+        body = {"type": "error",
+                "error": {"type": "invalid_request_error",
+                          "message": "model: claude-opus-5 not found"}}
+
+    assert _motivo_api(ErrorFalso()) == "model: claude-opus-5 not found"
+
+
+def test_si_el_error_no_trae_cuerpo_igual_se_dice_algo():
+    from abak_api.asistente import _motivo_api
+
+    class Pelado(Exception):
+        status_code = 500
+        body = None
+
+    assert _motivo_api(Pelado()) != ""
+
+
+def test_la_prueba_de_conexion_avisa_si_falta_configuracion(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    r = CLIENTE.get("/api/v1/asistente/prueba").json()
+    assert r["ok"] is False
+    assert r["etapa"] == "configuracion"

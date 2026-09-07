@@ -46,6 +46,47 @@ FALTA_LLAVE = (
     "ventanas que se abren después.")
 
 
+def _motivo_api(exc: Any) -> str:
+    """El mensaje que manda Anthropic dentro del cuerpo del error."""
+    cuerpo = getattr(exc, "body", None)
+    if isinstance(cuerpo, dict):
+        error = cuerpo.get("error")
+        if isinstance(error, dict) and error.get("message"):
+            return str(error["message"])
+    return str(getattr(exc, "message", "") or exc) or "sin detalle"
+
+
+def probar_conexion() -> dict[str, Any]:
+    """Una llamada mínima, sin nada opcional, para aislar dónde está el problema.
+
+    Separa tres cosas que desde la pantalla se ven iguales: que la llave no
+    sirva, que la organización no tenga acceso a este modelo, y que algo de la
+    petición grande (salida estructurada, caché, razonamiento) no le guste a la
+    API. Si esto pasa y el asistente no, el problema NO es la llave.
+    """
+    listo, motivo = revisar()
+    if not listo:
+        return {"ok": False, "etapa": "configuracion", "detalle": motivo}
+
+    import anthropic
+
+    llave = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    try:
+        respuesta = anthropic.Anthropic(api_key=llave).messages.create(
+            model=MODELO, max_tokens=16,
+            messages=[{"role": "user", "content": "Responde solamente: listo"}],
+        )
+    except anthropic.APIStatusError as exc:
+        return {"ok": False, "etapa": "llamada", "codigo": exc.status_code,
+                "detalle": _motivo_api(exc), "modelo": MODELO}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "etapa": "llamada", "detalle": str(exc), "modelo": MODELO}
+
+    texto = next((b.text for b in respuesta.content if b.type == "text"), "")
+    return {"ok": True, "modelo": respuesta.model, "respuesta": texto.strip()[:60],
+            "tokens": respuesta.usage.output_tokens}
+
+
 def huella_llave() -> dict[str, Any]:
     """Cómo es la llave que ESTE proceso tiene, sin revelarla.
 
@@ -332,7 +373,12 @@ def pedir_grafo(peticion: str, esquemas: list[dict[str, Any]] | None = None,
         raise ErrorAsistente("La API de Anthropic está limitando las peticiones. "
                              "Espera un momento y vuelve a intentarlo.") from exc
     except anthropic.APIStatusError as exc:
-        raise ErrorAsistente(f"La API de Anthropic respondió con un error ({exc.status_code}).") from exc
+        # El motivo REAL viene en el cuerpo de la respuesta. Tragárselo y
+        # enseñar sólo «error (400)» deja a la persona sin lo único que
+        # resolvería el problema; un 400 casi siempre dice exactamente qué
+        # parámetro está mal o a qué modelo no tiene acceso la organización.
+        raise ErrorAsistente(
+            f"Anthropic rechazó la petición ({exc.status_code}): {_motivo_api(exc)}") from exc
     except anthropic.APIConnectionError as exc:
         raise ErrorAsistente("No se pudo conectar con la API de Anthropic. Revisa tu red.") from exc
 

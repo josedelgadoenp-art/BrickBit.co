@@ -7,7 +7,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from ..asistente import ErrorAsistente, huella_llave, pedir_grafo, revisar
+from ..asistente import (ErrorAsistente, huella_llave, pedir_grafo, probar_conexion,
+                         revisar)
 
 router = APIRouter(prefix="/asistente", tags=["asistente"])
 
@@ -28,6 +29,13 @@ def estado() -> dict:
     """
     listo, motivo = revisar()
     return {"disponible": listo, "motivo": motivo, "llave": huella_llave()}
+
+
+@router.get("/prueba")
+def prueba() -> dict:
+    """Una llamada mínima a Anthropic, para saber si el problema es la llave,
+    el acceso al modelo, o la forma de la petición grande."""
+    return probar_conexion()
 
 
 @router.post("")

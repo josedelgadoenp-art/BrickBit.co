@@ -124,6 +124,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ peticion, esquemas, grafo }),
     }),
+  probarIA: () =>
+    pedir<{
+      ok: boolean; etapa?: string; codigo?: number; detalle?: string;
+      modelo?: string; respuesta?: string; tokens?: number;
+    }>('/asistente/prueba'),
 };
 
 /**

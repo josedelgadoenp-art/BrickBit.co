@@ -41,6 +41,7 @@ export default function Asistente() {
   const [disponible, setDisponible] = useState<boolean | null>(null);
   const [motivo, setMotivo] = useState<string | null>(null);
   const [huella, setHuella] = useState<{ longitud?: number; prefijo?: string } | null>(null);
+  const [prueba, setPrueba] = useState<string | null>(null);
   const [texto, setTexto] = useState('');
   const [pensando, setPensando] = useState(false);
   const [respuesta, setRespuesta] = useState<{ explicacion: string; advertencias: string[] } | null>(null);
@@ -135,6 +136,30 @@ export default function Asistente() {
               con «{huella.prefijo}». Si no coincide con la que acabas de guardar, la ventana
               del API se abrió antes: ciérrala y vuelve a arrancarla.
             </p>
+          )}
+          {/* Una llamada mínima, sin salida estructurada ni caché ni
+              razonamiento. Separa tres cosas que en pantalla se ven iguales:
+              llave inválida, organización sin acceso al modelo, y algo de la
+              petición grande que a la API no le gusta. */}
+          <button
+            onClick={async () => {
+              setPrueba('Probando…');
+              try {
+                const r = await api.probarIA();
+                setPrueba(r.ok
+                  ? `Conexión correcta con ${r.modelo}. El problema no es la llave.`
+                  : `Falló en «${r.etapa}»${r.codigo ? ` (${r.codigo})` : ''}: ${r.detalle}`);
+              } catch (e) {
+                setPrueba(e instanceof ErrorApi ? e.mensaje : 'No se pudo probar.');
+              }
+            }}
+            className="mt-2 rounded border border-borde px-2 py-1 text-[11px] text-tenue
+                       transition-colors hover:border-tenue/60 hover:text-crema"
+          >
+            Probar la conexión con Anthropic
+          </button>
+          {prueba && (
+            <p className="mt-1.5 font-mono text-[11px] leading-relaxed text-crema/85">{prueba}</p>
           )}
         </div>
       )}
