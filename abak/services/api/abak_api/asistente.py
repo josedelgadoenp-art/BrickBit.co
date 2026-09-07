@@ -392,7 +392,15 @@ def pedir_grafo(peticion: str, esquemas: list[dict[str, Any]] | None = None,
                 {"type": "text", "text": f"# Catálogo de herramientas\n{contexto}",
                  "cache_control": {"type": "ephemeral"}},
             ],
-            output_config={"format": {"type": "json_schema", "schema": ESQUEMA_RESPUESTA}},
+            output_config={
+                # Componer un grafo con el catálogo delante no es un problema
+                # difícil de razonamiento: es leer una lista y elegir. Con el
+                # esfuerzo alto por omisión la petición tarda minutos y la
+                # espera se cae sola; con «medium» sale en segundos y el
+                # resultado no empeora.
+                "effort": "medium",
+                "format": {"type": "json_schema", "schema": ESQUEMA_RESPUESTA},
+            },
             messages=[{"role": "user", "content": "\n\n".join(partes)}],
         ) as flujo:
             mensaje = flujo.get_final_message()

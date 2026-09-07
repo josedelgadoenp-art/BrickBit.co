@@ -347,3 +347,29 @@ def test_un_paso_sin_parametros_no_es_un_error():
     respuesta = json.loads(json.dumps(RESPUESTA_BUENA))
     respuesta["nodos"][0]["params"] = "{}"
     assert armar_grafo(respuesta)["grafo"]["nodos"][0]["params"] == {}
+
+
+def test_un_fallo_inesperado_no_sale_como_500_mudo(monkeypatch):
+    """Cualquier excepción que no sea ErrorAsistente salía como «Internal Server
+    Error», que esconde justo lo que hace falta para arreglarlo."""
+    import abak_api.routers.asistente as router
+
+    def revienta(*a, **k):
+        raise ValueError("algo raro en el grafo propuesto")
+
+    monkeypatch.setattr(router, "pedir_grafo", revienta)
+    r = CLIENTE.post("/api/v1/asistente", json={"peticion": "explica el precio de la vivienda"})
+    assert r.status_code == 422
+    assert "ValueError" in r.json()["detail"]
+    assert "algo raro" in r.json()["detail"]
+
+
+def test_el_esfuerzo_es_medio_para_que_la_peticion_no_tarde_minutos():
+    """Componer un grafo con el catálogo delante es leer y elegir, no razonar
+    hondo. Con el esfuerzo alto por omisión la espera se cae sola."""
+    import inspect
+
+    from abak_api import asistente
+
+    fuente = inspect.getsource(asistente.pedir_grafo)
+    assert '"effort": "medium"' in fuente

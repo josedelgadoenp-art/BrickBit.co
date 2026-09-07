@@ -120,9 +120,13 @@ export const api = {
     // minúsculas creaba DOS claves distintas en el objeto, fetch las unía en
     // «application/json, application/json», y FastAPI recibía el cuerpo como
     // texto plano en vez de objeto.
+    // Dos minutos de tope: armar un grafo con el catálogo entero de contexto
+    // tarda, y sin un límite propio la espera termina en un fallo de red
+    // genérico que no dice nada.
     pedir<RespuestaAsistente>('/asistente', {
       method: 'POST',
       body: JSON.stringify({ peticion, esquemas, grafo }),
+      signal: AbortSignal.timeout(120_000),
     }),
   probarIA: () =>
     pedir<{

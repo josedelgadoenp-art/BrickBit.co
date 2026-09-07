@@ -44,3 +44,10 @@ def construir(cuerpo: Peticion) -> dict:
         return pedir_grafo(cuerpo.peticion, cuerpo.esquemas, cuerpo.grafo)
     except ErrorAsistente as exc:
         raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        # Sin esto, cualquier fallo inesperado —una validación de Pydantic sobre
+        # el grafo propuesto, por ejemplo— sale como un 500 con «Internal Server
+        # Error», que no le dice nada a nadie y esconde justo lo que hace falta.
+        raise HTTPException(
+            422, f"El asistente devolvió algo que no se pudo usar: "
+                 f"{type(exc).__name__}: {exc}") from exc

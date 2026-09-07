@@ -81,7 +81,18 @@ export default function Asistente() {
       setRespuesta({ explicacion: r.explicacion, advertencias: r.advertencias });
       irA('lienzo');
     } catch (e) {
-      setProblema(e instanceof ErrorApi ? e.mensaje : 'No se pudo construir el análisis.');
+      // El motivo REAL, siempre. «No se pudo construir el análisis» a secas es
+      // lo mismo que no decir nada: no distingue una caída de red de un fallo
+      // al cargar el grafo que sí llegó, y manda a buscar del lado equivocado.
+      if (e instanceof ErrorApi) {
+        setProblema(e.mensaje);
+      } else if (e instanceof DOMException && e.name === 'AbortError') {
+        setProblema('La petición tardó más de dos minutos y se canceló. Suele pasar con '
+          + 'peticiones muy largas: prueba con uno de los ejemplos de abajo, que son más cortos.');
+      } else {
+        const detalle = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
+        setProblema(`No se pudo construir el análisis — ${detalle}`);
+      }
     } finally {
       setPensando(false);
     }
