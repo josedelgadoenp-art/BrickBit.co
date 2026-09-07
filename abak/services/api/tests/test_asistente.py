@@ -181,3 +181,40 @@ def test_sin_el_paquete_instalado_se_dice_y_no_revienta(monkeypatch):
 def test_una_peticion_vacia_no_llega_al_modelo():
     """Gastar una llamada en una cadena de dos letras no tiene sentido."""
     assert CLIENTE.post("/api/v1/asistente", json={"peticion": "a"}).status_code == 422
+
+
+def test_una_llave_con_espacios_pegados_no_se_manda_asi(monkeypatch):
+    """Copiar una llave arrastra espacios y saltos de línea con muchísima
+    facilidad, y `setx` los guarda tal cual. La API responde 401 y se lee como
+    «la llave está mal» cuando la llave está bien: sólo trae basura invisible.
+    """
+    import abak_api.asistente as modulo
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "  sk-ant-api03-DEPRUEBA  \n")
+    vistas = {}
+
+    class ClienteFalso:
+        def __init__(self, api_key=None, **kw):
+            vistas["llave"] = api_key
+            raise RuntimeError("corta aquí: sólo interesa qué llave se construyó")
+
+    monkeypatch.setattr(modulo, "revisar", lambda: (True, None))
+    import anthropic
+    monkeypatch.setattr(anthropic, "Anthropic", ClienteFalso)
+
+    with pytest.raises(Exception):
+        modulo.pedir_grafo("explica el precio de la vivienda")
+    assert vistas["llave"] == "sk-ant-api03-DEPRUEBA", "la llave viajó con espacios"
+
+
+def test_algo_que_no_es_una_llave_se_dice_antes_de_gastar_una_llamada(monkeypatch):
+    """Confundir la llave de la API con la contraseña de claude.ai es de lo más
+    común. Se detecta por el prefijo, sin salir a la red."""
+    import abak_api.asistente as modulo
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "mi-contrasena-de-claude")
+    monkeypatch.setattr(modulo, "revisar", lambda: (True, None))
+    with pytest.raises(modulo.ErrorAsistente) as exc:
+        modulo.pedir_grafo("explica el precio de la vivienda")
+    assert "sk-ant-" in str(exc.value)
+    assert "console.anthropic.com" in str(exc.value)

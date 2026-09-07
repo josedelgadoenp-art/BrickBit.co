@@ -257,7 +257,19 @@ def pedir_grafo(peticion: str, esquemas: list[dict[str, Any]] | None = None,
 
     import anthropic
 
-    cliente = anthropic.Anthropic()
+    # `.strip()` no es paranoia: al copiar una llave se arrastra un espacio o un
+    # salto de línea con muchísima facilidad, y `setx` lo guarda tal cual. La
+    # llave viaja entonces con basura invisible y la API responde 401, que se
+    # lee como «la llave está mal» cuando la llave está bien.
+    llave = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not llave.startswith("sk-ant-"):
+        raise ErrorAsistente(
+            "Lo que hay en ANTHROPIC_API_KEY no parece una llave de la API: las llaves "
+            "empiezan con «sk-ant-». Ojo con confundirla con la contraseña de claude.ai "
+            "o con un token de sesión — la llave de la API se crea en "
+            "console.anthropic.com, en API Keys.")
+
+    cliente = anthropic.Anthropic(api_key=llave)
     contexto = catalogo_para_el_modelo()
 
     partes = [_describir_datos(esquemas)]
@@ -283,7 +295,12 @@ def pedir_grafo(peticion: str, esquemas: list[dict[str, Any]] | None = None,
         ) as flujo:
             mensaje = flujo.get_final_message()
     except anthropic.AuthenticationError as exc:
-        raise ErrorAsistente("La llave de la API de Anthropic no es válida.") from exc
+        raise ErrorAsistente(
+            f"Anthropic rechazó la llave (empieza con «{llave[:11]}…» y mide {len(llave)} "
+            f"caracteres). Tres causas, en orden de frecuencia: se copió incompleta; se "
+            f"revocó o se borró en la consola; o es de otra organización sin saldo. "
+            f"Créala de nuevo en console.anthropic.com > API Keys, vuelve a correr "
+            f"`setx ANTHROPIC_API_KEY \"...\"` y ABRE UNA VENTANA NUEVA.") from exc
     except anthropic.RateLimitError as exc:
         raise ErrorAsistente("La API de Anthropic está limitando las peticiones. "
                              "Espera un momento y vuelve a intentarlo.") from exc
