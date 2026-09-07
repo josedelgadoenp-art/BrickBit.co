@@ -190,7 +190,10 @@ def test_una_llave_con_espacios_pegados_no_se_manda_asi(monkeypatch):
     """
     import abak_api.asistente as modulo
 
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "  sk-ant-api03-DEPRUEBA  \n")
+    # Larga de verdad: si no, la caza el filtro de longitud antes de llegar al
+    # cliente y esta prueba dejaría de probar lo que dice probar.
+    falsa = "sk-ant-api03-" + "D" * 90
+    monkeypatch.setenv("ANTHROPIC_API_KEY", f"  {falsa}  \n")
     vistas = {}
 
     class ClienteFalso:
@@ -204,7 +207,7 @@ def test_una_llave_con_espacios_pegados_no_se_manda_asi(monkeypatch):
 
     with pytest.raises(Exception):
         modulo.pedir_grafo("explica el precio de la vivienda")
-    assert vistas["llave"] == "sk-ant-api03-DEPRUEBA", "la llave viajó con espacios"
+    assert vistas["llave"] == falsa, "la llave viajó con espacios"
 
 
 def test_algo_que_no_es_una_llave_se_dice_antes_de_gastar_una_llamada(monkeypatch):
