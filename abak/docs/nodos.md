@@ -3,7 +3,7 @@
 **Este archivo se genera solo.** Sale del registro (`abak_core/nodes/`), así que
 no puede quedar desactualizado. Para regenerarlo: `python tools/generar_docs.py`.
 
-63 herramientas en 11 familias.
+64 herramientas en 12 familias.
 
 | Familia | Herramientas | Para qué |
 |---|---:|---|
@@ -12,6 +12,7 @@ no puede quedar desactualizado. Para regenerarlo: `python tools/generar_docs.py`
 | [Transformar](#transformar) | 7 | Crear variables nuevas: logaritmos, tasas de crecimiento, rezagos, deflactar, estandarizar. |
 | [Explorar](#explorar) | 3 | Mirar los datos antes de modelarlos: descriptivos, correlaciones, tablas cruzadas, pruebas. |
 | [Econometria](#econometria) | 7 | Regresiones y modelos de siempre: MCO, variables instrumentales, panel, eleccion discreta. |
+| [Inferencia causal](#causal) | 1 | Dibuja que causa que y deja que el criterio de puerta trasera decida los controles. |
 | [Series de tiempo](#series) | 5 | Todo lo que tiene fecha: raiz unitaria, ARIMA, VAR, impulso-respuesta, cointegracion, ciclos. |
 | [Econometria espacial](#espacial) | 6 | Cuando la ubicacion importa: matrices de vecindad, Moran, LISA, SAR y SEM. |
 | [Macro e insumo-producto](#macro) | 4 | Estructura productiva: Leontief, multiplicadores, encadenamientos, impacto sectorial, keynesiano. |
@@ -988,6 +989,50 @@ Para leer más: Koenker y Bassett (1978)
 Si vienes de otro sistema — **Stata**: `ivregress 2sls y x (endog = instr)` · **R**: `AER::ivreg()`
 
 Para leer más: Angrist y Pischke, «Mostly Harmless Econometrics», cap. 4
+
+<a id="causal"></a>
+
+## Inferencia causal
+
+Dibuja que causa que y deja que el criterio de puerta trasera decida los controles.
+
+### Efecto causal (puerta trasera)
+
+`causal.efecto` · v1.0.0
+
+**Qué hace.** Dibujas que causa que, y Abak decide que variables hay que controlar para medir el efecto de una sobre otra. Despues estima la regresion con exactamente esos controles, ni uno mas ni uno menos.
+
+**Cuándo usarlo.** Cuando la pregunta es CAUSAL y no descriptiva: «¿el metro subio los precios?», «¿la remodelacion aumento la renta?». Si solo quieres describir o predecir, usa MCO o XGBoost.
+
+**Cómo se lee el resultado.** El coeficiente del tratamiento es el efecto causal SI el grafo que dibujaste es correcto. La tabla de controles dice que entro, que se quedo fuera y por que; leerla es la mitad del valor de esta herramienta.
+
+**Supuestos que impone:**
+
+- El grafo lo pones tu y no se puede verificar con los datos: es un argumento, no un resultado
+- No hay confusion por variables que no dibujaste u observaste
+- El efecto es lineal en los parametros (lo estima MCO)
+
+**Ten cuidado con:**
+
+- Meter todas las variables «por si acaso» es un error, no una precaucion: un mediador borra el efecto y un colisionador lo inventa. Esta herramienta existe justo para no hacer eso.
+- Si dice que el efecto NO se puede identificar, ninguna regresion lo arregla. Hace falta otro dato o otro diseno.
+
+| | Puerto | Tipo |
+|---|---|---|
+| entra | datos | Una tabla de datos (filas y columnas) |
+| sale | Efecto estimado | Un modelo ya estimado, con sus coeficientes y diagnósticos |
+| sale | Que se controlo y por que | Una tabla de datos (filas y columnas) |
+
+| Parámetro | Por omisión |
+|---|---|
+| `arcos` | `—` |
+| `tratamiento` | `—` |
+| `resultado` | `—` |
+| `errores` | `HC1` |
+
+Si vienes de otro sistema — **R**: `dagitty::adjustmentSets() + lm()` · **Stata**: `dagitty (fuera de Stata)` · **EViews**: `—` · **SPSS**: `—`
+
+Para leer más: Pearl, «Causality» (2009), cap. 3. Version corta: Cunningham, «The Mixtape», cap. 3
 
 <a id="series"></a>
 

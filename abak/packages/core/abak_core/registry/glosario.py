@@ -432,6 +432,54 @@ _f("importancia|feature_importance",
 
 # --- descriptivos y pruebas -------------------------------------------------
 
+_f("papel|papel_causal|rol",
+   titulo="Papel en el grafo causal",
+   que_es="Qué es cada variable respecto de la pregunta que estás haciendo: confusor, mediador, "
+          "colisionador, predictor o irrelevante.",
+   como_se_lee="El papel decide qué se hace con ella. Sólo los confusores se controlan; todo lo "
+               "que ocurre DESPUÉS del tratamiento se queda fuera.",
+   ojo_con="El papel sale del grafo que TÚ dibujaste, no de los datos. Si el grafo está mal, la "
+           "clasificación está mal y el resultado también.")
+
+_f("confusor|confundidor|confounder",
+   titulo="Confusor",
+   que_es="Una variable que causa tanto al tratamiento como al resultado.",
+   como_se_lee="Hay que controlarla. Si la dejas fuera, su efecto se cuela en el coeficiente que "
+               "te interesa: le acreditas al tratamiento algo que hizo ella.",
+   ojo_con="Un confusor que no observaste no se arregla con ninguna regresión. Ahí hacen falta "
+           "variables instrumentales, diferencias en diferencias o discontinuidad.",
+   referencia="Pearl, «Causality», cap. 3")
+
+_f("mediador|mediator|variable_intermedia",
+   titulo="Mediador",
+   que_es="Una variable por la que PASA el efecto: el tratamiento la mueve y ella mueve al resultado.",
+   como_se_lee="No se controla. Controlarla te quita justo la parte del efecto que viaja por ahí, "
+               "y el coeficiente que queda ya no es el efecto total.",
+   ojo_con="Es el error más caro de la práctica de «meto todas las variables que tengo»: el modelo "
+           "se ve mejor (más R²) y la respuesta es más falsa.")
+
+_f("colisionador|collider|colisionador_causal",
+   titulo="Colisionador",
+   que_es="Una variable en la que CHOCAN dos flechas: dos cosas distintas la causan.",
+   como_se_lee="No se controla. Un colisionador libre ya bloquea el camino; controlarlo lo ABRE e "
+               "inventa una correlación que no existe en la realidad.",
+   ojo_con="Es la regla contraintuitiva de la inferencia causal: aquí controlar de más no es una "
+           "precaución, es el daño. El ejemplo clásico es seleccionar la muestra por una variable "
+           "que ambas cosas causan.",
+   referencia="Pearl, «Causality», cap. 3; Cunningham, «The Mixtape», cap. 3")
+
+_f("decision|decision_causal",
+   titulo="Qué se hizo con ella",
+   que_es="Si la variable entró como control en la regresión o se quedó fuera.",
+   como_se_lee="«Incluida» significa que el criterio de puerta trasera la necesitaba. «Fuera» "
+               "significa que incluirla habría sesgado el resultado, no que sobre.")
+
+_f("por_que|motivo|razon",
+   titulo="Por qué",
+   que_es="El motivo de la decisión, en una frase.",
+   como_se_lee="Es la parte que se copia al reporte: un lector debe poder discutir tu grafo, y "
+               "para eso necesita ver el razonamiento, no sólo el coeficiente.")
+
 _f("media|promedio|mean",
    titulo="Media",
    que_es="El promedio aritmético.",

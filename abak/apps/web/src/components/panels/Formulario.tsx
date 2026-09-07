@@ -178,6 +178,106 @@ export default function Formulario({ nodoId, descriptor, params }: Props) {
               ))}
             </div>
           );
+        } else if (control === 'arcos') {
+          // Las flechas del grafo causal. Cada una es «causa->efecto».
+          //
+          // Se dibuja con dos desplegables por renglón y no con un cuadro de
+          // texto a propósito: escribir nombres de columna a mano es la fuente
+          // número uno de errores tontos, y el grafo causal es justo donde un
+          // error tonto se convierte en una conclusión falsa bien presentada.
+          const columnas = columnasDe(crudo);
+          const flechas = ((valor as string[]) ?? []).map((a) => {
+            const [causa = '', efecto = ''] = a.split('->');
+            return { causa: causa.trim(), efecto: efecto.trim() };
+          });
+          // Se guardan TAMBIÉN las flechas a medio hacer. Filtrarlas aquí hacía
+          // que el renglón desapareciera al elegir la causa, antes de poder
+          // elegir el efecto: era imposible dibujar una flecha. El compilador
+          // ignora las incompletas, y abajo se avisa de que están ahí.
+          const guardar = (xs: { causa: string; efecto: string }[]) =>
+            poner(xs.map((f) => `${f.causa}->${f.efecto}`));
+          const incompletas = flechas.filter((f) => !f.causa || !f.efecto).length;
+
+          control_jsx = (
+            <div className="space-y-1.5">
+              {columnas.length === 0 && (
+                <p className="text-[11px] text-tenue">
+                  Conecta unos datos a este bloque para ver sus columnas.
+                </p>
+              )}
+              {/* Cada flecha ocupa dos renglones. Lado a lado no caben: el panel
+                  mide ~310 px y «ingreso_hogar_mensual» se corta a la mitad, que
+                  es justo lo que no puede pasar donde un nombre equivocado
+                  cambia la conclusión. */}
+              {flechas.map((f, i) => (
+                <div key={i} className="rounded border border-borde bg-tierra p-1.5">
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-wide text-tenue">
+                      Flecha {i + 1}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`Quitar la flecha ${f.causa || '?'} a ${f.efecto || '?'}`}
+                      onClick={() => guardar(flechas.filter((_, j) => j !== i))}
+                      className="rounded px-1 text-[11px] text-tenue hover:text-arcilla"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <select
+                    value={f.causa}
+                    onChange={(e) => {
+                      const xs = [...flechas]; xs[i] = { ...xs[i], causa: e.target.value };
+                      guardar(xs);
+                    }}
+                    className="w-full rounded border border-borde bg-superficie px-2 py-1 text-[12px] text-crema"
+                  >
+                    <option value="">— causa —</option>
+                    {columnas.map((c) => (
+                      <option key={c.nombre} value={c.nombre}>
+                        {c.nombre}{c.es_estimado ? '  (estimado)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex items-center gap-1.5 pt-1">
+                    <span className="shrink-0 text-[13px] leading-none text-salvia" aria-hidden>↳</span>
+                    <select
+                      value={f.efecto}
+                      onChange={(e) => {
+                        const xs = [...flechas]; xs[i] = { ...xs[i], efecto: e.target.value };
+                        guardar(xs);
+                      }}
+                      className="min-w-0 flex-1 rounded border border-borde bg-superficie px-2 py-1 text-[12px] text-crema"
+                    >
+                      <option value="">— efecto —</option>
+                      {columnas.map((c) => (
+                        <option key={c.nombre} value={c.nombre}>
+                          {c.nombre}{c.es_estimado ? '  (estimado)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => poner([...((valor as string[]) ?? []), '->'])}
+                disabled={columnas.length === 0}
+                className="w-full rounded border border-dashed border-borde px-2 py-1 text-[11px] text-tenue hover:border-salvia hover:text-salvia disabled:opacity-40"
+              >
+                + agregar flecha
+              </button>
+              {incompletas > 0 && (
+                <p className="text-[11px] leading-relaxed text-ambar">
+                  {incompletas === 1 ? 'Hay una flecha a medias y se ignora.'
+                    : `Hay ${incompletas} flechas a medias y se ignoran.`}
+                </p>
+              )}
+              <p className="text-[11px] leading-relaxed text-tenue">
+                Dibuja lo que crees que causa qué. Abak decide sola qué controlar.
+              </p>
+            </div>
+          );
         } else if (control === 'archivo') {
           control_jsx = <SubirArchivo nodoId={nodoId} />;
         } else if (clave === 'columnas' && descriptor.op === 'datos.csv') {
