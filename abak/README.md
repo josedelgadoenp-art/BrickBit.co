@@ -195,13 +195,24 @@ Y el resultado queda **en el lienzo**: se ve, se corrige y se ejecuta como
 cualquier otro análisis. La IA propone el punto de partida; el trabajo sigue
 siendo tuyo y sigue siendo auditable.
 
-Necesita una llave de Anthropic en el entorno del servidor:
+Necesita una llave de Anthropic en el entorno del servidor. En **Windows**, doble
+clic en `Configurar llave de IA.bat`: pide la llave, la revisa antes de guardarla
+y dice qué sigue. En Linux o Mac:
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...   # sólo en el servidor, nunca en el navegador
+export ANTHROPIC_API_KEY="$(read -rs -p 'Pega la llave: ' k; echo "$k")"
 ```
 
-Sin llave, el recuadro simplemente no aparece y todo lo demás funciona igual.
+**Sin hueco que rellenar, a propósito.** Un instructivo con un `<pega aquí tu
+llave>` es una trampa: la línea se ve completa y se copia entera, texto de
+ejemplo incluido. Pasó dos veces seguidas antes de que existiera este script, y
+el síntoma —un 401— se lee como «mi llave está mal» en vez de «pegué el
+ejemplo». Por eso el programa además revisa el prefijo y la longitud antes de
+gastar una llamada.
+
+La llave vive sólo en el entorno del servidor: nunca viaja al navegador, nunca
+se guarda en el grafo, nunca sale en el script exportado. Sin llave, la pantalla
+de inicio dice qué falta y todo lo demás funciona igual.
 
 ---
 

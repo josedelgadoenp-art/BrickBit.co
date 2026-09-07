@@ -31,7 +31,10 @@ Write-Host ""
 Write-Host "    Abak           solo en esta computadora" -ForegroundColor Green
 Write-Host "    Abak en red    tambien desde el celular y la laptop" -ForegroundColor Green
 Write-Host ""
-Write-Host "  Para el segundo, la primera vez corre tambien:" -ForegroundColor DarkGray
+Write-Host "  Para pedirle analisis a la IA, corre una vez:" -ForegroundColor DarkGray
+Write-Host "    Configurar llave de IA.bat" -ForegroundColor DarkGray
+Write-Host ""
+Write-Host "  Para el segundo acceso, la primera vez corre tambien:" -ForegroundColor DarkGray
 Write-Host "    Permitir Abak en la red.bat   (abre el puerto en el Firewall)" -ForegroundColor DarkGray
 Write-Host ""
 Read-Host "Enter para cerrar"
