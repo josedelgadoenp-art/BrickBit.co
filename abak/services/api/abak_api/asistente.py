@@ -33,6 +33,35 @@ class ErrorAsistente(Exception):
     """Algo impidió construir el análisis. Lleva un mensaje para la persona."""
 
 
+FALTA_PAQUETE = (
+    "Falta el paquete «anthropic». Instálalo desde la carpeta abak con:\n"
+    "    .venv\\Scripts\\pip install -e services/api        (Windows)\n"
+    "    .venv/bin/pip install -e services/api             (Linux o Mac)\n"
+    "y vuelve a arrancar el servidor.")
+
+FALTA_LLAVE = (
+    "Falta la llave de la API de Anthropic. En PowerShell:\n"
+    "    setx ANTHROPIC_API_KEY \"sk-ant-...\"\n"
+    "Después CIERRA esa ventana y abre una nueva: `setx` sólo afecta a las "
+    "ventanas que se abren después.")
+
+
+def revisar() -> tuple[bool, str | None]:
+    """¿Se puede usar el asistente? Y si no, qué falta exactamente.
+
+    Se revisan las DOS condiciones por separado. Antes sólo se miraba la llave,
+    así que sin el paquete instalado la interfaz ofrecía el asistente y la
+    petición moría con un 500 sin explicación: el peor de los dos mundos.
+    """
+    try:
+        import anthropic  # noqa: F401
+    except ImportError:
+        return False, FALTA_PAQUETE
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return False, FALTA_LLAVE
+    return True, None
+
+
 # El esquema de la respuesta. Con `output_config.format` el modelo no puede
 # devolver otra forma: no hay que parsear prosa ni rezarle a un bloque de texto.
 ESQUEMA_RESPUESTA: dict[str, Any] = {
@@ -222,12 +251,11 @@ def armar_grafo(respuesta: dict[str, Any]) -> dict[str, Any]:
 def pedir_grafo(peticion: str, esquemas: list[dict[str, Any]] | None = None,
                 grafo_actual: dict[str, Any] | None = None) -> dict[str, Any]:
     """Le pide a Claude que arme el análisis y devuelve el grafo ya validado."""
-    import anthropic
+    listo, motivo = revisar()
+    if not listo:
+        raise ErrorAsistente(motivo or "El asistente no está configurado.")
 
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise ErrorAsistente(
-            "Falta la llave de la API de Anthropic. Ponla en la variable de entorno "
-            "ANTHROPIC_API_KEY antes de arrancar el servidor y vuelve a intentarlo.")
+    import anthropic
 
     cliente = anthropic.Anthropic()
     contexto = catalogo_para_el_modelo()

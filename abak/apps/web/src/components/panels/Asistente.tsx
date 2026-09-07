@@ -39,6 +39,7 @@ export default function Asistente() {
   const vacio = nodos.length === 0;
   const [abierto, setAbierto] = useState(false);
   const [disponible, setDisponible] = useState<boolean | null>(null);
+  const [motivo, setMotivo] = useState<string | null>(null);
   const [texto, setTexto] = useState('');
   const [pensando, setPensando] = useState(false);
   const [respuesta, setRespuesta] = useState<{ explicacion: string; advertencias: string[] } | null>(null);
@@ -47,7 +48,7 @@ export default function Asistente() {
 
   useEffect(() => {
     api.asistenteDisponible()
-      .then((r) => setDisponible(r.disponible))
+      .then((r) => { setDisponible(r.disponible); setMotivo(r.motivo); })
       .catch(() => setDisponible(false));
   }, []);
 
@@ -155,6 +156,19 @@ export default function Asistente() {
                 : 'Sube tus datos o abre un ejemplo para empezar. Cada herramienta explica qué hace y cuándo usarla.'}
             </p>
           </div>
+
+          {/* Cuando el asistente no está disponible se DICE qué falta. Antes se
+              escondía sin más, y desde la pantalla no había manera de saber si
+              faltaba algo por configurar o si la función no existía. */}
+          {!disponible && motivo && (
+            <div className="rounded-xl2 border border-ambar/30 bg-ambar/5 p-3.5">
+              <p className="text-[12px] font-medium text-ambar">
+                Para pedir el análisis en español falta un paso
+              </p>
+              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-[11px]
+                              leading-relaxed text-crema/85">{motivo}</pre>
+            </div>
+          )}
 
           {disponible && (
             <div className="rounded-xl2 border border-borde bg-superficie/95 p-3.5 shadow-alto backdrop-blur">

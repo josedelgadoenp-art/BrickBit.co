@@ -109,7 +109,8 @@ export const api = {
   especificaciones: (resultado: string, nodo?: string) =>
     pedir<ResumenEspecificaciones>(
       `/especificaciones/${encodeURIComponent(resultado)}` + (nodo ? `?nodo=${encodeURIComponent(nodo)}` : '')),
-  asistenteDisponible: () => pedir<{ disponible: boolean }>('/asistente/estado'),
+  asistenteDisponible: () =>
+    pedir<{ disponible: boolean; motivo: string | null }>('/asistente/estado'),
   asistente: (peticion: string, esquemas: unknown[], grafo: unknown) =>
     // Sin `headers`: `pedir` ya pone Content-Type. Ponerlo otra vez en
     // minúsculas creaba DOS claves distintas en el objeto, fetch las unía en

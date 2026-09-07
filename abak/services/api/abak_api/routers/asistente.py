@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from ..asistente import ErrorAsistente, pedir_grafo
+from ..asistente import ErrorAsistente, pedir_grafo, revisar
 
 router = APIRouter(prefix="/asistente", tags=["asistente"])
 
@@ -20,9 +20,14 @@ class Peticion(BaseModel):
 
 @router.get("/estado")
 def estado() -> dict:
-    """¿Está configurada la llave? La interfaz lo pregunta antes de ofrecerlo."""
-    import os
-    return {"disponible": bool(os.environ.get("ANTHROPIC_API_KEY"))}
+    """¿Se puede usar el asistente? Y si no, qué falta.
+
+    El `motivo` viaja a la interfaz para que en pantalla diga qué hacer, en vez
+    de esconder el asistente sin explicación — que es lo que hacía antes y deja
+    a la persona sin manera de saber si le falta algo o si no existe.
+    """
+    listo, motivo = revisar()
+    return {"disponible": listo, "motivo": motivo}
 
 
 @router.post("")

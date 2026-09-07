@@ -136,13 +136,46 @@ def test_el_esquema_de_respuesta_es_estricto():
     assert set(ESQUEMA_RESPUESTA["required"]) == {"explicacion", "advertencias", "nodos", "aristas"}
 
 
-def test_sin_llave_la_interfaz_se_entera_y_no_se_rompe(monkeypatch):
+def test_sin_llave_la_interfaz_se_entera_y_le_dicen_que_hacer(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    assert CLIENTE.get("/api/v1/asistente/estado").json() == {"disponible": False}
+    estado = CLIENTE.get("/api/v1/asistente/estado").json()
+    assert estado["disponible"] is False
+    # El motivo trae el comando exacto: sin eso, la pantalla no da manera de
+    # saber si falta configurar algo o si la función no existe.
+    assert "setx ANTHROPIC_API_KEY" in estado["motivo"]
+    assert "nueva" in estado["motivo"], "hay que avisar que setx no afecta a la ventana actual"
 
     r = CLIENTE.post("/api/v1/asistente", json={"peticion": "explica el precio de la vivienda"})
     assert r.status_code == 422
     assert "ANTHROPIC_API_KEY" in r.json()["detail"]
+
+
+def test_sin_el_paquete_instalado_se_dice_y_no_revienta(monkeypatch):
+    """El caso que se colaba: la llave puesta pero el paquete sin instalar.
+
+    `/estado` sólo miraba la llave, así que la interfaz ofrecía el asistente y
+    la petición moría con un 500 sin explicación. El peor de los dos mundos:
+    parece que funciona y falla sin decir por qué.
+    """
+    import builtins
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-de-prueba")
+    real = builtins.__import__
+
+    def sin_anthropic(nombre, *args, **kwargs):
+        if nombre == "anthropic":
+            raise ImportError("No module named 'anthropic'")
+        return real(nombre, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", sin_anthropic)
+
+    estado = CLIENTE.get("/api/v1/asistente/estado").json()
+    assert estado["disponible"] is False
+    assert "pip install" in estado["motivo"]
+
+    r = CLIENTE.post("/api/v1/asistente", json={"peticion": "explica el precio de la vivienda"})
+    assert r.status_code == 422, "debe ser un mensaje en español, no un 500"
+    assert "pip install" in r.json()["detail"]
 
 
 def test_una_peticion_vacia_no_llega_al_modelo():
