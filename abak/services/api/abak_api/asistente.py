@@ -123,6 +123,12 @@ def revisar() -> tuple[bool, str | None]:
 ESQUEMA_RESPUESTA: dict[str, Any] = {
     "type": "object",
     "properties": {
+        "titulo": {
+            "type": "string",
+            "description": "Un nombre corto para este análisis, como lo titularía un economista. "
+                           "Cuatro a ocho palabras, en español. Ejemplo: «Precio de la vivienda "
+                           "y escolaridad».",
+        },
         "explicacion": {
             "type": "string",
             "description": "Qué análisis armaste y por qué, en 2-4 frases, en español de México. "
@@ -182,7 +188,7 @@ ESQUEMA_RESPUESTA: dict[str, Any] = {
             },
         },
     },
-    "required": ["explicacion", "advertencias", "nodos", "aristas"],
+    "required": ["titulo", "explicacion", "advertencias", "nodos", "aristas"],
     "additionalProperties": False,
 }
 
@@ -312,7 +318,12 @@ def armar_grafo(respuesta: dict[str, Any]) -> dict[str, Any]:
     for i, n in enumerate(nodos):
         columna[n["id"]] = i
 
-    grafo = {
+    # Si viene en blanco se OMITE la clave, no se manda None: `GrafoSpec.titulo`
+    # es un `str` con valor por omisión, así que un None lo rechaza el validador
+    # mientras que la ausencia deja actuar al de la casa.
+    titulo = (respuesta.get("titulo") or "").strip()
+    grafo: dict[str, Any] = {
+        **({"titulo": titulo[:200]} if titulo else {}),
         "nodos": [
             {
                 "id": n["id"],

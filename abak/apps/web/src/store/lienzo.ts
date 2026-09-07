@@ -289,8 +289,11 @@ export const usarLienzo = create<Estado>((set, get) => ({
 
   cargarGrafo(grafo) {
     set({
-      titulo: grafo.titulo,
-      semilla: grafo.semilla,
+      // Nunca `undefined`: un grafo sin título deja el campo del encabezado sin
+      // valor, React lo pasa de controlado a no controlado y lo grita en la
+      // consola. Pasó con los grafos que arma la IA, que no traían título.
+      titulo: grafo.titulo ?? '',
+      semilla: grafo.semilla ?? 42,
       nodos: grafo.nodos.map((n) => ({
         id: n.id, type: 'abak' as const, position: n.posicion,
         data: { op: n.op, etiqueta: n.etiqueta ?? '', params: n.params, notas: n.notas },

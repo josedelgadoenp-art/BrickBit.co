@@ -22,6 +22,7 @@ CLIENTE = TestClient(app)
 
 # Una respuesta realista del modelo: precio hedónico sobre los datos de ejemplo.
 RESPUESTA_BUENA = {
+    "titulo": "Precio de la vivienda y escolaridad",
     "explicacion": "Armé un modelo hedónico: explico el precio por m² con el ingreso del hogar "
                    "y la escolaridad, en logaritmos, con errores robustos.",
     "advertencias": ["Los datos son de corte transversal: esto mide asociación, no efecto causal."],
@@ -137,7 +138,8 @@ def test_el_esquema_de_respuesta_es_estricto():
     assert ESQUEMA_RESPUESTA["additionalProperties"] is False
     for clave in ("nodos", "aristas"):
         assert ESQUEMA_RESPUESTA["properties"][clave]["items"]["additionalProperties"] is False
-    assert set(ESQUEMA_RESPUESTA["required"]) == {"explicacion", "advertencias", "nodos", "aristas"}
+    assert set(ESQUEMA_RESPUESTA["required"]) == {
+        "titulo", "explicacion", "advertencias", "nodos", "aristas"}
 
 
 def test_sin_llave_la_interfaz_se_entera_y_le_dicen_que_hacer(monkeypatch):
@@ -373,3 +375,25 @@ def test_el_esfuerzo_es_medio_para_que_la_peticion_no_tarde_minutos():
 
     fuente = inspect.getsource(asistente.pedir_grafo)
     assert '"effort": "medium"' in fuente
+
+
+def test_el_analisis_llega_con_nombre():
+    """Un análisis armado por la IA no debería llamarse «Análisis sin título»."""
+    grafo = armar_grafo(RESPUESTA_BUENA)["grafo"]
+    assert grafo["titulo"] == "Precio de la vivienda y escolaridad"
+
+
+def test_sin_titulo_se_omite_la_clave_y_manda_el_valor_de_la_casa():
+    """`GrafoSpec.titulo` es un `str` con valor por omisión: un None lo rechaza
+    el validador, mientras que la ausencia de la clave deja actuar al de la
+    casa. Es la diferencia entre no decir nada y decir «nada»."""
+    respuesta = json.loads(json.dumps(RESPUESTA_BUENA))
+    respuesta["titulo"] = "   "
+    grafo = armar_grafo(respuesta)["grafo"]
+    assert "titulo" not in grafo
+
+
+def test_un_titulo_larguisimo_no_revienta_el_validador():
+    respuesta = json.loads(json.dumps(RESPUESTA_BUENA))
+    respuesta["titulo"] = "x" * 500
+    assert len(armar_grafo(respuesta)["grafo"]["titulo"]) == 200
