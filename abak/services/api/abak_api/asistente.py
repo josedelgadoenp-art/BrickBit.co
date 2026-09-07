@@ -46,6 +46,21 @@ FALTA_LLAVE = (
     "ventanas que se abren después.")
 
 
+def huella_llave() -> dict[str, Any]:
+    """Cómo es la llave que ESTE proceso tiene, sin revelarla.
+
+    Existe por un fallo que cuesta media hora encontrar: `setx` escribe en el
+    registro de Windows, no en los procesos abiertos. Un servidor arrancado
+    antes de configurar la llave se queda con la vieja para siempre, y desde la
+    pantalla se ve idéntico a una llave mal escrita. Con la longitud y el
+    prefijo a la vista, un proceso rancio se delata solo.
+    """
+    llave = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not llave:
+        return {"hay": False}
+    return {"hay": True, "longitud": len(llave), "prefijo": llave[:11]}
+
+
 def revisar() -> tuple[bool, str | None]:
     """¿Se puede usar el asistente? Y si no, qué falta exactamente.
 

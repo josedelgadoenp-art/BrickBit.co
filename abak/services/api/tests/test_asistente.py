@@ -237,3 +237,25 @@ def test_el_texto_de_relleno_de_un_instructivo_se_caza_por_largo(monkeypatch):
     mensaje = str(exc.value)
     assert "15 caracteres" in mensaje
     assert "ejemplo" in mensaje
+
+
+def test_el_estado_dice_que_llave_tiene_EL_SERVIDOR(monkeypatch):
+    """`setx` no toca los procesos abiertos.
+
+    Un servidor arrancado antes de configurar la llave se queda con la vieja
+    para siempre, y en pantalla eso se ve idéntico a una llave mal escrita. La
+    huella —longitud y prefijo, nunca la llave— hace que el proceso rancio se
+    delate solo, sin revelar el secreto.
+    """
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-api03-" + "K" * 90)
+    llave = CLIENTE.get("/api/v1/asistente/estado").json()["llave"]
+    assert llave["hay"] is True
+    assert llave["longitud"] == 103
+    assert llave["prefijo"] == "sk-ant-api0"
+    # Lo que NO puede pasar: que la llave entera viaje al navegador.
+    assert "K" * 20 not in str(llave)
+
+
+def test_sin_llave_la_huella_no_inventa_nada(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    assert CLIENTE.get("/api/v1/asistente/estado").json()["llave"] == {"hay": False}

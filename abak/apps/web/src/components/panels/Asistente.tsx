@@ -40,6 +40,7 @@ export default function Asistente() {
   const [abierto, setAbierto] = useState(false);
   const [disponible, setDisponible] = useState<boolean | null>(null);
   const [motivo, setMotivo] = useState<string | null>(null);
+  const [huella, setHuella] = useState<{ longitud?: number; prefijo?: string } | null>(null);
   const [texto, setTexto] = useState('');
   const [pensando, setPensando] = useState(false);
   const [respuesta, setRespuesta] = useState<{ explicacion: string; advertencias: string[] } | null>(null);
@@ -48,7 +49,11 @@ export default function Asistente() {
 
   useEffect(() => {
     api.asistenteDisponible()
-      .then((r) => { setDisponible(r.disponible); setMotivo(r.motivo); })
+      .then((r) => {
+        setDisponible(r.disponible);
+        setMotivo(r.motivo);
+        setHuella(r.llave?.hay ? r.llave : null);
+      })
       .catch(() => setDisponible(false));
   }, []);
 
@@ -118,10 +123,20 @@ export default function Asistente() {
   const avisos = (
     <>
       {problema && (
-        <p className="mt-2.5 rounded-lg border border-terracota/40 bg-terracota/8 px-3 py-2
-                      text-[12px] leading-relaxed text-arcilla">
-          {problema}
-        </p>
+        <div className="mt-2.5 rounded-lg border border-terracota/40 bg-terracota/8 px-3 py-2">
+          <p className="text-[12px] leading-relaxed text-arcilla">{problema}</p>
+          {/* Qué llave tiene EL SERVIDOR, no la que hay en el registro de
+              Windows. `setx` no toca los procesos abiertos: un servidor
+              arrancado antes de configurarla se queda con la vieja, y sin este
+              renglón se ve idéntico a una llave mal escrita. */}
+          {huella?.longitud !== undefined && (
+            <p className="mt-1.5 font-mono text-[11px] leading-relaxed text-tenue">
+              El servidor está usando una llave de {huella.longitud} caracteres que empieza
+              con «{huella.prefijo}». Si no coincide con la que acabas de guardar, la ventana
+              del API se abrió antes: ciérrala y vuelve a arrancarla.
+            </p>
+          )}
+        </div>
       )}
       {respuesta && (
         <div className="mt-2.5 rounded-lg border border-borde bg-tierra px-3 py-2.5 text-left">

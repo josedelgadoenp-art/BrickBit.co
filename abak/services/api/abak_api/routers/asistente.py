@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from ..asistente import ErrorAsistente, pedir_grafo, revisar
+from ..asistente import ErrorAsistente, huella_llave, pedir_grafo, revisar
 
 router = APIRouter(prefix="/asistente", tags=["asistente"])
 
@@ -27,7 +27,7 @@ def estado() -> dict:
     a la persona sin manera de saber si le falta algo o si no existe.
     """
     listo, motivo = revisar()
-    return {"disponible": listo, "motivo": motivo}
+    return {"disponible": listo, "motivo": motivo, "llave": huella_llave()}
 
 
 @router.post("")
