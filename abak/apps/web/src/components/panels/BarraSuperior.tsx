@@ -8,17 +8,28 @@ import { EJEMPLOS } from '@/lib/ejemplos';
 import { duracion } from '@/lib/formato';
 import { usarLienzo } from '@/store/lienzo';
 
+/**
+ * La barra de arriba.
+ *
+ * Tenía nueve controles del mismo tamaño, y ocho de ellos no sirven de nada
+ * hasta que hay un análisis corrido. Ahora aparecen por etapas: con el lienzo
+ * vacío quedan los dos que sí se pueden usar (subir datos, abrir un ejemplo), y
+ * lo que se hace UNA vez —la semilla, vaciar, las descargas— se agrupa en menús
+ * en lugar de competir por atención con «Ejecutar».
+ */
 export default function BarraSuperior() {
   const {
     titulo, ponerTitulo, semilla, ponerSemilla, ejecutar, cancelar, ejecutando,
     ejecucion, validando, diagnosticos, nodos, limpiar, cargarGrafo, aGrafo, errorEjecucion,
     seleccionar, irA, agregarNodo, actualizarParams,
   } = usarLienzo();
-  const [abiertoEjemplos, setAbiertoEjemplos] = useState(false);
+  const [menu, setMenu] = useState<'ejemplos' | 'descargas' | 'ajustes' | null>(null);
   const [bajando, setBajando] = useState<'zip' | 'pdf' | null>(null);
   const [problema, setProblema] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
   const campoArchivo = useRef<HTMLInputElement>(null);
+
+  const hayNodos = nodos.length > 0;
 
   /**
    * Subir datos en un solo gesto.
@@ -58,7 +69,7 @@ export default function BarraSuperior() {
   // es la peor señal posible: la persona hace clic, no pasa nada, y no sabe si
   // la herramienta está rota o si le falta hacer algo. Con problemas, el clic
   // lleva al bloque que los tiene y dice qué le falta.
-  const puedeEjecutar = nodos.length > 0 && !ejecutando;
+  const puedeEjecutar = hayNodos && !ejecutando;
   const primerProblema = diagnosticos.find((d) => d.severidad === 'error');
 
   function alEjecutar() {
@@ -71,10 +82,11 @@ export default function BarraSuperior() {
       return;
     }
     setProblema(null);
-    ejecutar();
+    ejecutar(undefined, { llevarAResultados: true });
   }
 
   async function exportar() {
+    setMenu(null);
     setBajando('zip');
     setProblema(null);
     try {
@@ -87,6 +99,7 @@ export default function BarraSuperior() {
   }
 
   async function informePdf() {
+    setMenu(null);
     if (!ejecucion) return;
     setBajando('pdf');
     setProblema(null);
@@ -99,8 +112,18 @@ export default function BarraSuperior() {
     }
   }
 
+  const secundario = 'rounded-lg border border-borde px-2.5 py-1 text-[12px] text-tenue '
+    + 'transition-colors hover:border-tenue/60 hover:text-crema disabled:opacity-40';
+
   return (
-    <header className="flex shrink-0 items-center gap-3 border-b border-borde bg-superficie px-4 py-2">
+    <header className="relative flex shrink-0 items-center gap-3 border-b border-borde bg-superficie px-4 py-2">
+      {/* Un solo velo para los tres menús: sin él se quedan abiertos y tapan
+          justo el control que se quería usar después. */}
+      {menu && (
+        <button aria-label="Cerrar el menú" onClick={() => setMenu(null)}
+                className="fixed inset-0 z-20 cursor-default" />
+      )}
+
       <div className="flex items-center gap-2">
         <span className="text-[15px] font-semibold tracking-tight text-crema">Abak</span>
         <span className="hidden text-[11px] text-tenue lg:inline">
@@ -108,12 +131,19 @@ export default function BarraSuperior() {
         </span>
       </div>
 
-      <input
-        value={titulo}
-        onChange={(e) => ponerTitulo(e.target.value)}
-        className="ml-2 min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1 text-[13px] text-crema hover:border-borde focus:border-salvia focus:outline-none"
-        aria-label="Título del análisis"
-      />
+      {hayNodos ? (
+        <input
+          value={titulo}
+          onChange={(e) => ponerTitulo(e.target.value)}
+          placeholder="Título del análisis"
+          className="ml-2 min-w-0 flex-1 rounded border border-transparent bg-transparent px-2 py-1
+                     text-[13px] text-crema placeholder:text-tenue/50 hover:border-borde
+                     focus:border-salvia focus:outline-none"
+          aria-label="Título del análisis"
+        />
+      ) : (
+        <div className="flex-1" />
+      )}
 
       <input
         ref={campoArchivo}
@@ -125,28 +155,26 @@ export default function BarraSuperior() {
       <button
         onClick={() => campoArchivo.current?.click()}
         disabled={subiendo}
-        title="Sube un CSV, Excel, Parquet o ZIP y queda listo en el lienzo"
-        className="inline-flex items-center gap-1.5 rounded border border-salvia/50 px-2.5 py-1 text-[12px] text-salvia hover:bg-salvia/10 disabled:opacity-50"
+        title="Sube un CSV, Excel, Parquet o ZIP y queda listo para analizar"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-salvia/50 px-2.5 py-1
+                   text-[12px] text-salvia transition-colors hover:bg-salvia/10 disabled:opacity-50"
       >
         <IconoSubir className="h-3.5 w-3.5" />
         {subiendo ? 'Subiendo…' : 'Subir datos'}
       </button>
 
       <div className="relative">
-        <button
-          onClick={() => setAbiertoEjemplos((v) => !v)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-borde px-2.5 py-1
-                     text-[12px] text-tenue transition-colors hover:border-tenue/60 hover:text-crema"
-        >
+        <button onClick={() => setMenu(menu === 'ejemplos' ? null : 'ejemplos')}
+                className={`inline-flex items-center gap-1.5 ${secundario}`}>
           Ejemplos
           <IconoAbajo className="h-3 w-3" />
         </button>
-        {abiertoEjemplos && (
-          <div className="absolute right-0 z-20 mt-1 w-80 rounded border border-borde bg-superficie shadow-panel">
+        {menu === 'ejemplos' && (
+          <div className="absolute right-0 z-30 mt-1 w-80 rounded-xl2 border border-borde bg-superficie shadow-panel">
             {EJEMPLOS.map((e) => (
               <button
                 key={e.id}
-                onClick={() => { cargarGrafo(e.grafo()); setAbiertoEjemplos(false); }}
+                onClick={() => { cargarGrafo(e.grafo()); setMenu(null); irA('lienzo'); }}
                 className="block w-full border-b border-borde/60 px-3 py-2 text-left last:border-0 hover:bg-superficie2"
               >
                 <div className="text-[13px] text-crema">{e.titulo}</div>
@@ -157,59 +185,97 @@ export default function BarraSuperior() {
         )}
       </div>
 
-      <label className="flex items-center gap-1.5 text-[11px] text-tenue" title="Con la misma semilla y los mismos datos, el resultado se repite exactamente.">
-        semilla
-        <input
-          type="number"
-          value={semilla}
-          onChange={(e) => ponerSemilla(Number(e.target.value) || 0)}
-          className="w-16 rounded border border-borde bg-tierra px-1.5 py-0.5 text-[11px] text-crema focus:border-salvia focus:outline-none"
-        />
-      </label>
+      {hayNodos && (
+        <>
+          <span className="text-[11px] text-tenue">
+            {validando ? 'revisando…'
+              : errores ? <span className="text-arcilla">{errores} problema{errores === 1 ? '' : 's'}</span>
+              : 'sin problemas'}
+          </span>
 
-      <span className="text-[11px] text-tenue">
-        {validando ? 'revisando…'
-          : errores ? <span className="text-arcilla">{errores} problema{errores === 1 ? '' : 's'}</span>
-          : nodos.length ? 'sin problemas' : ''}
-      </span>
+          <div className="relative">
+            <button onClick={() => setMenu(menu === 'descargas' ? null : 'descargas')}
+                    disabled={bajando !== null}
+                    className={`inline-flex items-center gap-1.5 ${secundario}`}>
+              {bajando === 'zip' ? 'Preparando…' : bajando === 'pdf' ? 'Generando…' : 'Descargar'}
+              <IconoAbajo className="h-3 w-3" />
+            </button>
+            {menu === 'descargas' && (
+              <div className="absolute right-0 z-30 mt-1 w-72 rounded-xl2 border border-borde bg-superficie shadow-panel">
+                <button onClick={exportar}
+                        className="block w-full border-b border-borde/60 px-3 py-2 text-left hover:bg-superficie2">
+                  <div className="text-[13px] text-crema">Proyecto en .zip</div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-tenue">
+                    El script de Python, sus datos y la nota metodológica. Corre sin Abak.
+                  </div>
+                </button>
+                <button onClick={informePdf} disabled={ejecucion?.estado !== 'listo'}
+                        className="block w-full px-3 py-2 text-left hover:bg-superficie2 disabled:opacity-40">
+                  <div className="text-[13px] text-crema">Informe en PDF</div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-tenue">
+                    {ejecucion?.estado === 'listo'
+                      ? 'Portada, resultados, gráficas, metodología y código.'
+                      : 'Ejecuta el análisis para poder generarlo.'}
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
 
-      <button onClick={limpiar} className="rounded border border-borde px-2.5 py-1 text-[12px] text-tenue hover:text-crema">
-        Vaciar
-      </button>
-      <button onClick={exportar} disabled={!nodos.length || bajando !== null}
-              title="Descarga un .zip con el script de Python, sus datos y la nota metodológica"
-              className="rounded border border-borde px-2.5 py-1 text-[12px] text-tenue hover:text-crema disabled:opacity-40">
-        {bajando === 'zip' ? 'Preparando…' : 'Exportar .zip'}
-      </button>
-      <button onClick={informePdf}
-              disabled={!ejecucion || ejecucion.estado !== 'listo' || bajando !== null}
-              title={ejecucion?.estado === 'listo'
-                ? 'Informe en PDF con portada, resultados, gráficas, metodología y el código'
-                : 'Ejecuta el análisis para poder generar el informe'}
-              className="rounded border border-borde px-2.5 py-1 text-[12px] text-tenue hover:text-crema disabled:opacity-40">
-        {bajando === 'pdf' ? 'Generando…' : 'Informe PDF'}
-      </button>
+          <div className="relative">
+            <button onClick={() => setMenu(menu === 'ajustes' ? null : 'ajustes')}
+                    title="Semilla y vaciar" aria-label="Más opciones"
+                    className={secundario}>
+              ⋯
+            </button>
+            {menu === 'ajustes' && (
+              <div className="absolute right-0 z-30 mt-1 w-72 rounded-xl2 border border-borde bg-superficie p-3 shadow-panel">
+                <label className="flex items-center justify-between gap-2 text-[12px] text-crema">
+                  Semilla
+                  <input
+                    type="number"
+                    value={semilla}
+                    onChange={(e) => ponerSemilla(Number(e.target.value) || 0)}
+                    className="w-20 rounded border border-borde bg-tierra px-1.5 py-0.5 text-[12px] text-crema focus:border-salvia focus:outline-none"
+                  />
+                </label>
+                <p className="mt-1 text-[11px] leading-snug text-tenue">
+                  Con la misma semilla y los mismos datos, el resultado se repite exactamente.
+                </p>
+                <button onClick={() => { limpiar(); setMenu(null); }}
+                        className="mt-3 w-full rounded-lg border border-borde px-2.5 py-1.5 text-[12px] text-tenue transition-colors hover:border-terracota/60 hover:text-arcilla">
+                  Vaciar y empezar de nuevo
+                </button>
+              </div>
+            )}
+          </div>
 
-      {ejecutando ? (
-        <button onClick={cancelar} className="rounded bg-terracota/85 px-3 py-1 text-[12px] font-medium text-tierra hover:bg-terracota">
-          Detener
-        </button>
-      ) : (
-        <button
-          onClick={alEjecutar}
-          disabled={!puedeEjecutar}
-          title={errores ? 'Te lleva al bloque que falta configurar' : 'Ejecuta el análisis completo'}
-          className="rounded bg-salvia px-3 py-1 text-[12px] font-medium text-tierra hover:bg-salviaProfunda disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Ejecutar
-        </button>
+          {ejecutando ? (
+            <button onClick={cancelar} className="rounded-lg bg-terracota/85 px-3 py-1 text-[12px] font-medium text-tierra hover:bg-terracota">
+              Detener
+            </button>
+          ) : (
+            <button
+              onClick={alEjecutar}
+              disabled={!puedeEjecutar}
+              title={errores ? 'Te lleva al bloque que falta configurar' : 'Ejecuta el análisis completo'}
+              className="rounded-lg bg-salvia px-3 py-1 text-[12px] font-medium text-tierra transition-colors hover:bg-salviaProfunda disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Ejecutar
+            </button>
+          )}
+
+          {ejecucion?.ms_total != null && !ejecutando && (
+            <span className="text-[11px] text-tenue">{duracion(ejecucion.ms_total)}</span>
+          )}
+        </>
       )}
 
-      {ejecucion?.ms_total != null && !ejecutando && (
-        <span className="text-[11px] text-tenue">{duracion(ejecucion.ms_total)}</span>
-      )}
       {(errorEjecucion || problema) && (
-        <span className="text-[11px] text-arcilla">{errorEjecucion ?? problema}</span>
+        <span className="max-w-[22rem] truncate text-[11px] text-arcilla"
+              title={errorEjecucion ?? problema ?? ''}>
+          {errorEjecucion ?? problema}
+        </span>
       )}
     </header>
   );

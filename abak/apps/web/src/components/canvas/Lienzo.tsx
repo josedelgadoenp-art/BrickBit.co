@@ -7,7 +7,6 @@ import '@xyflow/react/dist/style.css';
 import { useCallback, useMemo, useRef } from 'react';
 
 import NodoAbak from '@/components/canvas/NodoAbak';
-import Asistente from '@/components/panels/Asistente';
 import { usarLienzo } from '@/store/lienzo';
 
 function LienzoInterno() {
@@ -72,6 +71,17 @@ function LienzoInterno() {
         )}
       </ReactFlow>
 
+      {/* Un lienzo vacío sin una palabra encima es una pared. Sólo se llega
+          aquí pidiendo armarlo a mano, así que dice el gesto que falta. */}
+      {nodos.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-8">
+          <p className="max-w-sm text-center text-[13px] leading-relaxed text-tenue">
+            Haz clic en una herramienta de la izquierda —o arrástrala hasta aquí— y se conecta
+            sola con la anterior. Empieza por «Cargar archivo» o «Datos de ejemplo».
+          </p>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -81,7 +91,6 @@ export default function Lienzo() {
     <ReactFlowProvider>
       <div className="relative h-full w-full">
         <LienzoInterno />
-        <Asistente />
       </div>
     </ReactFlowProvider>
   );

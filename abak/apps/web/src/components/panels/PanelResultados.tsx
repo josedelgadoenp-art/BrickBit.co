@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import BotonPdf from '@/components/ui/BotonPdf';
 import Explicacion from '@/components/ui/Explicacion';
 import Grafica from '@/components/ui/Grafica';
+import { IconoAbajo } from '@/components/ui/Icono';
 import Tabla from '@/components/ui/Tabla';
 import TablaModelo from '@/components/ui/TablaModelo';
 import { num } from '@/lib/formato';
@@ -54,11 +55,70 @@ export function RenderArtefacto({ artefacto }: { artefacto: Artefacto }) {
   }
 }
 
+/**
+ * Lo que se preguntó y lo que la IA entendió, encima de las tablas.
+ *
+ * Aterrizar directo en el resultado ahorra el paso de descubrir «Ejecutar»,
+ * pero deja a la persona frente a una regresión sin contexto. Este bloque
+ * cierra esa distancia: la frase que escribió, lo que Abak armó con ella, y en
+ * ámbar lo que conviene mirar con desconfianza.
+ */
+function RespuestaDeLaIA() {
+  const respuesta = usarLienzo((s) => s.respuestaIA);
+  const irA = usarLienzo((s) => s.irA);
+  if (!respuesta) return null;
+
+  return (
+    <div className="mb-6 rounded-xl2 border border-borde bg-superficie p-4">
+      <p className="text-[11px] uppercase tracking-[0.14em] text-tenue">Preguntaste</p>
+      <p className="mt-1 text-[14px] leading-relaxed text-crema">«{respuesta.peticion}»</p>
+      <p className="mt-3 text-[12px] uppercase tracking-[0.14em] text-tenue">Esto se hizo</p>
+      <p className="mt-1 text-[13px] leading-relaxed text-crema/90">{respuesta.explicacion}</p>
+      {respuesta.advertencias.length > 0 && (
+        <ul className="mt-3 space-y-1 border-t border-borde pt-3">
+          {respuesta.advertencias.map((a, i) => (
+            <li key={i} className="text-[12px] leading-relaxed text-ambar">{a}</li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          onClick={() => irA('lienzo')}
+          className="rounded-lg border border-borde px-2.5 py-1 text-[11px] text-tenue
+                     transition-colors hover:border-salvia/50 hover:text-crema"
+        >
+          Ver los pasos
+        </button>
+        <button
+          onClick={() => irA('metodologia')}
+          className="rounded-lg border border-borde px-2.5 py-1 text-[11px] text-tenue
+                     transition-colors hover:border-salvia/50 hover:text-crema"
+        >
+          Cómo se hizo
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Familias que sólo preparan el terreno: su tabla no es la respuesta. */
+const PREPARAN = new Set(['datos', 'fuentes', 'transformar', 'graficos', 'salida']);
+/** Familias que estiman algo. Cuentan para «N estimaciones»; `explorar` no. */
+const ESTIMAN = new Set(['econometria', 'causal', 'series', 'espacial', 'macro',
+                         'inmobiliario', 'ml']);
+
 export default function PanelResultados() {
+  const [verIntermedios, setVerIntermedios] = useState(false);
   const ejecucion = usarLienzo((s) => s.ejecucion);
+  const ejecutando = usarLienzo((s) => s.ejecutando);
+  const errorEjecucion = usarLienzo((s) => s.errorEjecucion);
   const orden = usarLienzo((s) => s.orden);
   const seleccionar = usarLienzo((s) => s.seleccionar);
   const irA = usarLienzo((s) => s.irA);
+  const ejecutar = usarLienzo((s) => s.ejecutar);
+  const hayNodos = usarLienzo((s) => s.nodos.length > 0);
+  const nodos = usarLienzo((s) => s.nodos);
+  const descriptor = usarLienzo((s) => s.descriptor);
   const secciones = useRef<Record<string, HTMLElement | null>>({});
 
   const ids = useMemo(
@@ -72,7 +132,18 @@ export default function PanelResultados() {
    * `clase` separa lo que se estimó de lo que sólo preparó datos. Un análisis
    * real trae doce pasos y sólo dos o tres son el resultado; sin esa marca hay
    * que bajar leyendo tabla por tabla hasta dar con el modelo.
+   *
+   * La clase sale de la FAMILIA de la herramienta, no del tipo de artefacto
+   * que devuelve. Se intentó por artefacto y clasificaba mal: las pruebas de
+   * supuestos devuelven una tabla, igual que un `head()`, y acababan en el
+   * montón de «preparar datos» aunque sean parte de la respuesta.
    */
+  const familia = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const n of nodos) m[n.id] = descriptor(n.data.op)?.familia ?? '';
+    return m;
+  }, [nodos, descriptor]);
+
   const pasos = useMemo(() => {
     if (!ejecucion) return [];
     return ids.flatMap((id) => {
@@ -80,27 +151,69 @@ export default function PanelResultados() {
       if (!r) return [];
       const artefactos = Object.entries(r.artefactos ?? {}).filter(([, a]) => a.tipo !== 'figura');
       if (!artefactos.length && !r.error) return [];
+      const f = familia[id];
       const clase: 'error' | 'modelo' | 'dato' = r.error
         ? 'error'
-        : artefactos.some(([, a]) => a.tipo === 'modelo' || a.tipo === 'detalle')
-          ? 'modelo'
-          : 'dato';
+        : f
+          ? (PREPARAN.has(f) ? 'dato' : 'modelo')
+          // Sin catálogo cargado se cae al criterio antiguo, que acierta en la
+          // mayoría de los casos y nunca deja un paso fuera de la lista.
+          : artefactos.some(([, a]) => a.tipo === 'modelo' || a.tipo === 'detalle')
+            ? 'modelo'
+            : 'dato';
       return [{ id, r, artefactos, clase }];
     });
-  }, [ejecucion, ids]);
+  }, [ejecucion, ids, familia]);
 
   if (!ejecucion) {
     return (
-      <Vacio texto="Todavía no has ejecutado el análisis. Arma el lienzo y presiona Ejecutar." />
+      <div className="h-full overflow-y-auto">
+        <div className="mx-auto max-w-3xl p-4 pt-6">
+          <RespuestaDeLaIA />
+          <div className="rounded-xl2 border border-borde bg-superficie p-5 text-center">
+            <p className="text-[13px] leading-relaxed text-tenue">
+              {ejecutando
+                ? 'Ejecutando el análisis. Los resultados aparecen aquí en cuanto terminen.'
+                : errorEjecucion
+                  ? errorEjecucion
+                  : hayNodos
+                    ? 'El análisis está armado pero todavía no se ha corrido.'
+                    : 'Todavía no hay nada que mostrar. Escribe qué quieres analizar.'}
+            </p>
+            {/* Un panel vacío que sólo describe el problema obliga a salir a
+                buscar el botón. Si lo que falta es ejecutar, se ejecuta aquí. */}
+            {hayNodos && !ejecutando && (
+              <button
+                onClick={() => ejecutar(undefined, { llevarAResultados: true })}
+                className="mt-3 rounded-lg bg-salvia px-4 py-2 text-[13px] font-medium text-tierra
+                           transition-colors hover:bg-salviaProfunda"
+              >
+                Ejecutar ahora
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     );
   }
 
-  const estimados = pasos.filter((x) => x.clase === 'modelo').length;
+  const estimados = pasos.filter((x) => ESTIMAN.has(familia[x.id])).length;
   const conError = pasos.filter((x) => x.clase === 'error').length;
+
+  // Lo que contesta la pregunta arriba (errores y estimaciones, en el orden del
+  // análisis); lo que sólo preparó datos, al final y plegado. Reordenar este
+  // bloque no cambia lo que se hizo: el orden real sigue en el lienzo, en el
+  // código y en la nota metodológica, y las pastillas de arriba también.
+  const peso = (c: string) => (c === 'error' ? 0 : c === 'modelo' ? 1 : 2);
+  const ordenados = [...pasos].sort((a, b) => peso(a.clase) - peso(b.clase));
+  const corte = ordenados.findIndex((x) => x.clase === 'dato');
+  const primerIntermedio = corte > 0 ? corte : -1;
+  const intermedios = primerIntermedio >= 0 ? ordenados.length - primerIntermedio : 0;
 
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-5xl p-4">
+        <RespuestaDeLaIA />
         <div className="sticky top-0 z-20 -mx-4 mb-6 border-b border-borde bg-tierra/95 px-4 pb-3 pt-1 backdrop-blur">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <span className="text-[12px] text-tenue">
@@ -118,9 +231,12 @@ export default function PanelResultados() {
               {pasos.map(({ id, r, clase }) => (
                 <button
                   key={id}
-                  onClick={() => secciones.current[id]?.scrollIntoView({
-                    behavior: 'smooth', block: 'start',
-                  })}
+                  onClick={() => {
+                    if (clase === 'dato') setVerIntermedios(true);
+                    requestAnimationFrame(() => secciones.current[id]?.scrollIntoView({
+                      behavior: 'smooth', block: 'start',
+                    }));
+                  }}
                   title={r.etiqueta ?? id}
                   className={`max-w-[15rem] truncate rounded-full border px-2.5 py-1 text-[11px]
                               transition-colors ${
@@ -139,10 +255,30 @@ export default function PanelResultados() {
         </div>
 
         <div className="space-y-6">
-          {pasos.map(({ id, r, artefactos, clase }) => (
+          {ordenados.map(({ id, r, artefactos, clase }, i) => (
+            <div key={id} className="contents">
+              {/* La pregunta era «explícame el precio», y la respuesta es el
+                  modelo. Antes lo primero en pantalla era la tabla de 32
+                  renglones que sólo sirvió para llegar hasta él: había que
+                  bajar cuatro pantallas para leer lo que se preguntó. */}
+              {i === primerIntermedio && (
+                <button
+                  onClick={() => setVerIntermedios((v) => !v)}
+                  className="flex w-full items-center gap-2 rounded-xl2 border border-borde
+                             bg-superficie px-3.5 py-2.5 text-left text-[12px] text-tenue
+                             transition-colors hover:border-salvia/40 hover:text-crema"
+                >
+                  <IconoAbajo className={`h-3 w-3 transition-transform ${verIntermedios ? '' : '-rotate-90'}`} />
+                  {/* Rotulado en una sola expresión: partido en varias líneas,
+                      JSX come el salto entre el texto y la interpolación y sale
+                      «pasosque prepararon». */}
+                  {`${verIntermedios ? 'Ocultar' : 'Ver'} los ${intermedios} `
+                    + `${intermedios === 1 ? 'paso' : 'pasos'} que prepararon los datos`}
+                </button>
+              )}
             <section
-              key={id}
               ref={(el) => { secciones.current[id] = el; }}
+              hidden={primerIntermedio >= 0 && i >= primerIntermedio && !verIntermedios}
               className="scroll-mt-24"
             >
               <div className="mb-2 flex items-baseline gap-2">
@@ -178,6 +314,7 @@ export default function PanelResultados() {
                 ))}
               </div>
             </section>
+            </div>
           ))}
         </div>
       </div>

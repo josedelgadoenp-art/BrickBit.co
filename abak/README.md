@@ -184,9 +184,32 @@ El detalle está en [docs/nodos.md](docs/nodos.md), que se genera del registro.
 
 ## Pídelo en español
 
-Arriba del lienzo hay un recuadro: escribes lo que quieres —«explica el precio
-por m² con el ingreso y la escolaridad, en logaritmos, y grafica el ajuste»— y
-Abak arma el análisis.
+Al abrir Abak no hay lienzo, ni paleta, ni ocho pestañas: hay una pregunta.
+Escribes lo que quieres —«explica el precio por m² con el ingreso y la
+escolaridad, en logaritmos, y grafica el ajuste»— y **Abak lo arma, lo revisa,
+lo ejecuta y te deja en el resultado**. Tres pasos, y sólo el primero es tuyo:
+
+    1. Pregunta  ›  2. Análisis  ›  3. Resultado
+
+Antes se detenía en el segundo. Armaba el grafo y dejaba a la persona mirando
+doce cajas conectadas y un botón «Ejecutar» que había que descubrir: había
+hecho una pregunta y recibía un diagrama. Ahora el diagrama sigue ahí —a una
+pestaña de distancia, entero y corregible— pero lo primero que se ve es la
+respuesta, con la frase que se escribió y lo que se hizo con ella encima de las
+tablas.
+
+En el resultado, los pasos que sólo prepararon los datos van plegados al final.
+No se ocultan —un clic los abre, y el orden real sigue intacto en el lienzo, en
+el código y en la nota metodológica—: es que la tabla de 32 renglones que sirvió
+para llegar al modelo no es la respuesta, y estaba cuatro pantallas por encima
+de ella.
+
+Las pestañas también bajaron de ocho a cinco. Cuatro contestan «¿qué salió?» y
+«¿con qué?» (Resultado, Gráficos, Análisis, Datos); las cuatro de auditoría
+—Metodología, Código, Especificaciones, Bitácora— viven dentro de **«Cómo se
+hizo»**, que es la pregunta que contestan. Y la paleta y el inspector aparecen
+sólo en el lienzo, que es donde sirven: leer una tabla de regresión por una
+rendija de 600 px menos no ayudaba a nadie.
 
 Lo que hace que esto sea seguro y no una caja negra: **el modelo no escribe
 código, escribe un GRAFO**. Su única salida posible es una lista de bloques del
@@ -203,6 +226,11 @@ vulnerabilidad más grande del producto; emitiendo grafos, es la más contenida.
 Y el resultado queda **en el lienzo**: se ve, se corrige y se ejecuta como
 cualquier otro análisis. La IA propone el punto de partida; el trabajo sigue
 siendo tuyo y sigue siendo auditable.
+
+Antes de ejecutar se valida, y si algo quedó a medias no se corre: se dice qué
+bloque le falta y un botón lleva hasta él. Después, la caja para pedir el
+siguiente paso —«ahora en logaritmos», «agrega la prueba de heterocedasticidad»—
+queda fija bajo las pestañas, siempre en el mismo sitio.
 
 Necesita una llave de Anthropic en el entorno del servidor. En **Windows**, doble
 clic en `Configurar llave de IA.bat`: pide la llave, la revisa antes de guardarla
@@ -221,7 +249,9 @@ gastar una llamada.
 
 La llave vive sólo en el entorno del servidor: nunca viaja al navegador, nunca
 se guarda en el grafo, nunca sale en el script exportado. Sin llave, la pantalla
-de inicio dice qué falta y todo lo demás funciona igual.
+de inicio dice qué falta **y ofrece los seis análisis de ejemplo a un clic**,
+más un «prefiero armarlo a mano» que abre el taller completo. Que la puerta
+principal sea una pregunta no puede dejar sin Abak a quien no tenga llave.
 
 ---
 

@@ -38,6 +38,20 @@ function normalizarClave(clave: string): string {
 export type Pestana = 'lienzo' | 'datos' | 'resultados' | 'graficos' | 'codigo' | 'metodologia'
   | 'especificaciones' | 'bitacora';
 
+/**
+ * Lo que la IA respondió, guardado en el estado y no en el componente.
+ *
+ * Vive aquí porque quien pregunta y quien contesta están en pantallas
+ * distintas: la pregunta se escribe arriba y la respuesta se lee en
+ * Resultados. Si la explicación se quedara dentro del asistente, al aterrizar
+ * en el resultado la persona vería tablas sin saber de dónde salieron.
+ */
+export interface RespuestaIA {
+  peticion: string;
+  explicacion: string;
+  advertencias: string[];
+}
+
 export interface DatosNodo extends Record<string, unknown> {
   op: string;
   etiqueta: string;
@@ -77,6 +91,29 @@ interface Estado {
   // --- interfaz
   pestana: Pestana;
   metodologia: string | null;
+  respuestaIA: RespuestaIA | null;
+  /**
+   * «Prefiero armarlo a mano».
+   *
+   * Con el lienzo vacío la pantalla es una sola pregunta, sin paleta ni
+   * pestañas, porque ocho paneles vacíos no ayudan a empezar. Pero esa puerta
+   * no puede ser la única: sin llave de IA, o para quien sabe qué bloque
+   * quiere, esto devuelve el taller completo.
+   */
+  manual: boolean;
+
+  // --- asistente de IA
+  /**
+   * Si se puede pedir el análisis en español. `null` = todavía no se sabe.
+   *
+   * Vive en el estado y no en el componente porque el asistente se monta dos
+   * veces —pantalla de entrada y barra— y con el estado local volvía a
+   * preguntar en cada cambio, con su parpadeo: la barra desaparecía un
+   * instante justo después de armar el análisis.
+   */
+  iaDisponible: boolean | null;
+  iaMotivo: string | null;
+  iaLlave: { longitud?: number; prefijo?: string } | null;
 
   // --- acciones
   cargarCatalogo: () => Promise<void>;
@@ -99,12 +136,17 @@ interface Estado {
   irA: (pestana: Pestana) => void;
   limpiar: () => void;
   cargarGrafo: (grafo: Grafo) => void;
+  ponerRespuestaIA: (respuesta: RespuestaIA | null) => void;
+  ponerManual: (manual: boolean) => void;
+  revisarIA: () => Promise<void>;
 
   aGrafo: () => Grafo;
   validar: () => Promise<void>;
+  /** Valida ya, sin el retardo de 250 ms, y devuelve lo que encontró. */
+  validarYa: () => Promise<Diagnostico[]>;
   pedirCodigo: () => Promise<void>;
   pedirMetodologia: () => Promise<void>;
-  ejecutar: (objetivo?: string) => Promise<void>;
+  ejecutar: (objetivo?: string, opciones?: { llevarAResultados?: boolean }) => Promise<void>;
   cancelar: () => Promise<void>;
 
   // --- consultas de conveniencia
@@ -146,6 +188,11 @@ export const usarLienzo = create<Estado>((set, get) => ({
   errorEjecucion: null,
   pestana: 'lienzo',
   metodologia: null,
+  respuestaIA: null,
+  manual: false,
+  iaDisponible: null,
+  iaMotivo: null,
+  iaLlave: null,
 
   async cargarCatalogo() {
     if (get().catalogo || get().cargandoCatalogo) return;
@@ -285,7 +332,23 @@ export const usarLienzo = create<Estado>((set, get) => ({
   limpiar: () => set({
     nodos: [], aristas: [], seleccionado: null, diagnosticos: [], esquemas: {},
     codigo: null, ejecucion: null, metodologia: null, orden: [], podados: [],
+    respuestaIA: null, errorEjecucion: null, pestana: 'lienzo', manual: false,
   }),
+
+  ponerRespuestaIA: (respuesta) => set({ respuestaIA: respuesta }),
+
+  ponerManual: (manual) => set({ manual }),
+
+  async revisarIA() {
+    if (get().iaDisponible !== null) return;
+    try {
+      const r = await api.asistenteDisponible();
+      set({ iaDisponible: r.disponible, iaMotivo: r.motivo,
+            iaLlave: r.llave?.hay ? r.llave : null });
+    } catch {
+      set({ iaDisponible: false, iaMotivo: null, iaLlave: null });
+    }
+  },
 
   cargarGrafo(grafo) {
     set({
@@ -303,6 +366,9 @@ export const usarLienzo = create<Estado>((set, get) => ({
         target: a.destino, targetHandle: a.puerto_destino, type: 'smoothstep',
       })),
       seleccionado: null, ejecucion: null, codigo: null, metodologia: null,
+      // La explicación anterior habla de un análisis que ya no está en
+      // pantalla. Quien la ponga (el asistente) la vuelve a poner después.
+      respuestaIA: null, errorEjecucion: null,
     });
     get().validar();
   },
@@ -346,6 +412,34 @@ export const usarLienzo = create<Estado>((set, get) => ({
     }, 250);
   },
 
+  /**
+   * La misma validación, pero ahora y con respuesta.
+   *
+   * `validar()` sirve para escribir: espera 250 ms para no pedirle al servidor
+   * una revisión por cada tecla. Pero antes de ejecutar un grafo que acaba de
+   * llegar hay que saber YA si tiene errores, y hay que saberlo aquí, no en el
+   * subrayado rojo de un bloque que la persona todavía no ha visto.
+   */
+  async validarYa() {
+    if (temporizador) { clearTimeout(temporizador); temporizador = null; }
+    if (get().nodos.length === 0) {
+      set({ diagnosticos: [], esquemas: {}, codigo: null, orden: [], podados: [] });
+      return [];
+    }
+    set({ validando: true });
+    try {
+      const r = await api.validar(get().aGrafo());
+      set({
+        diagnosticos: r.diagnosticos, esquemas: r.esquemas,
+        orden: r.orden, podados: r.podados, validando: false,
+      });
+      return r.diagnosticos;
+    } catch {
+      set({ validando: false });
+      return [];
+    }
+  },
+
   async pedirCodigo() {
     try {
       const r = await api.codigo(get().aGrafo());
@@ -363,7 +457,7 @@ export const usarLienzo = create<Estado>((set, get) => ({
     }
   },
 
-  async ejecutar(objetivo) {
+  async ejecutar(objetivo, opciones) {
     if (get().ejecutando) return;
     set({ ejecutando: true, errorEjecucion: null });
     try {
@@ -377,11 +471,20 @@ export const usarLienzo = create<Estado>((set, get) => ({
             if (sondeo) clearInterval(sondeo);
             sondeo = null;
             set({ ejecutando: false });
-            // Si algo produjo una figura, la pestaña de gráficos es lo que
-            // el usuario quiere ver; si no, los resultados.
+            // Dónde aterrizar. Por omisión sólo se cambia de pestaña si la
+            // persona seguía mirando el lienzo, para no arrancarla de donde
+            // estuviera trabajando. Pero cuando el análisis lo acaba de armar
+            // la IA, `llevarAResultados` manda: preguntó algo y quiere la
+            // respuesta, no el diagrama que la produjo.
             const hayFigura = Object.values(e.nodos).some((n) =>
               Object.values(n.artefactos ?? {}).some((a) => a.tipo === 'figura'));
-            if (get().pestana === 'lienzo') set({ pestana: hayFigura ? 'graficos' : 'resultados' });
+            const hayTabla = Object.values(e.nodos).some((n) =>
+              Object.values(n.artefactos ?? {}).some((a) => a.tipo !== 'figura'));
+            if (opciones?.llevarAResultados) {
+              set({ pestana: hayTabla || !hayFigura ? 'resultados' : 'graficos' });
+            } else if (get().pestana === 'lienzo') {
+              set({ pestana: hayFigura ? 'graficos' : 'resultados' });
+            }
           }
         } catch { /* la siguiente vuelta reintenta */ }
       };
