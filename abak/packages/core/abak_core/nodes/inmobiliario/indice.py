@@ -169,11 +169,27 @@ class IndiceHedonico(EspecNodo):
         ])}
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
-        from ...runtime.artefactos import tabla_a_json
+        from ...runtime.artefactos import figura_opcional, tabla_a_json
+        from ...viz.auto import fig_lineas
 
         tabla = salidas.get("indice")
         if tabla is None:
             return {}
-        return {"indice": tabla_a_json(
+        out = {"indice": tabla_a_json(
             tabla, titulo="Indice de precios de calidad constante",
             estimadas=["indice", "cambio_pct", "r2"])}
+        # Un indice es una linea. Verla al lado de la mediana de lo vendido es
+        # el argumento entero de este nodo: cuando cambia la mezcla, la mediana
+        # cae mientras el precio de la MISMA vivienda sube.
+        if "indice" in getattr(tabla, "columns", []):
+            columnas = [c for c in ("indice", "mediana_observada") if c in tabla.columns]
+            periodo = "periodo" if "periodo" in tabla.columns else None
+            marco_datos = tabla.set_index(periodo)[columnas] if periodo else tabla[columnas]
+            if (f := figura_opcional(
+                    lambda: fig_lineas(marco_datos, titulo="Índice de calidad constante",
+                                       eje_y="Índice (base 100)", estimadas=["indice"],
+                                       nota="En ámbar el índice: es una estimación de cuánto cambió el "
+                                            "precio de la MISMA vivienda."),
+                    titulo="Índice de calidad constante")) is not None:
+                out["figura_indice"] = f
+        return out

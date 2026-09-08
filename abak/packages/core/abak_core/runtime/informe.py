@@ -471,8 +471,33 @@ def _seccion_artefacto(informe: _Informe, artefacto: dict, puerto: str) -> None:
             tam=8, color=TINTA_SUAVE)
 
     elif tipo == "figura":
+        # El rotulo va SOLO si la figura no trae el suyo dentro. Casi todas las
+        # automaticas lo traen, y repetirlo dejaba el mismo texto dos veces
+        # seguidas; sin el, una figura sin titulo quedaba huerfana.
+        figura = artefacto.get("figura", {}) or {}
+        propio = ((figura.get("layout") or {}).get("title") or {})
+        if not (propio.get("text") if isinstance(propio, dict) else propio):
+            informe.parrafo(titulo, tam=9.5)
+        informe.figura(figura, titulo)
+
+    elif tipo == "proyeccion":
+        # En papel no hay deslizador. Se dibujan todas las curvas de una vez:
+        # se pierde el gesto, no la informacion — y omitirla dejaria fuera el
+        # resultado principal del bloque.
+        from ..viz.auto import fig_proyeccion
+
         informe.parrafo(titulo, tam=9.5)
-        informe.figura(artefacto.get("figura", {}), titulo)
+        try:
+            figura = fig_proyeccion(artefacto)
+        except Exception:
+            figura = None
+        if figura is not None:
+            import json as _json
+
+            import plotly
+
+            informe.figura(_json.loads(_json.dumps(figura, cls=plotly.utils.PlotlyJSONEncoder)),
+                           titulo)
 
     elif tipo == "detalle":
         informe.parrafo(titulo, tam=9.5)

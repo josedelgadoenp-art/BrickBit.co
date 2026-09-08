@@ -118,13 +118,20 @@ class _BaseEspacial(EspecNodo):
             Columna(nombre="estrellas", tipo="texto")])}
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
-        from ...runtime.artefactos import _limpio, tabla_a_json
+        from ...runtime.artefactos import _limpio, figura_opcional, tabla_a_json
+        from ...viz.auto import fig_barras
 
         out: dict[str, Any] = {}
         if (c := salidas.get("coeficientes")) is not None:
             out["coeficientes"] = tabla_a_json(c, titulo=self.titulo,
                                                estimadas=["coeficiente", "error_estandar",
                                                           "estadistico_z", "p_valor"])
+            etiquetas = c["variable"] if "variable" in c.columns else c.index
+            if (f := figura_opcional(
+                    lambda: fig_barras(etiquetas, c["coeficiente"], titulo=self.titulo,
+                                       eje_x="Coeficiente", estimado=True),
+                    titulo="Coeficientes")) is not None:
+                out["figura_coeficientes"] = f
         if (m := salidas.get("modelo")) is not None:
             diag = {}
             for etiqueta, attr in [("Observaciones", "n"), ("Pseudo R²", "pr2"),

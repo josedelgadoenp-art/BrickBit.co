@@ -3,7 +3,7 @@
 **Este archivo se genera solo.** Sale del registro (`abak_core/nodes/`), así que
 no puede quedar desactualizado. Para regenerarlo: `python tools/generar_docs.py`.
 
-66 herramientas en 13 familias.
+67 herramientas en 14 familias.
 
 | Familia | Herramientas | Para qué |
 |---|---:|---|
@@ -13,6 +13,7 @@ no puede quedar desactualizado. Para regenerarlo: `python tools/generar_docs.py`
 | [Explorar](#explorar) | 3 | Mirar los datos antes de modelarlos: descriptivos, correlaciones, tablas cruzadas, pruebas. |
 | [Econometria](#econometria) | 7 | Regresiones y modelos de siempre: MCO, variables instrumentales, panel, eleccion discreta. |
 | [Inferencia causal](#causal) | 1 | Dibuja que causa que y deja que el criterio de puerta trasera decida los controles. |
+| [Escenarios y proyecciones](#escenarios) | 1 | «Que pasa si». Recorre una variable, deja las demas donde estan y proyecta el resultado con su banda, para moverlo con un control. |
 | [Series de tiempo](#series) | 5 | Todo lo que tiene fecha: raiz unitaria, ARIMA, VAR, impulso-respuesta, cointegracion, ciclos. |
 | [Econometria espacial](#espacial) | 6 | Cuando la ubicacion importa: matrices de vecindad, Moran, LISA, SAR y SEM. |
 | [Macro e insumo-producto](#macro) | 4 | Estructura productiva: Leontief, multiplicadores, encadenamientos, impacto sectorial, keynesiano. |
@@ -1070,6 +1071,49 @@ Dibuja que causa que y deja que el criterio de puerta trasera decida los control
 Si vienes de otro sistema — **R**: `dagitty::adjustmentSets() + lm()` · **Stata**: `dagitty (fuera de Stata)` · **EViews**: `—` · **SPSS**: `—`
 
 Para leer más: Pearl, «Causality» (2009), cap. 3. Version corta: Cunningham, «The Mixtape», cap. 3
+
+<a id="escenarios"></a>
+
+## Escenarios y proyecciones
+
+«Que pasa si». Recorre una variable, deja las demas donde estan y proyecta el resultado con su banda, para moverlo con un control.
+
+### ¿Que pasa si? (proyeccion interactiva)
+
+`escenarios.simular` · v1.0.0
+
+**Qué hace.** Recorre una variable explicativa de punta a punta, deja las demas en su mediana y proyecta la respuesta con su banda. Si eliges una segunda variable, calcula una curva por cada valor de esa segunda y las entrega todas, para moverlas con un control.
+
+**Cuándo usarlo.** Cuando la pregunta no es «cuanto vale el coeficiente» sino «a donde llega el precio si el ingreso sube». Un coeficiente en logaritmos no se lee; una curva si.
+
+**Cómo se lee el resultado.** La banda es el intervalo del valor ESPERADO, no el de una vivienda concreta: una sola propiedad puede caer bastante fuera. Fuera del rango observado el modelo no sabe nada, por eso el recorrido se corta en los percentiles 5 y 95.
+
+**Supuestos que impone:**
+
+- El modelo se toma como dado: si esta mal especificado, la proyeccion hereda el error.
+- Mover una variable dejando el resto fija supone que las demas NO responden. Si el ingreso sube, la escolaridad tambien suele subir.
+
+**Ten cuidado con:**
+
+- Esto es una proyeccion del modelo, no un pronostico del mercado. Todo lo que sale aqui es estimacion y va marcado en ambar.
+
+| | Puerto | Tipo |
+|---|---|---|
+| entra | modelo | Un modelo ya estimado, con sus coeficientes y diagnósticos |
+| entra | datos | Una tabla de datos (filas y columnas) |
+| sale | Proyeccion por escenario | Una tabla de datos (filas y columnas) |
+
+| Parámetro | Por omisión |
+|---|---|
+| `variable` | `—` |
+| `mover` | `None` |
+| `puntos` | `25` |
+| `puntos_mover` | `5` |
+| `centro` | `mediana` |
+
+Si vienes de otro sistema — **Stata**: `margins, at(x = (...))` · **R**: `ggeffects::ggpredict()` · **EViews**: `Forecast / Scenario`
+
+Para leer más: Long y Freese, «Regression Models for Categorical Dependent Variables», cap. 4
 
 <a id="series"></a>
 

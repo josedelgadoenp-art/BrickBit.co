@@ -6,6 +6,7 @@ import BotonPdf from '@/components/ui/BotonPdf';
 import Explicacion from '@/components/ui/Explicacion';
 import Grafica from '@/components/ui/Grafica';
 import { IconoAbajo } from '@/components/ui/Icono';
+import Proyeccion from '@/components/ui/Proyeccion';
 import Tabla from '@/components/ui/Tabla';
 import TablaModelo from '@/components/ui/TablaModelo';
 import { num } from '@/lib/formato';
@@ -17,6 +18,7 @@ export function RenderArtefacto({ artefacto }: { artefacto: Artefacto }) {
     case 'tabla': return <Tabla artefacto={artefacto} />;
     case 'modelo': return <TablaModelo artefacto={artefacto} />;
     case 'figura': return <Grafica artefacto={artefacto} />;
+    case 'proyeccion': return <Proyeccion artefacto={artefacto} />;
     case 'escalar':
       return (
         <div className="inline-flex items-center rounded-lg border border-borde bg-superficie px-4 py-2.5 text-[13px]">
@@ -149,7 +151,10 @@ export default function PanelResultados() {
     return ids.flatMap((id) => {
       const r = ejecucion.nodos[id];
       if (!r) return [];
-      const artefactos = Object.entries(r.artefactos ?? {}).filter(([, a]) => a.tipo !== 'figura');
+      // Las figuras ya NO se filtran. Vivían sólo en la pestaña «Gráficos», y
+      // eso obligaba a leer la tabla en una pantalla y su gráfica en otra: la
+      // gráfica de coeficientes explica la tabla que tiene justo encima.
+      const artefactos = Object.entries(r.artefactos ?? {});
       if (!artefactos.length && !r.error) return [];
       const f = familia[id];
       const clase: 'error' | 'modelo' | 'dato' = r.error
@@ -204,8 +209,12 @@ export default function PanelResultados() {
   // análisis); lo que sólo preparó datos, al final y plegado. Reordenar este
   // bloque no cambia lo que se hizo: el orden real sigue en el lienzo, en el
   // código y en la nota metodológica, y las pastillas de arriba también.
-  const peso = (c: string) => (c === 'error' ? 0 : c === 'modelo' ? 1 : 2);
-  const ordenados = [...pasos].sort((a, b) => peso(a.clase) - peso(b.clase));
+  // Cuatro escalones, no dos: los errores primero, luego lo que ESTIMA, luego
+  // lo que sólo describe, y al final lo que preparó datos. Sin el escalón de en
+  // medio, «Descriptivos» quedaba encima del modelo que contesta la pregunta.
+  const peso = (x: { id: string; clase: string }) =>
+    x.clase === 'error' ? 0 : ESTIMAN.has(familia[x.id]) ? 1 : x.clase === 'modelo' ? 2 : 3;
+  const ordenados = [...pasos].sort((a, b) => peso(a) - peso(b));
   const corte = ordenados.findIndex((x) => x.clase === 'dato');
   const primerIntermedio = corte > 0 ? corte : -1;
   const intermedios = primerIntermedio >= 0 ? ordenados.length - primerIntermedio : 0;

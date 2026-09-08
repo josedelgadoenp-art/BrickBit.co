@@ -254,7 +254,8 @@ class XGBoost(EspecNodo):
         }
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
-        from ...runtime.artefactos import tabla_a_json
+        from ...runtime.artefactos import figura_opcional, tabla_a_json
+        from ...viz.auto import fig_barras
 
         out: dict[str, Any] = {}
         for puerto, titulo in [("metricas", "Desempeno predictivo"),
@@ -263,6 +264,19 @@ class XGBoost(EspecNodo):
                 out[puerto] = tabla_a_json(t, titulo=titulo,
                                            estimadas=[c for c in t.columns
                                                       if c not in ("conjunto", "variable", "n", "clase")])
+        # La importancia es un ranking, y un ranking se lee en barras. La tabla
+        # obliga a comparar decimales para saber cual manda.
+        if (imp := salidas.get("importancias")) is not None and "variable" in getattr(imp, "columns", []):
+            valor = next((c for c in ("importancia", "ganancia", "peso") if c in imp.columns), None)
+            if valor:
+                if (f := figura_opcional(
+                        lambda: fig_barras(imp["variable"], imp[valor],
+                                           titulo="Importancia de las variables",
+                                           eje_x=valor, estimado=True,
+                                           nota="Importancia no es efecto causal: dice cuanto ayuda a "
+                                                "predecir, no cuanto mueve el resultado si lo cambias."),
+                        titulo="Importancia de las variables")) is not None:
+                    out["figura_importancias"] = f
         return out
 
 

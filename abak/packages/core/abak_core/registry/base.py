@@ -56,6 +56,10 @@ FAMILIAS: dict[str, Familia] = {
         Familia(id="causal", titulo="Inferencia causal", orden=45, color="#8c6f9e", icono="flecha",
                 descripcion="Dibuja que causa que y deja que el criterio de puerta trasera decida "
                             "los controles."),
+        Familia(id="escenarios", titulo="Escenarios y proyecciones", orden=48, color="#7fa6b8",
+                icono="abanico",
+                descripcion="«Que pasa si». Recorre una variable, deja las demas donde estan y "
+                            "proyecta el resultado con su banda, para moverlo con un control."),
         Familia(id="series", titulo="Series de tiempo", orden=50, color="#cf928b", icono="onda",
                 descripcion="Todo lo que tiene fecha: raiz unitaria, ARIMA, VAR, impulso-respuesta, cointegracion, ciclos."),
         Familia(id="espacial", titulo="Econometria espacial", orden=60, color="#b7c489", icono="mapa",

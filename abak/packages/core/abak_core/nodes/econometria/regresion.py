@@ -74,14 +74,22 @@ class _BaseRegresion(EspecNodo):
         ])}
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
-        from ...runtime.artefactos import modelo_a_json, tabla_a_json
+        from ...runtime.artefactos import figura_opcional, modelo_a_json, tabla_a_json
+        from ...viz.auto import fig_ajuste, fig_coeficientes
 
         salida: dict[str, Any] = {}
         if (mod := salidas.get("modelo")) is not None:
             salida["modelo"] = modelo_a_json(mod, titulo=self.titulo)
+            # El bosque de coeficientes contesta de un vistazo lo que la tabla
+            # obliga a leer numero por numero: cual efecto se distingue del cero
+            # y con cuanta incertidumbre.
+            if (f := figura_opcional(lambda: fig_coeficientes(mod), titulo="Coeficientes")) is not None:
+                salida["figura_coeficientes"] = f
         if (res := salidas.get("residuos")) is not None:
             salida["residuos"] = tabla_a_json(res, titulo="Ajuste y residuos",
                                               estimadas=["ajustado", "residuo"])
+            if (f := figura_opcional(lambda: fig_ajuste(res), titulo="Ajuste y residuos")) is not None:
+                salida["figura_ajuste"] = f
         return salida
 
 
@@ -235,13 +243,24 @@ class EleccionDiscreta(_BaseRegresion):
         ])}
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
-        from ...runtime.artefactos import modelo_a_json, tabla_a_json
+        from ...runtime.artefactos import figura_opcional, modelo_a_json, tabla_a_json
+        from ...viz.auto import fig_barras, fig_coeficientes
 
         salida: dict[str, Any] = {}
         if (mod := salidas.get("modelo")) is not None:
             salida["modelo"] = modelo_a_json(mod, titulo=f"{params.familia.capitalize()}")  # type: ignore[attr-defined]
+            if (f := figura_opcional(lambda: fig_coeficientes(mod), titulo="Coeficientes")) is not None:
+                salida["figura_coeficientes"] = f
         if (m := salidas.get("marginales")) is not None:
             salida["marginales"] = tabla_a_json(m, titulo="Efectos marginales promedio")
+            # En eleccion discreta el coeficiente no se lee en unidades del
+            # problema; el efecto marginal si. Esa es la grafica que sirve.
+            if (f := figura_opcional(
+                    lambda: fig_barras(m.index, m["dy/dx"],
+                                       titulo="Efecto marginal promedio",
+                                       eje_x="Cambio en la probabilidad", estimado=True),
+                    titulo="Efectos marginales")) is not None:
+                salida["figura_marginales"] = f
         return salida
 
 

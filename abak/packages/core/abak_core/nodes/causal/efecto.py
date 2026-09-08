@@ -257,11 +257,17 @@ class EfectoCausal(EspecNodo):
         ])}
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
-        from ...runtime.artefactos import modelo_a_json, tabla_a_json
+        from ...runtime.artefactos import figura_opcional, modelo_a_json, tabla_a_json
+        from ...viz.auto import fig_coeficientes
 
         salida: dict[str, Any] = {}
         if (mod := salidas.get("modelo")) is not None:
             salida["modelo"] = modelo_a_json(mod, titulo=f"Efecto de «{params.tratamiento}»")
+            if (f := figura_opcional(
+                    lambda: fig_coeficientes(
+                        mod, titulo=f"Efecto de «{params.tratamiento}» y sus controles"),
+                    titulo="Efecto y controles")) is not None:
+                salida["figura_coeficientes"] = f
         if (ctrl := salidas.get("controles")) is not None:
             salida["controles"] = tabla_a_json(ctrl, titulo="Que se controlo y por que")
         return salida

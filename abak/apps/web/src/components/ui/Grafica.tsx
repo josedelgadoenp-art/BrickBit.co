@@ -39,5 +39,16 @@ export default function Grafica({
     };
   }, [artefacto]);
 
-  return <div ref={destino} className="h-[520px] w-full rounded border border-borde bg-superficie" />;
+  // El alto sale de la figura. Una caja fija de 520 px dejaba media pantalla en
+  // blanco bajo un mapa de calor de tres variables, y aplastaba una rejilla de
+  // impulso-respuesta de nueve paneles.
+  const alto = (artefacto.figura?.layout as { height?: number } | undefined)?.height ?? 520;
+
+  return (
+    <div
+      ref={destino}
+      style={{ height: alto }}
+      className="w-full rounded-xl2 border border-borde bg-superficie"
+    />
+  );
 }

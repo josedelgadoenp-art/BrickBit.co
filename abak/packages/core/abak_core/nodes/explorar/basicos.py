@@ -119,6 +119,22 @@ class Descriptivos(EspecNodo):
                           "p75", "maximo", "faltantes", "asimetria", "coef_variacion"]]
         return {"tabla": Esquema(columnas=cols)}
 
+    def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
+        from ...runtime.artefactos import figura_opcional, resumen_generico
+        from ...viz.auto import fig_cajas
+
+        out = resumen_generico(salidas)
+        # `resumen_generico` titula con el nombre del PUERTO, y ese puerto se
+        # llama «tabla»: en pantalla salia una tabla titulada «tabla».
+        if "tabla" in out:
+            out["tabla"]["titulo"] = "Descriptivos"
+        # La caja se arma con los cinco numeros que la tabla YA calculo: no se
+        # vuelve a tocar el dato ni se estima nada nuevo.
+        if (t := salidas.get("tabla")) is not None:
+            if (f := figura_opcional(lambda: fig_cajas(t), titulo="Rango y mediana de cada variable")) is not None:
+                out["figura_cajas"] = f
+        return out
+
 
 @registrar
 class Correlacion(EspecNodo):
@@ -160,6 +176,18 @@ class Correlacion(EspecNodo):
             Columna(nombre="variable_1", tipo="texto"), Columna(nombre="variable_2", tipo="texto"),
             Columna(nombre="correlacion", tipo="numerica"), Columna(nombre="p_valor", tipo="numerica"),
             Columna(nombre="estrellas", tipo="texto"), Columna(nombre="n", tipo="numerica")])}
+
+    def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
+        from ...runtime.artefactos import figura_opcional, resumen_generico
+        from ...viz.auto import fig_calor_correlacion
+
+        out = resumen_generico(salidas)
+        if "tabla" in out:
+            out["tabla"]["titulo"] = "Correlaciones"
+        if (t := salidas.get("tabla")) is not None:
+            if (f := figura_opcional(lambda: fig_calor_correlacion(t), titulo="Mapa de correlaciones")) is not None:
+                out["figura_correlaciones"] = f
+        return out
 
 
 @registrar

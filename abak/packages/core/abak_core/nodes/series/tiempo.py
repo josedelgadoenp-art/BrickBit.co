@@ -229,15 +229,30 @@ class ARIMA(EspecNodo):
             Columna(nombre="banda_alta", tipo="numerica", es_estimado=True)])}
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
-        from ...runtime.artefactos import modelo_a_json, tabla_a_json
+        from ...runtime.artefactos import figura_opcional, modelo_a_json, tabla_a_json
+        from ...viz.auto import fig_pronostico
 
         out: dict[str, Any] = {}
-        if (m := salidas.get("modelo")) is not None:
-            out["modelo"] = modelo_a_json(m, titulo="ARIMA")
+        modelo = salidas.get("modelo")
+        if modelo is not None:
+            out["modelo"] = modelo_a_json(modelo, titulo="ARIMA")
         if (f := salidas.get("pronostico")) is not None:
             out["pronostico"] = tabla_a_json(
                 f, titulo="Pronostico",
                 estimadas=["pronostico", "error_estandar", "banda_baja", "banda_alta"])
+            # El abanico es LA grafica de un pronostico. La serie observada sale
+            # del propio modelo (`.model.endog` no trae indice; `.data.orig_endog`
+            # si), asi que si no esta se dibuja el pronostico solo.
+            historico = None
+            try:
+                historico = modelo.model.data.orig_endog
+            except Exception:
+                historico = None
+            variable = getattr(params, "variable", "serie")
+            if (g := figura_opcional(
+                    lambda: fig_pronostico(historico, f, nombre=str(variable)),
+                    titulo="Pronóstico")) is not None:
+                out["figura_pronostico"] = g
         return out
 
 
@@ -322,3 +337,15 @@ class VAR(EspecNodo):
                 Columna(nombre="causa", tipo="texto"), Columna(nombre="efecto", tipo="texto"),
                 Columna(nombre="p_valor", tipo="numerica"), Columna(nombre="conclusion", tipo="texto")]),
         }
+
+    def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
+        from ...runtime.artefactos import figura_opcional, resumen_generico
+        from ...viz.auto import fig_impulso_respuesta
+
+        out = resumen_generico(salidas)
+        # La tabla de impulso-respuesta de un VAR de cuatro variables trae 192
+        # renglones. Nadie lee un VAR asi: se lee en rejilla.
+        if (irf := salidas.get("impulso_respuesta")) is not None:
+            if (f := figura_opcional(lambda: fig_impulso_respuesta(irf), titulo="Impulso-respuesta")) is not None:
+                out["figura_impulso_respuesta"] = f
+        return out

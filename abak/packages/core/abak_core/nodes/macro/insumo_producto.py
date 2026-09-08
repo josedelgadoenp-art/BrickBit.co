@@ -241,13 +241,23 @@ class SistemaInsumoProducto(EspecNodo):
         return {"multiplicadores": Esquema(columnas=cols), "leontief": Esquema()}
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
-        from ...runtime.artefactos import tabla_a_json
+        from ...runtime.artefactos import figura_opcional, tabla_a_json
+        from ...viz.auto import fig_barras
 
         out: dict[str, Any] = {}
         if (m := salidas.get("multiplicadores")) is not None:
             out["multiplicadores"] = tabla_a_json(
                 m, titulo="Multiplicadores por sector",
                 estimadas=[c for c in m.columns if c.startswith(("multiplicador", "coeficiente"))])
+            # «Que sector arrastra mas» es un ranking, y un ranking de doce
+            # sectores en una tabla se lee comparando decimales.
+            col = next((c for c in m.columns if c.startswith("multiplicador")), None)
+            etiquetas = m["sector"] if "sector" in m.columns else m.index
+            if col and (f := figura_opcional(
+                    lambda: fig_barras(etiquetas, m[col], titulo="Multiplicadores por sector",
+                                       eje_x=col.replace("_", " "), estimado=True),
+                    titulo="Multiplicadores por sector")) is not None:
+                out["figura_multiplicadores"] = f
         if (l := salidas.get("leontief")) is not None:
             out["leontief"] = tabla_a_json(l, titulo="Inversa de Leontief (requerimientos totales)")
         return out

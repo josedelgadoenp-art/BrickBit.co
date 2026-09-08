@@ -186,6 +186,10 @@ export type Artefacto =
   | { tipo: 'figura'; titulo: string | null; figura: { data: unknown[]; layout: Record<string, unknown> } }
   | { tipo: 'escalar'; titulo: string | null; valor: unknown }
   | { tipo: 'detalle'; titulo: string | null; datos: Record<string, unknown> }
+  | { tipo: 'proyeccion'; titulo: string | null; x: { nombre: string; valores: number[] };
+      control: { nombre: string; valores: number[] } | null; respuesta: string;
+      series: { escenario: number | null; y: number[]; bajo: number[]; alto: number[] }[];
+      nota: string | null }
   | { tipo: 'objeto'; titulo: string | null; clase: string; texto: string };
 
 export interface Coeficiente {

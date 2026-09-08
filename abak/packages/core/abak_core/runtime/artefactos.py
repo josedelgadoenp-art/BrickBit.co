@@ -262,6 +262,27 @@ def figura_a_json(fig: Any, *, titulo: str | None = None) -> dict[str, Any]:
     }
 
 
+def figura_opcional(constructor: Any, *, titulo: str | None = None) -> dict[str, Any] | None:
+    """Una figura automatica, dentro de su propio try.
+
+    Las figuras son PRESENTACION: se dibujan a partir de los mismos objetos que
+    el script deja en memoria, no cambian nada de lo que se ejecuto. Y por eso
+    no pueden costar el resultado: si a una le falta una columna o el modelo no
+    expone `conf_int`, se pierde la figura y la tabla sigue en pie. La regla es
+    la misma que ya se aplicaba a los estadisticos decorativos del resumen.
+    """
+    try:
+        fig = constructor()
+    except Exception:
+        return None
+    if fig is None:
+        return None
+    try:
+        return figura_a_json(fig, titulo=titulo)
+    except Exception:
+        return None
+
+
 def resumen_generico(salidas: dict[str, Any]) -> dict[str, Any]:
     """Resumen por omision, deducido del tipo real del objeto."""
     import pandas as pd

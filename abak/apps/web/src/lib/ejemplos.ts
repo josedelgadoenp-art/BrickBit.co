@@ -59,6 +59,20 @@ export const EJEMPLOS: { id: string; titulo: string; descripcion: string; grafo:
     ]),
   },
   {
+    id: 'escenarios',
+    titulo: '¿Qué pasa si sube el ingreso? (proyección interactiva)',
+    descripcion: 'Regresión del precio por m², y una proyección con control deslizante para mover el ingreso.',
+    grafo: () => armar('¿Qué pasa si sube el ingreso?', [
+      { id: 'd1', op: 'datos.ejemplo', etiqueta: 'Entidades', params: { conjunto: 'mexico_estados' }, x: 60, y: 60 },
+      { id: 'x1', op: 'explorar.descriptivos', etiqueta: 'Descriptivos', params: { columnas: ['precio_m2', 'ingreso_hogar_mensual', 'escolaridad_anios'] }, x: 420, y: 60 },
+      { id: 'm1', op: 'econometria.mco', etiqueta: 'Precio por m²', params: { y: 'precio_m2', x: ['ingreso_hogar_mensual', 'escolaridad_anios', 'empleo_formal_pct'], errores: 'HC3' }, x: 420, y: 220 },
+      { id: 's1', op: 'escenarios.simular', etiqueta: '¿Qué pasa si?', params: { variable: 'escolaridad_anios', mover: 'ingreso_hogar_mensual', puntos: 25, puntos_mover: 6, centro: 'mediana' }, x: 800, y: 220 },
+    ], [
+      ['d1', 'datos', 'x1', 'datos'], ['d1', 'datos', 'm1', 'datos'],
+      ['d1', 'datos', 's1', 'datos'], ['m1', 'modelo', 's1', 'modelo'],
+    ]),
+  },
+  {
     id: 'espacial',
     titulo: '¿La ubicación importa? (econometría espacial)',
     descripcion: 'Matriz de vecindad, I de Moran, pruebas LM para decidir entre SAR y SEM, y el modelo.',

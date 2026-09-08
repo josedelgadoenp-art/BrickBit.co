@@ -156,7 +156,7 @@ servidor, en la práctica no se probaría.
 
 ## Qué trae hoy
 
-**66 herramientas** en 13 familias:
+**67 herramientas** en 14 familias:
 
 - **Datos** — archivos, ejemplos, filtros, uniones, agrupar, remodelar, declarar serie / panel / ubicación
 - **Fuentes oficiales** — Banxico (SIE), INEGI (BIE/BISE), DENUE, con caché en disco
@@ -169,13 +169,67 @@ servidor, en la práctica no se probaría.
 - **Machine learning** — partición honesta, XGBoost, validación de origen móvil, importancias
 - **Gráficos** — gramática por capas (lienzo + puntos, línea, barras, área, banda, tendencia, facetas, escalas, tema) renderizada con Plotly
 - **Inferencia causal** — dibujas qué causa qué y el criterio de puerta trasera decide los controles
+- **Escenarios y proyecciones** — «¿qué pasa si?»: recorre una variable, deja las demás en su mediana y proyecta el resultado con su banda, para moverlo con un control deslizante
 - **Inmobiliario** — índice de precios de calidad constante (hedónico encadenado)
 - **Entregables** — tabla de publicación estilo `esttab`, exportar a CSV o Excel
 
+### Las gráficas salen solas
+
+No hay que armarlas. Cada herramienta que estima dibuja la lectura visual que le
+corresponde en cuanto ejecutas: el bosque de coeficientes con su intervalo, el
+ajuste contra lo observado y los residuos, el abanico del pronóstico, la rejilla
+de impulso-respuesta de un VAR, el ranking de importancias, el mapa de
+correlaciones, las cajas de los descriptivos. Y aparecen **junto a su tabla**,
+no en otra pestaña: la gráfica de coeficientes explica la tabla que tiene encima.
+
+Antes había que apilarlas capa por capa con el bloque «Lienzo», y en la
+verificación completa de los seis ejemplos se dibujaba **una** gráfica en total.
+No es que nadie las quisiera: el camino para tenerlas era más largo que el camino
+para no tenerlas. La gramática por capas sigue ahí para lo que quieras armar a
+mano; lo que cambió es el punto de partida.
+
+Dos cosas que estas gráficas **no** hacen, porque serían mentiras cómodas:
+
+- **No comparten eje entre magnitudes distintas.** Las cajas de los descriptivos
+  van en paneles con su propia escala: un precio por m² de 8,300 a 40,500 y una
+  escolaridad de 6.8 a 13.6 en el mismo eje dejan a la segunda aplastada contra
+  el suelo, y el gráfico dice «la escolaridad no varía», que es falso.
+- **No comparan coeficientes crudos.** Un ingreso en pesos da 0.48 y una
+  escolaridad en años da 1,105: en un eje compartido el primero se ve pegado al
+  cero aunque mueva más el resultado. El bosque escala cada coeficiente por la
+  desviación estándar de su variable —el efecto de moverla una desviación— y lo
+  dice en el eje. Los coeficientes en sus unidades siguen enteros en la tabla.
+
+### Proyecciones que se mueven
+
+El bloque **«¿Qué pasa si?»** contesta lo que un coeficiente no contesta: no
+«cuánto vale el parámetro» sino «a dónde llega el precio por m² si el ingreso
+sube». Recorre una variable de punta a punta, deja las demás en su mediana
+—no en cero, que produce perfiles imposibles— y proyecta con banda. Si eliges
+una segunda variable, calcula una curva por cada valor de ésa y las entrega
+todas: en pantalla sale un control deslizante que las recorre.
+
+Lo que hace honesto al deslizador: **la rejilla completa se calcula en el motor
+y viaja entera al navegador**. El control no modela nada; escoge cuál de las
+curvas ya calculadas se resalta, y las demás quedan tenues detrás para que se
+vea el abanico entero. Cada punto dibujado está en la tabla de al lado, en el
+script exportado y en el PDF. Si el deslizador estimara del lado del cliente
+sería un modelo en la sombra: nadie podría auditarlo ni citarlo, y el número de
+la pantalla no coincidiría con el del informe. Una prueba lo verifica punto por
+punto.
+
+El recorrido va del percentil 5 al 95 y no del mínimo al máximo, para no
+extrapolar sobre un solo caso extremo: fuera del rango observado un modelo
+lineal dice cualquier cosa con toda seguridad.
+
 Cada resultado se baja en PDF: un bloque suelto, o el informe completo del
-análisis con su metodología. Y cada indicador que aparece en pantalla —el
+análisis con su metodología. En papel no hay deslizador, así que la proyección
+se imprime con todas sus curvas a la vez: se pierde el gesto, no la información.
+Convertir una gráfica a imagen necesita Chrome en el servidor; si no lo
+encuentra, el informe sale con sus tablas y dice en el hueco por qué falta la
+figura (`BROWSER_PATH` apunta a un Chromium existente). Y cada indicador que aparece en pantalla —el
 coeficiente, el p, el R², el AIC, la I de Moran, los multiplicadores— trae un
-botón que explica qué es, cómo se lee y con qué hay que tener cuidado. Son 139
+botón que explica qué es, cómo se lee y con qué hay que tener cuidado. Son 188
 fichas; si un indicador no tiene ficha el botón no aparece.
 
 El detalle está en [docs/nodos.md](docs/nodos.md), que se genera del registro.

@@ -1,8 +1,7 @@
 'use client';
 
+import { RenderArtefacto, Vacio } from '@/components/panels/PanelResultados';
 import BotonPdf from '@/components/ui/BotonPdf';
-import Grafica from '@/components/ui/Grafica';
-import { Vacio } from '@/components/panels/PanelResultados';
 import { usarLienzo } from '@/store/lienzo';
 
 export default function PanelGraficos() {
@@ -10,12 +9,12 @@ export default function PanelGraficos() {
 
   const figuras = Object.entries(ejecucion?.nodos ?? {}).flatMap(([id, r]) =>
     Object.entries(r.artefactos ?? {})
-      .filter(([, a]) => a.tipo === 'figura')
+      .filter(([, a]) => a.tipo === 'figura' || a.tipo === 'proyeccion')
       .map(([puerto, a]) => ({ id, puerto, etiqueta: r.etiqueta ?? id, artefacto: a })));
 
   if (!figuras.length) {
     return (
-      <Vacio texto="Aún no hay gráficas. Arma una con el bloque «Lienzo», apila las capas que quieras (puntos, línea, banda) y termina con «Dibujar»." />
+      <Vacio texto="Aún no hay gráficas. Casi todo lo que estima dibuja la suya sola en cuanto ejecutas: coeficientes, ajuste, pronóstico. Y con el bloque «Lienzo» armas la que quieras a mano." />
     );
   }
 
@@ -30,7 +29,7 @@ export default function PanelGraficos() {
                 <BotonPdf nodo={f.id} />
               </div>
             </div>
-            <Grafica artefacto={f.artefacto as never} />
+            <RenderArtefacto artefacto={f.artefacto} />
           </section>
         ))}
       </div>

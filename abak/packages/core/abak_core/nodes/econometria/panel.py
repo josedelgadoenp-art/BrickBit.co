@@ -134,7 +134,8 @@ class Panel(EspecNodo):
         return {}
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
-        from ...runtime.artefactos import _limpio, modelo_a_json
+        from ...runtime.artefactos import _limpio, figura_opcional, modelo_a_json
+        from ...viz.auto import fig_coeficientes
 
         out: dict[str, Any] = {}
         if (mod := salidas.get("modelo")) is not None:
@@ -146,6 +147,8 @@ class Panel(EspecNodo):
                 if v is not None and not callable(v):
                     art["diagnosticos"][etiqueta] = _limpio(getattr(v, "total", v))
             out["modelo"] = art
+            if (f := figura_opcional(lambda: fig_coeficientes(mod), titulo="Coeficientes")) is not None:
+                out["figura_coeficientes"] = f
         if (h := salidas.get("hausman")) is not None:
             out["hausman"] = {"tipo": "detalle", "titulo": "Prueba de Hausman",
                               "datos": {k: _limpio(v) for k, v in h.items()}}
