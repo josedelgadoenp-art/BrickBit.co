@@ -285,6 +285,129 @@ export default function Formulario({ nodoId, descriptor, params }: Props) {
               </p>
             </div>
           );
+        } else if (control === 'condiciones') {
+          // Las condiciones de «Filtrar filas».
+          //
+          // Antes caían en el control genérico de listas: una caja de texto
+          // separada por comas. Nadie va a escribir ahí un objeto con columna,
+          // operador y valor, así que el bloque más básico del producto —quedarse
+          // con unas filas— no se podía usar desde la pantalla.
+          const columnas = columnasDe(crudo);
+          type Cond = { columna: string; operador: string; valor: unknown };
+          const conds = ((valor as Cond[]) ?? []).map((c) => ({
+            columna: c?.columna ?? '', operador: c?.operador ?? 'mayor', valor: c?.valor ?? null,
+          }));
+          const guardar = (xs: Cond[]) => poner(xs);
+          const OPERADORES: [string, string][] = [
+            ['igual', 'es igual a'], ['distinto', 'es distinto de'],
+            ['mayor', 'es mayor que'], ['mayor_igual', 'es mayor o igual que'],
+            ['menor', 'es menor que'], ['menor_igual', 'es menor o igual que'],
+            ['contiene', 'contiene el texto'], ['en_lista', 'está en la lista'],
+            ['no_nulo', 'no está vacío'],
+          ];
+          const incompletas = conds.filter((c) => !c.columna).length;
+
+          control_jsx = (
+            <div className="space-y-1.5">
+              {columnas.length === 0 && (
+                <p className="text-[11px] text-tenue">
+                  Conecta unos datos a este bloque para ver sus columnas.
+                </p>
+              )}
+              {conds.map((c, i) => {
+                const tipo = columnas.find((x) => x.nombre === c.columna)?.tipo;
+                const sinValor = c.operador === 'no_nulo';
+                const lista = c.operador === 'en_lista';
+                return (
+                  <div key={i} className="rounded border border-borde bg-tierra p-1.5">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-[10px] uppercase tracking-wide text-tenue">
+                        Condición {i + 1}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Quitar la condición ${i + 1}`}
+                        onClick={() => guardar(conds.filter((_, j) => j !== i))}
+                        className="rounded px-1 text-tenue hover:text-arcilla"
+                      >
+                        <IconoCerrar className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <select
+                      value={c.columna}
+                      onChange={(e) => {
+                        const xs = [...conds]; xs[i] = { ...xs[i], columna: e.target.value };
+                        guardar(xs);
+                      }}
+                      className="w-full rounded border border-borde bg-superficie px-2 py-1 text-[12px] text-crema"
+                    >
+                      <option value="">— columna —</option>
+                      {columnas.map((x) => (
+                        <option key={x.nombre} value={x.nombre}>
+                          {x.nombre}{x.es_estimado ? '  (estimado)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="mt-1 flex gap-1.5">
+                      <select
+                        value={c.operador}
+                        onChange={(e) => {
+                          const xs = [...conds];
+                          xs[i] = { ...xs[i], operador: e.target.value };
+                          if (e.target.value === 'no_nulo') xs[i].valor = null;
+                          guardar(xs);
+                        }}
+                        className="min-w-0 flex-1 rounded border border-borde bg-superficie px-2 py-1 text-[12px] text-crema"
+                      >
+                        {OPERADORES.map(([v, t]) => (
+                          <option key={v} value={v}>{t}</option>
+                        ))}
+                      </select>
+                      {!sinValor && (
+                        <input
+                          // Numérico cuando la columna lo es: así el teclado del
+                          // móvil ayuda y se ve enseguida qué se espera. El
+                          // compilador convierte al tipo de la columna de todas
+                          // formas, porque un grafo puede venir de la IA.
+                          type={tipo === 'numerica' && !lista ? 'number' : 'text'}
+                          step="any"
+                          value={c.valor === null || c.valor === undefined ? ''
+                            : Array.isArray(c.valor) ? c.valor.join(', ') : String(c.valor)}
+                          placeholder={lista ? 'a, b, c' : 'valor'}
+                          onChange={(e) => {
+                            const t = e.target.value;
+                            const xs = [...conds];
+                            xs[i] = {
+                              ...xs[i],
+                              valor: t === '' ? null
+                                : lista ? t.split(',').map((z) => z.trim()).filter(Boolean)
+                                : t,
+                            };
+                            guardar(xs);
+                          }}
+                          className="w-[9rem] shrink-0 rounded border border-borde bg-superficie px-2 py-1 text-[12px] text-crema"
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => guardar([...conds, { columna: '', operador: 'mayor', valor: null }])}
+                disabled={columnas.length === 0}
+                className="w-full rounded border border-dashed border-borde px-2 py-1 text-[11px] text-tenue hover:border-salvia hover:text-salvia disabled:opacity-40"
+              >
+                + agregar condición
+              </button>
+              {incompletas > 0 && (
+                <p className="text-[11px] leading-relaxed text-ambar">
+                  {incompletas === 1 ? 'Hay una condición sin columna y se ignora.'
+                    : `Hay ${incompletas} condiciones sin columna y se ignoran.`}
+                </p>
+              )}
+            </div>
+          );
         } else if (control === 'archivo') {
           control_jsx = <SubirArchivo nodoId={nodoId} />;
         } else if (clave === 'columnas' && descriptor.op === 'datos.csv') {

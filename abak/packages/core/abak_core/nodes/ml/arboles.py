@@ -139,10 +139,11 @@ class Particion(EspecNodo):
                  "Particion por tiempo: se entrena con lo viejo y se evalua con lo reciente, "
                  "que es como funciona en la realidad.")
         ctx.emitir("ENTR, PRUE = particion_temporal(ENT, proporcion_prueba=P, "
-                   "columna_orden=COL, aleatoria=ALE, semilla=42)",
+                   "columna_orden=COL, aleatoria=ALE, semilla=SEM)",
                    ENTR=ctx.salida("entrenamiento"), PRUE=ctx.salida("prueba"),
                    ENT=ctx.entrada("datos"), P=ctx.plit("proporcion_prueba"),
-                   COL=ctx.plit("columna_orden"), ALE=ctx.plit("aleatoria"))
+                   COL=ctx.plit("columna_orden"), ALE=ctx.plit("aleatoria"),
+                   SEM=ctx.lit(ctx.semilla))
         return ctx.fin()
 
     def esquema_salida(self, entradas: dict[str, Esquema], params: BaseModel) -> dict[str, Esquema]:
@@ -199,12 +200,12 @@ class XGBoost(EspecNodo):
         clase = "XGBRegressor" if ctx.p("objetivo") == "regresion" else "XGBClassifier"
         ctx.nota(f"{ctx.p('n_arboles')} arboles de profundidad {ctx.p('profundidad')}, "
                  f"con tasa de aprendizaje {ctx.p('tasa_aprendizaje')}.")
-        ctx.nota("La semilla queda fija: dos corridas con los mismos datos dan el mismo modelo.")
+        ctx.nota(f"Semilla {ctx.semilla}: dos corridas con los mismos datos dan el mismo modelo.")
         ctx.emitir(f"MOD = xgb.{clase}(n_estimators=N, max_depth=D, learning_rate=LR, "
-                   "subsample=SUB, reg_lambda=L2, random_state=42, n_jobs=1, tree_method='hist')",
+                   "subsample=SUB, reg_lambda=L2, random_state=SEM, n_jobs=1, tree_method='hist')",
                    MOD=ctx.salida("modelo"), N=ctx.plit("n_arboles"), D=ctx.plit("profundidad"),
                    LR=ctx.plit("tasa_aprendizaje"), SUB=ctx.plit("submuestra"),
-                   L2=ctx.plit("regularizacion_l2"))
+                   L2=ctx.plit("regularizacion_l2"), SEM=ctx.lit(ctx.semilla))
         ctx.emitir("MOD.fit(ENTR[X].astype(float), ENTR[Y])",
                    MOD=ctx.ref_salida("modelo"), ENTR=ctx.entrada("entrenamiento"),
                    X=ctx.plit("x"), Y=ctx.plit("y"))
@@ -321,7 +322,7 @@ class ValidacionTemporal(EspecNodo):
                    SAL=ctx.salida("resultados"), ENT=ctx.entrada("datos"),
                    Y=ctx.plit("y"), X=ctx.plit("x"), K=ctx.plit("n_cortes"), H=ctx.plit("horizonte"),
                    PARAMS=ctx.lit({"n_estimators": ctx.p("n_arboles"), "max_depth": ctx.p("profundidad"),
-                                   "learning_rate": 0.05, "random_state": 42, "n_jobs": 1}))
+                                   "learning_rate": 0.05, "random_state": ctx.semilla, "n_jobs": 1}))
         return ctx.fin()
 
     def esquema_salida(self, entradas: dict[str, Esquema], params: BaseModel) -> dict[str, Esquema]:

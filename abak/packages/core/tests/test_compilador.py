@@ -328,3 +328,41 @@ def test_el_compilador_rechaza_la_columna_hostil_antes_de_ejecutar():
         ("e", "explorar.descriptivos", "Fin", {"columnas": ["precio_m2"]}),
     ], [("d", "datos", "t", "datos"), ("t", "datos", "e", "datos")])
     assert "columna_inexistente" in codigos(compilar(g))
+
+
+@pytest.mark.parametrize("hostil", HOSTILES)
+def test_el_valor_libre_de_un_filtro_no_se_sale_de_su_constante(hostil):
+    """`Filtrar filas` es el unico parametro de tipo libre que queda.
+
+    Su `valor` es `Any` a proposito —se compara contra numeros, textos o listas—
+    y ademas pasa por una conversion de tipo antes de emitirse. Esa conversion
+    es el lugar exacto donde una cadena hostil podria dejar de ser una constante
+    y volverse codigo, asi que se comprueba: el programa tiene que quedar
+    identico al benigno salvo por el literal.
+    """
+    def script(valor):
+        g = grafo("filtro hostil", [
+            ("d", "datos.ejemplo", "Datos", {"conjunto": "mexico_estados"}),
+            ("f", "datos.filtrar", "Filtrar",
+             {"condiciones": [{"columna": "precio_m2", "operador": "mayor", "valor": valor}]}),
+        ], [("d", "datos", "f", "datos")])
+        return a_texto(emitir(compilar(g)))
+
+    assert _esqueleto(script(hostil)) == _esqueleto(script("10000"))
+
+
+def test_el_valor_de_un_filtro_llega_como_constante_y_no_como_codigo():
+    """Aunque el texto parezca una expresion de Python, viaja como cadena."""
+    import ast as _ast
+
+    g = grafo("filtro", [
+        ("d", "datos.ejemplo", "Datos", {"conjunto": "mexico_estados"}),
+        ("f", "datos.filtrar", "Filtrar",
+         {"condiciones": [{"columna": "entidad", "operador": "igual",
+                           "valor": "__import__('os').system('id')"}]}),
+    ], [("d", "datos", "f", "datos")])
+    arbol = _ast.parse(a_texto(emitir(compilar(g))))
+    llamadas = [n for n in _ast.walk(arbol)
+                if isinstance(n, _ast.Call) and isinstance(n.func, _ast.Name)
+                and n.func.id == "__import__"]
+    assert not llamadas, "el valor del filtro se convirtió en una llamada de verdad"

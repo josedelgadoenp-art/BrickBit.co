@@ -229,8 +229,9 @@ Convertir una gráfica a imagen necesita Chrome en el servidor; si no lo
 encuentra, el informe sale con sus tablas y dice en el hueco por qué falta la
 figura (`BROWSER_PATH` apunta a un Chromium existente). Y cada indicador que aparece en pantalla —el
 coeficiente, el p, el R², el AIC, la I de Moran, los multiplicadores— trae un
-botón que explica qué es, cómo se lee y con qué hay que tener cuidado. Son 188
-fichas; si un indicador no tiene ficha el botón no aparece.
+botón que explica qué es, cómo se lee y con qué hay que tener cuidado. Son 205
+fichas; si un indicador no tiene ficha el botón no aparece, y una prueba
+comprueba que nada de lo que Abak nombra se quede sin la suya.
 
 El detalle está en [docs/nodos.md](docs/nodos.md), que se genera del registro.
 

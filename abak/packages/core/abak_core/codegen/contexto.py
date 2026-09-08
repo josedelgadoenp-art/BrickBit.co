@@ -105,6 +105,7 @@ class ContextoEmision:
         salidas: dict[str, str],
         esquemas: dict[str, Any] | None = None,
         proyeccion: set[str] | None = None,
+        semilla: int = 42,
     ) -> None:
         self.nodo_id = nodo_id
         self.etiqueta = etiqueta
@@ -114,6 +115,14 @@ class ContextoEmision:
         self.esquemas = esquemas or {}
         #: Columnas que el grafo entero necesita, o None si no se puede podar.
         self.proyeccion = proyeccion
+        #: La semilla del GRAFO, para todo lo que sortee algo.
+        #:
+        #: Faltaba, y el unico nodo que la pedia —«Trabajar sobre una muestra»—
+        #: reventaba con AttributeError al compilar. Los demas la tenian escrita
+        #: a mano como 42, asi que mover el control de la barra no cambiaba nada
+        #: y la promesa de «con la misma semilla el resultado se repite» era
+        #: cierta por accidente: se repetia porque nunca cambiaba.
+        self.semilla = int(semilla)
         self.bloque = BloqueCodigo()
 
     # -- entradas y salidas ---------------------------------------------------

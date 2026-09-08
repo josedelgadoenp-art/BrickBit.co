@@ -97,3 +97,89 @@ def test_el_script_exportado_reproduce_el_resultado_sin_abak():
         assert valor == _limpio(coefs_fuera[variable_]), (
             f"«{variable_}» difiere entre Abak y el script exportado"
         )
+
+
+# ---------------------------------------------------------------------------
+# Lo mismo, pero con los ayudantes nuevos
+# ---------------------------------------------------------------------------
+
+# `FLUJO` cubre MCO, que es el camino mas viejo y mas pisado. Los ayudantes
+# recientes —la rejilla de escenarios, el indice hedonico encadenado, el
+# criterio de puerta trasera, el muestreo con correccion de poblacion finita—
+# viajan al script exportado como funciones sueltas, y ahi es donde un `import`
+# olvidado o una dependencia de `abak_core` no se nota: dentro de Abak todo
+# existe. Este flujo los saca a los cuatro del edificio a la vez.
+FLUJO_NUEVO = grafo("Los ayudantes nuevos, fuera de casa", [
+    ("d", "datos.ejemplo", "Hogares", {"conjunto": "hogares"}),
+    ("s", "datos.muestra", "Muestra honesta",
+     {"n": 1200, "metodo": "estratificado", "estrato": "urbano"}),
+    ("c", "causal.efecto", "Efecto de la escolaridad",
+     {"arcos": ["escolaridad_anios->gasto_vivienda", "ingreso_mensual->gasto_vivienda",
+                "ingreso_mensual->escolaridad_anios", "edad_jefe->ingreso_mensual"],
+      "tratamiento": "escolaridad_anios", "resultado": "gasto_vivienda", "errores": "HC1"}),
+    ("m", "econometria.mco", "Gasto en vivienda",
+     {"y": "gasto_vivienda", "x": ["ingreso_mensual", "escolaridad_anios"], "errores": "HC3"}),
+    ("e", "escenarios.simular", "Que pasa si",
+     {"variable": "escolaridad_anios", "mover": "ingreso_mensual",
+      "puntos": 11, "puntos_mover": 3}),
+], [("d", "datos", "s", "datos"), ("s", "datos", "c", "datos"),
+    ("s", "datos", "m", "datos"), ("s", "datos", "e", "datos"),
+    ("m", "modelo", "e", "modelo")], semilla=11)
+
+
+def test_los_ayudantes_nuevos_tambien_corren_sin_abak():
+    """El .zip de un analisis moderno, en un proceso donde `abak_core` no existe.
+
+    Se comparan numeros de DOS bloques distintos: el efecto causal (que depende
+    del ayudante de puerta trasera) y un punto de la rejilla de escenarios. Si
+    cualquiera de los dos ayudantes no fuera autosuficiente, el proceso muere
+    con un ImportError en vez de dar un numero distinto — y eso tambien falla.
+    """
+    programa = compilar(FLUJO_NUEVO)
+    dentro = ejecutar(programa)
+    assert dentro.ok, [n.error for n in dentro.nodos if n.error]
+    por_nodo = dentro.por_nodo()
+
+    efecto_dentro = {
+        c["variable"]: c["coeficiente"]
+        for c in por_nodo["c"].artefactos["modelo"]["coeficientes"]
+    }
+    proyeccion = por_nodo["e"].artefactos["proyeccion"]
+    punto_dentro = proyeccion["series"][0]["y"][5]
+
+    instrucciones = {i.nodo_id: i for i in programa.instrucciones}
+    var_efecto = instrucciones["c"].salidas["modelo"]
+    var_escenarios = instrucciones["e"].salidas["escenarios"]
+
+    with tempfile.TemporaryDirectory() as tmp:
+        with zipfile.ZipFile(io.BytesIO(paquete(programa))) as z:
+            z.extractall(tmp)
+        (Path(tmp) / "sonda.py").write_text(
+            "import json, runpy\n"
+            "ns = runpy.run_path('analisis.py')\n"
+            f"efecto = ns[{var_efecto!r}]\n"
+            f"esc = ns[{var_escenarios!r}]\n"
+            "primero = esc[esc['escenario'] == esc['escenario'].iloc[0]]\n"
+            "print('__SALIDA__' + json.dumps({\n"
+            "    'efecto': {k: float(v) for k, v in efecto.params.items()},\n"
+            "    'punto': float(primero['prediccion'].iloc[5]),\n"
+            "}))\n",
+            encoding="utf-8",
+        )
+        entorno = {k: v for k, v in os.environ.items() if k != "ABAK_DATOS"}
+        entorno["PYTHONPATH"] = ""
+        proceso = subprocess.run([sys.executable, "sonda.py"], cwd=tmp, env=entorno,
+                                 capture_output=True, text=True, timeout=900)
+
+    assert proceso.returncode == 0, proceso.stderr[-3000:]
+    linea = next(l for l in proceso.stdout.splitlines() if l.startswith("__SALIDA__"))
+    fuera = json.loads(linea[len("__SALIDA__"):])
+
+    from abak_core.runtime.artefactos import _limpio
+
+    assert set(efecto_dentro) == set(fuera["efecto"])
+    for variable_, valor in efecto_dentro.items():
+        assert valor == _limpio(fuera["efecto"][variable_]), (
+            f"el efecto causal de «{variable_}» difiere fuera de Abak")
+    assert punto_dentro == _limpio(fuera["punto"]), (
+        "la proyección que se ve en pantalla no es la que produce el script exportado")

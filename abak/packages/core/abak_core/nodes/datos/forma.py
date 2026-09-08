@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ...graph.spec import Columna, Esquema
 from ...registry.base import (Ayuda, CampoColumna, CampoColumnas, EspecNodo, Puerto,
-                              registrar)
+                              control, registrar)
 
 OPERADORES = {
     "igual": "==", "distinto": "!=", "mayor": ">", "mayor_igual": ">=",
@@ -43,8 +43,15 @@ class Filtrar(EspecNodo):
 
     class Params(BaseModel):
         model_config = ConfigDict(extra="forbid")
-        condiciones: list["Filtrar.Condicion"] = Field(default_factory=list)
-        unir_con: Literal["y", "o"] = "y"
+        # Sin esta pista el formulario cae al control genérico de listas —una
+        # caja de texto separada por comas— y el bloque queda inservible desde
+        # la pantalla: nadie va a escribir ahí un objeto con columna, operador
+        # y valor. Pasó, y filtrar filas es de las primeras cosas que alguien
+        # quiere hacer.
+        condiciones: list["Filtrar.Condicion"] = Field(
+            default_factory=list, json_schema_extra=control("condiciones"))
+        unir_con: Literal["y", "o"] = Field(
+            default="y", title="Las condiciones se cumplen…")
 
     def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
         # Las columnas van anidadas dentro de cada condición: la deducción
@@ -73,7 +80,7 @@ class Filtrar(EspecNodo):
             }.get(cond.operador, f"M = ENT[COL] {OPERADORES.get(cond.operador, '==')} VAL")
             huecos = {"M": m, "ENT": ent, "COL": ctx.lit(cond.columna)}
             if "VAL" in plantilla:
-                huecos["VAL"] = ctx.lit(cond.valor)
+                huecos["VAL"] = ctx.lit(_valor_tipado(ctx, cond))
             ctx.emitir(plantilla, **huecos)
 
         operador = "&" if ctx.p("unir_con") == "y" else "|"
@@ -87,6 +94,40 @@ class Filtrar(EspecNodo):
         ctx.nota(f"Se conservan las filas que cumplen {'todas' if ctx.p('unir_con') == 'y' else 'alguna'} "
                  f"de {len(condiciones)} condicion(es).")
         return ctx.fin()
+
+
+def _valor_tipado(ctx: Any, cond: Any) -> Any:
+    """El valor de la condicion, en el tipo de SU columna.
+
+    El formulario entrega texto —una caja de texto entrega texto— y comparar
+    `columna_int64 > "10000"` revienta en pandas con «Invalid comparison
+    between dtype=int64 and str». Es el filtro mas comun que existe.
+
+    Se resuelve aqui y no en el navegador porque aqui es donde se conoce el
+    esquema de la tabla que ENTRA al bloque, y porque asi tambien queda bien
+    para un grafo que arme la IA o que alguien escriba a mano. El literal que
+    acaba en el script exportado es un numero de verdad, no una cadena.
+    """
+    valor = cond.valor
+    if cond.operador in ("contiene", "en_lista", "no_nulo") or not isinstance(valor, str):
+        return valor
+    columna = next((c for c in ctx.esquema("datos").columnas if c.nombre == cond.columna), None)
+    if columna is None or columna.tipo not in ("numerica", "booleana"):
+        return valor
+    texto = valor.strip().replace(",", "")     # «1,500» se escribe asi en México
+    if columna.tipo == "booleana":
+        if texto.lower() in ("true", "verdadero", "si", "sí", "1"):
+            return True
+        if texto.lower() in ("false", "falso", "no", "0"):
+            return False
+        return valor
+    try:
+        numero = float(texto)
+    except ValueError:
+        # No es un numero: se deja tal cual y el error de pandas dira que la
+        # comparacion no se puede hacer, que es la verdad.
+        return valor
+    return int(numero) if numero.is_integer() and "." not in texto else numero
 
 
 @registrar
@@ -210,14 +251,30 @@ class Agrupar(EspecNodo):
         nombre = {"mean": "promedio", "sum": "suma", "median": "mediana", "min": "minimo",
                   "max": "maximo", "std": "desviacion estandar", "count": "conteo"}[fn]
         ctx.nota(f"Por cada combinacion de {', '.join(por)} se calcula el {nombre}.")
+        # `.agg(FN)` y no `.FN()`. La plantilla sustituye huecos que son NOMBRES
+        # del arbol de sintaxis, y en `x.FN()` el `FN` es el atributo de una
+        # llamada: nunca es un `Name`, asi que nunca se sustituia y el emisor
+        # reventaba con «la plantilla no usa los huecos ['FN']». Este bloque no
+        # habia corrido nunca — ninguna prueba ni ningun ejemplo lo usaba.
+        #
+        # `agg` con el nombre de la funcion en una cadena hace exactamente lo
+        # mismo, y de paso mantiene la regla del emisor: un hueco solo puede
+        # ocupar el lugar de un nombre, nunca el de un metodo cualquiera.
         if cols:
-            ctx.emitir("SAL = ENT.groupby(POR, as_index=False, observed=True)[COLS].FN()",
+            ctx.emitir("SAL = ENT.groupby(POR, as_index=False, observed=True)[COLS].agg(FN)",
                        SAL=ctx.salida("datos"), ENT=ctx.entrada("datos"),
-                       POR=ctx.lit(por), COLS=ctx.lit(cols), FN=_nombre(fn))
+                       POR=ctx.lit(por), COLS=ctx.lit(cols), FN=ctx.lit(fn))
+        elif fn == "count":
+            # `count` cuenta cualquier columna, tambien las de texto, y por eso
+            # es la unica que NO admite `numeric_only`.
+            ctx.emitir("SAL = ENT.groupby(POR, as_index=False, observed=True).agg(FN)",
+                       SAL=ctx.salida("datos"), ENT=ctx.entrada("datos"),
+                       POR=ctx.lit(por), FN=ctx.lit(fn))
         else:
-            ctx.emitir("SAL = ENT.groupby(POR, as_index=False, observed=True).FN(numeric_only=True)",
+            ctx.emitir("SAL = ENT.groupby(POR, as_index=False, observed=True)"
+                       ".agg(FN, numeric_only=True)",
                        SAL=ctx.salida("datos"), ENT=ctx.entrada("datos"),
-                       POR=ctx.lit(por), FN=_nombre(fn))
+                       POR=ctx.lit(por), FN=ctx.lit(fn))
         return ctx.fin()
 
     def esquema_salida(self, entradas: dict[str, Esquema], params: BaseModel) -> dict[str, Esquema]:
@@ -256,13 +313,6 @@ class Ordenar(EspecNodo):
                    SAL=ctx.salida("datos"), ENT=ctx.entrada("datos"),
                    POR=ctx.plit("por"), ASC=ctx.lit(not ctx.p("descendente")))
         return ctx.fin()
-
-
-def _nombre(texto: str) -> Any:
-    """Un identificador suelto para meter en una plantilla (un metodo, p. ej.)."""
-    import ast
-
-    return ast.Name(id=texto, ctx=ast.Load())
 
 
 Filtrar.Params.model_rebuild()

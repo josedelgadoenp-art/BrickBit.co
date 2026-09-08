@@ -139,6 +139,54 @@ _f("r2_entre|r2_between",
    como_se_lee="Alta con R² dentro baja significa que tu modelo explica por qué unas "
                "entidades difieren de otras, pero no por qué cambian en el tiempo.")
 
+_f("r2_total|r2_overall|rsquared_overall",
+   titulo="R² total (overall)",
+   que_es="Cuánta de TODA la variación —dentro de cada entidad y entre entidades a la vez— "
+          "explica el modelo de panel.",
+   como_se_lee="Es el que más se parece al R² de una regresión normal, y por eso es el más "
+               "fácil de citar. Léelo junto a los otros dos: el total puede verse decente "
+               "sólo porque las entidades son muy distintas entre sí.",
+   ojo_con="Con efectos fijos, el estimador NO maximiza este R². Reportar sólo el total "
+           "para presumir ajuste es una de las trampas más comunes del panel: el número que "
+           "corresponde al estimador que usaste es el R² dentro.")
+
+_f("sigma2|sigma_2|sig2|varianza_del_error",
+   titulo="Sigma² (varianza del error)",
+   que_es="Qué tan grande es, en promedio, la parte de la variable explicada que el modelo "
+          "NO logra explicar. Es la varianza de los residuos.",
+   como_se_lee="Su raíz cuadrada está en las mismas unidades que la variable explicada, y "
+               "así se vuelve interpretable: un sigma² de 0.09 sobre un logaritmo de precio "
+               "es un error típico de unos 30%.",
+   ojo_con="No se compara entre modelos con distinta variable explicada, ni entre uno en "
+           "niveles y otro en logaritmos: no están en la misma escala.")
+
+_f("islas|islands|puntos_aislados",
+   titulo="Islas (puntos sin vecinos)",
+   que_es="Cuántas observaciones quedaron sin un solo vecino con la regla de vecindad que "
+          "elegiste.",
+   como_se_lee="Lo sano es cero. Cada isla es una fila que no aporta nada a la parte "
+               "espacial del modelo, porque no tiene con quién compararse.",
+   ojo_con="Con islas, los modelos espaciales fallan o dan resultados sin sentido. Se "
+           "arregla cambiando a «vecinos más cercanos» (que garantiza k vecinos a todos) o "
+           "subiendo el radio de la regla por distancia.")
+
+_f("rezagos|lags|numero_de_rezagos|k_ar",
+   titulo="Rezagos",
+   que_es="Cuántos periodos hacia atrás de cada variable entran al modelo.",
+   como_se_lee="Con datos trimestrales, 4 rezagos son un año. Si se eligió por AIC, este "
+               "número es el que ganó esa comparación, no una decisión tuya.",
+   ojo_con="Cada rezago de un VAR cuesta k² parámetros: con 4 variables y 8 rezagos son 128 "
+           "coeficientes. Ninguna serie trimestral mexicana aguanta eso, y el modelo va a "
+           "ajustar ruido con una seguridad que no tiene.")
+
+_f("ecuaciones|n_ecuaciones|neqs",
+   titulo="Ecuaciones",
+   que_es="Cuántas ecuaciones tiene el sistema: una por cada variable que el VAR modela.",
+   como_se_lee="Es simplemente el número de variables que metiste. Cada una se explica con "
+               "el pasado de todas, incluida ella misma.",
+   ojo_con="El número de parámetros crece con el CUADRADO de esto. Dos variables más no es "
+           "un poco más de modelo, es bastante más.")
+
 _f("observaciones|nobs|n",
    titulo="Observaciones",
    que_es="Cuántas filas se usaron de verdad para estimar.",
