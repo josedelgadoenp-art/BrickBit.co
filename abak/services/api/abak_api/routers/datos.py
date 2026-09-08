@@ -22,7 +22,8 @@ import tempfile
 from pathlib import Path
 
 from abak_core.runtime.almacen import ALMACEN
-from abak_core.runtime.ingesta import ErrorIngesta, csv_a_parquet, revisar_memoria
+from abak_core.runtime.ingesta import (ErrorIngesta, csv_a_parquet, detectar_formato,
+                                       revisar_memoria)
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 router = APIRouter(prefix="/datos", tags=["datos"])
@@ -111,9 +112,12 @@ def _extraer_del_zip(crudo: Path) -> tuple[Path, str, str]:
 @router.post("/subir")
 async def subir(
     archivo: UploadFile = File(...),
-    separador: str = Form(default=","),
-    decimal: str = Form(default="."),
-    codificacion: str = Form(default="utf-8"),
+    # «auto» es el valor por omisión a propósito: el camino de un clic no puede
+    # pedirle a nadie que sepa de antemano si su archivo trae punto y coma o
+    # coma decimal. Un valor explícito SIEMPRE gana sobre la detección.
+    separador: str = Form(default="auto"),
+    decimal: str = Form(default="auto"),
+    codificacion: str = Form(default="auto"),
     columnas_fecha: str = Form(default=""),
 ) -> dict:
     nombre = Path(archivo.filename or "datos.csv").name
@@ -121,7 +125,7 @@ async def subir(
     if sufijo not in EXTENSIONES:
         raise HTTPException(415, f"Formato no admitido: {sufijo or 'sin extensión'}. "
                                  f"Se aceptan {', '.join(sorted(EXTENSIONES))}.")
-    if separador not in (",", ";", "\t", "|") or decimal not in (".", ","):
+    if separador not in (",", ";", "\t", "|", "auto") or decimal not in (".", ",", "auto"):
         raise HTTPException(422, "Separador o decimal no admitido.")
 
     guardado = ALMACEN.guardar_subida(nombre, b"")
@@ -148,6 +152,7 @@ async def subir(
 
     fechas = [c.strip() for c in columnas_fecha.split(",") if c.strip()]
     parquet = ALMACEN.dir_subidas() / f"{archivo_id}.parquet"
+    formato: dict | None = None       # sólo lo llena la rama del CSV
 
     try:
         if sufijo == ".zip":
@@ -157,8 +162,20 @@ async def subir(
         elif sufijo == ".parquet":
             info = _parquet_directo(crudo, parquet)
         else:
-            info = csv_a_parquet(crudo, parquet, separador=separador, decimal=decimal,
-                                 codificacion=codificacion, fechas=fechas)
+            # Se mira el principio del archivo y se adivina lo que no se pidió.
+            # Sin esto, un CSV de Excel en español se leía como UNA columna
+            # llamada «entidad;precio_m2;escolaridad», con basura dentro y sin
+            # ningún error: la peor forma de fallar.
+            detectado = detectar_formato(crudo)
+            usados = {
+                "separador": detectado["separador"] if separador == "auto" else separador,
+                "decimal": detectado["decimal"] if decimal == "auto" else decimal,
+                "codificacion": (detectado["codificacion"] if codificacion == "auto"
+                                 else codificacion),
+            }
+            info = csv_a_parquet(crudo, parquet, fechas=fechas, **usados)
+            formato = {**usados, "detectado": detectado["explicacion"]
+                       if "auto" in (separador, decimal, codificacion) else None}
     except ErrorIngesta as exc:
         shutil.rmtree(crudo.parent, ignore_errors=True)
         parquet.unlink(missing_ok=True)
@@ -176,7 +193,19 @@ async def subir(
     # El original ya no hace falta: el Parquet es lo que se lee.
     crudo.unlink(missing_ok=True)
 
+    # Un archivo que no es una tabla llegaba hasta aquí con cero filas y una
+    # columna inventada por pandas, y se aceptaba con un 200. Decirlo es mejor.
+    if info.n_filas == 0:
+        parquet.unlink(missing_ok=True)
+        raise HTTPException(
+            422, f"«{nombre}» no trae ninguna fila de datos. Revisa que sea una tabla con "
+                 "encabezado en el primer renglón.")
+
     avisos = list(info.avisos)
+    # Lo que se supuso se DICE. Adivinar en silencio es la mitad del problema
+    # que la detección resuelve.
+    if formato and formato.get("detectado"):
+        avisos.insert(0, formato["detectado"])
     if (problema := revisar_memoria(info.n_filas, info.columnas)):
         avisos.append(problema)
 
@@ -195,6 +224,7 @@ async def subir(
         "compresion": round(info.compresion, 1),
         "sha256": info.sha256,
         "columnas": info.columnas,
+        "formato": formato,
         "avisos": avisos,
         "vista_previa": vista.astype(object).where(vista.notna(), None).to_dict(orient="records"),
     }

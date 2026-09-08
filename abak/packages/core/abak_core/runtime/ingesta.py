@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re as _re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -129,6 +130,109 @@ def deducir_tipos(ruta: str | Path, *, separador: str = ",", decimal: str = ".",
         if tipo is not None:
             dtypes[str(nombre)] = tipo
     return dtypes, columnas_fecha, avisos
+
+
+# --- Detectar cómo está escrito el archivo ---------------------------------
+
+#: Los separadores que se prueban, en orden de qué tan común es cada uno aquí.
+SEPARADORES = [",", ";", "\t", "|"]
+#: Las codificaciones que se prueban. `latin-1` va al final porque NUNCA falla:
+#: acepta cualquier byte, así que si llega ahí es que no se pudo hacer mejor.
+CODIFICACIONES = ["utf-8-sig", "utf-8", "cp1252", "latin-1"]
+
+#: «1,5» o «1.234,56»: un número escrito a la europea (y a la mexicana en Excel).
+_DECIMAL_COMA = _re.compile(r"^-?\d{1,3}(?:\.\d{3})*,\d+$|^-?\d+,\d+$")
+#: «1.5» o «1,234.56»
+_DECIMAL_PUNTO = _re.compile(r"^-?\d{1,3}(?:,\d{3})*\.\d+$|^-?\d+\.\d+$")
+
+
+def detectar_formato(ruta: str | Path, *, bytes_muestra: int = 64 * 1024) -> dict[str, Any]:
+    """Adivina codificación, separador y decimal mirando el principio del archivo.
+
+    Existe porque el camino de un clic —«Subir datos»— no puede pedirle a nadie
+    que sepa de antemano si su archivo viene con punto y coma o con coma
+    decimal. Sin esto, un CSV exportado por un Excel en español —que es EL
+    formato más común en México— se leía como una sola columna llamada
+    «entidad;precio_m2;escolaridad» con basura dentro, y sin ningún error: la
+    peor forma de fallar. Y un archivo en latin-1 moría con «'utf-8' codec can't
+    decode byte 0xe9», que no le dice nada a nadie.
+
+    Devuelve también `explicacion`, para que la pantalla pueda decir qué se
+    supuso: adivinar en silencio es la mitad del problema que esto resuelve.
+
+    Lo que el usuario pida explícitamente SIEMPRE gana; esto es sólo el valor
+    por omisión cuando no pidió nada.
+    """
+    ruta = Path(ruta)
+    crudo = ruta.open("rb").read(bytes_muestra)
+    if not crudo:
+        raise ErrorIngesta("El archivo llegó vacío.")
+
+    # 1. Codificación: la primera que decodifique sin romperse.
+    codificacion, texto = "latin-1", None
+    for cod in CODIFICACIONES:
+        try:
+            texto = crudo.decode(cod)
+            codificacion = cod
+            break
+        except UnicodeDecodeError:
+            continue
+    if texto is None:                     # imposible: latin-1 acepta todo
+        texto = crudo.decode("latin-1", errors="replace")
+
+    # Se descarta la última línea: casi seguro viene cortada por la muestra.
+    lineas = [l for l in texto.splitlines()[:60] if l.strip()]
+    if len(lineas) > 1:
+        lineas = lineas[:-1] or lineas
+
+    # 2. Separador: el que parte todas las líneas en el MISMO número de campos,
+    #    y en más de uno. Contar sólo el encabezado se equivoca con un título
+    #    que trae comas.
+    mejor, mejor_campos = ",", 1
+    for sep in SEPARADORES:
+        cuentas = [len(_csv_partir(l, sep)) for l in lineas]
+        if not cuentas:
+            continue
+        campos = cuentas[0]
+        if campos > mejor_campos and len(set(cuentas)) == 1:
+            mejor, mejor_campos = sep, campos
+    separador = mejor
+
+    # 3. Decimal: se miran los campos que parecen números en las filas de datos.
+    con_coma = con_punto = 0
+    for linea in lineas[1:]:
+        for campo in _csv_partir(linea, separador):
+            campo = campo.strip().strip('"')
+            if _DECIMAL_COMA.match(campo):
+                con_coma += 1
+            elif _DECIMAL_PUNTO.match(campo):
+                con_punto += 1
+    decimal = "," if con_coma > con_punto else "."
+
+    nombres = {",": "coma", ";": "punto y coma", "\t": "tabulador", "|": "barra"}
+    partes = [f"separador «{nombres[separador]}»",
+              f"decimal «{'coma' if decimal == ',' else 'punto'}»",
+              f"codificación {codificacion}"]
+    return {
+        "separador": separador, "decimal": decimal, "codificacion": codificacion,
+        "columnas_detectadas": mejor_campos,
+        "explicacion": "Se leyó con " + ", ".join(partes) + ".",
+    }
+
+
+def _csv_partir(linea: str, separador: str) -> list[str]:
+    """Parte una línea respetando las comillas, sin montar un lector entero."""
+    campos, actual, dentro = [], [], False
+    for c in linea:
+        if c == '"':
+            dentro = not dentro
+        elif c == separador and not dentro:
+            campos.append("".join(actual))
+            actual = []
+            continue
+        actual.append(c)
+    campos.append("".join(actual))
+    return campos
 
 
 def csv_a_parquet(origen: str | Path, destino: str | Path, *, separador: str = ",",

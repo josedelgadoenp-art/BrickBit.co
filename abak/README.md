@@ -326,13 +326,19 @@ de navegador (`recorrido3`): buscar «cargar», clic, subir el archivo, buscar
 «MCO», clic, elegir la columna a explicar, marcar tres explicativas, Ejecutar.
 
 
-1. En el buscador de la izquierda escribe **cargar** y haz clic en
-   **«Cargar archivo (CSV o Excel)»**. Cae un bloque en el lienzo.
-2. En el panel derecho, **«Subir archivo»** y eliges el tuyo.
-3. Antes de subir, si hace falta: **separador** (`,` `;` tab `|`), **decimal**
-   (`.` o `,` — el Excel en español guarda con coma) y **codificación**
-   (`utf-8`, o `latin-1` si los acentos salen rotos).
-4. **Ejecutar**. La pestaña **Datos** te muestra la tabla.
+1. **«Subir datos»**, arriba, y eliges tu archivo. El bloque queda puesto y
+   configurado; no hay que buscar nada en la paleta.
+2. **Ejecutar**. La pestaña **Datos** te muestra la tabla.
+
+**El separador, el decimal y la codificación se detectan solos.** Abak mira el
+principio del archivo y deduce si viene con coma o con punto y coma, si el
+decimal es punto o coma, y en qué codificación está — y **te dice qué supuso**,
+porque adivinar en silencio es la mitad del problema. Antes había que saberlo de
+antemano: un CSV exportado por un Excel en español (punto y coma + coma decimal),
+que es el formato más común en México, se leía como **una sola columna** llamada
+`entidad;precio_m2;escolaridad`, con basura dentro y sin ningún error. Y un
+archivo en latin-1 moría con «'utf-8' codec can't decode byte 0xe9», que no le
+dice nada a nadie.
 
 Formatos: `.csv`, `.tsv`, `.txt`, `.xlsx`, `.xls`, `.parquet` y `.zip`.
 

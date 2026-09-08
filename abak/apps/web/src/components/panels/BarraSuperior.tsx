@@ -26,6 +26,7 @@ export default function BarraSuperior() {
   const [menu, setMenu] = useState<'ejemplos' | 'descargas' | 'ajustes' | null>(null);
   const [bajando, setBajando] = useState<'zip' | 'pdf' | null>(null);
   const [problema, setProblema] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
   const campoArchivo = useRef<HTMLInputElement>(null);
 
@@ -42,12 +43,18 @@ export default function BarraSuperior() {
   async function subirDatos(archivo: File) {
     setSubiendo(true);
     setProblema(null);
+    setAviso(null);
     try {
       const cuerpo = new FormData();
       cuerpo.append('archivo', archivo);
       const r = await fetch('/api/v1/datos/subir', { method: 'POST', body: cuerpo });
       if (!r.ok) throw new ErrorApi(r.status, await r.json().catch(() => null));
       const datos = await r.json();
+      // Lo que el servidor tuvo que ADIVINAR se dice. Un CSV de Excel en
+      // español se lee con punto y coma y coma decimal, y suponerlo en
+      // silencio es la mitad del problema que la detección resuelve.
+      const notas: string[] = datos.avisos ?? [];
+      if (notas.length) setAviso(notas.join(' '));
       const id = agregarNodo('datos.csv');
       if (id) {
         actualizarParams(id, {
@@ -276,6 +283,15 @@ export default function BarraSuperior() {
               title={errorEjecucion ?? problema ?? ''}>
           {errorEjecucion ?? problema}
         </span>
+      )}
+      {aviso && !problema && !errorEjecucion && (
+        <button
+          onClick={() => setAviso(null)}
+          title={`${aviso} (clic para ocultar)`}
+          className="max-w-[26rem] truncate text-left text-[11px] text-tenue hover:text-crema"
+        >
+          {aviso}
+        </button>
       )}
     </header>
   );

@@ -44,9 +44,13 @@ export default function SubirArchivo({ nodoId }: { nodoId: string }) {
     try {
       const cuerpo = new FormData();
       cuerpo.append('archivo', archivo);
-      cuerpo.append('separador', String(params.separador ?? ','));
-      cuerpo.append('decimal', String(params.decimal ?? '.'));
-      cuerpo.append('codificacion', String(params.codificacion ?? 'utf-8'));
+      // «auto»: el servidor mira el principio del archivo y deduce separador,
+      // decimal y codificación. Mandaba coma, punto y utf-8 escritos a mano —y
+      // el nodo ni siquiera tiene esos parámetros, así que nunca cambiaban—,
+      // con lo que un CSV de Excel en español se leía como una sola columna.
+      cuerpo.append('separador', String(params.separador ?? 'auto'));
+      cuerpo.append('decimal', String(params.decimal ?? 'auto'));
+      cuerpo.append('codificacion', String(params.codificacion ?? 'auto'));
 
       setProgreso('Convirtiendo a formato columnar…');
       const respuesta = await fetch('/api/v1/datos/subir', { method: 'POST', body: cuerpo });
