@@ -309,9 +309,26 @@ class Ordenar(EspecNodo):
         descendente: bool = False
 
     def emit(self, ctx: Any) -> Any:
-        ctx.emitir("SAL = ENT.sort_values(POR, ascending=ASC).reset_index(drop=True)",
-                   SAL=ctx.salida("datos"), ENT=ctx.entrada("datos"),
-                   POR=ctx.plit("por"), ASC=ctx.lit(not ctx.p("descendente")))
+        # `reset_index(drop=True)` SOLO cuando el indice no significa nada.
+        #
+        # Con una serie o un panel ya declarados, el indice ES la fecha (o la
+        # pareja entidad-periodo), y tirarlo deja la tabla sin el eje que la
+        # define mientras el esquema sigue anunciandolo. Todo lo que viene
+        # despues —un rezago, un ARIMA, un pronostico— se queda buscando una
+        # columna que ya no existe, o peor, trabaja sobre el orden equivocado.
+        esquema = ctx.esquema("datos")
+        con_indice = bool(getattr(esquema, "indice_temporal", None)
+                          or getattr(esquema, "id_entidad", None))
+        if con_indice:
+            ctx.nota("Se conserva el índice de la serie o del panel: ordenar cambia el orden "
+                     "de las filas, no el eje que las identifica.")
+            ctx.emitir("SAL = ENT.sort_values(POR, ascending=ASC)",
+                       SAL=ctx.salida("datos"), ENT=ctx.entrada("datos"),
+                       POR=ctx.plit("por"), ASC=ctx.lit(not ctx.p("descendente")))
+        else:
+            ctx.emitir("SAL = ENT.sort_values(POR, ascending=ASC).reset_index(drop=True)",
+                       SAL=ctx.salida("datos"), ENT=ctx.entrada("datos"),
+                       POR=ctx.plit("por"), ASC=ctx.lit(not ctx.p("descendente")))
         return ctx.fin()
 
 

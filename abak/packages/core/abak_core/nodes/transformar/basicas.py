@@ -90,6 +90,35 @@ class Calcular(EspecNodo):
                                           es_estimado=hereda))}
 
 
+def _ordenar_por_tiempo(ctx: Any, por_entidad: str | None) -> None:
+    """Deja las filas en orden de tiempo antes de desplazar.
+
+    `shift` y `pct_change` no saben de fechas: toman la fila de ARRIBA. Si la
+    tabla no viene ordenada por periodo, el rezago trae el valor de un periodo
+    cualquiera y no hay diagnostico que lo delate — sale un modelo que mira al
+    futuro y se ve perfectamente sano. Es, con diferencia, el error mas caro que
+    puede cometer esta familia.
+
+    Cuando el analisis declaro su indice temporal («Definir serie temporal» o
+    «Definir panel»), aqui se usa: se ordena por entidad y periodo, de forma
+    estable, y se anota. Cuando NO se declaro no se puede adivinar, asi que se
+    dice en la nota metodologica que se respeto el orden del archivo.
+    """
+    esquema = ctx.esquema("datos")
+    tiempo = getattr(esquema, "indice_temporal", None)
+    if not tiempo:
+        ctx.nota("No hay un periodo declarado, asi que se respeta el orden del archivo. "
+                 "Si las filas no vienen ordenadas por fecha, el resultado NO es el que "
+                 "esperas: pon antes «Definir serie temporal» o «Definir panel».")
+        return
+    grupo = por_entidad or getattr(esquema, "id_entidad", None)
+    llaves = ([grupo, tiempo] if grupo else [tiempo])
+    ctx.nota(f"Antes de desplazar se ordena por {', '.join(llaves)}: «shift» toma la fila de "
+             "arriba, no la del periodo anterior.")
+    ctx.emitir("SAL = SAL.sort_values(LLAVES, kind='stable')",
+               SAL=ctx.ref_salida("datos"), LLAVES=ctx.lit(llaves))
+
+
 @registrar
 class Rezago(EspecNodo):
     op = "transformar.rezago"
@@ -126,6 +155,7 @@ class Rezago(EspecNodo):
         ctx.nota(f"{'Rezago' if k > 0 else 'Adelanto'} de {abs(k)} periodo(s)."
                  + (f" Calculado dentro de cada «{ctx.p('por_entidad')}»." if ctx.p("por_entidad") else ""))
         ctx.emitir("SAL = ENT.copy()", SAL=ctx.salida("datos"), ENT=ent)
+        _ordenar_por_tiempo(ctx, ctx.p("por_entidad"))
         for origen, nuevo in self._nombres(ctx.params):
             if ctx.p("por_entidad"):
                 ctx.emitir("SAL[NUEVO] = SAL.groupby(GRP, observed=True)[COL].shift(K)",
@@ -188,6 +218,9 @@ class Crecimiento(EspecNodo):
             "log_diferencia": f"Log-diferencia contra {k} periodo(s) atras (crecimiento continuo).",
         }[tipo] + (f" Dentro de cada «{grupo}»." if grupo else ""))
         ctx.emitir("SAL = ENT.copy()", SAL=ctx.salida("datos"), ENT=ctx.entrada("datos"))
+        # `diff` y `pct_change` tienen el mismo problema que `shift`: toman la
+        # fila de arriba, no el periodo anterior.
+        _ordenar_por_tiempo(ctx, grupo)
         for origen, nuevo in self._nombres(ctx.params):
             base = {"diferencia": "S[COL].diff(K)",
                     "porcentaje": "100 * S[COL].pct_change(K)",
