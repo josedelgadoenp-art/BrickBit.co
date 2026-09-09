@@ -108,8 +108,8 @@ export default function Asistente({ modo = 'portada' }: { modo?: 'portada' | 'ba
       if (e instanceof ErrorApi) {
         setProblema(e.mensaje);
       } else if (e instanceof DOMException && e.name === 'AbortError') {
-        setProblema('La petición tardó más de dos minutos y se canceló. Suele pasar con '
-          + 'peticiones muy largas: prueba con uno de los ejemplos de abajo, que son más cortos.');
+        setProblema('La petición tardó casi tres minutos y se canceló. Suele pasar con '
+          + 'peticiones muy largas: prueba con una más corta, o con uno de los ejemplos.');
       } else {
         const detalle = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
         setProblema(`No se pudo construir el análisis — ${detalle}`);

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 
-import { ErrorApi } from '@/lib/api';
+import { cuerpoDeError, ErrorApi } from '@/lib/api';
 import { bytes } from '@/lib/formato';
 import { usarLienzo } from '@/store/lienzo';
 
@@ -55,7 +55,7 @@ export default function SubirArchivo({ nodoId }: { nodoId: string }) {
       setProgreso('Convirtiendo a formato columnar…');
       const respuesta = await fetch('/api/v1/datos/subir', { method: 'POST', body: cuerpo });
       if (!respuesta.ok) {
-        const detalle = await respuesta.json().catch(() => null);
+        const detalle = await cuerpoDeError(respuesta);
         throw new ErrorApi(respuesta.status, detalle);
       }
       const datos: Respuesta = await respuesta.json();

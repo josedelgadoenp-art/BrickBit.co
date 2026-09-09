@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 
 import { IconoAbajo, IconoSubir } from '@/components/ui/Icono';
-import { api, descargar, ErrorApi } from '@/lib/api';
+import { api, cuerpoDeError, descargar, ErrorApi } from '@/lib/api';
 import { EJEMPLOS } from '@/lib/ejemplos';
 import { duracion } from '@/lib/formato';
 import { usarLienzo } from '@/store/lienzo';
@@ -48,7 +48,7 @@ export default function BarraSuperior() {
       const cuerpo = new FormData();
       cuerpo.append('archivo', archivo);
       const r = await fetch('/api/v1/datos/subir', { method: 'POST', body: cuerpo });
-      if (!r.ok) throw new ErrorApi(r.status, await r.json().catch(() => null));
+      if (!r.ok) throw new ErrorApi(r.status, await cuerpoDeError(r));
       const datos = await r.json();
       // Lo que el servidor tuvo que ADIVINAR se dice. Un CSV de Excel en
       // español se lee con punto y coma y coma decimal, y suponerlo en

@@ -10,6 +10,14 @@ const nextConfig = {
   allowedDevOrigins: ['192.168.*.*', '10.*.*.*', '172.16.*.*', '172.17.*.*',
                       '172.18.*.*', '172.19.*.*', '172.2*.*.*', '172.30.*.*',
                       '172.31.*.*'],
+  // El proxy del reescrito corta a los 30 SEGUNDOS por omisión, y está medido:
+  // una petición que tarda 45 s devuelve 500 a los 30. Pedirle un análisis a la
+  // IA con el catálogo entero tarda bastante más que eso, así que el asistente
+  // fallaba SIEMPRE — y como el 500 del proxy no trae JSON, el error que se veía
+  // era otro. Tres minutos deja margen de sobra; el navegador se rinde antes,
+  // a los dos, para que gane su mensaje y no el del proxy.
+  experimental: { proxyTimeout: 180_000 },
+
   // La API vive en otro puerto en desarrollo. Con el reescrito, el navegador
   // habla siempre con el mismo origen y no hay CORS que perseguir.
   async rewrites() {

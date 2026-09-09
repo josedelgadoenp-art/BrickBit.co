@@ -7,15 +7,27 @@ import type {
 
 const BASE = '/api/v1';
 
+/**
+ * El cuerpo de una respuesta de error, leído UNA sola vez.
+ *
+ * `Response` tiene un flujo de un solo uso: `json()` lo consume aunque falle al
+ * interpretarlo, así que el patrón `try { json() } catch { text() }` está roto
+ * por construcción y revienta con «body stream already read». Se lee texto y se
+ * intenta interpretar después, que es el orden que sí funciona.
+ */
+export async function cuerpoDeError(respuesta: Response): Promise<unknown> {
+  const crudo = await respuesta.text().catch(() => '');
+  if (!crudo) return null;
+  try { return JSON.parse(crudo); } catch { return crudo; }
+}
+
 async function pedir<T>(ruta: string, init?: RequestInit): Promise<T> {
   const respuesta = await fetch(`${BASE}${ruta}`, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
   });
   if (!respuesta.ok) {
-    let detalle: unknown;
-    try { detalle = await respuesta.json(); } catch { detalle = await respuesta.text(); }
-    throw new ErrorApi(respuesta.status, detalle);
+    throw new ErrorApi(respuesta.status, await cuerpoDeError(respuesta));
   }
   return respuesta.json() as Promise<T>;
 }
@@ -47,7 +59,24 @@ export class ErrorApi extends Error {
       return d.detail.mensaje;
     }
     if (d?.detalle) return d.detalle;
-    return this.estado === 0 ? 'No se pudo contactar al servidor.' : this.message;
+
+    // El cuerpo puede no ser JSON: una página de error del proxy, texto plano,
+    // o nada. Se enseña tal cual —recortado— en vez de esconderlo tras «La API
+    // respondió 502», que no le sirve a nadie para arreglar nada.
+    if (typeof this.detalle === 'string' && this.detalle.trim()) {
+      const limpio = this.detalle.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (limpio) return `El servidor respondió ${this.estado}: ${limpio.slice(0, 300)}`;
+    }
+    if (this.estado === 0) return 'No se pudo contactar al servidor.';
+    if (this.estado === 502 || this.estado === 504) {
+      return `El servidor no contestó a tiempo (${this.estado}). Suele pasar cuando la `
+        + 'petición a la IA tarda más de lo que aguanta el proxy: prueba con una más corta.';
+    }
+    if (this.estado >= 500) {
+      return `El servidor falló (${this.estado}) y no dijo por qué. El detalle completo está `
+        + 'en la ventana de PowerShell donde corre el API.';
+    }
+    return this.message;
   }
 }
 
@@ -85,7 +114,7 @@ export const api = {
     const cuerpo = new FormData();
     cuerpo.append('archivo', archivo);
     const r = await fetch(`${BASE}/datos/subir`, { method: 'POST', body: cuerpo });
-    if (!r.ok) throw new ErrorApi(r.status, await r.json().catch(() => null));
+    if (!r.ok) throw new ErrorApi(r.status, await cuerpoDeError(r));
     return r.json() as Promise<{
       archivo_id: string; nombre: string; bytes: number;
       esquema: Esquema; vista_previa: Record<string, unknown>[];
@@ -126,7 +155,10 @@ export const api = {
     pedir<RespuestaAsistente>('/asistente', {
       method: 'POST',
       body: JSON.stringify({ peticion, esquemas, grafo }),
-      signal: AbortSignal.timeout(120_000),
+      // 170 s: por debajo de los 180 s del proxy (`next.config.mjs`), para que
+      // quien se rinda primero sea el navegador y gane SU mensaje. Si el proxy
+      // corta antes, lo que llega es un 500 sin JSON y sin nada que explicar.
+      signal: AbortSignal.timeout(170_000),
     }),
   probarIA: () =>
     pedir<{
@@ -152,11 +184,7 @@ export async function descargar(
     headers: opciones?.cuerpo ? { 'Content-Type': 'application/json' } : undefined,
     body: opciones?.cuerpo ? JSON.stringify(opciones.cuerpo) : undefined,
   });
-  if (!respuesta.ok) {
-    let detalle: unknown;
-    try { detalle = await respuesta.json(); } catch { detalle = null; }
-    throw new ErrorApi(respuesta.status, detalle);
-  }
+  if (!respuesta.ok) throw new ErrorApi(respuesta.status, await cuerpoDeError(respuesta));
 
   const cabecera = respuesta.headers.get('content-disposition') ?? '';
   const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(cabecera)?.[1];
