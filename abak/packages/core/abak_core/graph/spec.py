@@ -121,6 +121,18 @@ class Columna(BaseModel):
     es_estimado: bool = False
     fuente: str | None = None
     nota: str | None = None
+    #: Los valores distintos, cuando son pocos y la columna es de texto.
+    #:
+    #: Existe porque sin esto «Crear indicadoras» no podía DECLARAR las columnas
+    #: que iba a crear: los desplegables de los bloques siguientes no las veían
+    #: y el bloque producía treinta columnas que nadie podía usar. Se llena sólo
+    #: al leer datos de verdad, y sólo hasta `TOPE_CATEGORIAS`: una columna con
+    #: mil valores distintos no es una categoría, es un identificador.
+    categorias: list[str] | None = None
+
+
+#: Más allá de esto una columna de texto no es una categoría: es un nombre.
+TOPE_CATEGORIAS = 60
 
 
 class Esquema(BaseModel):
@@ -159,8 +171,14 @@ class Esquema(BaseModel):
         return Esquema.model_validate(datos)
 
     @staticmethod
-    def de_dataframe(df: Any, fuente: str | None = None) -> "Esquema":
-        """Deduce el esquema de un DataFrame ya materializado."""
+    def de_dataframe(df: Any, fuente: str | None = None, completo: bool = True) -> "Esquema":
+        """Deduce el esquema de un DataFrame ya materializado.
+
+        `completo=False` cuando `df` es sólo una MUESTRA del archivo. Entonces
+        no se declaran categorías: con las primeras 200 filas de un panel
+        ordenado por entidad se ven 13 de 32, y declarar esas 13 sería peor que
+        no declarar ninguna — el esquema estaría afirmando algo falso.
+        """
         import pandas as pd
 
         def clasificar(s: Any) -> str:
@@ -174,7 +192,22 @@ class Esquema(BaseModel):
                 return "categorica"
             return "texto"
 
-        cols = [Columna(nombre=str(c), tipo=clasificar(df[c]), fuente=fuente) for c in df.columns]
+        def categorias(s: Any, tipo: str) -> list[str] | None:
+            if not completo or tipo not in ("texto", "categorica", "booleana"):
+                return None
+            try:
+                distintos = s.dropna().unique()
+            except Exception:
+                return None
+            if len(distintos) > TOPE_CATEGORIAS:
+                return None
+            return sorted(str(v) for v in distintos)
+
+        cols = []
+        for c in df.columns:
+            tipo = clasificar(df[c])
+            cols.append(Columna(nombre=str(c), tipo=tipo, fuente=fuente,
+                                categorias=categorias(df[c], tipo)))
         indice = None
         if isinstance(df.index, (pd.DatetimeIndex, pd.PeriodIndex)):
             indice = df.index.name or "__indice__"

@@ -370,7 +370,24 @@ class Indicadoras(EspecNodo):
         # Los nombres dependen de los VALORES, que no se conocen sin ejecutar.
         # Se declara honestamente que el esquema cambia y no se inventan columnas.
         base = entradas.get("datos", Esquema())
-        return {"datos": base.con(quitar=list(params.columnas))}  # type: ignore[attr-defined]
+        # Se DECLARAN las indicadoras, una por categoría. Sin esto el bloque
+        # creaba treinta columnas que ningún desplegable de los bloques
+        # siguientes podía ver: producía algo imposible de usar, que es la
+        # forma más silenciosa de no servir para nada.
+        nuevas: list[Columna] = []
+        quitar_primera = bool(params.quitar_primera)   # type: ignore[attr-defined]
+        for nombre in params.columnas:                 # type: ignore[attr-defined]
+            columna = base.get(nombre)
+            categorias = list(columna.categorias or []) if columna else []
+            if not categorias:
+                # Sin categorías conocidas no se puede adivinar el nombre de
+                # nada: se dice en una nota en vez de inventarlo.
+                continue
+            for valor in categorias[1:] if quitar_primera else categorias:
+                nuevas.append(Columna(
+                    nombre=f"{nombre}_{valor}", tipo="numerica",
+                    nota=f"Vale 1 cuando «{nombre}» es «{valor}», y 0 si no."))
+        return {"datos": base.con(*nuevas, quitar=list(params.columnas))}  # type: ignore[attr-defined]
 
     def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
         # Las indicadoras nuevas se llaman como los VALORES de la columna, que

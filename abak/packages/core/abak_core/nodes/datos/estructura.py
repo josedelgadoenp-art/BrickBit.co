@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ...graph.spec import Esquema
+from ...graph.spec import Columna, Esquema
 from ...registry.base import (Ayuda, Ayudante, CampoColumna, CampoColumnas, EspecNodo,
                               Puerto, registrar, registrar_ayudante)
 
@@ -213,7 +213,27 @@ class Remodelar(EspecNodo):
         return ctx.fin()
 
     def esquema_salida(self, entradas: dict[str, Esquema], params: BaseModel) -> dict[str, Esquema]:
-        return {"datos": Esquema()}  # cambia demasiado para anticiparlo con honestidad
+        base = entradas.get("datos", Esquema())
+        # A LARGO sí se sabe: quedan los identificadores más las dos columnas
+        # nuevas. A ANCHO no, porque las columnas nuevas son los VALORES de una
+        # columna, y eso depende de los datos — salvo que se conozcan sus
+        # categorías, que es justo para lo que están.
+        if params.direccion == "a_largo":            # type: ignore[attr-defined]
+            ids = [c for c in base.columnas
+                   if c.nombre in set(params.identificadores or [])]  # type: ignore[attr-defined]
+            return {"datos": Esquema(columnas=ids + [
+                Columna(nombre=params.nombre_variable, tipo="texto",   # type: ignore[attr-defined]
+                        nota="El nombre de la columna de la que vino cada valor."),
+                Columna(nombre=params.nombre_valor, tipo="numerica")])}  # type: ignore[attr-defined]
+
+        variable = next((c for c in base.columnas
+                         if c.nombre == params.nombre_variable), None)  # type: ignore[attr-defined]
+        if variable is not None and variable.categorias:
+            ids = [c for c in base.columnas
+                   if c.nombre in set(params.identificadores or [])]  # type: ignore[attr-defined]
+            return {"datos": Esquema(columnas=ids + [
+                Columna(nombre=v, tipo="numerica") for v in variable.categorias])}
+        return {"datos": Esquema()}
 
     def columnas_requeridas(self, params: BaseModel) -> set[str] | None:
         # Pasar de ancho a largo toca todas las columnas que no son identificador.

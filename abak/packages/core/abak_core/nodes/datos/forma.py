@@ -174,6 +174,10 @@ class Seleccionar(EspecNodo):
         return {"datos": base.con(*cols, quitar=base.nombres())}
 
 
+#: Lo que se le pega a una columna de la derecha cuando su nombre ya existe.
+SUFIJO_DERECHA = "_der"
+
+
 @registrar
 class Unir(EspecNodo):
     op = "datos.unir"
@@ -201,9 +205,15 @@ class Unir(EspecNodo):
     def emit(self, ctx: Any) -> Any:
         como = {"izquierda": "left", "interna": "inner", "externa": "outer"}[ctx.p("tipo")]
         der = ctx.p("llave_derecha") or ctx.p("llave_izquierda")
-        ctx.emitir("SAL = IZQ.merge(DER, left_on=LI, right_on=LD, how=COMO, validate=None)",
+        # `suffixes=('', '_der')`: la tabla de la IZQUIERDA conserva sus nombres.
+        # Con el valor por omisión de pandas, un choque renombraba las dos
+        # («precio_m2_x» y «precio_m2_y») y la columna original desaparecía de
+        # los desplegables sin que nadie entendiera por qué.
+        ctx.emitir("SAL = IZQ.merge(DER, left_on=LI, right_on=LD, how=COMO, "
+                   "suffixes=('', SUF), validate=None)",
                    SAL=ctx.salida("datos"), IZQ=ctx.entrada("izquierda"), DER=ctx.entrada("derecha"),
-                   LI=ctx.plit("llave_izquierda"), LD=ctx.lit(der), COMO=ctx.lit(como))
+                   LI=ctx.plit("llave_izquierda"), LD=ctx.lit(der), COMO=ctx.lit(como),
+                   SUF=ctx.lit(SUFIJO_DERECHA))
         ctx.nota({"izquierda": "Se conservan todas las filas de la tabla izquierda.",
                   "interna": "Solo quedan las filas que aparecen en ambas tablas.",
                   "externa": "Se conservan todas las filas de las dos tablas."}[ctx.p("tipo")])
@@ -212,7 +222,22 @@ class Unir(EspecNodo):
     def esquema_salida(self, entradas: dict[str, Esquema], params: BaseModel) -> dict[str, Esquema]:
         izq = entradas.get("izquierda", Esquema())
         der = entradas.get("derecha", Esquema())
-        nuevas = [c for c in der.columnas if c.nombre not in set(izq.nombres())]
+        llaves_der = set(params.llave_derecha or [])   # type: ignore[attr-defined]
+        nombres_izq = set(izq.nombres())
+        nuevas = []
+        for c in der.columnas:
+            if c.nombre in llaves_der:
+                continue          # la llave ya está, con el nombre de la izquierda
+            if c.nombre in nombres_izq:
+                # Choque de nombres: pandas renombraba las DOS con `_x` y `_y`,
+                # así que «precio_m2» desaparecía de los desplegables y nadie
+                # entendía por qué. Ahora la izquierda conserva su nombre y sólo
+                # la de la derecha lleva sufijo.
+                nuevas.append(c.model_copy(update={
+                    "nombre": f"{c.nombre}{SUFIJO_DERECHA}",
+                    "nota": f"Viene de la tabla de la derecha; «{c.nombre}» ya existía."}))
+            else:
+                nuevas.append(c)
         return {"datos": izq.con(*nuevas)}
 
 

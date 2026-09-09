@@ -233,6 +233,14 @@ botón que explica qué es, cómo se lee y con qué hay que tener cuidado. Son 2
 fichas; si un indicador no tiene ficha el botón no aparece, y una prueba
 comprueba que nada de lo que Abak nombra se quede sin la suya.
 
+**Cada herramienta se verifica contra un cálculo hecho por fuera.** No basta con
+que corra: el número que reporta se compara con la fórmula, o con la biblioteca
+llamada por su API canónica. Así no se prueba que statsmodels sepa estimar —eso
+ya lo sabe—, se prueba el cableado, que es lo nuestro: reportar el error clásico
+diciendo que es robusto, el coeficiente de un logit como si fuera un efecto
+marginal, o el multiplicador de la fila en vez del de la columna son errores que
+devuelven números perfectamente plausibles y no dan ninguna señal.
+
 El detalle está en [docs/nodos.md](docs/nodos.md), que se genera del registro.
 
 ---

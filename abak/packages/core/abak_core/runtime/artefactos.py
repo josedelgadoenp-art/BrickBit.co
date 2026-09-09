@@ -194,7 +194,16 @@ def modelo_a_json(res: Any, *, titulo: str | None = None) -> dict[str, Any]:
         ("F", "fvalue"), ("Prob(F)", "f_pvalue"), ("Pseudo R²", "prsquared"),
         ("Ecuaciones", "neqs"), ("Rezagos", "k_ar"),
     ]:
-        v = getattr(res, attr, None)
+        # `getattr(..., None)` sólo se traga un AttributeError. Un modelo puede
+        # DECLARAR el atributo y lanzar al calcularlo: MC2E expone `llf` y
+        # levanta NotImplementedError porque dos etapas no tienen verosimilitud.
+        # Sin este try, esa excepción tumbaba `modelo_a_json` entero y el bloque
+        # de variables instrumentales terminaba «listo» y sin un solo artefacto:
+        # corría, no fallaba, y no enseñaba nada.
+        try:
+            v = getattr(res, attr, None)
+        except Exception:
+            continue
         if v is None or callable(v):
             continue
         # Sólo escalares: en un modelo multiecuación varios de estos atributos

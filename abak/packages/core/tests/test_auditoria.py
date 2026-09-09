@@ -439,3 +439,136 @@ def test_la_misma_semilla_da_la_misma_muestra():
         precision = {n.nodo_id: n for n in r.nodos}["s"].artefactos["precision"]
         corridas.append(precision["filas"])
     assert corridas[0] == corridas[1], "la misma semilla dio resultados distintos"
+
+
+# ---------------------------------------------------------------------------
+# Un bloque que corre tiene que ENSEÑAR algo
+# ---------------------------------------------------------------------------
+
+def test_ningun_bloque_termina_bien_y_sin_nada_que_ensenar():
+    """El fallo más difícil de ver: «listo», sin error, y con cero artefactos.
+
+    Le pasaba a «Variables instrumentales (MC2E)». `modelo_a_json` leía la
+    log-verosimilitud, y MC2E DECLARA ese atributo pero levanta
+    NotImplementedError al calcularlo, porque dos etapas no tienen
+    verosimilitud. `getattr(..., None)` sólo se traga un AttributeError, así que
+    la excepción tumbaba el resumen entero: el bloque quedaba verde y vacío.
+
+    No hay diagnóstico que delate esto. La única forma de verlo es exigir que
+    todo bloque que termina bien traiga al menos un artefacto.
+    """
+    vacios = []
+    for nombre, (nodos, aristas) in {**FLUJOS, **FLUJOS_AUDITORIA}.items():
+        resultado = ejecutar(compilar(grafo(nombre, nodos, aristas)))
+        for n in resultado.nodos:
+            if n.estado in ("listo", "cacheado") and not (n.artefactos or {}):
+                vacios.append(f"{nombre}/{n.nodo_id}")
+    assert not vacios, ("estos bloques terminaron bien y no produjeron nada:\n  "
+                        + "\n  ".join(vacios))
+
+
+def test_las_variables_instrumentales_ensenan_sus_coeficientes():
+    nodos = [("d", "datos.ejemplo", "Hogares", {"conjunto": "hogares"}),
+             ("m", "econometria.iv", "MC2E",
+              {"y": "gasto_vivienda", "endogenas": ["ingreso_mensual"],
+               "instrumentos": ["escolaridad_anios"], "exogenas": ["tamano_hogar"]})]
+    r = ejecutar(compilar(grafo("iv", nodos, [("d", "datos", "m", "datos")])))
+    arts = {n.nodo_id: (n.artefactos or {}) for n in r.nodos}["m"]
+    assert "modelo" in arts, f"el bloque quedó sin modelo; trae {sorted(arts)}"
+    variables = [c["variable"] for c in arts["modelo"]["coeficientes"]]
+    assert "ingreso_mensual" in variables and "tamano_hogar" in variables
+
+
+def test_un_diagnostico_que_no_se_puede_calcular_no_borra_los_coeficientes():
+    """La regla de la casa, comprobada: lo decorativo nunca cuesta el resultado.
+
+    Se envuelve un modelo REAL y se le rompen dos diagnósticos, que es
+    exactamente lo que hace MC2E con la log-verosimilitud. Un doble inventado no
+    serviría: `modelo_a_json` lee media docena de atributos y la prueba pasaría
+    por no parecerse en nada a un modelo.
+    """
+    import numpy as np
+    import pandas as pd
+    import statsmodels.api as sm
+
+    from abak_core.runtime.artefactos import modelo_a_json
+
+    rng = np.random.default_rng(3)
+    # Con pandas, igual que lo llama Abak: así los coeficientes traen su nombre.
+    x = pd.Series(rng.normal(size=60), name="x")
+    y = pd.Series(2.0 + 3.0 * x + rng.normal(scale=0.5, size=60), name="y")
+    real = sm.OLS(y, sm.add_constant(x)).fit()
+
+    class RompeDosDiagnosticos:
+        """Delega todo en el modelo real, menos los dos que revientan."""
+
+        def __init__(self, envuelto):
+            self._envuelto = envuelto
+
+        def __getattr__(self, nombre):
+            if nombre == "llf":
+                raise NotImplementedError          # como MC2E
+            if nombre == "rsquared":
+                raise ValueError("tampoco se puede")
+            return getattr(self._envuelto, nombre)
+
+    art = modelo_a_json(RompeDosDiagnosticos(real), titulo="Roto")
+    assert art["tipo"] == "modelo"
+    assert len(art["coeficientes"]) == 2, "se perdieron los coeficientes"
+    assert art["coeficientes"][1]["coeficiente"] == pytest.approx(real.params.iloc[1])
+    assert "Log-verosimilitud" not in art["diagnosticos"]
+    assert "R²" not in art["diagnosticos"]
+    assert "AIC" in art["diagnosticos"], "los demás diagnósticos sí tenían que salir"
+
+
+# ---------------------------------------------------------------------------
+# El esquema declarado tiene que ser el que sale de verdad
+# ---------------------------------------------------------------------------
+
+def test_el_esquema_declarado_coincide_con_las_columnas_que_salen():
+    """Lo que el bloque DICE que va a producir, contra lo que produce.
+
+    El esquema no es documentación: es lo que llena los desplegables de columnas
+    de los bloques siguientes, antes de haber ejecutado nada. Si sobra una
+    columna, la persona la elige y el análisis revienta al correr; si falta,
+    una columna que sí existe queda invisible y nadie puede usarla.
+
+    Se comparan las tablas de todos los flujos contra el esquema que el
+    compilador propagó hasta ese punto.
+    """
+    from abak_core.registry import obtener
+
+    problemas = []
+    for nombre, (nodos, aristas) in {**FLUJOS, **FLUJOS_AUDITORIA}.items():
+        programa = compilar(grafo(nombre, nodos, aristas))
+        # El esquema de salida no se guarda en la instrucción: se le pide al
+        # nodo, igual que hace el compilador al propagarlo.
+        esperado = {}
+        for ins in programa.instrucciones:
+            # Sin `try`: un `esquema_salida` que revienta es un fallo por sí
+            # solo, y taparlo hacía que esta prueba pasara sobre nodos que ni
+            # siquiera se habían podido consultar. Pasó — dos nodos tenían un
+            # NameError por un import que faltaba, y la prueba salió verde.
+            salidas = obtener(ins.op)().esquema_salida(ins.esquemas_entrada, ins.params)
+            for puerto, esquema in (salidas or {}).items():
+                esperado[(ins.nodo_id, puerto)] = [c.nombre for c in esquema.columnas]
+
+        resultado = ejecutar(programa)
+        for n in resultado.nodos:
+            for puerto, art in (n.artefactos or {}).items():
+                if art.get("tipo") != "tabla":
+                    continue
+                declaradas = esperado.get((n.nodo_id, puerto))
+                if declaradas is None:
+                    continue
+                reales = [c["nombre"] for c in art["columnas"]]
+                # El índice de una serie o un panel viaja como columna en el
+                # artefacto y no en la lista de columnas del esquema: es el eje,
+                # no un dato. Y la poda puede quitar columnas que el esquema sí
+                # declara, porque nadie aguas abajo las pidió.
+                sobran = [c for c in reales if c not in declaradas]
+                if sobran and len(sobran) > 1:
+                    problemas.append(
+                        f"{nombre}/{n.nodo_id}.{puerto}: salen columnas que el esquema no "
+                        f"declara: {sobran} (declaradas: {declaradas})")
+    assert not problemas, "\n  ".join([""] + problemas)

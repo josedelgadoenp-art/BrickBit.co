@@ -238,7 +238,15 @@ class SistemaInsumoProducto(EspecNodo):
                      Columna(nombre="multiplicador_ingreso", tipo="numerica", es_estimado=True)]
         if params.demanda_final:     # type: ignore[attr-defined]
             cols.append(Columna(nombre="demanda_final", tipo="numerica"))
-        return {"multiplicadores": Esquema(columnas=cols), "leontief": Esquema()}
+        # La inversa de Leontief es una matriz sector × sector: sus columnas
+        # son los sectores, y se conocen desde los parámetros.
+        sectores = list(params.columnas_matriz or [])   # type: ignore[attr-defined]
+        leontief = Esquema(columnas=(
+            [Columna(nombre="indice", tipo="texto", nota="El sector que compra.")]
+            + [Columna(nombre=s, tipo="numerica", es_estimado=True,
+                       nota=f"Cuánto necesita producir «{s}» por cada peso de demanda final.")
+               for s in sectores]))
+        return {"multiplicadores": Esquema(columnas=cols), "leontief": leontief}
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
         from ...runtime.artefactos import figura_opcional, tabla_a_json
@@ -347,7 +355,9 @@ class ImpactoSectorial(EspecNodo):
             Columna(nombre="sector", tipo="texto"), Columna(nombre="choque_demanda", tipo="numerica"),
             Columna(nombre="produccion_adicional", tipo="numerica", es_estimado=True),
             Columna(nombre="efecto_directo", tipo="numerica", es_estimado=True),
-            Columna(nombre="efecto_indirecto", tipo="numerica", es_estimado=True)])}
+            Columna(nombre="efecto_indirecto", tipo="numerica", es_estimado=True),
+            Columna(nombre="empleo_adicional", tipo="numerica", es_estimado=True),
+            Columna(nombre="ingreso_adicional", tipo="numerica", es_estimado=True)])}
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:
         from ...runtime.artefactos import tabla_a_json

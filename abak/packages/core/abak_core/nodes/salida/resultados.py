@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ...graph.spec import Esquema
+from ...graph.spec import Columna, Esquema
 from ...registry.base import (Ayuda, Ayudante, EspecNodo, Puerto, registrar,
                               registrar_ayudante)
 
@@ -108,7 +108,12 @@ class TablaPublicacion(EspecNodo):
         return ctx.fin()
 
     def esquema_salida(self, entradas: dict[str, Esquema], params: BaseModel) -> dict[str, Esquema]:
-        return {"tabla": Esquema()}
+        # Una columna por modelo, con el nombre que se le puso, más la de los
+        # rótulos de fila. Se sabe desde los parámetros.
+        nombres = list(params.nombres or [])          # type: ignore[attr-defined]
+        return {"tabla": Esquema(columnas=(
+            [Columna(nombre="", tipo="texto", nota="Coeficiente o estadístico.")]
+            + [Columna(nombre=n, tipo="texto", es_estimado=True) for n in nombres]))}
 
 
 @registrar

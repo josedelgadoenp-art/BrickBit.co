@@ -236,10 +236,17 @@ class EleccionDiscreta(_BaseRegresion):
         return ctx.fin()
 
     def esquema_salida(self, entradas: dict[str, Esquema], params: BaseModel) -> dict[str, Esquema]:
+        # Las SIETE que devuelve statsmodels, no tres. El esquema es lo que
+        # llena los desplegables de los bloques siguientes: si promete de menos,
+        # columnas que existen quedan invisibles.
         return {"marginales": Esquema(columnas=[
+            Columna(nombre="indice", tipo="texto", nota="La variable explicativa."),
             Columna(nombre="dy/dx", tipo="numerica", es_estimado=True),
             Columna(nombre="Std. Err.", tipo="numerica", es_estimado=True),
+            Columna(nombre="z", tipo="numerica", es_estimado=True),
             Columna(nombre="Pr(>|z|)", tipo="numerica", es_estimado=True),
+            Columna(nombre="Conf. Int. Low", tipo="numerica", es_estimado=True),
+            Columna(nombre="Cont. Int. Hi.", tipo="numerica", es_estimado=True),
         ])}
 
     def resumir(self, salidas: dict[str, Any], params: BaseModel) -> dict[str, Any]:

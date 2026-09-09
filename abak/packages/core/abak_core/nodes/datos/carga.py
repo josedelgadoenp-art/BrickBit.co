@@ -50,6 +50,37 @@ EJEMPLOS: dict[str, dict[str, Any]] = {
 }
 
 
+#: Por encima de esto no se leen las columnas de texto enteras para sacar sus
+#: categorías: el esquema tiene que ser barato, es lo que lo hace instantáneo.
+TOPE_BYTES_CATEGORIAS = 32 * 1024 * 1024
+
+
+def _completar_categorias(ruta: Path, esquema: Esquema) -> None:
+    """Llena `categorias` leyendo SÓLO las columnas de texto, y sólo si cabe."""
+    import pandas as pd
+
+    from ...graph.spec import TOPE_CATEGORIAS
+
+    texto = [c.nombre for c in esquema.columnas if c.tipo in ("texto", "categorica", "booleana")]
+    if not texto:
+        return
+    try:
+        if ruta.stat().st_size > TOPE_BYTES_CATEGORIAS:
+            return
+        columnas = pd.read_csv(ruta, usecols=texto, dtype="string")
+    except Exception:
+        return
+    for col in esquema.columnas:
+        if col.nombre not in columnas.columns:
+            continue
+        try:
+            distintos = columnas[col.nombre].dropna().unique()
+        except Exception:
+            continue
+        if len(distintos) <= TOPE_CATEGORIAS:
+            col.categorias = sorted(str(v) for v in distintos)
+
+
 def _esquema_de_csv(ruta: Path, fechas: list[str] | None = None,
                     estimadas: list[str] | None = None, fuente: str | None = None) -> Esquema:
     """Lee solo el encabezado y unas filas: barato, y llena los desplegables ya.
@@ -63,7 +94,14 @@ def _esquema_de_csv(ruta: Path, fechas: list[str] | None = None,
         muestra = pd.read_csv(ruta, nrows=200)
     except Exception:
         return Esquema()
-    esquema = Esquema.de_dataframe(muestra, fuente=fuente)
+    esquema = Esquema.de_dataframe(muestra, fuente=fuente, completo=False)
+
+    # Las CATEGORÍAS no se pueden sacar de una muestra: con las primeras 200
+    # filas de un panel ordenado por entidad se ven 13 de 32. Y hacen falta —
+    # son lo que permite a «Crear indicadoras» declarar las columnas que va a
+    # crear. Se leen las columnas de texto ENTERAS, que es barato en un archivo
+    # chico y no se hace en uno grande.
+    _completar_categorias(ruta, esquema)
     marcadas = set(estimadas or [])
     for col in esquema.columnas:
         if col.nombre in (fechas or []):
@@ -319,7 +357,10 @@ class TratarFaltantes(EspecNodo):
 
     def esquema_salida(self, entradas: dict[str, Esquema], params: BaseModel) -> dict[str, Esquema]:
         base = entradas.get("datos", Esquema())
-        reporte = Esquema(columnas=[Columna(nombre="faltantes_antes", tipo="numerica")])
+        reporte = Esquema(columnas=[
+            Columna(nombre="indice", tipo="texto", nota="El nombre de la columna."),
+            Columna(nombre="faltantes", tipo="numerica",
+                    nota="Cuántos valores faltaban antes de tratarlos.")])
         return {"datos": base, "reporte": reporte}
 
 
