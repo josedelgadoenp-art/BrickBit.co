@@ -805,3 +805,52 @@ def test_la_correlacion_es_la_de_pearson_y_su_p_el_correcto():
     fila = t.iloc[0]
     assert float(fila["correlacion"]) == pytest.approx(r, rel=1e-8)
     assert float(fila["p_valor"]) == pytest.approx(p, rel=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# Cointegración
+# ---------------------------------------------------------------------------
+
+def test_la_traza_de_johansen_coincide_con_statsmodels():
+    """El estadístico de traza y su valor crítico al 5%.
+
+    El valor crítico se lee de una TABLA con tres columnas (10%, 5%, 1%) y una
+    fila por hipótesis: tomar la columna o la fila de al lado es un error de
+    índice que no da ningún síntoma y cambia todas las conclusiones.
+    """
+    from statsmodels.tsa.vector_ar.vecm import coint_johansen
+
+    d = _datos("mexico_macro")
+    Y = d[["pib_indice", "consumo_indice"]].astype(float).dropna()
+    referencia = coint_johansen(Y, det_order=0, k_ar_diff=1)
+
+    art = _art("johansen", [MACRO,
+                            ("s", "datos.serie_temporal", "Serie",
+                             {"columna_fecha": "fecha", "frecuencia": "QS"}),
+                            ("c", "series.cointegracion", "Johansen",
+                             {"variables": ["pib_indice", "consumo_indice"], "rezagos": 1})],
+               [("d", "datos", "s", "datos"), ("s", "datos", "c", "datos")])["c"]["traza"]
+    t = _tabla(art)
+    assert len(t) == 2, "con dos variables hay dos hipótesis: r=0 y r≤1"
+    for i in range(2):
+        assert float(t["estadistico_traza"].iloc[i]) == pytest.approx(
+            referencia.lr1[i], rel=1e-6), f"estadístico de traza de la hipótesis {i}"
+        # cvt[:, 1] es la columna del 5%: la del medio de (10%, 5%, 1%).
+        assert float(t["valor_critico_5pct"].iloc[i]) == pytest.approx(
+            referencia.cvt[i, 1], rel=1e-9), f"valor crítico al 5% de la hipótesis {i}"
+
+
+def test_johansen_decide_rechazar_comparando_contra_el_critico():
+    """«Rechaza» tiene que ser estadístico > crítico, no al revés."""
+    art = _art("johansen2", [MACRO,
+                             ("s", "datos.serie_temporal", "Serie",
+                              {"columna_fecha": "fecha", "frecuencia": "QS"}),
+                             ("c", "series.cointegracion", "Johansen",
+                              {"variables": ["pib_indice", "consumo_indice"], "rezagos": 1})],
+               [("d", "datos", "s", "datos"), ("s", "datos", "c", "datos")])["c"]["traza"]
+    t = _tabla(art)
+    for _, fila in t.iterrows():
+        esperado = float(fila["estadistico_traza"]) > float(fila["valor_critico_5pct"])
+        assert bool(fila["rechaza"]) is esperado, (
+            f"«{fila['hipotesis_nula']}»: {fila['estadistico_traza']} vs "
+            f"{fila['valor_critico_5pct']} y dice rechaza={fila['rechaza']}")
