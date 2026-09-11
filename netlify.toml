@@ -5,7 +5,8 @@
 # (share.streamlit.io → app.py) y el sitio lo integra vía morfogenesis.html.
 
 [build]
-  publish = "."
+  command = "python3 scripts/build_site.py"
+  publish = "dist"
 
 [functions]
   directory = "netlify/functions"

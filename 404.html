@@ -9,8 +9,8 @@
 <style>
   /* Paleta v2 de la casa. Sin dependencias: una 404 tiene que pintar aunque
      falle todo lo demás. */
-  :root{ --tierra:#100c0a; --superficie:#1d1713; --crema:#f5ede3;
-         --bosque:#24664a; --salvia:#6fa287; --linea:rgba(245,237,227,.14); }
+  :root{ --tierra:#0b111b; --superficie:#131e2e; --crema:#f2f6fc;
+         --bosque:#237f70; --salvia:#8cebd7; --linea:rgba(245,237,227,.14); }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--tierra);color:var(--crema);min-height:100vh;
     display:flex;align-items:center;justify-content:center;padding:28px;
@@ -30,8 +30,9 @@
   a.p:hover{background:#2b7757;border-color:#2b7757}
   @media (prefers-reduced-motion:reduce){ a{transition:none} }
 </style>
+<link rel="stylesheet" href="/assets/brickbit-ui.css?v=20260911">
 </head>
-<body>
+<body class="bb-product">
   <main class="caja">
     <div class="marca">BrickBit</div>
     <h1>Esta página no existe.</h1>

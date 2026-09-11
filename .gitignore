@@ -19,3 +19,6 @@ backend/.wrangler/
 /*.zip
 tools/*.csv
 tools/*.xlsx
+
+# Generated public distribution
+/dist/
