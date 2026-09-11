@@ -1,3 +1,14 @@
+## Implementado en esta continuación
+
+`laboratorio.html` incorpora tres herramientas de cálculo local: flipping,
+comparación de inmuebles y estrés de renta. La comparación usa los datos
+capturados por el usuario; no afirma obtener anuncios verificados. El usuario
+puede guardar manualmente los escenarios en este equipo, exportar sus supuestos
+en JSON e imprimir el escenario activo.
+
+Las siguientes propuestas siguen siendo ampliaciones futuras, sujetas a sus
+fuentes e integraciones:
+
 # Próximas herramientas para BrickBit
 
 Propuestas de producto basadas en las capacidades encontradas en el repositorio.

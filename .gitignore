@@ -22,3 +22,6 @@ tools/*.xlsx
 
 # Generated public distribution
 /dist/
+
+# Local tooling dependencies
+node_modules/

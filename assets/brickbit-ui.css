@@ -1,3 +1,8 @@
+/* Geist 5.3.0, SIL Open Font License. Self-hosted Latin subset. */
+@font-face{font-family:Geist;src:url("fonts/geist-latin-400-normal.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:Geist;src:url("fonts/geist-latin-500-normal.woff2") format("woff2");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:Geist;src:url("fonts/geist-latin-600-normal.woff2") format("woff2");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:Geist;src:url("fonts/geist-latin-700-normal.woff2") format("woff2");font-weight:700;font-style:normal;font-display:swap}
 /* BrickBit — shared product language. Amber is reserved for estimates. */
 :root {
   color-scheme: dark;
@@ -14,7 +19,7 @@
   --r:14px;
 }
 html { scroll-padding-top:100px; }
-body { font-family:Inter,'Hanken Grotesk',system-ui,sans-serif; line-height:1.55; }
+body { font-family:Geist,'Hanken Grotesk',system-ui,sans-serif; line-height:1.55; }
 button,input,select,textarea { font-family:inherit; }
 button,a,input,select,textarea { -webkit-tap-highlight-color:transparent; }
 :focus-visible { outline:3px solid #8cebd7 !important; outline-offset:4px; }
@@ -23,7 +28,7 @@ input,select,textarea { accent-color:#55ddc2; }
 input:not([type=range]):not([type=checkbox]):not([type=radio]),select,textarea { font-size:max(1rem,1em); }
 .bb-skip { position:fixed; top:8px; left:16px; transform:translateY(-160%); z-index:10000; padding:12px 20px; background:#f2f6fc; color:#0b111b; border-radius:8px; }
 .bb-skip:focus { transform:none; }
-body.bb-product :is(h1,h2,h3,.title,.bb-title) { font-family:Inter,'Hanken Grotesk',system-ui,sans-serif; letter-spacing:-.035em; font-weight:600; }
+body.bb-product :is(h1,h2,h3,.title,.bb-title) { font-family:Geist,'Hanken Grotesk',system-ui,sans-serif; letter-spacing:-.035em; font-weight:600; }
 body.bb-product :is(.card,.panel,.box,.exp-card,.ai-card,.item) { border-color:var(--line); border-radius:14px; box-shadow:0 8px 28px rgba(0,0,0,.12); }
 body.bb-product :is(.btn-primary,.bb-btn-primary,.bb-submit) { background:var(--clay); color:#06251f; box-shadow:none; }
 body.bb-product :is(.btn,.b,.bb-btn,.nav-btn) { border-radius:9px; }
