@@ -150,9 +150,15 @@ El frontend público seguía en el commit base `5f7d19a` durante la inspección.
 
 La detección de formularios estaba desactivada y la lista de formularios del
 proyecto principal estaba vacía. Se habilitó en `brickbit` y `brickbitfinal`.
-El formulario conserva nombre, campos y honeypot. Su registro exige un despliegue
-posterior a esta configuración; la captura efectiva de una suscripción no se
-ha probado. No se inspeccionaron datos de suscriptores ni prospectos.
+El formulario conserva nombre, campos y honeypot. Tras el nuevo despliegue,
+Netlify confirmó el registro de `waitlist` en el proyecto principal, con campo
+`email` y `honeypot: true`. La captura efectiva de una suscripción no se ha
+probado. No se inspeccionaron datos de suscriptores ni prospectos.
+
+El commit de implementación `5ae3c153` pasó `BrickBit quality` y `Peso de páginas`
+en GitHub. Su vista previa principal quedó lista en
+https://deploy-preview-76--brickbit.netlify.app.
+
 
 ### Supabase
 
