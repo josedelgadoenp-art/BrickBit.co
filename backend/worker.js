@@ -15,16 +15,31 @@ const MAX_BODY_BYTES = 30 * 1024 * 1024; // margen bajo el límite de 32 MB de A
 
 // Tipos de bloque que el frontend legítimamente envía (plano + instrucciones)
 const ALLOWED_BLOCK_TYPES = new Set(['text', 'image', 'document']);
+const bursts = new Map();
+function allowBurst(request, path) {
+  // Best-effort per-isolate protection; configure a distributed edge limit
+  // before high-volume public use. Never trust a client-supplied user ID.
+  const now = Date.now();
+  for (const [key, value] of bursts) if (value.until <= now) bursts.delete(key);
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  const key = ip + ':' + path;
+  let entry = bursts.get(key);
+  if (!entry) {
+    if (bursts.size >= 5000) return false;
+    bursts.set(key, entry = { count:0, until:now + 60000 });
+  }
+  return ++entry.count <= 30;
+}
 
 function corsHeaders(env, origin) {
-  const configured = (env.ALLOWED_ORIGINS || '*').split(',').map(s => s.trim()).filter(Boolean);
+  const configured = (env.ALLOWED_ORIGINS || 'https://brickbit.co,https://www.brickbit.co').split(',').map(s => s.trim()).filter(Boolean);
   let allow = '';
   if (configured.includes('*')) allow = '*';
   else if (configured.includes(origin)) allow = origin;
   return {
     'access-control-allow-origin': allow,
     'access-control-allow-methods': 'GET, POST, OPTIONS',
-    'access-control-allow-headers': 'content-type',
+    'access-control-allow-headers': 'content-type, authorization, x-admin-token',
     'access-control-max-age': '86400',
     'vary': 'origin',
   };
@@ -41,12 +56,51 @@ export default {
   async fetch(request, env) {
     const origin = request.headers.get('origin') || '';
     const headers = corsHeaders(env, origin);
+    const url = new URL(request.url);
+    // Public data remains readable by partner widgets. Browser writes and
+    // paid inference share a single origin gate; CORS alone is not auth.
+    const publicRead = request.method === 'GET' ||
+      (request.method === 'OPTIONS' && request.headers.get('access-control-request-method') === 'GET');
+    if (!publicRead && origin && !headers['access-control-allow-origin']) {
+      return json({ error: { message: 'Origen no permitido.' } }, 403, headers);
+    }
+    if (publicRead) headers['access-control-allow-origin'] = '*';
+
+    if (request.method === 'POST') {
+      if (url.pathname !== '/api/listados-ingest' && !allowBurst(request, url.pathname)) {
+        return json({ error: { message: 'Demasiadas solicitudes. Intenta en un minuto.' } }, 429, { ...headers, 'retry-after':'60' });
+      }
+      // Enforce bytes actually received, even without Content-Length.
+      const limit = ['/api/claude', '/api/ar-model', '/api/listados-ingest', '/api/texture'].includes(url.pathname) ? MAX_BODY_BYTES : 512 * 1024;
+      if (Number(request.headers.get('content-length')) > limit) {
+        return json({ error: { message: 'Solicitud demasiado grande.' } }, 413, headers);
+      }
+      if (request.body) {
+        const reader = request.body.getReader();
+        const chunks = []; let bytes = 0;
+        try {
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            bytes += value.byteLength;
+            if (bytes > limit) {
+              await reader.cancel();
+              return json({ error: { message: 'Solicitud demasiado grande.' } }, 413, headers);
+            }
+            chunks.push(value);
+          }
+        } catch {
+          return json({ error: { message: 'No se pudo leer la solicitud.' } }, 400, headers);
+        }
+        const body = new Uint8Array(bytes); let offset = 0;
+        for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
+        request = new Request(request.url, { method: request.method, headers: request.headers, body });
+      }
+    }
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers });
     }
-
-    const url = new URL(request.url);
 
     /* ---- Compartir proyectos (requiere KV namespace SHARES) ---- */
     if (url.pathname === '/api/share' && request.method === 'POST') {
@@ -73,7 +127,7 @@ export default {
     /* ---- Alertas de zona por WhatsApp: disparo manual protegido con clave.
        Útil para probar sin esperar al cron. POST /api/zone-alerts/run?key=… ---- */
     if (url.pathname === '/api/zone-alerts/run' && request.method === 'POST') {
-      if (!env.ALERT_TEST_KEY || url.searchParams.get('key') !== env.ALERT_TEST_KEY) {
+      if (!env.ALERT_TEST_KEY || request.headers.get('x-admin-token') !== env.ALERT_TEST_KEY) {
         return json({ error: { message: 'no_autorizado' } }, 403, headers);
       }
       try {

@@ -19,3 +19,9 @@ backend/.wrangler/
 /*.zip
 tools/*.csv
 tools/*.xlsx
+
+# Generated public distribution
+/dist/
+
+# Local tooling dependencies
+node_modules/

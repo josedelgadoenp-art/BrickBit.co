@@ -117,7 +117,9 @@ async function redis(comandos) {
     body: JSON.stringify(comandos),
   });
   if (!r.ok) throw new Error('Upstash respondió ' + r.status);
-  return r.json();
+  const results = await r.json();
+  if (!Array.isArray(results) || results.some(item => item.error)) throw new Error('No se pudo completar la operación de almacenamiento');
+  return results;
 }
 
 /* Copia a la hoja de cálculo. Devuelve true si la hoja la aceptó. */
@@ -174,31 +176,23 @@ export default async (req) => {
       const pedido = soloDigitos(new URL(req.url).searchParams.get('telefono'));
       if (pedido.length !== 10) return json({ ok: false, error: 'telefono_invalido' }, 400, req);
 
-      /* Redis no borra "por campo": hay que leer la lista, quitar los registros
-         de esa persona y reescribirla. Va en un solo pipeline (DEL + RPUSH)
-         para que no pueda quedar a medias entre un comando y otro. */
-      const actual = await redis([['LRANGE', LISTA, '0', '-1']]);
-      const crudos = actual[0]?.result || [];
-      const conservados = crudos.filter((v) => {
-        try {
-          const r = typeof v === 'string' ? JSON.parse(v) : v;
-          return soloDigitos(r?.telefono) !== pedido;
-        } catch {
-          return true;   // lo ilegible se conserva: borrar de más es peor
-        }
-      });
-      const borrados = crudos.length - conservados.length;
-      if (!borrados) return json({ ok: true, borrados: 0 }, 200, req);
-
-      const comandos = [['DEL', LISTA]];
-      /* RPUSH respeta el orden de los valores que recibe, así que reescribir la
-         lista conservada mantiene el original (más reciente primero, como LPUSH). */
-      for (let i = 0; i < conservados.length; i += 500) {
-        const lote = conservados.slice(i, i + 500)
-          .map((v) => (typeof v === 'string' ? v : JSON.stringify(v)));
-        comandos.push(['RPUSH', LISTA, ...lote]);
-      }
-      await redis(comandos);
+      // EVAL is atomic: concurrent new leads cannot be lost during deletion.
+      const script = `
+        local rows = redis.call('LRANGE', KEYS[1], 0, -1)
+        local removed = 0
+        for _, raw in ipairs(rows) do
+          local ok, row = pcall(cjson.decode, raw)
+          if ok and type(row) == 'table' then
+            local phone = string.gsub(tostring(row.telefono or ''), '%D', '')
+            if phone == ARGV[1] then
+              removed = removed + redis.call('LREM', KEYS[1], 0, raw)
+            end
+          end
+        end
+        return removed
+      `;
+      const out = await redis([['EVAL', script, '1', LISTA, pedido]]);
+      const borrados = Number(out[0]?.result || 0);
       return json({ ok: true, borrados }, 200, req);
     }
 
@@ -209,6 +203,8 @@ export default async (req) => {
     let data;
     try { data = JSON.parse(await req.text()); }   // acepta application/json y text/plain
     catch { return json({ ok: false, error: 'json_invalido' }, 400, req); }
+
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return json({ ok:false, error:'json_invalido' }, 400, req);
 
     // honeypot: los bots rellenan todo; los humanos nunca ven este campo
     if (data.website) return json({ ok: true }, 200, req);   // respuesta feliz, no se guarda nada
