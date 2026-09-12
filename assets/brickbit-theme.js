@@ -1,6 +1,7 @@
 /* Device-local appearance preference; runs before paint. */
 (() => {
   const root = document.documentElement;
+  try { if (localStorage.getItem('bb-motion') === 'reduce') root.dataset.motion = 'reduce'; } catch {}
   let preference = 'system';
   try { preference = localStorage.getItem('bb-theme') || 'system'; } catch {}
   const system = matchMedia('(prefers-color-scheme: dark)');
