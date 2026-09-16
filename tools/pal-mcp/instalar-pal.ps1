@@ -68,16 +68,19 @@ if (-not $SinSandbox) {
 }
 
 Paso "5/6 - Registrar en Claude Code"
-$cfg = @{
-  command = $bin
-  args    = @()
-  env     = @{ PATH = "$env:USERPROFILE\.local\bin;$env:Path"; DEFAULT_MODEL = "auto" }
-} | ConvertTo-Json -Compress -Depth 5
-
+# Nada de add-json: PowerShell mutila las comillas de un JSON al pasarlo a un comando
+# nativo, y claude responde "Invalid configuration: : Invalid input". 'claude mcp add'
+# no necesita JSON. El servidor hereda el PATH, asi que encuentra codex y gemini solo.
 # --scope user: queda en todos los proyectos, no solo en este repositorio.
 try { claude mcp remove pal --scope user 2>$null | Out-Null } catch {}
-claude mcp add-json pal $cfg --scope user
-claude mcp get pal
+claude mcp add pal --scope user -e DEFAULT_MODEL=auto -- $bin
+if ($LASTEXITCODE -ne 0) {
+  Mal "No se pudo registrar. Copia y pega esto a mano:"
+  Write-Host "       claude mcp add pal --scope user -e DEFAULT_MODEL=auto -- `"$bin`""
+} else {
+  Ok "registrado"
+  claude mcp get pal
+}
 
 Paso "6/6 - Falta que entres con tus cuentas"
 Write-Host @"

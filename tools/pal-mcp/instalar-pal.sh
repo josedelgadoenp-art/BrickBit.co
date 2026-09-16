@@ -73,14 +73,17 @@ else
 fi
 
 paso "5/6 · Registrar en Claude Code"
+# Nada de add-json: pasar JSON a un comando nativo se rompe en PowerShell, y este
+# script y el .ps1 mantienen el mismo camino. El servidor hereda el PATH.
 # --scope user: queda en todos los proyectos, no sólo en este repositorio.
 claude mcp remove pal --scope user >/dev/null 2>&1 || true
-claude mcp add-json pal "{
-  \"command\": \"$BIN\",
-  \"args\": [],
-  \"env\": { \"PATH\": \"$HOME/.local/bin:$PATH\", \"DEFAULT_MODEL\": \"auto\" }
-}" --scope user
-claude mcp get pal || true
+if claude mcp add pal --scope user -e DEFAULT_MODEL=auto -- "$BIN"; then
+  ok "registrado"
+  claude mcp get pal || true
+else
+  mal "No se pudo registrar. Copia y pega esto a mano:"
+  echo "       claude mcp add pal --scope user -e DEFAULT_MODEL=auto -- \"$BIN\""
+fi
 
 paso "6/6 · Falta que entres con tus cuentas"
 cat <<'AYUDA'
