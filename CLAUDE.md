@@ -73,6 +73,35 @@ backend/              Cloudflare Worker para la IA de Arquitectos (NO va a Netli
 - Comentarios con `</script>` dentro de un `<script>` inline rompen la etiqueta: escapar como `<\/script>`.
 - **Google Maps key** restringida por referrer a brickbit.co. Está embebida en las páginas 3D (es pública por diseño).
 
+## Reparto con Codex (PAL MCP)
+
+`clink` conecta con Codex CLI a través de PAL MCP Server (ver `tools/pal-mcp/`). El reparto
+acordado, que se aplica por defecto sin que haya que pedirlo:
+
+**Va primero a Codex** toda tarea con **spec cerrado**: función pura, parser, cálculo,
+transformación con entrada y salida bien definidas, verificable por sí sola. El ejemplo tipo
+es la búsqueda binaria sobre `cp_centroides.txt` (registros fijos de 17 chars).
+
+```
+clink with codex          → escribir, en workspace-write
+clink with codex codereviewer → revisar, en read-only
+clink with codex planner      → planear, en read-only
+```
+
+**No va a Codex**: cambios que cruzan varios archivos, nada que toque las convenciones
+visuales de la paleta v2, y nada cuyo contexto sea la conversación misma. Ahí serializar el
+prompt cuesta más que hacer el trabajo, porque **Codex arranca en frío en cada llamada**: no
+hereda la sesión ni lo que ya se descartó.
+
+**Siempre se revisa lo que vuelve antes de integrarlo.** La responsabilidad no se delega: un
+glow de color o un `</script>` sin escapar cuesta más encontrarlo después que evitarlo antes.
+
+**Codex lee `AGENTS.md`, no este archivo.** Si cambia una convención, hay que actualizar los
+dos o Codex seguirá con la regla vieja.
+
+Si el servidor `pal` no está conectado o Codex no está autenticado, se hace el trabajo
+directamente en vez de bloquearse.
+
 ## Captación de datos (los dos formularios de Financial)
 - **El valor primero, el contacto después.** Los dos embudos entregan su resultado ANTES de pedir
   nombre y teléfono. Se hizo así porque la versión anterior de `/financial` pedía el teléfono en el
