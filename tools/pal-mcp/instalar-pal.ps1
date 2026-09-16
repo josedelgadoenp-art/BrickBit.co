@@ -15,9 +15,17 @@ function Mal ($m){ Write-Host "  [!!] $m" -ForegroundColor Red }
 function Paso($m){ Write-Host "`n$m" -ForegroundColor White }
 
 Paso "1/6 - Requisitos"
-if (-not (Get-Command node -ErrorAction SilentlyContinue))   { Mal "Falta Node.js - https://nodejs.org"; exit 1 }
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+  Mal "Falta Node.js. Bajalo de https://nodejs.org (version LTS), reinicia PowerShell y repite."
+  exit 1
+}
 Ok "Node.js $(node --version)"
-if (-not (Get-Command claude -ErrorAction SilentlyContinue)) { Mal "No encuentro 'claude'."; exit 1 }
+if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+  Mal "No encuentro 'claude' en esta maquina."
+  Write-Host "     Todo esto se registra CONTRA el Claude Code local. Si solo lo usas"
+  Write-Host "     desde la web, primero instalalo aqui:  npm install -g @anthropic-ai/claude-code"
+  exit 1
+}
 Ok "Claude Code presente"
 
 if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {

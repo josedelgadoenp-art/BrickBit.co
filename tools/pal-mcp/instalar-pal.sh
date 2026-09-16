@@ -24,7 +24,12 @@ paso "1/6 · Requisitos"
 
 command -v node >/dev/null 2>&1 || { mal "Falta Node.js — https://nodejs.org"; exit 1; }
 ok "Node.js $(node --version)"
-command -v claude >/dev/null 2>&1 || { mal "No encuentro 'claude'. Claude Code lleva la sesión y llama a los demás."; exit 1; }
+if ! command -v claude >/dev/null 2>&1; then
+  mal "No encuentro 'claude' en esta máquina."
+  echo "     Todo esto se registra CONTRA el Claude Code local. Si sólo lo usas desde"
+  echo "     la web, primero instálalo aquí:  npm install -g @anthropic-ai/claude-code"
+  exit 1
+fi
 ok "Claude Code presente"
 
 if ! command -v uv >/dev/null 2>&1; then

@@ -9,19 +9,32 @@ No toca nada del sitio. Vive en `tools/`, que `netlify.toml` cierra con un redir
 
 ## Instalar
 
+Los archivos viven en la rama `claude/wizardly-galileo-ct3dsf`. Si aún no está en `main`,
+hay que cambiarse a ella antes: `git fetch origin claude/wizardly-galileo-ct3dsf` y
+`git checkout claude/wizardly-galileo-ct3dsf`. Y hay que correrlo **desde la raíz del
+repositorio**, no desde `C:\Users\TuUsuario`.
+
+```powershell
+# Windows (PowerShell) — ojo: aquí no hay 'bash'
+powershell -ExecutionPolicy Bypass -File tools\pal-mcp\instalar-pal.ps1
+```
+
 ```bash
 # macOS / Linux
 bash tools/pal-mcp/instalar-pal.sh
+```
 
-# Windows
-powershell -ExecutionPolicy Bypass -File tools\pal-mcp\instalar-pal.ps1
+Si algo falla, esto dice qué falta (PowerShell):
+
+```powershell
+foreach ($c in 'git','node','npm','claude','uv') { "{0,-8} {1}" -f $c, $(if (Get-Command $c -EA SilentlyContinue) {(Get-Command $c).Source} else {'--- FALTA ---'}) }
 ```
 
 Comprueba requisitos, instala lo que falte, acota el sandbox de Codex (ver abajo) y registra
 el servidor en Claude Code con `--scope user` — queda en todos tus proyectos, no sólo en este
 repositorio. Es idempotente: correrlo otra vez sirve para actualizar.
 
-Por omisión instala el servidor **de PyPI** (`pal-mcp-server` 11.1.0, versión fija). Con `--git`
+Por omisión instala el servidor **de PyPI** (`pal-mcp-server` 11.1.0, versión fija). Con `-Git`
 lo toma del repositorio, que es lo que dice la guía. Las dos vías son oficiales.
 
 ## Antes de confiar en esto: el sandbox de Codex
