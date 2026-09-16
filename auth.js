@@ -11,6 +11,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 /* ---- init robusto: espera a que la librería Supabase esté disponible ---- */
 let sb = null;
+let bbFavCache = null;
 let bbChipEl = null;        // declarado aquí para que el init pueda referenciarlo
 window.bbConfigured = false;
 function bbTryInit(){
@@ -20,6 +21,7 @@ function bbTryInit(){
         && /^https:\/\/.+\.supabase\.co/.test(SUPABASE_URL) && SUPABASE_ANON_KEY.length > 20){
       sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       window.bbConfigured = true;
+      sb.auth.onAuthStateChange(() => { bbFavCache = null; });
       return true;
     }
   }catch(e){ console.warn('[BrickBit auth] Supabase no inicializado:', e); }
@@ -43,8 +45,7 @@ function bbOnAuth(cb){ if(sb) sb.auth.onAuthStateChange((_e, session)=> cb(sessi
 function bbClient(){ return sb; }
 
 /* ---- favoritos de zonas (tabla favorite_zones, protegida por RLS) ---- */
-let bbFavCache=null;
-if(sb){ try{ sb.auth.onAuthStateChange(()=>{ bbFavCache=null; }); }catch(e){} }
+
 async function bbFavs(force){
   if(!sb) return [];
   const u=await bbUser(); if(!u){ bbFavCache=null; return []; }
@@ -57,7 +58,7 @@ async function bbFavs(force){
 async function bbIsFav(zona){ const f=await bbFavs(); return f.indexOf(zona)>=0; }
 async function bbFavAdd(zona){ if(!sb) return false; const u=await bbUser(); if(!u) return false; const {error}=await sb.from('favorite_zones').insert({ user_id:u.id, zona }); if(error){ console.warn(error.message); return false; } if(bbFavCache && bbFavCache.indexOf(zona)<0) bbFavCache.push(zona); return true; }
 async function bbFavRemove(zona){ if(!sb) return false; const u=await bbUser(); if(!u) return false; const {error}=await sb.from('favorite_zones').delete().eq('zona', zona); if(error){ console.warn(error.message); return false; } if(bbFavCache) bbFavCache=bbFavCache.filter(z=>z!==zona); return true; }
-async function bbFavToggle(zona){ const is=await bbIsFav(zona); if(is){ await bbFavRemove(zona); return false; } await bbFavAdd(zona); return true; }
+async function bbFavToggle(zona){ const is=await bbIsFav(zona); const ok=is?await bbFavRemove(zona):await bbFavAdd(zona); if(!ok) throw new Error('No se pudo guardar el cambio. Intenta de nuevo.'); return !is; }
 
 /* ---- estilos del chip + modal (se inyectan una vez) ---- */
 function injectAuthCSS(){
@@ -99,7 +100,7 @@ function buildAuthModal(){
   if(document.getElementById('bb-ov')) return;
   const ov=document.createElement('div'); ov.className='bb-ov'; ov.id='bb-ov';
   ov.innerHTML=`
-   <div class="bb-modal" role="dialog" aria-modal="true">
+   <div class="bb-modal" role="dialog" aria-modal="true" aria-labelledby="bb-title">
      <button class="bb-x" onclick="closeAuthModal()" aria-label="Cerrar">✕</button>
      <h3 class="bb-title" id="bb-title">Entra a BrickBit</h3>
      <p class="bb-sub">Guarda tus análisis y tus zonas favoritas.</p>
@@ -112,9 +113,9 @@ function buildAuthModal(){
        Continuar con Google
      </button>
      <div class="bb-or">o con tu correo</div>
-     <div class="bb-fld" id="bb-fld-nombre" style="display:none"><label>Nombre</label><input id="bb-nombre" type="text" autocomplete="name" placeholder="Tu nombre"></div>
-     <div class="bb-fld"><label>Correo</label><input id="bb-email" type="email" autocomplete="email" placeholder="tu@correo.com"></div>
-     <div class="bb-fld"><label>Contraseña</label><input id="bb-pass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+     <div class="bb-fld" id="bb-fld-nombre" style="display:none"><label for="bb-nombre">Nombre</label><input id="bb-nombre" type="text" autocomplete="name" placeholder="Tu nombre"></div>
+     <div class="bb-fld"><label for="bb-email">Correo</label><input id="bb-email" type="email" autocomplete="email" placeholder="tu@correo.com"></div>
+     <div class="bb-fld"><label for="bb-pass">Contraseña</label><input id="bb-pass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
      <button class="bb-submit" id="bb-submit" onclick="submitAuth()">Entrar</button>
      <div class="bb-msg" id="bb-msg" role="status"></div>
    </div>`;
@@ -123,8 +124,9 @@ function buildAuthModal(){
 }
 
 let bbTab='in';
-function openAuthModal(tab){ injectAuthCSS(); buildAuthModal(); switchAuthTab(tab||'in'); document.getElementById('bb-ov').classList.add('on'); }
-function closeAuthModal(){ const o=document.getElementById('bb-ov'); if(o) o.classList.remove('on'); const m=document.getElementById('bb-msg'); if(m){m.textContent='';m.className='bb-msg';} }
+let bbAuthTrigger = null;
+function openAuthModal(tab){ bbAuthTrigger = document.activeElement; injectAuthCSS(); buildAuthModal(); switchAuthTab(tab||'in'); document.getElementById('bb-ov').classList.add('on'); document.getElementById('bb-email').focus(); }
+function closeAuthModal(){ const o=document.getElementById('bb-ov'); if(o) o.classList.remove('on'); if(bbAuthTrigger && bbAuthTrigger.isConnected) bbAuthTrigger.focus(); const m=document.getElementById('bb-msg'); if(m){m.textContent='';m.className='bb-msg';} }
 function switchAuthTab(t){
   bbTab=t;
   const inT=document.getElementById('bb-tab-in'), upT=document.getElementById('bb-tab-up');
@@ -181,3 +183,16 @@ async function renderAuthChip(){
   }
 }
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// Keyboard access stays inside the active dialog; Escape restores focus.
+document.addEventListener('keydown', e => {
+  const ov=document.getElementById('bb-ov'); if(!ov || !ov.classList.contains('on')) return;
+  if(e.key==='Escape'){ e.preventDefault(); closeAuthModal(); return; }
+  if(e.key==='Enter' && e.target.matches('input')) { e.preventDefault(); submitAuth(); }
+  if(e.key==='Tab'){
+    const nodes=[...ov.querySelectorAll('button:not(:disabled),input,a[href]')].filter(n=>n.getClientRects().length);
+    const first=nodes[0], last=nodes[nodes.length-1];
+    if(e.shiftKey && document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey && document.activeElement===last){e.preventDefault();first.focus();}
+  }
+});

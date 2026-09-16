@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#100c0a;--bg2:#1d1713;--bg3:#16110e;--clay:#24664a;--clay-soft:#6fa287;--lime:#b7c489;--cream:#f5ede3;--muted:#a89a8c;--line:rgba(245,237,227,.10);--line2:rgba(245,237,227,.18);--neg:#cf928b;--amber:#F5C277}
+:root{--bg:#0b111b;--bg2:#131e2e;--bg3:#101927;--clay:#237f70;--clay-soft:#8cebd7;--lime:#55ddc2;--cream:#f2f6fc;--muted:#a9b9cf;--line:rgba(245,237,227,.10);--line2:rgba(245,237,227,.18);--neg:#cf928b;--amber:#F5C277}
 *{box-sizing:border-box}
 html{color-scheme:dark}
 body{margin:0;background:var(--bg);color:var(--cream);font-family:'Hanken Grotesk',system-ui,sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -46,12 +46,13 @@ h2{font-family:'Fraunces',serif;font-weight:600;font-size:1.25rem;letter-spacing
 .gate .btn{display:inline-block;margin-top:16px;background:var(--clay);color:#fff;border:none;border-radius:999px;padding:.85em 1.6em;font-weight:600;font-size:1rem;cursor:pointer;font-family:inherit;box-shadow:0 6px 18px rgba(36,102,74,.35);transition:background .2s}
 .gate .btn:hover{background:#22935f}
 .note{font-size:.82rem;color:var(--muted);border-left:2px solid var(--clay);padding-left:12px;margin:10px 0 0}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#241c17;border:1px solid var(--clay-soft);color:var(--cream);padding:10px 17px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9000}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1b293b;border:1px solid var(--clay-soft);color:var(--cream);padding:10px 17px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9000}
 .toast.on{opacity:1}
 footer{border-top:1px solid var(--line);margin-top:46px;padding:24px 0 50px;color:var(--muted);font-size:.8rem}
 </style>
+<link rel="stylesheet" href="/assets/brickbit-ui.css?v=20260911">
 </head>
-<body>
+<body class="bb-product">
 <div class="wrap">
   <header class="nav">
     <a class="brand" href="index.html">Brick<b>Bit</b></a>
@@ -87,7 +88,7 @@ footer{border-top:1px solid var(--line);margin-top:46px;padding:24px 0 50px;colo
 </div>
 
 <script src="supabase.js?v=152"></script>
-<script src="auth.js?v=153"></script>
+<script src="auth.js?v=20260911"></script>
 <script>
 const $=id=>document.getElementById(id);
 const EST={};       // nombre -> {pm2, plus, yld, slug}
@@ -154,13 +155,14 @@ async function renderFavorites(){
   renderAlerts(favs);
 }
 async function rmFav(z){
-  await bbFavRemove(z);
+  if(!await bbFavRemove(z)){ toast('No se pudo quitar la zona. Intenta de nuevo.'); return; }
   toast('Zona quitada de favoritos');
   renderFavorites();
 }
 
 /* ---------- alertas ---------- */
 async function loadAlerts(){
+  Object.keys(ALERTS).forEach(k=>delete ALERTS[k]);
   const sbc=bbClient();
   try{
     const {data,error}=await sbc.from('zone_alerts').select('*');
@@ -186,8 +188,10 @@ function renderAlerts(favs){
   }).join('');
 }
 async function setAlert(z, field, val){
-  const a=ALERTS[z]||{horizonte:5,umbral_pct:5,activa:false};
-  a[field]=val; ALERTS[z]=a;
+  const previous={...(ALERTS[z]||{horizonte:5,umbral_pct:5,activa:false})};
+  const a={...previous,[field]:val};
+  if(![1,3,5,10].includes(a.horizonte)||!Number.isFinite(a.umbral_pct)||a.umbral_pct<1){toast('Revisa el horizonte y el umbral de la alerta.');renderAlerts(await bbFavs());return;}
+  ALERTS[z]=a;
   const u=await bbUser(); if(!u) return;
   const row={user_id:u.id, zona:z, horizonte:a.horizonte, umbral_pct:a.umbral_pct, activa:a.activa};
   try{
@@ -195,7 +199,7 @@ async function setAlert(z, field, val){
     if(error) throw error;
     toast(a.activa?'Alerta guardada':'Alerta actualizada');
     const favs=await bbFavs(); $('al-count').textContent=favs.filter(x=>ALERTS[x]&&ALERTS[x].activa).length;
-  }catch(e){ toast('No pudimos guardar tu alerta. Inténtalo de nuevo en un momento.'); console.warn(e&&e.message); }
+  }catch(e){ ALERTS[z]=previous; renderAlerts(await bbFavs()); toast('No pudimos guardar tu alerta. Inténtalo de nuevo en un momento.'); console.warn(e&&e.message); }
 }
 
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }

@@ -55,11 +55,24 @@ def tasa_modelo(z, t, h):
     gn = [g(S[b], t - 3, t) for b in ZS]
     gn = [x for x in gn if x is not None]
     gnac = sum(gn) / len(gn)
-    gvec = sum(w * (g(S[b], t - 3, t) or gnac) for b, w in W[z])
+    gvec = sum(w * (value if (value := g(S[b], t - 3, t)) is not None else gnac)
+               for b, w in W[z])
     w1, w2, w3, w4 = WESP.get(h, WESP[3])
     parte_base = 0.5 * g1 + 0.3 * g3 + 0.2 * gnac
     parte_esp = w1 * g1 + w2 * g3 + w3 * gnac + w4 * gvec
     return 0.5 * parte_base + 0.5 * parte_esp
+
+def residuos_hasta(t, h):
+    """Only include outcomes fully observable at forecast origin t."""
+    past = []
+    for tp in range(2011, t - h + 1):
+        for z in ZS:
+            if str(tp + h) in S[z] and str(tp) in S[z]:
+                ga = tasa_modelo(z, tp, h)
+                if ga is not None:
+                    past.append((S[z][str(tp + h)] / S[z][str(tp)] - 1) - ((1 + ga) ** h - 1))
+    return past
+
 
 def evaluar():
     out = {}
@@ -71,13 +84,7 @@ def evaluar():
             gn = [g(S[b], t - 3, t) for b in ZS]
             gn = [x for x in gn if x is not None]
             gnac = sum(gn) / len(gn)
-            past = []
-            for tp in range(2011, t):
-                for z in ZS:
-                    if str(tp + h) in S[z] and str(tp) in S[z]:
-                        ga = tasa_modelo(z, tp, h)
-                        if ga is not None:
-                            past.append((S[z][str(tp + h)] / S[z][str(tp)] - 1) - ((1 + ga) ** h - 1))
+            past = residuos_hasta(t, h)
             band = (np.quantile(past, 0.05) * KBANDA[h], np.quantile(past, 0.95) * KBANDA[h]) if len(past) >= 20 else None
             for z in ZS:
                 if str(t + h) not in S[z] or str(t) not in S[z]:

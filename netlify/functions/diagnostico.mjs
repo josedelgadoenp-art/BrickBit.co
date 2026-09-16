@@ -108,7 +108,9 @@ async function redis(comandos) {
     body: JSON.stringify(comandos),
   });
   if (!r.ok) throw new Error('Upstash respondió ' + r.status);
-  return r.json();
+  const results = await r.json();
+  if (!Array.isArray(results) || results.some(item => item.error)) throw new Error('No se pudo completar la operación de almacenamiento');
+  return results;
 }
 
 /* Copia opcional a la hoja de cálculo, para no perder el CRM cuando exista. */
@@ -177,6 +179,8 @@ export default async (req) => {
       try { data = JSON.parse(await req.text()); }
       catch { return json({ ok: false, error: 'json_invalido' }, 400); }
 
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return json({ ok:false, error:'json_invalido' }, 400);
+
       // honeypot: los bots llenan todo; una persona nunca ve este campo
       if (data.website) return json({ ok: true });
 
@@ -216,33 +220,23 @@ export default async (req) => {
       const pedido = soloDigitos(new URL(req.url).searchParams.get('telefono'));
       if (pedido.length !== 10) return json({ ok: false, error: 'telefono_invalido' }, 400);
 
-      /* Redis no sabe borrar "por campo": hay que leer la lista, quitar los
-         registros de esa persona y reescribirla. Se hace en un solo pipeline
-         (DEL + RPUSH) para que la lista nunca quede vacía a medias si algo
-         falla entre un comando y otro. */
-      const actual = await redis([['LRANGE', LISTA, '0', '-1']]);
-      const crudos = actual[0]?.result || [];
-      const conservados = crudos.filter((v) => {
-        try {
-          const r = typeof v === 'string' ? JSON.parse(v) : v;
-          return soloDigitos(r?.telefono) !== pedido;
-        } catch {
-          return true;   // lo ilegible se conserva: borrar de más es peor
-        }
-      });
-      const borrados = crudos.length - conservados.length;
-      if (!borrados) return json({ ok: true, borrados: 0 });
-
-      const comandos = [['DEL', LISTA]];
-      /* RPUSH respeta el orden en que se pasan los valores, así que reescribir
-         la lista conservada con un solo RPUSH mantiene el orden original
-         (más reciente primero, como lo dejó LPUSH). */
-      for (let i = 0; i < conservados.length; i += 500) {
-        const lote = conservados.slice(i, i + 500)
-          .map((v) => (typeof v === 'string' ? v : JSON.stringify(v)));
-        comandos.push(['RPUSH', LISTA, ...lote]);
-      }
-      await redis(comandos);
+      // EVAL is atomic: concurrent new leads cannot be lost during deletion.
+      const script = `
+        local rows = redis.call('LRANGE', KEYS[1], 0, -1)
+        local removed = 0
+        for _, raw in ipairs(rows) do
+          local ok, row = pcall(cjson.decode, raw)
+          if ok and type(row) == 'table' then
+            local phone = string.gsub(tostring(row.telefono or ''), '%D', '')
+            if phone == ARGV[1] then
+              removed = removed + redis.call('LREM', KEYS[1], 0, raw)
+            end
+          end
+        end
+        return removed
+      `;
+      const out = await redis([['EVAL', script, '1', LISTA, pedido]]);
+      const borrados = Number(out[0]?.result || 0);
       return json({ ok: true, borrados });
     }
 

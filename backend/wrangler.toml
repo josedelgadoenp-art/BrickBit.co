@@ -5,7 +5,7 @@ compatibility_date = "2026-07-01"
 # Orígenes permitidos para CORS, separados por comas.
 # En producción cámbialo por tu dominio, p. ej. "https://brickbit.co"
 [vars]
-ALLOWED_ORIGINS = "*"
+ALLOWED_ORIGINS = "https://brickbit.co,https://www.brickbit.co"
 
 # Para habilitar los enlaces cortos de "Compartir proyecto":
 #   1. npx wrangler kv namespace create SHARES
