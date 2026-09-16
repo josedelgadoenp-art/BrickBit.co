@@ -132,6 +132,12 @@
   force = true
 
 [[redirects]]
+  from = "/AGENTS.md"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
   from = "/DESPLIEGUE.md"
   to = "/404.html"
   status = 404
