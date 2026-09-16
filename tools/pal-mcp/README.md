@@ -7,6 +7,16 @@ Zen MCP, Apache 2.0, de BeehiveInnovations. No es un producto de Anthropic, Open
 
 No toca nada del sitio. Vive en `tools/`, que `netlify.toml` cierra con un redirect `force` a 404.
 
+> ### ⚠️ La guía original quedó desfasada en su premisa principal
+> Google **cerró Gemini CLI para cuentas individuales** (gratis, Pro y Ultra) el 18 de junio de
+> 2026 y remite a su suite Antigravity. Entrar con cuenta de Google ahora falla con
+> *"This client is no longer supported for Gemini Code Assist for individuals"*. Sólo siguen
+> las licencias Code Assist Standard y Enterprise. Comprobado en esta máquina el 2026-09-16:
+> no es una instalación rota, es el cierre. Reinstalar no lo arregla.
+>
+> **Lo que sí funciona hoy: una clave de API de AI Studio** (gratis, sin tarjeta) en la opción
+> 2 del menú del CLI. Ver *"Gemini: qué hacer ahora"* más abajo.
+
 ## Instalar
 
 Los archivos viven en la rama `claude/wizardly-galileo-ct3dsf`. Si aún no está en `main`,
@@ -99,6 +109,35 @@ but any tool needing a model will return an error result until a key is set.
 O sea: `clink` gratis con tus cuentas; `consensus` quiere `GEMINI_API_KEY` u `OPENAI_API_KEY`
 en el `env` del servidor.
 
+## Gemini: qué hacer ahora
+
+Tres caminos, de más a menos recomendable:
+
+**1. Clave de API de AI Studio** — es lo que yo haría. Gratis, sin tarjeta, dos minutos.
+Se saca en [aistudio.google.com/apikey](https://aistudio.google.com/apikey), y en el menú del
+CLI se elige *"2. Use Gemini API Key"*. Revive `clink with gemini` **y** de paso enciende
+`consensus`, `chat` y `thinkdeep`, que necesitaban esa misma clave.
+
+Lo que te llevas de verdad, que no es lo que prometía el PDF:
+
+| | PDF (ya no aplica) | nivel gratuito real de la API |
+|---|---|---|
+| peticiones/minuto | 60 | 10–15 según modelo |
+| peticiones/día | 1.000 | ~1.000–1.500 |
+| modelo | — | Gemini 3 Flash / 3.1 Flash-Lite |
+| privacidad | — | **Google puede usar tus datos para entrenar** |
+
+Esa última fila importa en este repositorio: lee código que toca datos personales
+(`lead.mjs`, `medicos.mjs`). Para leer HTML y CSS da igual; para las funciones de Netlify,
+piénsalo. El nivel de pago no entrena con tus datos.
+
+**2. Antigravity** — el reemplazo oficial de Google. Es otro CLI (`agy`), cerrado, y PAL no
+lo trae configurado: habría que escribirle un `~/.pal/cli_clients/antigravity.json` a mano.
+No está probado aquí, así que no lo doy por bueno.
+
+**3. Quedarte sin Gemini** — `clink with codex codereviewer` funciona al 100% sin tocar nada.
+Pierdes el contexto de 1M, que era la mitad de la gracia, pero es cero fricción.
+
 ## Cómo se pide
 
 No hay comandos raros: se le pide a Claude Code en español y él llama a quien toque.
@@ -133,11 +172,13 @@ Siguiendo el principio de honestidad de datos del proyecto, separo lo comprobado
 - `@openai/codex` **0.154.0** y `@google/gemini-cli` **0.60.0** instalados y respondiendo.
 - Los flags por defecto de cada CLI y la precedencia de `~/.pal/cli_clients`, leídos del
   paquete instalado.
+- Que el login de `gemini` con cuenta de Google **falla**, con el mensaje del cierre.
 
 **Citado de la guía, sin verificar** (confírmalo antes de contar con ello):
 - Que GPT-5.5 salió el 23 de abril de 2026 y entra en los planes Plus, Pro, Business y
   Enterprise. Si tu plan no lo incluye, Codex funciona con el modelo que te toque.
-- Los límites gratuitos de Gemini (1M de contexto, 60 peticiones/minuto, 1.000/día).
+- ~~Los límites gratuitos de Gemini (1M de contexto, 60 peticiones/minuto, 1.000/día)~~
+  **desmentido**: ese nivel ya no existe para cuentas individuales (ver el aviso de arriba).
 
 **Errata de la guía**: el PDF imprime la URL como `https:-/github.com/...`. Es `https://`.
 

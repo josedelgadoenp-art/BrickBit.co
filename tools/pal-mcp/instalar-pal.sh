@@ -91,9 +91,21 @@ cat <<'AYUDA'
   porque abren el navegador:
 
     codex     → "Sign in with ChatGPT"    (requiere plan de pago)
-    gemini    → cuenta de Google          (nivel gratuito)
 
-  Con eso ya funciona clink, que es el 90% de lo que promete la guía.
+  GEMINI: entrar con cuenta de Google YA NO FUNCIONA. Google cerró Gemini CLI
+  para cuentas individuales el 18/06/2026 y remite a Antigravity. Falla con
+  "This client is no longer supported for Gemini Code Assist for individuals".
+  No es tu instalación. La vía que sí funciona es una clave de API gratuita:
+
+    1. sácala en https://aistudio.google.com/apikey  (sin tarjeta)
+    2. corre  gemini  y elige "2. Use Gemini API Key"
+
+  Esa misma clave enciende consensus, chat y thinkdeep. Para que el servidor
+  la vea, déjala en el entorno antes de arrancar Claude Code:
+
+    export GEMINI_API_KEY="..."        # y en tu .bashrc / .zshrc
+
+  Sólo con Codex ya funciona clink, que es la mitad de la gracia.
 
   Las demás herramientas (chat, consensus, thinkdeep) NO usan los CLIs: hablan
   por API y necesitan una clave. Sin ella el servidor arranca igual y avisa
