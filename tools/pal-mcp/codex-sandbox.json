@@ -1,0 +1,12 @@
+{
+  "_comment": "Copiar a ~/.pal/cli_clients/codex.json . Sustituye el default de PAL, que trae --dangerously-bypass-approvals-and-sandbox (el propio Codex lo describe como EXTREMELY DANGEROUS, solo para entornos ya aislados). Aqui cada rol recibe el minimo que necesita.",
+  "name": "codex",
+  "command": "codex",
+  "additional_args": ["--json", "--enable", "web_search_request"],
+  "env": {},
+  "roles": {
+    "default":      { "prompt_path": "systemprompts/clink/default.txt",            "role_args": ["--sandbox", "workspace-write"] },
+    "planner":      { "prompt_path": "systemprompts/clink/default_planner.txt",    "role_args": ["--sandbox", "read-only"] },
+    "codereviewer": { "prompt_path": "systemprompts/clink/codex_codereviewer.txt", "role_args": ["--sandbox", "read-only"] }
+  }
+}

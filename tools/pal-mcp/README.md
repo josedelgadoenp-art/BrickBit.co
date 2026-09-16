@@ -17,28 +17,74 @@ bash tools/pal-mcp/instalar-pal.sh
 powershell -ExecutionPolicy Bypass -File tools\pal-mcp\instalar-pal.ps1
 ```
 
-El script comprueba requisitos, instala lo que falte y registra el servidor en Claude Code
-con `--scope user` (queda en todos tus proyectos, no sólo en este repositorio). Es idempotente:
-correrlo otra vez sirve para actualizar.
+Comprueba requisitos, instala lo que falte, acota el sandbox de Codex (ver abajo) y registra
+el servidor en Claude Code con `--scope user` — queda en todos tus proyectos, no sólo en este
+repositorio. Es idempotente: correrlo otra vez sirve para actualizar.
 
-Por omisión baja el servidor **de PyPI** (`pal-mcp-server`, versión fija, arranca en segundos).
-Con `--git` / `-Git` lo baja del repositorio, que es lo que dice la guía original. Las dos vías
-son oficiales; PyPI es más rápida, git te da siempre lo último.
+Por omisión instala el servidor **de PyPI** (`pal-mcp-server` 11.1.0, versión fija). Con `--git`
+lo toma del repositorio, que es lo que dice la guía. Las dos vías son oficiales.
+
+## Antes de confiar en esto: el sandbox de Codex
+
+Es lo más importante de esta página y la guía no lo menciona.
+
+PAL trae, para `clink` → `codex`, este argumento **por defecto**:
+
+```
+--dangerously-bypass-approvals-and-sandbox
+```
+
+El propio Codex lo documenta así: *"Skip all confirmation prompts and execute commands without
+sandboxing. **EXTREMELY DANGEROUS.** Intended solely for running in environments that are
+externally sandboxed."* Tu portátil no es un entorno externamente aislado. Tal cual viene, pedir
+«que Codex revise esto» le da a Codex una terminal sobre tu repositorio sin aislamiento y sin
+pedirte permiso para nada.
+
+Los tres CLIs vienen con criterios muy distintos, lo cual no es obvio:
+
+| CLI | por defecto en PAL | qué puede hacer |
+|---|---|---|
+| `codex` | `--dangerously-bypass-approvals-and-sandbox` | **todo, sin preguntar** |
+| `gemini` | `--approval-mode plan` | sólo planea, no toca nada |
+| `claude` | `--permission-mode acceptEdits` | acepta ediciones solo |
+
+`codex-sandbox.json` corrige el de Codex y el instalador lo copia a `~/.pal/cli_clients/codex.json`,
+que tiene precedencia sobre el que trae el paquete. Cada rol recibe el mínimo que necesita:
+
+| rol | sandbox | por qué |
+|---|---|---|
+| `codereviewer` | `read-only` | revisar es leer; no necesita escribir |
+| `planner` | `read-only` | planear tampoco |
+| `default` | `workspace-write` | escribe, pero acotado al directorio de trabajo |
+
+Si prefieres el comportamiento original: `--sin-sandbox` (`-SinSandbox` en Windows).
 
 ## Lo que tienes que hacer tú a mano
 
-Un script no puede entrar por ti: los dos CLIs abren el navegador y piden tu cuenta.
-**No hacen falta claves de API.** Una sola vez:
+Un script no puede entrar por ti: los dos CLIs abren el navegador. Una sola vez:
 
 ```bash
-codex      # elige "Sign in with ChatGPT"  — requiere plan de pago
-gemini     # entra con tu cuenta de Google — nivel gratuito
+codex      # "Sign in with ChatGPT"  — requiere plan de pago
+gemini     # cuenta de Google        — nivel gratuito
 ```
 
 Después **reinicia Claude Code**: los servidores MCP se cargan al arrancar la sesión, así que
-uno registrado a media sesión no aparece hasta la siguiente.
+uno registrado a media sesión no aparece hasta la siguiente. Comprueba con `claude mcp get pal`.
 
-Comprueba que quedó con `claude mcp get pal`.
+### Las claves de API: la guía se queda corta
+
+«No hacen falta claves de API» es verdad **sólo para `clink`**, que es el que lanza los binarios
+`codex` y `gemini` ya autenticados con tu cuenta. Las otras herramientas del servidor —`chat`,
+`consensus`, `thinkdeep`, `codereview`— no usan los CLIs: hablan por API y necesitan una clave.
+Sin ella el servidor arranca igual y avisa:
+
+```
+No AI providers are configured. The server will start and stay discoverable,
+but any tool needing a model will return an error result until a key is set.
+```
+
+O sea: `clink` gratis con tus cuentas; `consensus` quiere `GEMINI_API_KEY` u `OPENAI_API_KEY`
+en el `env` del servidor.
 
 ## Cómo se pide
 
@@ -47,39 +93,43 @@ No hay comandos raros: se le pide a Claude Code en español y él llama a quien 
 | Herramienta | Para qué | Ejemplo |
 |---|---|---|
 | `clink` | pasarle el trabajo a otro CLI | «arregla el buscador de CP de gmm.html y que Codex lo revise» |
-| `clink` + rol `codereviewer` | que otro modelo mire el código con ojos nuevos | «clink with codex codereviewer: audita `lead.mjs`» |
-| `clink` + rol `planner` | planear antes de escribir | «clink with gemini planner: cómo migrar `mapa.html` a Leaflet local» |
+| `clink` + `codereviewer` | otro modelo mira el código con ojos nuevos | «clink with codex codereviewer: audita `lead.mjs`» |
+| `clink` + `planner` | planear antes de escribir | «clink with gemini planner: cómo migrar `mapa.html` a Leaflet local» |
 | `consensus` | que varios opinen y ver dónde no coinciden | «usa consensus: ¿el analizador a Supabase o se queda en JSON?» |
 
-Los roles que documenta el proyecto son `default`, `planner` y `codereviewer`.
+Roles disponibles: `default`, `planner`, `codereviewer`.
 
 **El reparto que recomienda la guía:** Claude construye y lleva la sesión · Codex revisa lo
 escrito · Gemini se traga lo que no le cabe a los otros (leer el repositorio entero, archivos
 largos), que es donde su contexto de 1M marca la diferencia.
 
-Para este repositorio en concreto, Gemini es el bueno para cosas como leer las 33 páginas de
-`zona/` de una sentada, o revisar `cp_centroides.txt` (31,778 registros) completo.
+Para este repositorio, Gemini es el bueno para leer las 33 páginas de `zona/` de una sentada,
+o `cp_centroides.txt` (31,778 registros) completo.
 
 ## Qué está verificado y qué no
 
-Siguiendo el principio de honestidad de datos del proyecto, separo lo comprobado de lo citado:
+Siguiendo el principio de honestidad de datos del proyecto, separo lo comprobado de lo citado.
 
-**Comprobado** (2026-09-16, contra las fuentes):
+**Comprobado** (2026-09-16, ejecutado de verdad):
 - El repositorio existe, es Apache 2.0 y efectivamente se llamaba Zen MCP.
-- `pal-mcp-server` está publicado en PyPI, versión **11.1.0**.
-- `@openai/codex` está en npm, versión **0.154.0**. Instalado y respondiendo.
-- `@google/gemini-cli` está en npm, versión **0.60.0**. Instalado y respondiendo.
-- Las herramientas `clink` y `consensus` existen, con los roles de arriba.
+- `pal-mcp-server` **11.1.0** instalado desde PyPI; el ejecutable arranca y registra 19
+  herramientas: `chat, clink, jules, thinkdeep, planner, consensus, codereview, precommit,
+  debug, secaudit, docgen, analyze, refactor, tracer, testgen, challenge, apilookup,
+  listmodels, version`.
+- Registrado en Claude Code y el cliente reporta **Status: Connected**.
+- `@openai/codex` **0.154.0** y `@google/gemini-cli` **0.60.0** instalados y respondiendo.
+- Los flags por defecto de cada CLI y la precedencia de `~/.pal/cli_clients`, leídos del
+  paquete instalado.
 
-**Citado de la guía, sin verificar aquí** (confírmalo antes de contar con ello):
+**Citado de la guía, sin verificar** (confírmalo antes de contar con ello):
 - Que GPT-5.5 salió el 23 de abril de 2026 y entra en los planes Plus, Pro, Business y
-  Enterprise. Si tu plan no lo incluye, Codex funciona igual con el modelo que te toque.
-- Los límites del nivel gratuito de Gemini (1M de contexto, 60 peticiones/minuto,
-  1.000/día). Son los que publica su repositorio y pueden cambiar.
+  Enterprise. Si tu plan no lo incluye, Codex funciona con el modelo que te toque.
+- Los límites gratuitos de Gemini (1M de contexto, 60 peticiones/minuto, 1.000/día).
 
 **Errata de la guía**: el PDF imprime la URL como `https:-/github.com/...`. Es `https://`.
 
 ## Coste
 
-El servidor no cobra y corre en tu máquina. Lo que cuesta es lo de siempre: tu plan de
-ChatGPT para Codex y, si te pasas del nivel gratuito, lo de Gemini.
+El servidor no cobra y corre en tu máquina. Lo que cuesta es tu plan de ChatGPT para Codex y,
+si te pasas del nivel gratuito, lo de Gemini. Las herramientas por API (`consensus`) se cobran
+aparte, por token, contra la clave que pongas.
