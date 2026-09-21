@@ -50,15 +50,22 @@ def _linea(t: str = "") -> None:
 
 
 def construir(cfg, operacion: str = "venta", alpha: float | None = None,
-              semilla: int | None = None, ligero: bool = False) -> dict:
+              semilla: int | None = None, ligero: bool = False,
+              particion: dict | None = None) -> dict:
     """
-    `semilla` cambia la PARTICIÓN, no sólo el ruido de los modelos. Existe para
-    poder repetir el experimento sobre reparticiones distintas: con 355
-    inmuebles de prueba, una diferencia de dos puntos entre modelos puede ser
-    la partición y no el modelo, y ya nos pasó —el contraste de los comparables
-    cambió de signo entre corridas—. `ligero` salta SHAP y la persistencia, que
-    son lo caro y no aportan al contraste; además evita que una repetición
-    sobrescriba el AVM que la app está usando.
+    `particion` permite INYECTAR un reparto distinto del que elige la Fase 2.
+
+    Existe para repetir el experimento sobre particiones distintas, y la forma
+    obvia no funciona: `datos.particion` baraja sólo para desempatar y luego
+    ordena los bloques de mayor a menor, así que con tamaños distintos el
+    reparto es el MISMO para cualquier semilla. Cambiar la semilla corre tres
+    veces el mismo experimento —lo hizo, y las tres filas salieron idénticas—.
+    Eso es una propiedad deliberada del reparto (ver `datos.particion`), no un
+    defecto, y por eso se rodea en vez de tocarse.
+
+    `semilla` sí cambia el ruido de los modelos, que es otra cosa y menor.
+    `ligero` salta SHAP y la persistencia: son lo caro, no aportan al contraste,
+    y evitan que una repetición sobrescriba el AVM que la app está usando.
     """
     if semilla is not None:
         cfg["proyecto"]["semilla"] = int(semilla)
@@ -82,7 +89,7 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None,
         _linea(f"    ⚠ sólo {n_bloques} bloques: la partición es gruesa y las métricas")
         _linea("      traen bastante ruido de muestreo. No invalida el resultado,")
         _linea("      pero sí desaconseja leer diferencias pequeñas entre modelos.")
-    p = datos.particion(d.bloque, cfg)
+    p = datos.particion(d.bloque, cfg) if particion is None else particion
     for k in ("entrena", "calibra", "prueba"):
         _linea(f"    {k:<9} {int(p[k].sum()):>6,} inmuebles · {d.bloque[p[k]].nunique():>4,} bloques")
     res["particion"] = {k: int(v.sum()) for k, v in p.items()}
