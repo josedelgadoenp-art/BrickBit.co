@@ -126,7 +126,27 @@ def main() -> int:
     print(f"\n   {'—' * 66}")
     print(f"   efecto medio {ef.mean():+.1f}%  ·  mediano {np.median(ef):+.1f}%  ·  "
           f"rango {ef.min():+.1f}% a {ef.max():+.1f}%")
-    print(f"   estorban en {estorban} de {len(ef)} particiones")
+    print(f"   estorban en {estorban} de {len(ef)} particiones  (error mediano)")
+
+    # LAS DOS MÉTRICAS NO MIDEN LO MISMO Y PUEDEN DISCREPAR.
+    #
+    # Aviso de honestidad: esta línea se AGREGÓ después de ver un resultado —en
+    # el banco de pruebas el R² mejoraba en las 4 particiones mientras el error
+    # mediano mejoraba en 3—. Agregar una métrica al ver que la primera no
+    # concluye es la puerta de entrada al autoengaño, así que no toca el
+    # veredicto: éste se sigue decidiendo con el error mediano, que era el
+    # criterio fijado de antemano. Se reporta porque el lector merece saber que
+    # las dos discrepan, no para cambiar la conclusión.
+    #
+    # Qué significa la discrepancia: el error MEDIANO mira el caso típico; el R²
+    # sobre logaritmos pesa también las equivocaciones grandes. Que los
+    # comparables ganen en R² y no en la mediana sugiere que ayudan sobre todo
+    # donde el modelo iba muy perdido, que es justo donde un AVM más lo necesita.
+    r2 = np.array([(f[1].r2_log - f[2].r2_log) for f in filas])
+    print(f"   ayudan en {int((r2 > 0).sum())} de {len(r2)} particiones  (R² log, "
+          f"diferencia media {r2.mean():+.3f})")
+    if int((r2 > 0).sum()) != len(r2) - estorban:
+        print("   ⚠ las dos métricas NO coinciden: ver el comentario en el código.")
 
     # El criterio se fija ANTES de ver el número, y se dice cuál es: el signo
     # tiene que ser el mismo en TODAS y el efecto medio pasar de 3 puntos. Con
