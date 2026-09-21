@@ -49,7 +49,19 @@ def _linea(t: str = "") -> None:
     print(t, flush=True)
 
 
-def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict:
+def construir(cfg, operacion: str = "venta", alpha: float | None = None,
+              semilla: int | None = None, ligero: bool = False) -> dict:
+    """
+    `semilla` cambia la PARTICIÓN, no sólo el ruido de los modelos. Existe para
+    poder repetir el experimento sobre reparticiones distintas: con 355
+    inmuebles de prueba, una diferencia de dos puntos entre modelos puede ser
+    la partición y no el modelo, y ya nos pasó —el contraste de los comparables
+    cambió de signo entre corridas—. `ligero` salta SHAP y la persistencia, que
+    son lo caro y no aportan al contraste; además evita que una repetición
+    sobrescriba el AVM que la app está usando.
+    """
+    if semilla is not None:
+        cfg["proyecto"]["semilla"] = int(semilla)
     fijar_semilla(cfg)
     alpha = float(cfg["modelado"]["alpha"] if alpha is None else alpha)
     semilla = int(cfg.semilla)
@@ -320,6 +332,11 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
         l, h = conforme.aplicar_normalizado(pred_te, sigma_te, ca, seg_te)
         niveles.append((a, evaluacion.intervalo(yte.to_numpy(), l, h, a)))
     res["niveles"] = niveles
+
+    if ligero:
+        # Una repetición del experimento no debe tocar el AVM que la app usa ni
+        # pagar SHAP, que es lo caro. Devuelve lo que el contraste necesita.
+        return res
 
     # ------------------------------------------------------------- persistencia
     # El paquete entrenado se guarda entero: sin esto, cada valuación exigiría

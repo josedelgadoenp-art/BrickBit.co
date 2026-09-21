@@ -83,12 +83,36 @@ Junta los listados con la malla, parte **por bloque espacial**, ajusta hedónico
 + Durbin + boosting, los combina por apilado y convierte la predicción en un
 intervalo con cobertura garantizada.
 
-### Los comparables: la señal que faltaba
+### Los comparables: una señal que todavía no se sabe si suma
 
 El modelo conocía las amenidades de la zona y los atributos del inmueble, pero
 **no sabía a qué precio se ofrece lo de al lado**. Un perito nunca valúa así:
-abre los comparables antes que nada. Medido sobre el banco de pruebas, añadirlos
-**baja el error del boosting un 19%** — la mejora más grande de todo el proyecto.
+abre los comparables antes que nada. Sobre el banco de pruebas bajaban el error
+del boosting un 19%, y durante un tiempo esta sección los llamó "la mejora más
+grande de todo el proyecto".
+
+**Los datos reales no lo sostienen.** El contraste —el mismo modelo con y sin
+esas columnas, sobre el mismo conjunto de prueba— se midió tres veces:
+
+| corrida | efecto sobre el error del boosting |
+|---|---|
+| 1 | **−7.3%** (ayudaban) |
+| 2 | **+6.6%** (estorbaban) |
+| 3 | **+10.0%** (estorbaban más) |
+
+Con 355 inmuebles de prueba en 6 bloques, dos puntos de diferencia caben dentro
+del ruido de *qué* bloques tocaron ser prueba. Una sola partición no decide
+esto, y la primera lectura produjo una afirmación que no estaba respaldada.
+Por eso hay un experimento aparte que lo mide sobre varias reparticiones:
+
+```bash
+python -m experimentos.contraste_comparables -n 5
+```
+
+La sospecha razonable, si se confirma que estorban: en prueba la variable **se
+degrada** porque los vecinos del propio bloque no están entre las fuentes, así
+que significa algo distinto al entrenar y al evaluar. Eso se arregla, no se
+amputa — el modelo la usa mucho (`comp15_ln_precio_m2` sale alto en SHAP).
 
 La fuga tiene dos formas y las dos se evitan:
 
@@ -101,9 +125,9 @@ La fuga tiene dos formas y las dos se evitan:
   existir, y el desempeño se cae al desplegar sin que la evaluación lo avise.
 
 La solución es simétrica: a cada fila se le buscan comparables **fuera de su
-propio bloque**, y las fuentes son siempre el conjunto de entrenamiento — que es
-también lo que pasa en producción, donde los comparables salen de la base que ya
-se tiene.
+propio bloque**, y las fuentes son entrenamiento + calibración — que es lo que
+el paquete guarda y lo que existe en producción, donde los comparables salen de
+la base que ya se tiene. El conjunto de prueba nunca es fuente de nada.
 
 ### Los hiperparámetros ahora se eligen, no se suponen
 
@@ -117,51 +141,89 @@ el modelo que mejor persigue outliers.
 **Lo que hay que mirar primero es la cobertura, no el error.** Un AVM que se
 equivoca 27% y lo dice sirve; uno que se equivoca 12% y no lo dice, no.
 
-Sobre los datos reales de la CDMX, con 1,773 inmuebles de venta repartidos en 38
-bloques espaciales (1,063 / 355 / 355):
+Sobre los datos reales de la CDMX, con 1,772 inmuebles de venta repartidos en 38
+bloques espaciales (1,062 / 355 / 355):
 
 | | |
 |---|---|
-| I de Moran del **precio** | **0.447** (p = 0.001) con knn(5) |
-| SDM · ρ | **+0.302** (p = 3.2e-13), pseudo R² 0.580 |
-| Error del apilado en prueba | mediana **26.9%** · R²(log) 0.525 |
-| **Cobertura del intervalo 95%** | **94.9%** — calibrado |
+| I de Moran del **precio** | **0.515** (p = 0.001) con banda(500 m) |
+| SDM · ρ | **+0.433** (p = 4.0e-34), pseudo R² 0.605 |
+| Error del apilado en prueba | mediana **21.6%** · R²(log) 0.543 |
+| **Cobertura del intervalo 95%** | **94.4%** — calibrado, ±73% de ancho |
 
 El ρ positivo y muy significativo es el hallazgo de fondo: el precio de un
 inmueble en la CDMX depende materialmente del de sus vecinos, y un modelo sin
 componente espacial estaría mal especificado. Ya no es un supuesto heredado de
 la Fase 1 —medida sobre densidad de empleo—, es una medición sobre precios.
 
+### El defecto más caro no fue del modelo: faltaba la mitad de la ciudad
+
+Durante tres corridas el intervalo del 95% cubrió 90–91%. **Cubrir de menos es
+la dirección peligrosa**, y se probaron dos arreglos de método —calibración
+cruzada por bloque, y elegir la segmentación midiendo— que no lo resolvieron.
+La tabla de candidatas de Mondrian fue la que lo desmintió: las cuatro cubrían
+~95% fuera de muestra en los bloques de calibración, y la desplegada daba 90%
+en prueba. El problema no estaba en cómo se partían los grupos.
+
+Estaba en los datos. **Siete de las dieciséis alcaldías no tenían DENUE**
+—Cuajimalpa, Iztacalco, Magdalena Contreras, Milpa Alta, Tláhuac, Xochimilco y
+Venustiano Carranza— y el código sólo declara ausencia cuando la capa está
+vacía *del todo* (`features/amenidades.py:49`). Con nueve alcaldías cargadas y
+siete no, esas celdas no recibían NaN: recibían la distancia al establecimiento
+más cercano **de otra alcaldía** y un conteo de cero en 500 m. Milpa Alta
+parecía un desierto económico porque no se había ingerido.
+
+Eso es peor que un hueco. Un hueco el modelo lo puede aprender; un número
+plausible y falso lo persuade — y σ̂ no podía anticipar que ahí iba a fallar,
+porque "lejos de todo" en el resto de la ciudad es una señal real.
+
+Al ingerir las siete que faltaban, sin tocar el intervalo:
+
+| | antes | después |
+|---|---|---|
+| **cobertura 95%** | 90.1% ✗ | **94.4% ✓** |
+| error mediano (apilado) | 23.3% | **21.6%** |
+| R²(log) del apilado | 0.494 | **0.543** |
+| R²(log) del hedónico | 0.196 | **0.301** |
+| ancho mediano | ±70% | ±73% |
+
+La lección, que vale más que el número: **antes de arreglar un modelo hay que
+mirar si la fuente está completa.** Dos intentos de método y una hipótesis
+equivocada costaron más que el comando de una línea que faltaba.
+
 ### Qué cuesta cada nivel de confianza
 
-La conformalización lleva la cobertura de 73.2% a 94.9% contra un objetivo de
-95%. Pero **cubrir no es servir**, y el informe lo dice cuando toca: a 95% el
-ancho es de ±101%, que es un intervalo con la garantía perfecta y sin utilidad
-para decidir.
-
-Contra la frontera de eficiencia —lo que ese error justifica si los errores
-fueran log-normales—:
-
-| nivel | cobertura | ancho ideal | ancho real | sobrecosto |
-|---|---|---|---|---|
-| 50% | 47.6% | ±24% | ±26% | 1.08× |
-| **80%** | **79.7%** | ±47% | **±58%** | 1.24× |
-| 90% | 88.7% | ±61% | ±76% | 1.24× |
-| 95% | 94.9% | ±75% | ±101% | 1.35× |
+| nivel | cobertura | ancho |
+|---|---|---|
+| 50% | 48.5% | ±20% |
+| **80%** | **77.7%** | **±40%** |
+| 90% | 88.5% | ±55% |
+| 95% | 94.4% | ±73% |
 
 **La banda del 80% es la que sirve como número de producto.** El 95% se guarda
-para riesgo y cumplimiento, donde la cola importa y el ancho se tolera. El
-sobrecosto que queda en los niveles altos es mitad colas pesadas reales —hay
-anuncios mal capturados y hay que cubrirlos— y mitad ruido de estimar un
-percentil extremo con seis bloques de calibración.
+para riesgo y cumplimiento, donde la cola importa y el ancho se tolera.
 
-Lo que NO se recupera con método es el resto: el modelo se equivoca ~27% en la
-mediana, y un intervalo honesto sobre ese error tiene que ser ancho. Eso se
-estrecha con más inventario y mejores atributos.
+Y el ±73% tiene un culpable identificado, que el informe ahora mide:
 
-> Esta tabla es de la corrida con **partición simple**. La calibración cruzada
-> que se describe abajo la cambia entera: se vuelve a medir en la próxima
-> corrida de la Fase 2 y el informe la imprime.
+```
+                    calibración     prueba     razón
+  |residual| mediano     0.2143     0.2276      1.06×
+  σ̂ mediana              0.4058     0.6175      1.52×
+```
+
+**σ̂ sobreestima la dificultad de un barrio nuevo en 1.52×** cuando el error
+real sólo sube 6%. Por eso los scores de prueba salen a 0.69× de los de
+calibración: el intervalo cubre de sobra siendo más ancho de lo necesario. Ahí
+está la grasa, y es un blanco concreto —no "hace falta más inventario"—.
+
+Lo que NO se recupera con método es el resto: el modelo se equivoca ~22% en la
+mediana, y un intervalo honesto sobre ese error tiene que ser ancho.
+
+> Pendiente y con margen conocido: OSM nunca se descargó (Overpass devolvió
+> 504), así que **12 variables siguen vacías** — metro, metrobús, cablebús,
+> parques, plazas, hospitales, escuelas y mercados. La distancia al metro es de
+> los predictores más fuertes que existen para vivienda en esta ciudad, y hoy
+> no entra. Lo de arriba es sólo con DENUE.
 
 ### La calibración es cruzada por bloque
 
@@ -209,8 +271,9 @@ Cuatro cosas, todas encontradas midiendo:
 **Dos scores, no uno.** CQR estima los cuantiles 2.5% y 97.5% *directamente*, y
 esa cola se apoya en el 2.5% de las observaciones —unas 26 de 1,063—. El
 normalizado usa \|y − ŷ\| / σ̂(x), que se ajusta con todas. Los dos tienen la
-misma garantía; medido sobre los datos reales, CQR da ±144% y el normalizado
-±101%. Se calibran los dos y se reportan lado a lado.
+misma garantía; medido sobre los datos reales, CQR cubre 94.9% con ±95% de
+ancho y el normalizado 94.4% con ±73%. Se calibran los dos y se reportan lado a
+lado, y hoy gana el normalizado por 22 puntos de ancho.
 
 **El ruido en σ̂ se paga en ancho y no compra cobertura.** En simulación, con la
 misma cobertura, una σ̂ ruidosa infla la corrección de 1.92 a 3.44 y casi duplica
@@ -231,8 +294,9 @@ que el número quede bonito: es la condición real de uso —valuar donde no hub
 comparables— y con una partición al azar el número saldría clavado sin decir
 nada del barrio siguiente. Lo que sí se hace es **calibrar dentro de esa misma
 condición**, con residuales fuera de pliegue por bloque; es la sección de
-arriba. Sobre datos reales todavía está por medirse: el 91.3% es de la versión
-anterior, y el número nuevo lo imprime la próxima corrida de la Fase 2.
+arriba. Medido sobre datos reales: 94.4% contra un objetivo de 95%. Los 0.6
+puntos que faltan son de ese rompimiento deliberado y del tamaño de la muestra
+—355 inmuebles de prueba—, no de un defecto que se pueda arreglar apretando.
 
 ### Correr la Fase 3
 
