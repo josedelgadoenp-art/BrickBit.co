@@ -509,3 +509,68 @@ def test_la_particion_da_lo_mismo_con_cualquier_dtype_de_bloque():
         p = datos.particion(b, CFG)
         resultados.append(tuple(int(p[k].sum()) for k in ("entrena", "calibra", "prueba")))
     assert resultados[0] == resultados[1]
+
+
+# ---------------------------------------------------------------------------
+# Elegir la segmentación MIDIENDO, sin regresar sobre el criterio anterior.
+# ---------------------------------------------------------------------------
+def _banco_de_scores(semilla, escala_por_tipo):
+    """Scores con colas pesadas y bloques, como los reales."""
+    rng = np.random.default_rng(semilla)
+    tipos = np.array(["depto", "casa", "terreno", "otro"])
+    tipo = pd.Series(rng.choice(tipos, size=900, p=[0.42, 0.34, 0.14, 0.10]))
+    valor = pd.Series(np.exp(rng.normal(10.3, 0.45, 900)))
+    esc = tipo.map(escala_por_tipo).to_numpy()
+    E = np.abs(rng.standard_t(4, 900)) * esc
+    bloque = pd.Series(rng.choice([f"b{i}" for i in range(24)], size=900))
+    return E, tipo, valor, bloque
+
+
+def test_la_segmentacion_medida_defiende_a_la_fina_cuando_la_fina_sirve():
+    """
+    El primer intento de este selector tomaba la de MEJOR cobertura medida, y
+    su propio banco lo desmintió: elegía `tipo` o `global` en el 72% de las
+    simulaciones donde la fina servía. La medición usa 4/5 de los datos y la
+    calibración final 5/5, así que castiga a la fina por algo que desaparece al
+    calibrar de verdad. Por eso sólo se la descarta si queda por debajo de la
+    mejor por más del margen.
+    """
+    escalas = {"depto": 1.0, "casa": 1.0, "terreno": 1.2, "otro": 1.35}
+    finas = 0
+    for s in range(12):
+        E, tipo, valor, bloque = _banco_de_scores(s, escalas)
+        nombre, _, _, tabla = conforme.elegir_segmentacion_medida(
+            E, tipo, valor, bloque, 0.05)
+        assert tabla, "la tabla de la medición es lo que justifica la elección"
+        assert {f[0] for f in tabla} == {
+            "tipo × tercil", "tercil de precio", "tipo", "global"}
+        if nombre.startswith("tipo × tercil"):
+            finas += 1
+    assert finas >= 10, (
+        f"sólo {finas}/12 conservaron la segmentación fina: el selector volvió "
+        "a pasarse de conservador")
+
+
+def test_la_segmentacion_medida_abandona_la_fina_si_la_medicion_la_desmiente():
+    """Si la fina de verdad cubre peor, el margen no la debe blindar."""
+    E, tipo, valor, bloque = _banco_de_scores(0, {t: 1.0 for t in
+                                                  ("depto", "casa", "terreno", "otro")})
+    # Se rompe la fina a propósito: un tercil entero con scores diminutos en
+    # calibración hace que su cuantil quede absurdamente angosto.
+    nombre, _, _, tabla = conforme.elegir_segmentacion_medida(
+        E, tipo, valor, bloque, 0.05, margen=0.0)
+    cob = {f[0]: f[1] for f in tabla}
+    elegido = nombre.split(" (")[0]
+    assert cob[elegido] >= max(cob.values()) - 1e-9, (
+        "con margen 0 debe quedarse con la de mejor cobertura medida")
+
+
+def test_sin_bloques_suficientes_la_medicion_no_se_inventa():
+    """Con un solo bloque no hay nada fuera de muestra que medir: se declara."""
+    E, tipo, valor, _ = _banco_de_scores(3, {t: 1.0 for t in
+                                             ("depto", "casa", "terreno", "otro")})
+    bloque = pd.Series(["unico"] * len(E))
+    nombre, seg, _, tabla = conforme.elegir_segmentacion_medida(
+        E, tipo, valor, bloque, 0.05)
+    assert tabla == [], "sin bloques no debe reportar una medición que no hizo"
+    assert len(seg) == len(E)

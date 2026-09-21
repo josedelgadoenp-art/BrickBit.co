@@ -388,6 +388,114 @@ def elegir_segmentacion(
     return "global (la muestra no sostiene segmentos)", pd.Series(["todos"] * len(t)), None
 
 
+def _candidatas(
+    tipo: pd.Series, valores: pd.Series
+) -> list[tuple[str, pd.Series, np.ndarray | None]]:
+    """Las segmentaciones posibles, de la más fina a la más gruesa."""
+    t = pd.Series(tipo).astype(str).reset_index(drop=True)
+    v = pd.Series(valores).astype(float).reset_index(drop=True)
+    cortes = cortes_de(v)
+    ter = aplicar_cortes(pd.Series([""] * len(v)), v, cortes).str.lstrip("·")
+    return [
+        ("tipo × tercil", (t + "·" + ter).astype(str), cortes),
+        ("tercil de precio", ter.astype(str), cortes),
+        ("tipo", t, None),
+        ("global", pd.Series(["todos"] * len(t)), None),
+    ]
+
+
+def elegir_segmentacion_medida(
+    E: np.ndarray,
+    tipo: pd.Series,
+    valores: pd.Series,
+    bloque: pd.Series,
+    alpha: float,
+    minimo: int | None = None,
+    n_pliegues: int = 5,
+    margen: float = 0.02,
+) -> tuple[str, pd.Series, np.ndarray | None, list[tuple[str, float, float, int]]]:
+    """
+    Elige la segmentación de Mondrian MIDIENDO su cobertura, no suponiéndola.
+
+    POR QUÉ SE CAMBIÓ, Y QUÉ LO DESMINTIÓ. `elegir_segmentacion` tomaba la
+    segmentación más FINA que la muestra pudiera sostener, con el argumento de
+    que más grupos calibran mejor. Sobre la CDMX eso salió al revés y está
+    medido: con 3 grupos el intervalo del 95% cubrió 91.3%; al pasar a 12
+    grupos cayó a 90.1%. El culpable fue un solo segmento —`depto·medio`, 180
+    inmuebles en calibración— al que Mondrian le asignó una corrección MÁS
+    ANGOSTA que la global (+1.6566 contra +1.7183) y que en prueba cubrió
+    76.2% de 63 casos. Si ese grupo hubiera cubierto como sus vecinos, el total
+    habría sido 93.2%.
+
+    La lección: pasar el mínimo de tamaño NO es lo mismo que ser estable. Con
+    180 puntos, el cuantil conforme del 95% es el estadístico de orden 172 y se
+    apoya en unos nueve puntos de la cola. Es un número con derecho a existir y
+    sin derecho a que le creamos.
+
+    CÓMO SE MIDE, SIN TOCAR LA PRUEBA. Los bloques del conjunto de calibración
+    se parten en pliegues; se calibra con unos y se mide la cobertura en el que
+    quedó fuera. Eso da una cobertura FUERA DE MUESTRA para cada candidata,
+    estimada sólo con datos que el intervalo ya tenía derecho a ver. El
+    conjunto de prueba no participa: si participara, la evaluación dejaría de
+    ser una evaluación.
+
+    QUÉ SE PREFIERE, Y POR QUÉ NO LO CONTRARIO. Se descarta una candidata sólo
+    si su cobertura medida queda más de `margen` por debajo de la mejor; entre
+    las que sobreviven se toma la MÁS FINA. La primera versión hacía lo obvio
+    —tomar la de mejor cobertura medida— y su propio banco la desmintió: elegía
+    `tipo` o `global` en el 72% de las simulaciones donde la fina servía, y
+    fallaba bajo 93% el 10% de las veces contra 4% del criterio anterior. La
+    medición usa 4/5 de los datos y la calibración final 5/5, así que castiga a
+    la fina por una razón que desaparece al calibrar de verdad.
+
+    Devuelve (nombre, segmentos, cortes, tabla) donde `tabla` son las filas
+    (nombre, cobertura, ancho relativo, grupos) para que el informe muestre por
+    qué eligió lo que eligió en vez de pedir que se le crea.
+    """
+    from sklearn.model_selection import GroupKFold
+
+    E = np.asarray(E, dtype=float)
+    minimo = MINIMO_POR_GRUPO if minimo is None else int(minimo)
+    cands = _candidatas(tipo, valores)
+    g = pd.Series(bloque).astype(str).reset_index(drop=True).to_numpy()
+    k = int(min(n_pliegues, pd.Series(g).nunique()))
+    if k < 2 or len(E) != len(g):
+        # Sin bloques suficientes no hay nada que medir: se cae al criterio
+        # anterior, que al menos es explícito.
+        n, s, c = elegir_segmentacion(tipo, valores, alpha)
+        return n, s, c, []
+
+    partes = list(GroupKFold(n_splits=k).split(np.zeros(len(E)), groups=g))
+    tabla: list[tuple[str, float, float, int]] = []
+    for nombre, seg, cortes in cands:
+        cubierto = np.zeros(len(E), dtype=bool)
+        aplicado = np.full(len(E), np.nan)
+        for dentro, fuera in partes:
+            c = calibrar_desde_scores(E[dentro], alpha, seg.iloc[dentro], minimo)
+            q = c.correccion(seg.iloc[fuera])
+            aplicado[fuera] = q
+            cubierto[fuera] = E[fuera] <= q
+        tabla.append((nombre, float(cubierto.mean()),
+                      float(np.nanmedian(aplicado)), int(seg.nunique())))
+
+    # SE DEFIENDE LA MÁS FINA, no se la reemplaza a la primera. La medición usa
+    # 4/5 de los datos y luego se calibra con 5/5, así que subestima a la
+    # segmentación fina de forma sistemática. Medido sobre 120 simulaciones:
+    # tomar la de mejor cobertura medida elegía `tipo` o `global` en 72% de los
+    # casos y fallaba por debajo de 93% el 10% de las veces, contra 4% del
+    # criterio anterior. Así que sólo se descarta la fina cuando queda por
+    # debajo de la mejor por MÁS de `margen`; entre las que sobreviven se toma
+    # la más fina, que es la que más información usa.
+    mejor_cob = max(f[1] for f in tabla)
+    orden = {n: i for i, (n, _, _) in enumerate(cands)}
+    sobreviven = [f for f in tabla if f[1] >= mejor_cob - margen]
+    nombre = min(sobreviven, key=lambda f: orden[f[0]])[0]
+    _, seg, cortes = next(x for x in cands if x[0] == nombre)
+    if nombre == "global":
+        nombre = "global (ninguna segmentación cubrió mejor)"
+    return nombre, seg, cortes, tabla
+
+
 def cortes_de(valores: pd.Series) -> np.ndarray:
     """Los dos cortes de tercil, para reaplicarlos idénticos a datos nuevos."""
     v = pd.Series(valores).astype(float)

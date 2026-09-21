@@ -224,12 +224,21 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     minimo = conforme.minimo_por_grupo(alpha)
     tipo_pool = pd.concat([_tipo_de(d, p["entrena"]), _tipo_de(d, p["calibra"])],
                           ignore_index=True)
-    nombre_seg, seg_pool, cortes = conforme.elegir_segmentacion(
-        tipo_pool, np.exp(fuera_apilado), alpha)
-    _linea(f"    segmentación: {nombre_seg}  ({seg_pool.nunique()} grupos)")
-
+    # El score se calcula ANTES de elegir la segmentación, porque ahora la
+    # segmentación se elige midiendo con él: cuál de las particiones cubre de
+    # verdad fuera de muestra, no cuál es la más fina que pasa el mínimo.
     sigma_score = np.maximum(sigma_fuera + gamma * m_sigma.escala, 1e-9)
     E_norm = np.abs(ypool.to_numpy() - fuera_apilado) / sigma_score
+
+    nombre_seg, seg_pool, cortes, tabla_seg = conforme.elegir_segmentacion_medida(
+        E_norm, tipo_pool, np.exp(fuera_apilado), bpool, alpha, minimo)
+    res["tabla_segmentacion"] = tabla_seg
+    _linea(f"    segmentación: {nombre_seg}  ({seg_pool.nunique()} grupos)")
+    for nom, cob, anc, ng in tabla_seg:
+        marca = "←" if nom == nombre_seg.split(" (")[0] else " "
+        _linea(f"      {marca} {nom:<18} cobertura fuera de muestra {cob * 100:5.1f}% · "
+               f"corrección mediana {anc:.3f} · {ng} grupos")
+
     c_norm = conforme.calibrar_desde_scores(E_norm, alpha, seg_pool, minimo)
 
     lo_oof, hi_oof = arboles.cuantiles_fuera_de_muestra(
@@ -271,6 +280,35 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None) -> dict
     res["intervalo_crudo"] = evaluacion.intervalo(
         yte.to_numpy(), m_lo.predict(Xte), m_hi.predict(Xte), alpha
     )
+
+    # ───────────────────────────── ¿por qué no cubre? numerador o denominador
+    #
+    # La cobertura quedó corta en TODOS los niveles por parejo —50%, 80%, 90% y
+    # 95% fallaron por entre 3 y 5 puntos—. Eso descarta el ruido de la cola: el
+    # nivel del 50% no se apoya en ninguna cola. Un déficit uniforme es un
+    # problema de ESCALA, y la escala de un score normalizado tiene dos partes.
+    #
+    # El score es |y − ŷ| / σ̂(x). Si en prueba sale sistemáticamente mayor que
+    # en calibración, el intervalo se queda corto, y la pregunta es de cuál de
+    # las dos partes viene: el modelo se equivoca más en barrios nuevos
+    # (numerador) o σ̂ no sabe que son más difíciles (denominador). Se miden las
+    # dos por separado, porque el arreglo es distinto en cada caso: más señal
+    # contra una σ̂ que vea la incertidumbre del barrio.
+    #
+    # No se corrige aquí nada: esto MIDE. Inflar σ̂ hasta que el número cuadre
+    # sería el mismo vicio de apretar el nivel, con otro nombre.
+    E_test = np.abs(yte.to_numpy() - pred_te) / np.maximum(
+        sigma_te + gamma * m_sigma.escala, 1e-9)
+    r_pool = np.abs(ypool.to_numpy() - fuera_apilado)
+    r_test = np.abs(yte.to_numpy() - pred_te)
+    res["escala"] = {
+        "score_cal": np.nanpercentile(E_norm, [50, 90, 95]),
+        "score_test": np.nanpercentile(E_test, [50, 90, 95]),
+        "residual_cal": float(np.nanmedian(r_pool)),
+        "residual_test": float(np.nanmedian(r_test)),
+        "sigma_cal": float(np.nanmedian(sigma_score)),
+        "sigma_test": float(np.nanmedian(sigma_te + gamma * m_sigma.escala)),
+    }
 
     # Con el score normalizado, cambiar el nivel de confianza NO exige reentrenar
     # nada: es otro cuantil de los mismos scores. Con CQR harían falta dos
@@ -490,9 +528,14 @@ def informe(cfg, res: dict | None) -> None:
         c = res["cobertura_comparables"]
         _linea(f"\nCOMPARABLES  ({100 - c['pct_sin']:.0f}% del conjunto de prueba tiene)")
         _linea("  A qué precio se ofrece lo de alrededor: la señal que un perito")
-        _linea("  usa primero. Las fuentes son SÓLO el entrenamiento y se excluyen")
-        _linea("  los del propio bloque, para que la variable signifique lo mismo")
-        _linea("  al entrenar que al valuar un barrio que el modelo no vio.")
+        _linea("  usa primero. Las fuentes son entrenamiento + calibración —lo que")
+        _linea("  el paquete guarda y lo que existe en producción— y a cada fila se")
+        _linea("  le excluyen los de su PROPIO bloque, para que la variable")
+        _linea("  signifique lo mismo al entrenar que al valuar un barrio nuevo.")
+        _linea("  ⚠ Su aporte NO está establecido: entre dos corridas sobre casi")
+        _linea("    los mismos datos el signo se invirtió (−7.3% y luego +6.6%).")
+        _linea("    Una sola partición no alcanza para decidirlo; el contraste de")
+        _linea("    abajo es de UNA partición y hay que leerlo como tal.")
 
     if res.get("n_scores"):
         _linea(f"\nCALIBRACIÓN CRUZADA POR BLOQUE")
@@ -532,6 +575,34 @@ def informe(cfg, res: dict | None) -> None:
         _linea("  propósito la intercambiabilidad de la que depende la garantía")
         _linea("  exacta. Es la condición real —valuar donde no hubo comparables—")
         _linea("  y no se corrige subiendo el nivel hasta que el número quede bonito.")
+
+    e = res.get("escala")
+    if e:
+        _linea("\n  DE DÓNDE VIENE EL DÉFICIT  (numerador o denominador)")
+        _linea("  El score es |y − ŷ| / σ̂. Si en prueba sale mayor que en")
+        _linea("  calibración, el intervalo se queda corto. Cuál de las dos partes:")
+        _linea(f"{'':22}{'calibración':>13}{'prueba':>11}{'razón':>10}")
+        for et, a, b in (
+            ("score mediano", e["score_cal"][0], e["score_test"][0]),
+            ("score p90", e["score_cal"][1], e["score_test"][1]),
+            ("score p95", e["score_cal"][2], e["score_test"][2]),
+            ("|residual| mediano", e["residual_cal"], e["residual_test"]),
+            ("σ̂ mediana", e["sigma_cal"], e["sigma_test"]),
+        ):
+            _linea(f"    {et:<20}{a:>11.4f}{b:>11.4f}{(b / a if a else float('nan')):>10.2f}×")
+        rr = e["residual_test"] / e["residual_cal"] if e["residual_cal"] else float("nan")
+        rs = e["sigma_test"] / e["sigma_cal"] if e["sigma_cal"] else float("nan")
+        if rr > 1.05 and rs < rr:
+            _linea("  → El modelo se equivoca MÁS en barrios nuevos y σ̂ no lo")
+            _linea("    anticipa. El arreglo es una σ̂ que vea la incertidumbre del")
+            _linea("    barrio (densidad de comparables, distancia al dato más")
+            _linea("    cercano), no inflar la corrección.")
+        elif rs > 1.05:
+            _linea("  → σ̂ crece en prueba tanto o más que el error: la forma del")
+            _linea("    ancho está bien y el déficit viene del cuantil, no de la escala.")
+        else:
+            _linea("  → Calibración y prueba están en la misma escala: el déficit")
+            _linea("    no es de escala y hay que buscarlo en la segmentación.")
 
     if res.get("niveles"):
         _linea("\n  QUÉ CUESTA CADA NIVEL DE CONFIANZA")
