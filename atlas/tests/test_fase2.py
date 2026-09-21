@@ -574,3 +574,34 @@ def test_sin_bloques_suficientes_la_medicion_no_se_inventa():
         E, tipo, valor, bloque, 0.05)
     assert tabla == [], "sin bloques no debe reportar una medición que no hizo"
     assert len(seg) == len(E)
+
+
+def test_las_dos_sigmas_son_comparables_sobre_las_mismas_filas():
+    """
+    El diagnóstico de escala compara la σ̂ de calibración (fuera de pliegue)
+    contra la de despliegue (modelo completo). Esa comparación sólo significa
+    algo si los DOS estimadores están en la misma escala: si difirieran por
+    construcción, la tabla mediría el estimador en vez del mercado y llevaría a
+    culpar a los datos de un defecto del código.
+
+    Verificado aquí sobre filas idénticas. Cuando en una corrida real aparezca
+    una diferencia grande —en el banco sintético salió 1.69×—, es que los
+    barrios de prueba son de verdad más difíciles, no que las σ̂ no se hablen.
+    """
+    from atlas.modelos import arboles
+
+    rng = np.random.default_rng(7)
+    n = 1200
+    X = pd.DataFrame({c: rng.normal(size=n) for c in ("a", "b", "c")})
+    y = pd.Series(X.a * 1.5 + rng.normal(0, 0.3, n))
+    pred_fuera = (X.a * 1.5 + rng.normal(0, 0.3, n)).to_numpy()
+    bloque = pd.Series(rng.choice([f"b{i}" for i in range(20)], size=n))
+
+    completo = np.median(arboles.dispersion(X, y, pred_fuera, 0).predict(X))
+    fuera = np.median(
+        arboles.dispersion_fuera_de_muestra(X, y, pred_fuera, bloque, 0))
+
+    razon = completo / fuera
+    assert 0.85 < razon < 1.18, (
+        f"las dos σ̂ difieren {razon:.2f}× sobre las MISMAS filas: el "
+        "diagnóstico de escala estaría midiendo el estimador, no el mercado")
