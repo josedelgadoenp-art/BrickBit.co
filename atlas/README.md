@@ -404,26 +404,53 @@ respaldo—. La condición para desbloquearlo es concreta: **correr el scraper c
 mes**. En un año hay panel para estimar crecimiento por celda y validarlo hacia
 adelante, igual que aquí se valida el contagio entre zonas.
 
-### Correr la app (Fase 4)
+### Dos pantallas, no una (Fase 4)
 
 ```bash
 cd atlas
-streamlit run app.py
+streamlit run app.py        # PÚBLICA — ¿cuánto vale este inmueble?
+streamlit run consola.py    # INTERNA — auditar el modelo
 ```
 
-Hace visible lo que las fases 0 a 3 dejaron en parquet. Tres pestañas, tres
-preguntas distintas: **Valuar** (cuánto vale este inmueble y con qué banda),
-**Mapa** (cómo está el precio en la ciudad y dónde el modelo no sabe) y **La
-ciudad en el tiempo** (veintiún años de índice SHF).
+**Estaban mezcladas, y ése era el problema.** La app original enseñaba
+cobertura por segmento, σ̂, I de Moran, SDM, SHAP y correcciones de Mondrian.
+Todo eso es necesario para verificar que el motor no mienta, y nada de eso le
+sirve a alguien que quiere saber cuánto vale su departamento. Se le estaba
+pidiendo a un banco de pruebas que fuera un producto, y por eso la pantalla se
+sentía inútil por más que se le arreglara el contraste. Arreglar el diseño no
+iba a arreglar eso.
 
-Una regla la atraviesa entera: **ningún número aparece sin su incertidumbre y
-sin su procedencia**. El valor puntual va siempre con su intervalo; el mapa
-lleva su capa de "cuánto no sé"; y en todas partes se recuerda que son precios
-de oferta. Un número solo, grande y sin contexto, miente por omisión.
+`app.py` contesta una sola pregunta y se embebe en brickbit.co igual que el
+Motor de Morfogénesis. `consola.py` conserva el diagnóstico entero.
 
-El selector de confianza arranca en **80%**, que es la banda con la que se puede
-conversar. El 95% está disponible y es tan ancho que dice poco más que "no sé" —
-y eso no es defecto del método, es el error del modelo.
+Una regla las atraviesa a las dos: **ningún número aparece sin su incertidumbre
+y sin su procedencia**. Un número solo, grande y sin contexto, miente por
+omisión. En la pública eso significa que el intervalo pesa visualmente lo mismo
+que la cifra, que el nivel está **fijo en 80%** —elegir el nivel de confianza
+es una decisión de estadístico, no de quien compra una casa— y que si el
+segmento del inmueble cubre menos de lo prometido, se avisa en castellano.
+
+#### HERE: direcciones y mapa
+
+La pública usa HERE para dos cosas: **geocodificar** —se escribe "Av. Ámsterdam
+240" en vez de `19.4326`— y **teselas**, porque las de CARTO que trae pydeck
+pasaron a exigir cuenta. La llave va en `HERE_API_KEY` (variable de entorno en
+local, `st.secrets` en Streamlit Cloud) y **nunca en el repositorio**.
+
+Dos usos, dos niveles de riesgo: geocodificar ocurre en el servidor y la llave
+no sale de ahí; las teselas las pide el navegador, así que esa llave es visible
+y la defensa es **restringirla por dominio** en el panel de HERE — igual que la
+de Google Maps que este repo ya publica a propósito. Si la app se embebe desde
+Streamlit Cloud, el dominio que HERE ve es el de Streamlit, no el de BrickBit.
+
+Sin llave la app **no se cae**: no dibuja el mapa —antes que enseñar un
+recuadro negro vacío— y se elige alcaldía en vez de escribir dirección.
+
+Y el buscador sólo devuelve direcciones **dentro de la CDMX**. No es cosmético:
+el Atlas está entrenado con 1,772 inmuebles de esta ciudad y su malla no existe
+fuera. Una dirección de Monterrey sí produciría una valuación —tomaría la celda
+H3 más cercana, a cientos de kilómetros— y esa cifra sería inventada con
+apariencia de cálculo. Hay una prueba que lo fija.
 
 **La Fase 2 ahora guarda el AVM entrenado** en `atlas/artifacts/avm_venta.joblib`.
 Sin eso, cada valuación exigiría reentrenar tres modelos y recalibrar el

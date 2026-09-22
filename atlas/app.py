@@ -1,42 +1,39 @@
 """
-BrickBit Atlas — la app.
+BrickBit Atlas — ¿cuánto vale? La app pública.
 
     cd atlas
     streamlit run app.py
 
-Hace visible lo que las fases 0 a 3 dejaron en parquet. Tres pestañas, tres
-preguntas: cuánto vale este inmueble, cómo está el precio en la ciudad, y cómo
-se ha movido el mercado en veintiún años.
+PARA QUIÉN ES, Y POR QUÉ SE REESCRIBIÓ. La versión anterior de este archivo era
+una consola de diagnóstico del modelo: cobertura por segmento, σ̂, I de Moran,
+SDM, SHAP, correcciones de Mondrian. Toda esa información es necesaria —para
+auditar el motor—, y ninguna le sirve a alguien que quiere saber cuánto vale su
+departamento. Se le estaba pidiendo a un banco de pruebas que fuera un
+producto, y por eso la pantalla se sentía inútil por más que se le arreglara el
+contraste. La consola sigue existiendo, entera, en `consola.py`.
 
-UNA REGLA QUE ATRAVIESA TODO: ningún número aparece sin su incertidumbre y sin
-su procedencia. El valor puntual va siempre con su intervalo; el mapa lleva su
-capa de "cuánto no sé"; y en todas partes se recuerda que son precios de OFERTA.
-Un número solo, grande y sin contexto, miente por omisión.
+Esta pantalla contesta UNA pregunta —¿cuánto vale este inmueble?— y se embebe
+en brickbit.co igual que el Motor de Morfogénesis: un iframe a Streamlit Cloud.
 
-SOBRE EL DISEÑO, Y QUÉ SE ARREGLÓ EN CADA PASADA.
+LO QUE NO SE SIMPLIFICA, AUNQUE SEA PÚBLICO. Que el público sea más amplio no
+autoriza a esconder lo incómodo; al contrario. Se queda:
 
-La primera versión tenía texto gris oscuro sobre fondo casi negro, `st.markdown`
-crudo peleando con los componentes nativos, y ninguna jerarquía. Se subió el
-contraste, se fijó una escala tipográfica de tres niveles y cada bloque pasó a
-vivir en una tarjeta.
+  · el intervalo, siempre y del mismo tamaño visual que la cifra;
+  · que son precios de OFERTA y no de cierre;
+  · que no es un avalúo con validez legal;
+  · la advertencia cuando el segmento del inmueble cubre menos de lo prometido.
 
-No alcanzó, y el motivo no era estético: **faltaba el tema de Streamlit**. La
-raíz del repo tiene `.streamlit/config.toml`, pero el Atlas se corre desde
-`atlas/` y Streamlit busca esa configuración relativa al directorio de trabajo.
-Así que la app pintaba su fondo oscuro con CSS mientras los widgets nativos
-—selectbox, slider, number input, st.metric, ejes de las gráficas, celdas del
-dataframe— usaban los colores del tema CLARO. Ninguna cantidad de CSS lo
-arreglaba, porque el CSS no gobierna los canvas de Vega ni los temas internos de
-los widgets. Está en `atlas/.streamlit/config.toml`, con su explicación.
+Un valuador que enseña una cifra sola y grande es más bonito y es mentira por
+omisión. La regla de la casa —lo estimado va en ámbar— aquí aplica a la cifra
+principal, porque la cifra principal es una estimación.
 
-Y se arregló algo que no era diseño sino honestidad: la app enseñaba
-"cobertura 95%" —la global— a quien valuaba un inmueble de un segmento que
-cubrió 86.5% medido. El promedio tapaba justo al grupo que falla. Ahora la
-cobertura del SEGMENTO viaja con el modelo y se muestra cuando difiere.
+SOBRE LOS COMPARABLES QUE SE MUESTRAN. Sólo agregados: cuántos hay cerca y a
+qué precio mediano. Nunca el anuncio individual, ni su dirección, ni su precio
+exacto — el inventario viene de un convenio con Century 21 y publicarlo pieza
+por pieza sería redistribuirlo.
 """
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -46,102 +43,78 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from atlas import lago                                    # noqa: E402
-from atlas.config import cargar                           # noqa: E402
-from atlas.modelos import persistencia                    # noqa: E402
+from atlas import here                                     # noqa: E402
+from atlas import lago                                     # noqa: E402
+from atlas.config import cargar                            # noqa: E402
+from atlas.modelos import persistencia                     # noqa: E402
 
 # ── Paleta v2 de BrickBit ────────────────────────────────────────────────────
-# El ámbar está reservado: marca lo estimado. No se usa de adorno, y por eso
-# tampoco es el `primaryColor` del tema (ver .streamlit/config.toml).
-TIERRA = "#100c0a"      # fondo
-SUP = "#1d1713"         # superficie de tarjeta
-SUP2 = "#272019"        # borde
-CREMA = "#f5ede3"       # texto principal
-TENUE = "#a89c90"       # texto secundario — sube de #9c9188 para llegar a 4.5:1
-BOSQUE = "#24664a"
+TIERRA = "#100c0a"
+SUP = "#1d1713"
+SUP2 = "#272019"
+CREMA = "#f5ede3"
+TENUE = "#a89c90"
 SALVIA = "#6fa287"
 OLIVA = "#b7c489"
-AMBAR = "#F5C277"
-TERRACOTA = "#c07a66"
-ESCALA = [[191, 91, 82], [207, 146, 71], [224, 187, 131], [183, 196, 137], [36, 102, 74]]
+AMBAR = "#F5C277"       # intocable: marca lo estimado
 
-st.set_page_config(page_title="BrickBit Atlas", page_icon="🧭", layout="wide",
-                   initial_sidebar_state="collapsed")
+st.set_page_config(page_title="¿Cuánto vale? · BrickBit", page_icon="🧭",
+                   layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown(f"""<style>
   .stApp {{ background:{TIERRA}; }}
-  .block-container {{ padding-top:2rem; max-width:1280px; }}
-
-  /* Tipografía: tres niveles y no más, para que la vista sepa dónde caer. */
+  .block-container {{ padding-top:1.4rem; padding-bottom:2rem; max-width:1180px; }}
   html, body, [class*="css"] {{ color:{CREMA}; }}
-  h1 {{ font-size:1.9rem !important; font-weight:700; letter-spacing:-.02em; }}
-  h2 {{ font-size:1.15rem !important; font-weight:600; color:{CREMA}; margin-top:0; }}
-  h3 {{ font-size:.82rem !important; font-weight:600; color:{TENUE};
-        text-transform:uppercase; letter-spacing:.09em; margin:0 0 .6rem 0; }}
+  h1 {{ font-size:1.75rem !important; font-weight:700; letter-spacing:-.02em;
+        margin-bottom:.15rem; }}
+  h3 {{ font-size:.78rem !important; font-weight:600; color:{TENUE};
+        text-transform:uppercase; letter-spacing:.09em; margin:0 0 .5rem 0; }}
 
-  /* Tarjetas: cada bloque con su aire, en vez de todo pegado al fondo. */
   .tarjeta {{ background:{SUP}; border:1px solid {SUP2}; border-radius:14px;
-              padding:1.25rem 1.4rem; margin-bottom:1rem; }}
+              padding:1.3rem 1.45rem; margin-bottom:.9rem; }}
   .nota {{ color:{TENUE}; font-size:.86rem; line-height:1.55; margin:.4rem 0 0 0; }}
   .nota b {{ color:{CREMA}; font-weight:600; }}
   .aviso {{ border-left:3px solid {AMBAR}; background:{AMBAR}14;
-            padding:.7rem .95rem; border-radius:0 8px 8px 0; margin:.8rem 0 0 0; }}
-  .aviso p {{ margin:0; color:{CREMA}; font-size:.86rem; line-height:1.5; }}
+            padding:.75rem 1rem; border-radius:0 8px 8px 0; margin:.85rem 0 0 0; }}
+  .aviso p {{ margin:0; color:{CREMA}; font-size:.87rem; line-height:1.5; }}
 
-  /* La cifra grande y su banda. */
-  .cifra {{ font-size:2.9rem; font-weight:700; color:{AMBAR};
-            line-height:1.05; letter-spacing:-.03em; }}
-  .banda {{ font-size:1.25rem; font-weight:600; color:{CREMA}; }}
-  .etq {{ font-size:.78rem; color:{TENUE}; text-transform:uppercase;
+  /* La cifra y su banda pesan visualmente lo mismo, a propósito: si la cifra
+     fuera el doble de grande, el ojo se quedaría con ella y el intervalo
+     sería decorativo. */
+  .cifra {{ font-size:3rem; font-weight:700; color:{AMBAR};
+            line-height:1.04; letter-spacing:-.03em; }}
+  .banda {{ font-size:1.3rem; font-weight:600; color:{CREMA}; }}
+  .etq {{ font-size:.76rem; color:{TENUE}; text-transform:uppercase;
           letter-spacing:.09em; }}
-
-  /* Barra del intervalo. Deliberadamente PLANA y de un solo color: un
-     degradado con el centro más intenso sugeriría que el valor es más probable
-     en medio, y un intervalo conforme no afirma nada de eso. Dice "en algún
-     lugar de aquí", y se ve como lo que dice. */
   .riel {{ position:relative; height:10px; border-radius:6px;
-           margin:1.1rem 0 .45rem 0; background:{SALVIA}3d;
+           margin:1.15rem 0 .5rem 0; background:{SALVIA}3d;
            border:1px solid {SALVIA}55; }}
   .pin {{ position:absolute; top:-5px; width:3px; height:20px;
           border-radius:2px; background:{AMBAR}; }}
   .extremos {{ display:flex; justify-content:space-between; align-items:baseline; }}
 
-  /* Componentes nativos de Streamlit, alineados con la paleta. */
   [data-testid="stMetric"] {{ background:{SUP}; border:1px solid {SUP2};
-      border-radius:12px; padding:.85rem 1rem; }}
-  [data-testid="stMetricValue"] {{ color:{CREMA}; font-size:1.45rem; }}
+      border-radius:12px; padding:.8rem .95rem; }}
+  [data-testid="stMetricValue"] {{ color:{CREMA}; font-size:1.35rem; }}
   [data-testid="stMetricLabel"] {{ color:{TENUE}; }}
+  label, .stSelectbox label, .stSlider label, .stTextInput label {{
+      color:{TENUE} !important; font-size:.85rem !important; }}
   .stTabs [data-baseweb="tab-list"] {{ gap:.35rem; border-bottom:1px solid {SUP2}; }}
   .stTabs [data-baseweb="tab"] {{ background:transparent; color:{TENUE};
-      padding:.55rem 1.1rem; font-weight:500; }}
-  /* El subrayado de la pestaña activa va en oliva, no en ámbar: el ámbar
-     significa "estimado" y gastarlo en un adorno de navegación lo devalúa. */
+      padding:.5rem 1rem; font-weight:500; }}
   .stTabs [aria-selected="true"] {{ color:{CREMA} !important;
       border-bottom:2px solid {OLIVA}; }}
-  div[data-testid="stDataFrame"] {{ border:1px solid {SUP2}; border-radius:12px; }}
-  label, .stSelectbox label, .stSlider label {{ color:{TENUE} !important;
-      font-size:.85rem !important; }}
   hr {{ border-color:{SUP2}; }}
 </style>""", unsafe_allow_html=True)
 
 
-def tarjeta(cuerpo: str) -> None:
-    st.markdown(f"<div class='tarjeta'>{cuerpo}</div>", unsafe_allow_html=True)
-
-
-def nota(texto: str) -> None:
-    st.markdown(f"<p class='nota'>{texto}</p>", unsafe_allow_html=True)
+def nota(t: str) -> None:
+    st.markdown(f"<p class='nota'>{t}</p>", unsafe_allow_html=True)
 
 
 @st.cache_resource
 def _cfg():
     return cargar()
-
-
-@st.cache_data(show_spinner=False)
-def _capa(nombre: str):
-    cfg = _cfg()
-    return lago.leer(nombre, cfg) if lago.existe(nombre, cfg) else None
 
 
 @st.cache_resource
@@ -150,20 +123,105 @@ def _paquete():
 
 
 @st.cache_data(show_spinner=False)
-def _alcaldias() -> pd.DataFrame:
-    """
-    Las 16 alcaldías con un punto aproximado, para orientar y para elegir.
+def _feats():
+    cfg = _cfg()
+    return lago.leer("features_malla", cfg) if lago.existe("features_malla", cfg) else None
 
-    Sale de `data/mexico_municipios.json`, que ya está en el repo. Los
-    polígonos vienen muy simplificados —entre 5 y 20 vértices— así que NO se
-    dibujan como mapa base: quedarían heptágonos y parecería un mapa falso. Se
-    usa sólo el centro del anillo exterior, y se declara como aproximado donde
-    se muestra.
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def _buscar(texto: str) -> list[tuple[str, float, float]]:
     """
-    ruta = _cfg().ruta("municipios")
+    Geocodificación con memoria: la misma dirección no se pide dos veces.
+
+    El TTL de una hora no es por frescura —una dirección no se mueve— sino para
+    que la memoria de una app de larga vida no crezca sin tope.
+    """
+    return [(l.titulo, l.lat, l.lng) for l in here.buscar(texto, _cfg())]
+
+
+def _dinero(x: float) -> str:
+    return f"${x / 1e6:.2f} M" if abs(x) >= 1e6 else f"${x:,.0f}"
+
+
+def _par(lo: float, hi: float) -> tuple[str, str]:
+    """Los dos extremos en la MISMA unidad: existen para compararse."""
+    if max(abs(lo), abs(hi)) >= 1e6:
+        return f"${lo / 1e6:.2f} M", f"${hi / 1e6:.2f} M"
+    return f"${lo:,.0f}", f"${hi:,.0f}"
+
+
+# ─────────────────────────────────────────────────────────────── ubicación
+def _ubicacion(cfg) -> tuple[float, float, str]:
+    """
+    Dónde está el inmueble. Por dirección si hay HERE; por alcaldía si no.
+
+    El estado vive en `st.session_state` porque Streamlit reejecuta el script
+    entero en cada interacción: sin eso, mover el slider de antigüedad borraría
+    la dirección que la persona acaba de buscar.
+    """
+    ss = st.session_state
+    ss.setdefault("lat", 19.4326)
+    ss.setdefault("lng", -99.1650)
+    ss.setdefault("etiqueta", "Centro de la Ciudad de México")
+
+    if here.disponible():
+        with st.form("buscar", clear_on_submit=False):
+            c1, c2 = st.columns([4, 1])
+            q = c1.text_input("Dirección, colonia o punto de referencia",
+                              placeholder="Av. Ámsterdam 240, Condesa",
+                              label_visibility="collapsed")
+            enviar = c2.form_submit_button("Buscar", width="stretch")
+        # Se busca al ENVIAR y no al teclear: autosuggest en cada tecla
+        # convierte una dirección de 30 caracteres en 30 peticiones, y la
+        # cuota de un plan gratuito se va en una tarde.
+        if enviar and q.strip():
+            res = _buscar(q.strip())
+            if not res:
+                st.warning(
+                    "No encontré esa dirección **dentro de la Ciudad de "
+                    "México**. El Atlas sólo está entrenado aquí: fuera de la "
+                    "ciudad daría un número inventado con apariencia de "
+                    "cálculo, así que prefiere no encontrarla.")
+            elif len(res) == 1:
+                ss["etiqueta"], ss["lat"], ss["lng"] = res[0]
+            else:
+                ss["opciones"] = res
+        if ss.get("opciones"):
+            elegido = st.radio("¿Cuál de estas?",
+                               [o[0] for o in ss["opciones"]], index=0)
+            for o in ss["opciones"]:
+                if o[0] == elegido:
+                    ss["etiqueta"], ss["lat"], ss["lng"] = o
+    else:
+        # Sin llave de HERE no se finge un buscador: se dice y se ofrece lo que
+        # sí hay. Un campo de texto que nunca encuentra nada es peor que no
+        # tenerlo, porque parece que el usuario escribe mal.
+        alc = _alcaldias()
+        if not alc.empty:
+            nombres = alc["alcaldia"].tolist()
+            i = nombres.index("Cuauhtémoc") if "Cuauhtémoc" in nombres else 0
+            elegida = st.selectbox("Alcaldía", nombres, index=i)
+            fila = alc.loc[alc["alcaldia"] == elegida].iloc[0]
+            ss["lat"], ss["lng"] = float(fila["lat"]), float(fila["lng"])
+            ss["etiqueta"] = f"{elegida} (centro aproximado)"
+
+    with st.expander("Ajustar el punto en el mapa"):
+        c1, c2 = st.columns(2)
+        ss["lat"] = c1.number_input("Latitud", 19.00, 19.65,
+                                    float(ss["lat"]), format="%.5f")
+        ss["lng"] = c2.number_input("Longitud", -99.37, -98.93,
+                                    float(ss["lng"]), format="%.5f")
+    return float(ss["lat"]), float(ss["lng"]), str(ss["etiqueta"])
+
+
+@st.cache_data(show_spinner=False)
+def _alcaldias() -> pd.DataFrame:
+    """Las 16 alcaldías con su centro aproximado. Respaldo sin HERE."""
+    import json
+
     try:
-        crudo = json.loads(Path(ruta).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        crudo = json.loads(Path(_cfg().ruta("municipios")).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
         return pd.DataFrame(columns=["alcaldia", "lat", "lng"])
     filas = []
     for f in crudo.get("features", []):
@@ -181,376 +239,231 @@ def _alcaldias() -> pd.DataFrame:
     return pd.DataFrame(filas).sort_values("alcaldia").reset_index(drop=True)
 
 
-def _falta(que: str, comando: str) -> None:
-    st.warning(f"Falta **{que}**.")
-    st.code(comando, language="bash")
-
-
-def _dinero(x: float) -> str:
-    """Millones cuando los hay: '$4.2 M' se lee de un vistazo, '$4,183,920' no."""
-    return f"${x / 1e6:.2f} M" if abs(x) >= 1e6 else f"${x:,.0f}"
-
-
-def _par(lo: float, hi: float) -> tuple[str, str]:
+# ─────────────────────────────────────────────────────────────────── mapa
+def _mapa(lat: float, lng: float) -> None:
     """
-    Los dos extremos de un intervalo, en la MISMA unidad.
+    El punto sobre la ciudad. Sólo si hay teselas que poner debajo.
 
-    Con `_dinero` suelto salía «$648,276» junto a «$1.32 M», y el ojo tiene que
-    convertir para comparar los dos números que existen precisamente para ser
-    comparados. Si alguno llega a millones, los dos van en millones.
+    SIN TESELAS NO SE DIBUJA NADA. Un recuadro negro de 260 px con un punto
+    flotando en medio no informa de dónde está el inmueble —que es lo único
+    que el mapa tiene que hacer— y parece que la app está rota. Es mejor
+    decir que falta la llave que enseñar un mapa que no es un mapa.
     """
-    if max(abs(lo), abs(hi)) >= 1e6:
-        return f"${lo / 1e6:.2f} M", f"${hi / 1e6:.2f} M"
-    return f"${lo:,.0f}", f"${hi:,.0f}"
+    import pydeck as pdk
 
-
-# ═══════════════════════════════════════════════════════════════════ valuar
-def pestana_valuar() -> None:
-    p, feats = _paquete(), _capa("features_malla")
-    if p is None:
-        _falta("el AVM entrenado", "cd atlas\npython -m pipelines.fase2")
-        return
-    if feats is None:
-        _falta("la malla de variables", "python -m pipelines.fase1")
+    url = here.url_de_teselas()
+    if not url:
+        nota("El mapa necesita la llave de HERE (<code>HERE_API_KEY</code>). "
+             "Sin ella no se dibuja, para no enseñar un recuadro vacío: "
+             "<b>la valuación y el punto son correctos igual</b>.")
         return
 
-    dias = p.antiguedad_dias()
-    if dias > 90:
-        st.warning(
-            f"Modelo entrenado con inventario de hace **{dias} días**. Un AVM "
-            "viejo sigue dando números convincentes mucho después de dejar de "
-            "ser cierto — corre `tools\\actualizar-atlas.bat`.")
+    st.pydeck_chart(pdk.Deck(
+        map_style=None,
+        initial_view_state=pdk.ViewState(latitude=lat, longitude=lng,
+                                         zoom=15, pitch=0),
+        layers=[
+            pdk.Layer("TileLayer", data=url, min_zoom=0, max_zoom=19,
+                      tile_size=512, opacity=1.0),
+            pdk.Layer(
+                "ScatterplotLayer",
+                data=pd.DataFrame([{"lat": lat, "lng": lng}]),
+                get_position=["lng", "lat"],
+                get_radius=9, radius_min_pixels=7, radius_max_pixels=14,
+                get_fill_color=[245, 194, 119, 240],
+                get_line_color=[16, 12, 10, 255], line_width_min_pixels=2,
+                stroked=True, pickable=False,
+            ),
+        ],
+    ), height=250)
 
-    izq, der = st.columns([0.9, 1.1], gap="large")
+
+# ───────────────────────────────────────────────────────── el vecindario
+def _vecindario(p, lat: float, lng: float, precio_m2: float | None = None) -> None:
+    """
+    A qué precio se ofrece lo de alrededor. Agregado, nunca pieza por pieza.
+
+    Es el dato que más confianza da y el más fácil de convertir en una fuga: el
+    inventario viene de un convenio con Century 21, así que se publica la
+    MEDIANA de un puñado de vecinos y su conteo, nunca un anuncio con su
+    dirección y su precio.
+    """
+    if p.fuentes_xy is None or p.fuentes_y is None or not len(p.fuentes_y):
+        return
+    from atlas.geo import _xy, puntos
+
+    cfg = _cfg()
+    try:
+        xy = _xy(puntos(pd.DataFrame([{"lat": lat, "lng": lng}]), cfg=cfg), cfg)
+    except Exception:                        # noqa: BLE001 — el vecindario es un extra
+        return
+    d = np.hypot(p.fuentes_xy[:, 0] - xy[0, 0], p.fuentes_xy[:, 1] - xy[0, 1])
+
+    filas = []
+    for radio in (1000.0, 3000.0):
+        sel = d <= radio
+        n = int(sel.sum())
+        if n < 5:                            # con menos de cinco, la mediana no dice nada
+            filas.append((radio, n, None))
+            continue
+        filas.append((radio, n, float(np.exp(np.median(p.fuentes_y[sel])))))
+
+    st.markdown("### A qué precio se ofrece lo de alrededor")
+    cols = st.columns(len(filas))
+    for c, (radio, n, med) in zip(cols, filas):
+        etiqueta = f"En {radio / 1000:.0f} km"
+        if med is None:
+            c.metric(etiqueta, "—", help="Menos de 5 inmuebles: la mediana no dice nada.")
+        else:
+            c.metric(etiqueta, f"${med:,.0f}/m²", f"{n} inmuebles")
+    nota("Medianas del inventario con el que se entrenó, no anuncios "
+         "individuales. Es lo que un perito mira primero, y explica buena parte "
+         "de la cifra de arriba.")
+
+    # CÓMO QUEDA CONTRA SU ZONA. Es la pregunta que la gente trae de verdad
+    # —"¿me están pidiendo caro?"— y sale de comparar dos números que ya
+    # tenemos. Se usa el radio más amplio que tenga suficientes vecinos: con
+    # cuatro comparables la mediana es una anécdota.
+    referencia = next((m for _, n, m in filas if m is not None and n >= 15), None)
+    if referencia is None or precio_m2 is None or not np.isfinite(precio_m2):
+        return
+    brecha = (precio_m2 / referencia - 1) * 100
+    if abs(brecha) < 8:
+        veredicto = "prácticamente en línea con su zona"
+    elif brecha > 0:
+        veredicto = f"<b>{abs(brecha):.0f}% por encima</b> de la mediana de su zona"
+    else:
+        veredicto = f"<b>{abs(brecha):.0f}% por debajo</b> de la mediana de su zona"
+    st.markdown(
+        f"<div class='tarjeta' style='margin-top:.6rem'>"
+        f"<div class='etq'>Cómo queda contra su zona</div>"
+        f"<p class='nota' style='font-size:.95rem;color:{CREMA}'>"
+        f"A ${precio_m2:,.0f}/m², este inmueble está {veredicto}.</p>"
+        f"<p class='nota'>La diferencia no es buena ni mala por sí sola: un "
+        f"inmueble más nuevo, más grande o mejor ubicado dentro de la misma "
+        f"zona <b>debe</b> salirse de la mediana. Sirve como punto de partida "
+        f"para preguntar por qué, no como veredicto.</p></div>",
+        unsafe_allow_html=True)
+
+
+# ────────────────────────────────────────────────────────────── principal
+def principal() -> None:
+    p, feats = _paquete(), _feats()
+    if p is None or feats is None:
+        st.error("El motor de valuación no está disponible en este momento.")
+        nota("Si eres de BrickBit: falta correr <code>python -m pipelines.fase2</code>.")
+        return
+
+    cfg = _cfg()
+    izq, der = st.columns([1, 1.15], gap="large")
 
     with izq:
         st.markdown("### Dónde está")
-        # Antes había que escribir 19.4326 a mano, que no es algo que nadie
-        # sepa de memoria. Se elige la alcaldía y las coordenadas quedan
-        # disponibles para afinarlas si hace falta.
-        alc = _alcaldias()
-        lat, lng = 19.4326, -99.1650
-        if not alc.empty:
-            nombres = alc["alcaldia"].tolist()
-            i = nombres.index("Cuauhtémoc") if "Cuauhtémoc" in nombres else 0
-            elegida = st.selectbox("Alcaldía", nombres, index=i)
-            fila = alc.loc[alc["alcaldia"] == elegida].iloc[0]
-            lat, lng = float(fila["lat"]), float(fila["lng"])
+        lat, lng, etiqueta = _ubicacion(cfg)
+        _mapa(lat, lng)
 
-        with st.expander("Ajustar el punto exacto"):
-            nota("El centro de la alcaldía es <b>aproximado</b>. Dentro de una "
-                 "misma alcaldía el precio cambia mucho —la pendiente mediana "
-                 "es de 8%/km— así que para una valuación seria conviene el "
-                 "punto real.")
-            c1, c2 = st.columns(2)
-            lat = c1.number_input("Latitud", 19.00, 19.65, lat, format="%.5f")
-            lng = c2.number_input("Longitud", -99.37, -98.93, lng, format="%.5f")
-
-        st.markdown("### El inmueble")
-        tipos = sorted({c.replace("tipo_", "") for c in p.columnas if c.startswith("tipo_")}
-                       | {p.tipo_referencia or "otro"})
-        c3, c4 = st.columns([1, 1])
-        tipo = c3.selectbox("Tipo", tipos,
+        st.markdown("### Cómo es")
+        tipos = sorted({c.replace("tipo_", "") for c in p.columnas
+                        if c.startswith("tipo_")} | {p.tipo_referencia or "otro"})
+        nombres = {"depto": "Departamento", "casa": "Casa",
+                   "terreno": "Terreno", "otro": "Otro"}
+        c1, c2 = st.columns([1, 1])
+        tipo = c1.selectbox("Tipo", tipos, format_func=lambda t: nombres.get(t, t.title()),
                             index=tipos.index("depto") if "depto" in tipos else 0)
-        sup = c4.number_input("Superficie (m²)", 20, 2000, 90, step=5)
-
-        c5, c6, c7 = st.columns(3)
-        rec = c5.number_input("Recámaras", 0, 10, 2)
-        ban = c6.number_input("Baños", 0, 10, 2)
-        est = c7.number_input("Estac.", 0, 6, 1)
+        sup = c2.number_input("Superficie (m²)", 20, 2000, 90, step=5)
+        c3, c4, c5 = st.columns(3)
+        rec = c3.number_input("Recámaras", 0, 10, 2)
+        ban = c4.number_input("Baños", 0, 10, 2)
+        est = c5.number_input("Estacionamientos", 0, 6, 1)
         ant = st.slider("Antigüedad (años)", 0, 70, 10)
-
-        st.markdown("### Confianza")
-        nivel = st.select_slider(
-            "nivel", options=[0.50, 0.80, 0.90, 0.95], value=0.80,
-            format_func=lambda v: f"{v * 100:.0f}%", label_visibility="collapsed")
-        nota("El <b>80%</b> es la banda con la que se puede conversar. El 95% es "
-             "tan ancho que dice poco más que «no sé», y no por defecto del "
-             "método: es el error del modelo.")
 
     X = persistencia.fila_de_inmueble(
         lat, lng,
         {"tipo": tipo, "superficie_construida_m2": sup, "recamaras": rec,
          "banos": ban, "estacionamientos": est, "antiguedad_anios": ant},
-        feats, p.columnas, p.tipo_referencia, _cfg(),
+        feats, p.columnas, p.tipo_referencia, cfg,
         fuentes=(p.fuentes_xy, p.fuentes_y) if p.fuentes_xy is not None else None)
-    v = persistencia.valuar(p, X, sup, alpha=round(1 - nivel, 2))
+    # El 80% es el nivel de producto y está fijado, no ofrecido: elegir el nivel
+    # de confianza es una decisión de estadístico, no de quien compra una casa.
+    # El 95% se guarda para la consola, donde alguien sabe qué está pidiendo.
+    v = persistencia.valuar(p, X, sup, alpha=0.20)
 
     with der:
-        # Dónde cae la estimación dentro de su propia banda: verlo dice más que
-        # leer dos cifras sueltas. La mediana NO está en el centro porque el
-        # intervalo es multiplicativo, y eso es información, no un error.
         pos = (v.precio_total - v.lo_total) / max(v.hi_total - v.lo_total, 1e-9)
         s_lo, s_hi = _par(v.lo_total, v.hi_total)
-        tarjeta(
-            f"<div class='etq'>Estimación · mediana</div>"
+        st.markdown(
+            f"<div class='tarjeta'>"
+            f"<div class='etq'>Se ofrecería en torno a</div>"
             f"<div class='cifra'>{_dinero(v.precio_total)}</div>"
-            f"<div class='nota' style='margin-top:.1rem'>"
-            f"${v.precio_m2:,.0f} por m² · segmento «{v.segmento}»</div>"
+            f"<div class='nota' style='margin-top:.15rem'>"
+            f"${v.precio_m2:,.0f} por m² · {etiqueta}</div>"
             f"<div class='riel'><div class='pin' style='left:{pos * 100:.1f}%'></div></div>"
-            f"<div class='extremos'>"
-            f"<span class='banda'>{s_lo}</span>"
+            f"<div class='extremos'><span class='banda'>{s_lo}</span>"
             f"<span class='etq'>en algún lugar de aquí</span>"
             f"<span class='banda'>{s_hi}</span></div>"
-            f"<div class='nota'>Intervalo al {(1 - v.alpha) * 100:.0f}% "
-            f"— ancho ±{v.ancho_pct:.0f}%. La banda es plana a propósito: la "
-            f"garantía dice que el valor cae dentro, <b>no</b> que sea más "
-            f"probable en el centro.</div>")
-
-        m = p.metricas
-        a, b, c = st.columns(3)
-        a.metric("Error mediano", f"{m.get('mdape_pct', float('nan')):.0f}%")
-        b.metric("Cobertura global", f"{m.get('cobertura_95', 0) * 100:.0f}%")
-        c.metric("Entrenado con", f"{p.n_entrenamiento:,}")
-        nota(f"Medido sobre barrios que el modelo <b>nunca vio</b>. "
-             f"Inventario de {p.fecha_datos[:10]}.")
+            f"<div class='nota'>4 de cada 5 inmuebles así se ofrecen dentro de "
+            f"esa banda. Es ancha porque el mercado de la CDMX lo es: dos "
+            f"departamentos idénticos en la misma cuadra se anuncian con "
+            f"diferencias de esta magnitud.</div>"
+            f"</div>", unsafe_allow_html=True)
 
         _aviso_de_segmento(p, v)
-        _precio_de_la_certeza(p, X, sup, v)
+        _vecindario(p, lat, lng, v.precio_m2)
 
-    st.markdown("<div style='height:.6rem'></div>", unsafe_allow_html=True)
-    tarjeta(
-        "<div class='etq'>Qué es y qué no es este número</div>"
-        "<p class='nota'>Es el precio al que se <b>ofrecería</b> un inmueble así, "
-        "no aquel al que se vende. En México no hay MLS abierto ni Registro "
-        "Público accesible, así que el precio de cierre no es observable y no se "
-        "le aplica ningún descuento inventado. <b>No es un avalúo con validez "
-        "legal</b> salvo que lo suscriba un perito valuador.</p>")
+    st.markdown("<div style='height:.4rem'></div>", unsafe_allow_html=True)
+    _letra_chica(p)
 
 
 def _aviso_de_segmento(p, v) -> None:
     """
-    Si el segmento de ESTE inmueble cubrió menos de lo prometido, decirlo.
+    Si el segmento de ESTE inmueble cubre menos de lo prometido, decirlo.
 
-    La cobertura global tapa a los segmentos que fallan: en la última corrida el
-    conjunto entero cubrió 95.5% y `depto·medio` cubrió 86.5%. Alguien valuando
-    un departamento de precio medio veía el 95.5% y no el 86.5%, que es el
-    número que le toca. Un promedio no es una garantía para cada grupo.
+    La cobertura global tapa a los segmentos que fallan: medido, el conjunto
+    entero cubrió 95.5% y `depto·medio` cubrió 86.5%. Quien valúa un
+    departamento de precio medio merece el 86.5%, que es su número, y no el
+    promedio de todos. Se dice en castellano, sin nombrar a Mondrian.
     """
-    por_seg = (p.metricas or {}).get("cobertura_por_segmento") or {}
-    if not por_seg:
-        # Paquete de antes de que esto se guardara: se dice, no se finge.
-        nota("La cobertura por segmento no viaja en este paquete. Para verla, "
-             "vuelve a correr <b>python -m pipelines.fase2</b>.")
-        return
-
+    m = p.metricas or {}
+    por_seg = m.get("cobertura_por_segmento") or {}
     d = por_seg.get(str(v.segmento))
     if not d:
         return
     cob = float(d.get("cobertura", float("nan"))) * 100
-    n = int(d.get("n", 0))
-    objetivo = float((p.metricas or {}).get("objetivo_95", 0.95)) * 100
-
-    if not np.isfinite(cob):
+    objetivo = float(m.get("objetivo_95", 0.95)) * 100
+    if not np.isfinite(cob) or cob >= objetivo - 2:
         return
-    if cob < objetivo - 2:
-        st.markdown(
-            f"<div class='aviso'><p><b>Este segmento cubre menos de lo que "
-            f"promete.</b> En «{v.segmento}» el intervalo del "
-            f"{objetivo:.0f}% cubrió <b>{cob:.1f}%</b> sobre {n} inmuebles de "
-            f"prueba. La banda de arriba es más angosta de lo que este grupo "
-            f"justifica — trátala como optimista, no como garantía.</p></div>",
-            unsafe_allow_html=True)
-    else:
-        nota(f"En «{v.segmento}» la cobertura medida fue "
-             f"<b>{cob:.1f}%</b> sobre {n} inmuebles de prueba.")
-
-
-def _precio_de_la_certeza(p, X: pd.DataFrame, sup: float, actual) -> None:
-    """
-    Qué cuesta cada nivel de confianza EN ESTE inmueble, no en el promedio.
-
-    El informe de la Fase 2 trae esta tabla para la ciudad entera, y ahí sirve
-    para juzgar el método. A quien está valuando le sirve otra cosa: ver que
-    pedir 95% en vez de 80% le duplica la banda de SU propiedad. Sale gratis —
-    el paquete ya guarda la corrección conforme de los cuatro niveles y cambiar
-    de nivel con el score normalizado no reentrena nada—.
-    """
-    niveles = sorted(p.alphas, reverse=True)      # alpha grande = confianza baja
-    if len(niveles) < 2:
-        return
-    filas = []
-    for a in niveles:
-        try:
-            w = persistencia.valuar(p, X, sup, alpha=a)
-        except Exception:                          # noqa: BLE001 — un nivel roto no tumba la vista
-            continue
-        lo, hi = _par(w.lo_total, w.hi_total)
-        filas.append({"Confianza": f"{(1 - w.alpha) * 100:.0f}%",
-                      "Desde": lo, "Hasta": hi, "Ancho": f"±{w.ancho_pct:.0f}%"})
-    if len(filas) < 2:
-        return
-    st.markdown("<div style='height:.5rem'></div>", unsafe_allow_html=True)
-    st.markdown("### Qué cuesta cada nivel, en este inmueble")
-    st.dataframe(pd.DataFrame(filas), width="stretch", hide_index=True)
-    nota("Subir la confianza no mejora la estimación: <b>ensancha la banda</b>. "
-         "La cifra de arriba no se mueve en ninguna fila — lo único que cambia "
-         "es cuánto se admite no saber.")
-
-
-# ═════════════════════════════════════════════════════════════════════ mapa
-def pestana_mapa() -> None:
-    campo = _capa("campo_cdmx")
-    if campo is None:
-        _falta("el campo espacial", "cd atlas\npython -m pipelines.fase3")
-        return
-    import pydeck as pdk
-
-    CAPAS = {
-        "Precio por m²": ("ln_precio_m2", False,
-                          "Verde donde es caro. Es la superficie suavizada, no los "
-                          "anuncios sueltos: dos departamentos de la misma cuadra se "
-                          "ofrecen a precios distintos y eso es ruido, no geografía."),
-        "Cuánto NO sé": ("sigma_nivel", True,
-                         "Rojo donde el modelo tiene menos comparables. <b>No es un "
-                         "hueco, es una respuesta</b>: saber dónde no se sabe evita "
-                         "confiar en una cifra que el modelo no puede sostener."),
-        "Pendiente del precio": ("pendiente_pct_km", False,
-                                 "Cuánto sube el precio por kilómetro. Verde donde la "
-                                 "pendiente es fuerte — ahí un par de cuadras cambian "
-                                 "mucho el valor."),
-    }
-    capa = st.radio("capa", list(CAPAS), horizontal=True, label_visibility="collapsed")
-    col, invertir, explicacion = CAPAS[capa]
-
-    d = campo.copy()
-    v = d[col].to_numpy(dtype=float)
-    lo, hi = np.nanpercentile(v, [5, 95])
-    t = np.clip((v - lo) / max(hi - lo, 1e-9), 0, 1)
-    if invertir:
-        t = 1 - t
-    d[["r", "g", "b"]] = np.array(ESCALA)[(t * (len(ESCALA) - 1)).astype(int)]
-    # La altura la da SIEMPRE el precio: mover el relieve con cada capa
-    # desorienta, y el relieve es lo que ancla la vista a la ciudad.
-    d["alto"] = np.clip(d["ln_precio_m2"] - np.nanmin(d["ln_precio_m2"]), 0, None)
-    d["precio_m2"] = np.exp(d["ln_precio_m2"]).round(0).astype(int)
-    d["incert_pct"] = (d["sigma_nivel"] * 100).round(0).astype(int)
-    d["pend"] = d["pendiente_pct_km"].round(1)
-
-    capas = [pdk.Layer(
-        "ColumnLayer", data=d, get_position=["lng", "lat"],
-        get_elevation="alto", elevation_scale=900, radius=105,
-        get_fill_color=["r", "g", "b", 205], pickable=True, auto_highlight=True,
-    )]
-    # ORIENTACIÓN. Sin mapa base —las teselas de CARTO ya piden cuenta— un
-    # bosque de columnas no dice en qué parte de la ciudad estás. Los nombres de
-    # las alcaldías bastan para ubicarse y no fingen una geometría que no
-    # tenemos: los polígonos del repo traen 7 vértices y dibujarlos daría un
-    # mapa falso de aspecto convincente.
-    alc = _alcaldias()
-    if not alc.empty:
-        capas.append(pdk.Layer(
-            "TextLayer", data=alc, get_position=["lng", "lat"],
-            get_text="alcaldia", get_size=11, get_color=[245, 237, 227, 165],
-            get_alignment_baseline="'bottom'", pickable=False,
-        ))
-
-    st.pydeck_chart(pdk.Deck(
-        map_style=None,
-        initial_view_state=pdk.ViewState(latitude=19.395, longitude=-99.14,
-                                         zoom=9.7, pitch=42, bearing=12),
-        layers=capas,
-        tooltip={"html": "<b>${precio_m2}</b> por m²<br/>"
-                         "incertidumbre ±{incert_pct}%<br/>"
-                         "pendiente {pend} %/km",
-                 "style": {"backgroundColor": SUP, "color": CREMA,
-                           "fontSize": "12px", "borderRadius": "8px"}},
-    ), height=520)
-
-    nota(explicacion + " <span style='opacity:.8'>Los nombres marcan el centro "
-         "<b>aproximado</b> de cada alcaldía, sólo para orientar.</span>")
-
-    a, b, c = st.columns(3)
-    a.metric("Celdas", f"{len(d):,}")
-    b.metric("Pendiente mediana", f"{d['pendiente_pct_km'].median():.1f} %/km")
-    c.metric("Incertidumbre típica", f"±{d['sigma_nivel'].median() * 100:.0f}%")
-
-    fr = _capa("frontera_cdmx")
-    if fr is not None and "es_frontera" in fr.columns and int(fr["es_frontera"].sum()):
-        n = int(fr["es_frontera"].sum())
-        st.markdown("<div style='height:.8rem'></div>", unsafe_allow_html=True)
-        st.markdown(f"## Frente de precio · {n} inmuebles")
-        nota("Baratos rodeados de caros. Es un diferencial <b>presente</b>, no una "
-             "plusvalía futura: que el mercado lo cierre depende de POR QUÉ está "
-             "abierto, y esa razón puede ser una barrera física, un uso de suelo o "
-             "una diferencia real de calidad que ninguna de estas variables ve.")
-        tabla = (fr.loc[fr["es_frontera"], ["lat", "lng", "ln_precio_m2", "brecha_vecinos"]]
-                 .assign(**{"$/m²": lambda x: np.exp(x["ln_precio_m2"]).round(0),
-                            "bajo sus vecinos": lambda x:
-                                ((np.exp(x["brecha_vecinos"]) - 1) * 100).round(0)})
-                 .drop(columns=["ln_precio_m2", "brecha_vecinos"])
-                 .sort_values("bajo sus vecinos", ascending=False).head(20))
-        st.dataframe(tabla, width="stretch", hide_index=True,
-                     column_config={"bajo sus vecinos": st.column_config.NumberColumn(
-                         "bajo sus vecinos", format="%d %%")})
-
-
-# ═══════════════════════════════════════════════════════════════════ ciudad
-def pestana_ciudad() -> None:
-    from atlas.temporal import indice
-
-    panel = indice.cargar_panel(_cfg())
-    zonas = list(panel.nivel.columns)
-    zona = st.selectbox("Zona", zonas, index=zonas.index("Ciudad de México"))
-    r = indice.resumen_zona(panel, zona).dropna()
-    a0, a1 = panel.anios[0], panel.anios[-1]
-    acum = indice.acumulado(panel, zona, a0, a1)
-
-    a, b, c = st.columns(3)
-    a.metric(f"Acumulado {a0}–{a1}", f"×{acum:.2f}")
-    b.metric("Anual compuesto", f"{(acum ** (1 / (a1 - a0)) - 1) * 100:.2f}%")
-    c.metric(f"Último año ({a1})", f"{r['crec_%'].iloc[-1]:+.2f}%")
-
-    izq, der = st.columns([1.4, 1], gap="large")
-    with izq:
-        st.markdown("### Índice de precios")
-        st.line_chart(r[["indice"]], height=260, color=SALVIA)
-    with der:
-        st.markdown("### Crecimiento anual")
-        st.bar_chart(r[["crec_%"]], height=260, color=BOSQUE)
-
-    tarjeta(
-        "<div class='etq'>Es nominal</div>"
-        "<p class='nota'>No está deflactado, así que una parte de ese crecimiento "
-        "es inflación y no plusvalía. Decir «subió 7.9% al año» y decir «subió "
-        "7.9% <b>más que todo lo demás</b>» no es lo mismo ni de lejos, y con "
-        "estos datos sólo se puede afirmar lo primero.<br><br>"
-        "Fuente: SHF, avalúos de vivienda con crédito hipotecario garantizado — "
-        "<b>transacciones reales</b>, no ofertas. Es la mitad que a los listados "
-        "les falta; a cambio es estatal, así que dice cuánto se movió la ciudad "
-        "entera y no qué colonia.</p>")
-
-    tarjeta(
-        "<div class='etq'>¿El crecimiento se contagia entre zonas vecinas?</div>"
-        "<p class='nota'>Puesto a prueba con validación hacia adelante sobre 480 "
-        "predicciones fuera de muestra, el término espacial <b>no aporta</b>: "
-        "añadir el crecimiento del vecindario empeora el error un 2.6% frente a "
-        "usar sólo el momentum propio. Agrupamiento no es contagio —dos vecinos "
-        "pueden crecer igual por un choque común, sin que uno empuje al otro— y "
-        "la prueba es predecir.</p>")
-
-
-# ══════════════════════════════════════════════════════════════════════ main
-c1, c2 = st.columns([3, 1])
-with c1:
-    st.markdown("# 🧭 BrickBit Atlas")
     st.markdown(
-        f"<p class='nota' style='margin-top:-.5rem'>Inteligencia inmobiliaria de "
-        f"la Ciudad de México · <span style='color:{AMBAR}'>precios de oferta, "
-        f"no de cierre</span></p>", unsafe_allow_html=True)
-with c2:
-    _p = _paquete()
-    if _p is not None:
-        st.markdown(
-            f"<div style='text-align:right;padding-top:1rem'>"
-            f"<div class='etq'>Inventario</div>"
-            f"<div style='font-size:1.1rem;color:{CREMA};font-weight:600'>"
-            f"{_p.fecha_datos[:10]}</div></div>", unsafe_allow_html=True)
+        f"<div class='aviso'><p><b>Para inmuebles como éste, la banda es "
+        f"optimista.</b> Al comprobarlo sobre barrios que el modelo nunca "
+        f"había visto, este tipo de propiedad se salió de su banda más seguido "
+        f"de lo previsto. Tómala como un punto de partida para negociar, no "
+        f"como un techo ni un piso.</p></div>", unsafe_allow_html=True)
 
-t1, t2, t3 = st.tabs(["  Valuar  ", "  Mapa  ", "  La ciudad en el tiempo  "])
-with t1:
-    pestana_valuar()
-with t2:
-    pestana_mapa()
-with t3:
-    pestana_ciudad()
+
+def _letra_chica(p) -> None:
+    dias = p.antiguedad_dias()
+    fresco = (f"Inventario de {p.fecha_datos[:10]}"
+              + (f" — hace {dias} días" if dias >= 0 else ""))
+    st.markdown(
+        f"<div class='tarjeta'>"
+        f"<div class='etq'>Lo que esta cifra es, y lo que no</div>"
+        f"<p class='nota'>Es el precio al que un inmueble así se "
+        f"<b>ofrecería</b>, no aquel al que se vende. En México no hay MLS "
+        f"abierto ni Registro Público accesible, así que el precio de cierre no "
+        f"es observable; preferimos decirlo a aplicarle un descuento inventado. "
+        f"<b>No es un avalúo con validez legal</b> salvo que lo suscriba un "
+        f"perito valuador.<br><br>"
+        f"Se calcula con {p.n_entrenamiento:,} inmuebles de la Ciudad de "
+        f"México y se comprueba en barrios que el modelo nunca vio. "
+        f"{fresco}.</p></div>", unsafe_allow_html=True)
+
+
+# ═══════════════════════════════════════════════════════════════════ main
+st.markdown("# 🧭 ¿Cuánto vale?")
+st.markdown(
+    f"<p class='nota' style='margin-top:-.35rem;margin-bottom:1.1rem'>"
+    f"Valuación de inmuebles en la Ciudad de México · "
+    f"<span style='color:{AMBAR}'>la cifra en ámbar es una estimación, "
+    f"siempre con su rango</span></p>", unsafe_allow_html=True)
+
+principal()

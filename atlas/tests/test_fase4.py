@@ -8,6 +8,8 @@ un número convincente y equivocado, que es peor que no enseñar nada.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -199,3 +201,81 @@ def test_los_hiperparametros_se_eligen_por_bloque_y_no_al_azar():
     assert len(tabla) == len(arboles.REJILLA)
     assert tabla["mediana_abs_log"].is_monotonic_increasing, "la tabla va de mejor a peor"
     assert mejores["max_leaf_nodes"] in {c["max_leaf_nodes"] for c in arboles.REJILLA}
+
+
+# ---------------------------------------------------------------------------
+# HERE. No se prueba la red —el entorno donde se escribió esto la tiene
+# bloqueada y el servicio puede cambiar—, se prueba que la app NO se caiga ni
+# invente cuando HERE falta, falla o responde algo inesperado.
+# ---------------------------------------------------------------------------
+def test_sin_llave_here_no_finge_un_buscador(monkeypatch):
+    """
+    Sin llave, todo devuelve vacío y la app enseña el camino por alcaldía.
+
+    Un campo de búsqueda que nunca encuentra nada es peor que no tenerlo: la
+    persona cree que escribe mal la dirección.
+    """
+    from atlas import here
+
+    monkeypatch.delenv("HERE_API_KEY", raising=False)
+    monkeypatch.setattr(here, "llave", lambda: None)
+    assert here.disponible() is False
+    assert here.url_de_teselas() is None
+    assert here.buscar("Av. Ámsterdam 240") == []
+    assert here.sugerir("Av. Ámsterdam 240") == []
+
+
+def test_la_llave_nunca_sale_del_repositorio(monkeypatch):
+    """La llave viene del entorno o de st.secrets; jamás de un archivo versionado."""
+    from atlas import here
+
+    monkeypatch.setenv("HERE_API_KEY", "LLAVE_DE_PRUEBA")
+    assert here.llave() == "LLAVE_DE_PRUEBA"
+    url = here.url_de_teselas()
+    assert url and "LLAVE_DE_PRUEBA" in url and "{z}" in url and "{y}" in url
+
+    raiz = Path(__file__).resolve().parent.parent
+    for p in list(raiz.rglob("*.py")) + list(raiz.rglob("*.toml")):
+        if "LLAVE_DE_PRUEBA" in p.read_text(encoding="utf-8", errors="ignore"):
+            assert p.name == "test_fase4.py", f"la llave quedó escrita en {p}"
+
+
+def test_una_respuesta_rota_de_here_no_tumba_la_app(monkeypatch):
+    """
+    HERE puede contestar cualquier cosa: campos ausentes, tipos raros, nada.
+
+    Lo que NO puede pasar es que una excepción suba hasta la valuación. Si la
+    dirección no se encuentra, la persona elige alcaldía; si la app revienta,
+    no hay valuación.
+    """
+    from atlas import here
+
+    monkeypatch.setattr(here, "llave", lambda: "X")
+    for respuesta in (None, {}, {"items": None}, {"items": [{}]},
+                      {"items": [{"position": {"lat": "no-es-un-numero"}}]},
+                      {"items": [{"title": "Sin posición"}]}):
+        monkeypatch.setattr(here, "_pedir", lambda _u, r=respuesta: r)
+        assert here.buscar("Reforma 222") == []
+        assert here.sugerir("Reforma 222") == []
+
+
+def test_here_no_devuelve_direcciones_fuera_de_la_cdmx(monkeypatch):
+    """
+    El filtro geográfico no es cosmético.
+
+    El Atlas está entrenado sólo en la Ciudad de México y su malla no existe
+    fuera. Una dirección de Monterrey SÍ produciría una valuación —la fila
+    tomaría la celda H3 más cercana, a cientos de kilómetros— y esa cifra sería
+    inventada con apariencia de cálculo.
+    """
+    from atlas import here
+
+    monkeypatch.setattr(here, "llave", lambda: "X")
+    monkeypatch.setattr(here, "_pedir", lambda _u: {"items": [
+        {"title": "Condesa, CDMX", "position": {"lat": 19.41, "lng": -99.17}},
+        {"title": "San Pedro, Monterrey", "position": {"lat": 25.65, "lng": -100.40}},
+        {"title": "Cancún, QRoo", "position": {"lat": 21.16, "lng": -86.85}},
+    ]})
+    r = here.buscar("centro")
+    assert [l.titulo for l in r] == ["Condesa, CDMX"], \
+        "una dirección fuera de la CDMX llegaría a valuarse con la celda más lejana"
