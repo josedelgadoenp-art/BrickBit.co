@@ -1,0 +1,44 @@
+# BrickBit Atlas — tema de Streamlit (paleta v2 mate de brickbit.co)
+#
+# POR QUÉ ESTE ARCHIVO EXISTE AQUÍ Y NO SÓLO EN LA RAÍZ.
+#
+# La raíz del repo ya tenía un `.streamlit/config.toml` con este mismo tema,
+# pero es para el Motor de Morfogénesis, que se corre desde la raíz. El Atlas se
+# corre desde `atlas/`:
+#
+#     cd atlas && streamlit run app.py
+#
+# y Streamlit busca la configuración del proyecto **relativa al directorio de
+# trabajo**, no junto al script. Desde `atlas/` nunca encontraba el tema.
+#
+# El síntoma no era un error: la app pintaba su fondo oscuro con CSS propio
+# mientras los COMPONENTES NATIVOS de Streamlit —selectbox, slider, number
+# input, st.metric, ejes de las gráficas, celdas del dataframe— seguían usando
+# los colores del tema claro por omisión. Texto claro sobre fondo oscuro donde
+# tocaba, y texto oscuro sobre oscuro donde no: la mitad de la interfaz
+# invisible, y la otra mitad con bordes que no se veían. Se reportó como "muchas
+# cosas no se alcanzan a ver o son bastante raras a la vista", y no había manera
+# de arreglarlo con más CSS porque el CSS no gobierna los canvas de Vega ni los
+# temas internos de los widgets.
+#
+# Los colores son los de la paleta v2 y coinciden con las constantes de app.py.
+# Si se cambian aquí, hay que cambiarlos allá.
+#
+# EL ÁMBAR NO VA COMO `primaryColor`, A PROPÓSITO. En este proyecto el ámbar
+# marca lo ESTIMADO y sólo eso (regla de CLAUDE.md). Si fuera el color primario
+# de Streamlit lo heredarían el mango del slider, los anillos de foco y los
+# checkboxes, y a la tercera pantalla ámbar dejaría de significar "este número
+# es una estimación" para significar "esto es interactivo". El primario es el
+# oliva, igual que en la raíz.
+[theme]
+base = "dark"
+primaryColor = "#b7c489"            # oliva — el ámbar está reservado
+backgroundColor = "#100C0A"         # tierra
+secondaryBackgroundColor = "#1D1713"  # superficie de tarjeta
+textColor = "#F5EDE3"               # crema
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false

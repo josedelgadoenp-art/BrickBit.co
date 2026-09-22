@@ -373,6 +373,16 @@ def construir(cfg, operacion: str = "venta", alpha: float | None = None,
             "r2_log": res["punto"]["apilado"].r2_log,
             "cobertura_95": res["intervalo"].cobertura,
             "ancho_95_pct": res["intervalo"].ancho_mediano_pct,
+            # LA COBERTURA POR SEGMENTO VIAJA CON EL MODELO, y no sólo la
+            # global. Sin esto la app enseña "cobertura 95%" a quien valúa un
+            # departamento de precio medio, cuyo segmento cubrió 86.5% medido —
+            # un promedio que tapa justo al grupo que falla. El informe ya lo
+            # decía; quien usa la app también tiene derecho a saberlo.
+            "cobertura_por_segmento": (
+                res["intervalo"].por_grupo.set_index("grupo")[["cobertura", "n"]]
+                .to_dict("index") if not res["intervalo"].por_grupo.empty else {}
+            ),
+            "objetivo_95": res["intervalo"].objetivo,
         },
     )
     destino = persistencia.guardar(paquete, cfg)
