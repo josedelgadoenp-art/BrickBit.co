@@ -557,7 +557,10 @@ def informe(cfg, res: dict | None) -> None:
         _linea("  le excluyen los de su PROPIO bloque, para que la variable")
         _linea("  signifique lo mismo al entrenar que al valuar un barrio nuevo.")
         _linea("  ⚠ Su aporte NO está establecido: entre dos corridas sobre casi")
-        _linea("    los mismos datos el signo se invirtió (−7.3% y luego +6.6%).")
+        _linea("    los mismos datos el signo se invirtió, y sobre cuatro corridas")
+        _linea("    dio −7.3%, +6.6%, +10.0% y +2.6%: un efecto que baila.")
+        _linea("    Para decidirlo con varias particiones, en vez de con ésta:")
+        _linea("      python -m experimentos.contraste_comparables -n 5")
         _linea("    Una sola partición no alcanza para decidirlo; el contraste de")
         _linea("    abajo es de UNA partición y hay que leerlo como tal.")
 

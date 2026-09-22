@@ -10,15 +10,16 @@ ciclos de vida distintos, y mezclarlos habría hecho a los dos más frágiles.
 
 ## Lo primero que hay que saber
 
-**La muestra de la CDMX es delgada: 2,313 inmuebles.**
+**La muestra de la CDMX es delgada: 1,772 inmuebles en venta.**
 
 Durante un tiempo el bloqueo fue no tener ningún listado individual —sin precio
 + m² + atributos por inmueble no hay AVM, ni SHAP, ni intervalo conforme—. Eso
 ya se resolvió: el scraper autorizado de Century 21 corrió sobre el país entero
-y de sus **18,560 propiedades**, 2,313 caen dentro de la CDMX y sobreviven a la
-validación.
+y de sus **18,500 propiedades**, 2,290 sobreviven a la validación y caen dentro
+de la CDMX; 1,772 de ésas están en venta, que es lo que entrena el AVM. El
+mayor filtro es geográfico: 16,066 listados quedan fuera de la ciudad.
 
-Pero 2,313 para 16 alcaldías **no da para intervalos estrechos**, y menos por
+Pero 1,772 para 16 alcaldías **no da para intervalos estrechos**, y menos por
 segmento. Conviene saberlo antes de leer el primer resultado del AVM: las bandas
 van a salir anchas, y eso será una propiedad honesta del dato, no un defecto del
 modelo. Lo que engorda la muestra es volver a correr el scraper cada mes —cada
@@ -92,13 +93,19 @@ del boosting un 19%, y durante un tiempo esta sección los llamó "la mejora má
 grande de todo el proyecto".
 
 **Los datos reales no lo sostienen.** El contraste —el mismo modelo con y sin
-esas columnas, sobre el mismo conjunto de prueba— se midió tres veces:
+esas columnas, sobre el mismo conjunto de prueba— se midió cuatro veces:
 
 | corrida | efecto sobre el error del boosting |
 |---|---|
 | 1 | **−7.3%** (ayudaban) |
 | 2 | **+6.6%** (estorbaban) |
 | 3 | **+10.0%** (estorbaban más) |
+| 4 (con OSM) | **+2.6%** |
+
+Y en la última, el modelo **sin** comparables gana también en R²(log) —0.609
+contra 0.561—, que es la métrica en la que el banco sintético decía lo
+contrario. O sea: ni siquiera las dos métricas se ponen de acuerdo entre
+conjuntos de datos.
 
 Con 355 inmuebles de prueba en 6 bloques, dos puntos de diferencia caben dentro
 del ruido de *qué* bloques tocaron ser prueba. Una sola partición no decide
@@ -146,10 +153,11 @@ bloques espaciales (1,062 / 355 / 355):
 
 | | |
 |---|---|
+| Variables | **137** (56 antes de OSM) |
 | I de Moran del **precio** | **0.515** (p = 0.001) con banda(500 m) |
 | SDM · ρ | **+0.433** (p = 4.0e-34), pseudo R² 0.605 |
-| Error del apilado en prueba | mediana **21.6%** · R²(log) 0.543 |
-| **Cobertura del intervalo 95%** | **94.4%** — calibrado, ±73% de ancho |
+| Error del apilado en prueba | mediana **22.2%** · R²(log) **0.569** |
+| **Cobertura del intervalo 95%** | **95.5%** ✓ — ±72% de ancho |
 
 El ρ positivo y muy significativo es el hallazgo de fondo: el precio de un
 inmueble en la CDMX depende materialmente del de sus vecinos, y un modelo sin
@@ -179,13 +187,22 @@ porque "lejos de todo" en el resto de la ciudad es una señal real.
 
 Al ingerir las siete que faltaban, sin tocar el intervalo:
 
-| | antes | después |
-|---|---|---|
-| **cobertura 95%** | 90.1% ✗ | **94.4% ✓** |
-| error mediano (apilado) | 23.3% | **21.6%** |
-| R²(log) del apilado | 0.494 | **0.543** |
-| R²(log) del hedónico | 0.196 | **0.301** |
-| ancho mediano | ±70% | ±73% |
+| | sin DENUE | con DENUE | **+ OSM** |
+|---|---|---|---|
+| variables | 56 | 56 | **137** |
+| **cobertura 95%** | 90.1% ✗ | 94.4% ✓ | **95.5% ✓** |
+| error mediano (apilado) | 23.3% | **21.6%** | 22.2% |
+| R²(log) del apilado | 0.494 | 0.543 | **0.569** |
+| R²(log) del hedónico | 0.196 | **0.301** | 0.301 |
+| ancho mediano | ±70% | ±73% | ±72% |
+
+Conviene leer esa tabla con cuidado, porque las dos métricas **no dicen lo
+mismo**: al entrar OSM el R² sube (0.543 → 0.569) y el error mediano empeora un
+poco (21.6% → 22.2%). El error mediano mira el caso típico; el R² sobre
+logaritmos pesa también las equivocaciones grandes. La lectura es que las
+variables nuevas ayudan **donde el modelo iba muy perdido**, no en el caso
+promedio — y el mismo patrón apareció por separado en el experimento de
+comparables, lo que le da algo de peso.
 
 La lección, que vale más que el número: **antes de arreglar un modelo hay que
 mirar si la fuente está completa.** Dos intentos de método y una hipótesis
@@ -195,10 +212,10 @@ equivocada costaron más que el comando de una línea que faltaba.
 
 | nivel | cobertura | ancho |
 |---|---|---|
-| 50% | 48.5% | ±20% |
-| **80%** | **77.7%** | **±40%** |
+| 50% | 49.6% | ±21% |
+| **80%** | **79.2%** | **±41%** |
 | 90% | 88.5% | ±55% |
-| 95% | 94.4% | ±73% |
+| 95% | 95.5% | ±72% |
 
 **La banda del 80% es la que sirve como número de producto.** El 95% se guarda
 para riesgo y cumplimiento, donde la cola importa y el ancho se tolera.
@@ -207,23 +224,37 @@ Y el ±73% tiene un culpable identificado, que el informe ahora mide:
 
 ```
                     calibración     prueba     razón
-  |residual| mediano     0.2143     0.2276      1.06×
-  σ̂ mediana              0.4058     0.6175      1.52×
+  |residual| mediano     0.2214     0.2402      1.08×
+  σ̂ mediana              0.6431     1.0787      1.68×
 ```
 
-**σ̂ sobreestima la dificultad de un barrio nuevo en 1.52×** cuando el error
-real sólo sube 6%. Por eso los scores de prueba salen a 0.69× de los de
+**σ̂ sobreestima la dificultad de un barrio nuevo en 1.68×** cuando el error
+real sólo sube 8%. Por eso los scores de prueba salen a 0.69× de los de
 calibración: el intervalo cubre de sobra siendo más ancho de lo necesario. Ahí
 está la grasa, y es un blanco concreto —no "hace falta más inventario"—.
 
 Lo que NO se recupera con método es el resto: el modelo se equivoca ~22% en la
 mediana, y un intervalo honesto sobre ese error tiene que ser ancho.
 
-> Pendiente y con margen conocido: OSM nunca se descargó (Overpass devolvió
-> 504), así que **12 variables siguen vacías** — metro, metrobús, cablebús,
-> parques, plazas, hospitales, escuelas y mercados. La distancia al metro es de
-> los predictores más fuertes que existen para vivienda en esta ciudad, y hoy
-> no entra. Lo de arriba es sólo con DENUE.
+### El defecto que lleva cuatro corridas sin caer
+
+Un segmento falla siempre, y con la misma firma:
+
+| corrida | cobertura de `depto·medio` | su corrección | la global |
+|---|---|---|---|
+| 1 | 76.2% (n=63) | +1.6566 | +1.7183 |
+| 2 | 87.0% (n=54) | +1.6121 | +1.7636 |
+| 3 | 86.5% (n=54) | — | — |
+| 4 | 86.5% (n=37) | +1.0559 | +1.1484 |
+
+Mondrian le asigna **siempre** una corrección más angosta que la global, y
+**siempre** cubre por debajo. Cuatro de cuatro con el mismo signo ya no es la
+partición. Queda anotado como defecto abierto y sin causa declarada: hay dos
+hipótesis plausibles —que el segmento se asigna con el precio PREDICHO y el
+predictor no es el mismo en calibración (fuera de pliegue) que en prueba
+(modelo completo), o que 172 puntos de calibración no capturan la cola de ese
+grupo— y ninguna está medida. Diagnosticar antes de medir ya costó dos
+intentos fallidos en este mismo problema.
 
 ### La calibración es cruzada por bloque
 
@@ -449,7 +480,7 @@ INEGI y Overpass.
 | `cp` | 1,182 | Polígonos de código postal de la CDMX |
 | `calles` | 9,090 | Ejes viales por alcaldía |
 | `osm_poi` | 15,904 | OpenStreetMap: parques, transporte, salud, educación |
-| `properties` | 2,313 | Century 21 — de 18,560 nacionales, los de la CDMX |
+| `properties` | 2,290 | Century 21 — de 18,500 nacionales, los de la CDMX (1,772 en venta) |
 
 ### Lo que se corre en tu máquina
 
