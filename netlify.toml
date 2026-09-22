@@ -113,6 +113,19 @@
   status = 404
   force = true
 
+# El Atlas es el motor de valuación de la CDMX: 53 archivos de código fuente,
+# config.yaml y un README con el análisis interno entero —qué falló, qué se
+# midió, qué sigue roto—. Se comprobó que NINGUNA regla lo cerraba, así que
+# `publish = "."` los estaba sirviendo en brickbit.co/atlas/*. No hay llaves
+# ahí dentro (HERE_API_KEY sólo se lee del entorno y hay prueba que lo fija),
+# pero es el mismo descuido que ya se corrigió para /scripts/* y /tools/*.
+# Lo que el público sí ve del Atlas es su app, embebida desde Streamlit.
+[[redirects]]
+  from = "/atlas/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
 # OJO: "/*.md" NO funciona — Netlify no admite un sufijo después del splat, y
 # en el deploy preview /CLAUDE.md seguía devolviendo 200. Van explícitas.
 [[redirects]]
@@ -171,6 +184,16 @@
 [[redirects]]
   from = "/financial"
   to = "/financial.html"
+  status = 200
+
+# Valuador de inmuebles de la CDMX (BrickBit Atlas). El archivo vive en la raíz,
+# igual que financial.html: NO crear una carpeta /valuador/ o competiría con
+# esta regla. Ojo, esto es distinto de /atlas/*, que va cerrado a 404 más
+# arriba — el código del motor no se publica; lo que se publica es su app,
+# embebida desde Streamlit.
+[[redirects]]
+  from = "/valuador"
+  to = "/valuador.html"
   status = 200
 
 # Análisis financiero de retiro (BrickBit Financial). El archivo vive en la

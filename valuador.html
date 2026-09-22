@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="512x512" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>¿Cuánto vale? Valuador de inmuebles CDMX · BrickBit</title>
+<meta name="description" content="Estima a qué precio se ofrecería un inmueble en la Ciudad de México, con su rango de incertidumbre. Calculado con 1,772 inmuebles reales y comprobado en barrios que el modelo nunca vio.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#100c0a; --surface:#1d1713; --cream:#f5ede3; --muted-txt:#a89a8c;
+    --clay:#24664a; --clay-soft:#6fa287; --clay-deep:#0c4a30;
+    --lime:#b7c489; --lime-deep:#9aac6b; --amber:#F5C277;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--cream);font-family:'Hanken Grotesk',sans-serif;display:flex;flex-direction:column}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:10px 22px;background:rgba(16,12,10,.92);border-bottom:1px solid #2a221c;
+    backdrop-filter:blur(6px);z-index:10}
+  .topbar .izq{display:flex;align-items:center;gap:14px;min-width:0}
+  .topbar a.volver{color:var(--muted-txt);text-decoration:none;font-size:.9rem;white-space:nowrap;transition:color .2s}
+  .topbar a.volver:hover{color:var(--cream)}
+  .titulo{font-family:'Fraunces',serif;font-weight:600;font-size:1.06rem;letter-spacing:-.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--cream);
+    display:inline-flex;align-items:center;gap:9px}
+  .titulo .mark{color:var(--lime-deep);font-size:1.05em}
+  .chips{display:flex;gap:9px;align-items:center}
+  .chip{font-family:'Space Mono',monospace;font-size:.64rem;letter-spacing:.07em;
+    text-transform:uppercase;color:var(--muted-txt);
+    background:rgba(245,237,227,.03);border:1px solid rgba(245,237,227,.14);
+    border-radius:99px;padding:5px 12px;white-space:nowrap;display:inline-flex;align-items:center;gap:7px}
+  .chip::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--lime-deep);flex:none}
+  .chip b{color:var(--cream);font-weight:700}
+  /* El chip de "estimación" va en ámbar porque es la regla de la casa: lo
+     estimado se marca en ámbar, y esto es una estimación de punta a punta. */
+  .chip.est::before{background:var(--amber)}
+  .chip.est b{color:var(--amber)}
+  .abrir{font-size:.85rem;color:var(--bg);background:var(--lime);border-radius:8px;
+    padding:7px 14px;text-decoration:none;font-weight:600;white-space:nowrap;transition:filter .2s}
+  .abrir:hover{filter:brightness(1.08)}
+  @media (max-width:900px){ .chips{display:none} }
+
+  .lienzo{position:relative;flex:1;min-height:0}
+  .lienzo iframe{width:100%;height:100%;border:0;display:block;background:var(--bg)}
+
+  .velo{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:18px;background:radial-gradient(ellipse at top,#1d1713 0%,var(--bg) 62%);
+    transition:opacity .6s;text-align:center;padding:24px}
+  .velo.oculto{opacity:0;pointer-events:none}
+  .plomada{width:58px;height:58px;border-radius:50%;border:2px solid var(--clay);
+    border-top-color:var(--amber);animation:girar 1.1s linear infinite}
+  @keyframes girar{to{transform:rotate(360deg)}}
+  .velo h2{font-family:'Fraunces',serif;font-weight:600;font-size:1.35rem}
+  .velo p{color:var(--muted-txt);font-size:.92rem;max-width:540px;line-height:1.55}
+  .velo .nota{display:none}
+  .velo.fallo .plomada{display:none}
+  .velo.fallo .nota{display:block}
+
+  /* Aviso permanente bajo el marco. NO va dentro del iframe: si la app se cae
+     o tarda, el aviso tiene que seguir en pantalla. Decir que es precio de
+     oferta y no un avalúo legal no es letra chica opcional. */
+  .pie{padding:9px 22px;background:rgba(16,12,10,.96);border-top:1px solid #2a221c;
+    color:var(--muted-txt);font-size:.76rem;line-height:1.5}
+  .pie b{color:var(--cream);font-weight:600}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="izq">
+    <a class="volver" href="index.html">← BrickBit</a>
+    <span class="titulo"><span class="mark">🧭</span> ¿Cuánto vale?</span>
+  </div>
+  <div class="chips">
+    <span class="chip"><b>1,772</b> inmuebles CDMX</span>
+    <span class="chip"><b>137</b> variables por zona</span>
+    <span class="chip est"><b>est.</b> con su rango</span>
+  </div>
+  <a class="abrir" id="abrirDirecto" href="#" target="_blank" rel="noopener">Pantalla completa ↗</a>
+</header>
+
+<main class="lienzo">
+  <div class="velo" id="velo">
+    <div class="plomada" aria-hidden="true"></div>
+    <h2>Cargando el valuador…</h2>
+    <p>Levantando el modelo y la malla de la ciudad. La primera visita puede
+       tardar unos segundos.</p>
+    <p class="nota"><strong>¿Tarda mucho?</strong> El valuador vive en Streamlit
+       Community Cloud y en el plan gratis se duerme tras un rato de inactividad;
+       la primera visita puede tardar hasta un minuto en despertarlo.<br>
+       <a id="abrirDirecto2" href="#" target="_blank" rel="noopener"
+          style="color:var(--lime);font-weight:600">Abrir el valuador en pantalla completa ↗</a></p>
+  </div>
+  <iframe id="motor" title="Valuador de inmuebles BrickBit Atlas"
+          allow="fullscreen" loading="eager"></iframe>
+</main>
+
+<p class="pie">
+  <b>Precio de oferta, no de cierre.</b> Estima a qué precio se <b>ofrecería</b>
+  un inmueble así, no a cuánto se vende: en México no hay MLS abierto ni Registro
+  Público accesible, así que el precio de cierre no es observable y preferimos
+  decirlo a aplicarle un descuento inventado. <b>No es un avalúo con validez
+  legal</b> salvo que lo suscriba un perito valuador. Sólo Ciudad de México.
+</p>
+
+<script>
+  /* ═══ CONFIGURACIÓN ═══════════════════════════════════════════════════════
+     URL del valuador en Streamlit Community Cloud. Tras desplegar
+     atlas/app.py en share.streamlit.io, pega aquí la URL asignada (sin barra
+     final). Mientras diga PENDIENTE, la página muestra el respaldo.
+
+     OJO AL DESPLEGAR: el "Main file path" debe ser `atlas/app.py`, y en
+     Settings → Secrets hay que poner HERE_API_KEY. Sin esa llave la app NO se
+     cae: no dibuja el mapa y se elige alcaldía en vez de escribir dirección.  */
+  const MOTOR_URL = "https://brickbit-valuador.streamlit.app";
+  /* ════════════════════════════════════════════════════════════════════════ */
+
+  const iframe = document.getElementById("motor");
+  const velo = document.getElementById("velo");
+  document.getElementById("abrirDirecto").href = MOTOR_URL;
+  document.getElementById("abrirDirecto2").href = MOTOR_URL;
+
+  /* Se carga directo en el iframe, que además DESPIERTA la app si está dormida.
+     No se sondea antes con fetch(): un fetch no-cors a una app dormida se
+     rechaza en falso y disparaba el mensaje de error con el motor bien
+     desplegado (lección de morfogenesis.html). */
+  iframe.src = MOTOR_URL + "/?embed=true&embed_options=dark_theme,hide_footer,hide_toolbar,hide_colored_line";
+
+  iframe.addEventListener("load",
+    () => setTimeout(() => velo.classList.add("oculto"), 1200));
+  setTimeout(() => velo.classList.add("oculto"), 25000);
+  setTimeout(() => {
+    if (!velo.classList.contains("oculto")) velo.classList.add("fallo");
+  }, 45000);
+</script>
+  <script defer src="/iris.js"></script>
+</body>
+</html>
